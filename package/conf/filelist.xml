@@ -45,9 +45,9 @@
 
     <file_info value="mssanitizer/lib64" copy_type="source" src_path="${OUTPUT}/lib64" dst_path="mindstudio-sanitizer/tools/mssanitizer/lib64" install_path="tools/mssanitizer/lib64" install_mod="440">
         <file value="libascend_san.so"/>
-        <file value="libascend_san.so.1.0.0"/>
+        <file value="libascend_san.so.26.0.0"/>
         <file value="libascend_san_stub.so"/>
-        <file value="libascend_san_stub.so.1.0.0"/>
+        <file value="libascend_san_stub.so.26.0.0"/>
         <file value="libascend_acl_hook.so"/>
         <file value="libascend_hal_hook.so"/>
         <file value="libascendc_hook.so"/>

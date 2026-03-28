@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13) # to support add_link_options
 
-project(sanitizers VERSION 1.0.0)
+project(sanitizers VERSION 26.0.0)
 set(CMAKE_SKIP_RPATH TRUE)
 
 # 启用编译命令导出，用于IDE代码导航（跳转到定义）

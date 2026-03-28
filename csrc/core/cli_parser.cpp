@@ -514,7 +514,7 @@ void ShowVersion()
     ShowDescription();
     std::cout << std::endl <<
         "revision:" << std::endl <<
-        "  mssanitizer " << "1.1.0" << "-" << __MSSANITIZER_COMMIT_REVISION__ << std::endl <<
+        "  mssanitizer " << __PACKAGE_VERSION__ << "-" << __MSSANITIZER_COMMIT_REVISION__ << std::endl <<
         "  msopscommon " << GetFuncInjectionRevision() << std::endl;
 }
 

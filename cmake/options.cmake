@@ -33,3 +33,15 @@ find_package(Git REQUIRED)
 execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
   OUTPUT_VARIABLE MSSANITIZER_COMMIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
 add_definitions(-D__MSSANITIZER_COMMIT_REVISION__="${MSSANITIZER_COMMIT_REVISION}")
+
+# 从version.info获取版本信息
+file(READ "${ROOT_DIR}/package/conf/version.info" FILE_CONTENT)
+if(FILE_CONTENT MATCHES "\\[PACKAGE\\]([^\\[]+)")
+    set(TMP_SECTION "${CMAKE_MATCH_1}")
+    if(TMP_SECTION MATCHES "Version=([^\\n]+)")
+        string(STRIP "${CMAKE_MATCH_1}" PACKAGE_VERSION)
+        message(STATUS "Version: ${PACKAGE_VERSION}")
+    endif()
+endif()
+
+add_definitions(-D__PACKAGE_VERSION__="${PACKAGE_VERSION}")
