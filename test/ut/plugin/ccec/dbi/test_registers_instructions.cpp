@@ -207,6 +207,15 @@ TEST(RegisterInstructions, set_lrelu_alpha_expect_get_correct_records)
     record.location = x->location;
     ASSERT_TRUE(CheckRecordEqual<RecordType::SET_LRELU_ALPHA>(ptr, record));
 
+    // 测试通过 copy_matrix 指令设置 lrelu_alpha 的数据类型
+    __sanitizer_report_copy_matrix_cc_to_cbuf_f32(memInfo.data(), record.location.pc, 0, 0, 0, 0, 0, true);
+    record.regPayLoad.regValType = RegisterValueType::VAL_FLOAT;
+    ASSERT_TRUE(CheckRecordEqual<RecordType::SET_LRELU_ALPHA>(ptr, record));
+
+    __sanitizer_report_copy_matrix_cc_to_cbuf_f32(memInfo.data(), record.location.pc, 0, 0, 0, 0, 0, false);
+    record.regPayLoad.regValType = RegisterValueType::VAL_INT32;
+    ASSERT_TRUE(CheckRecordEqual<RecordType::SET_LRELU_ALPHA>(ptr, record));
+
     // half
     half regValHalf = {{'1', '4'}};
     record.location = {10, 10};

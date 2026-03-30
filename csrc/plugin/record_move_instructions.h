@@ -22,6 +22,7 @@
 #include "utils.h"
 #include "recorder.h"
 #include "addr_process.h"
+#include "plugin/record_ctrl_instructions.h"
 
 namespace Sanitizer {
 
@@ -1591,6 +1592,7 @@ __aicore__ inline void RecordFixL0CToL1Event(EXTRA_PARAMS_DEC, uint64_t dst, uin
                                              uint64_t xm, uint64_t xt, bool isDstF32)
 {
     RecordMovFpV2Event<RecordType::FIX_L0C_TO_L1>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
+    UpdateLreluAlpha(EXTRA_PARAMS, isDstF32);
 }
  
 __aicore__ inline void RecordFixL0CToUBEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,

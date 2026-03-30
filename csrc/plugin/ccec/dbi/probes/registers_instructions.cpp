@@ -97,14 +97,4 @@ SANITIZER_REPORT(set_lrelu_alpha, uint64_t config)
     RecordLreluAlpha(EXTRA_PARAMS, config, RegisterValueType::VAL_UINT64);
 }
 
-SANITIZER_REPORT(set_lrelu_alpha, half config)
-{
-    RecordLreluAlpha(EXTRA_PARAMS, config, RegisterValueType::VAL_HALF);
-}
-
-SANITIZER_REPORT(set_lrelu_alpha, float config)
-{
-    RecordLreluAlpha(EXTRA_PARAMS, config, RegisterValueType::VAL_FLOAT);
-}
-
 #endif

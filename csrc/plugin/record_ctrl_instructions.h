@@ -92,6 +92,27 @@ __aicore__ inline void RecordVectorMask(EXTRA_PARAMS_DEC, uint64_t reg_idx, uint
     }
 }
 
+__aicore__ inline void UpdateLreluAlpha(EXTRA_PARAMS_DEC, bool isDstF32)
+{
+    if (InvalidMemInfo(memInfo)) {
+        return;
+    }
+
+    int64_t regIdx = GetRegisterIdx();
+    if (!CheckRegIdxValid(regIdx)) {
+        return;
+    }
+
+    __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
+    // 根据L0CToL1Event的目的操作数类型判断lrelu_alpha寄存器的类型
+    if (isDstF32) {
+        globalHead->registers[regIdx].lreluAlpha.regValType = RegisterValueType::VAL_FLOAT;
+    } else {
+        globalHead->registers[regIdx].lreluAlpha.regValType = RegisterValueType::VAL_INT32;
+    }
+}
+
+
 template <typename T>
 __aicore__ inline void RecordLreluAlpha(EXTRA_PARAMS_DEC, T value, RegisterValueType valType)
 {

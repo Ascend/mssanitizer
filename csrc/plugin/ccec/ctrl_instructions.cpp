@@ -80,11 +80,7 @@ SANITIZER_REPORT(set_quant_post, uint64_t config)
         RegisterValueType::VAL_UINT64);
 }
 
-SANITIZER_REPORT(set_lrelu_alpha, uint64_t config)
-{
-    RecordLreluAlpha(EXTRA_PARAMS, config, RegisterValueType::VAL_UINT64);
-}
-
+// 与编译器约定：set_lrelu_alpha指令的静态插桩维持half和float类型区分；动态插桩统一使用uint64参数，通过L0CToL1Event区分具体类型
 SANITIZER_REPORT(set_lrelu_alpha, half config)
 {
     RecordLreluAlpha(EXTRA_PARAMS, config, RegisterValueType::VAL_HALF);
