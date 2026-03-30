@@ -99,7 +99,13 @@ void RegisterSanitizer::Do(const SanitizerRecord &record, const std::vector<SanE
 
         int64_t regIdx = event.eventInfo.regInfo.regPayLoad.regIdx;  // 调用 GetRegisterIdx() 接口获取的regIdx，与kernel侧保持一致
         int32_t regType = static_cast<int>(event.eventInfo.regInfo.regType);
-        regValActual_[regIdx][regType].regVal = event.eventInfo.regInfo.regPayLoad.regVal;
+        uint64_t regVal = event.eventInfo.regInfo.regPayLoad.regVal;
+        // ctrl寄存器仅检测bit56是否归0
+        if (event.eventInfo.regInfo.regType == RegisterType::CTRL) {    
+            regVal = (regVal >> 56) & 1;
+        }
+
+        regValActual_[regIdx][regType].regVal = regVal;
         regValActual_[regIdx][regType].blockType = event.loc.blockType;
         regValActual_[regIdx][regType].blockId = event.loc.coreId;  // 用于后续输出告警时打印
     }

@@ -192,7 +192,7 @@ TEST(RegisterSanitizer, set_vector_mask_1_expect_not_report_exception)
     ASSERT_TRUE(msg.find("current valure is (" + std::to_string(regvalU64) + ")") == std::string::npos);
 }
 
-TEST(RegisterSanitizer, set_ctrl_expect_report_exception)
+TEST(RegisterSanitizer, set_ctrl_non_bit56_expect_not_report_exception)
 {
     RegisterSanitizer regSan {};
     regSan.Init();
@@ -210,7 +210,7 @@ TEST(RegisterSanitizer, set_ctrl_expect_report_exception)
     uint16_t coreId = 0;
     int64_t regIdx = UT_GetRegIdx();
     
-    // 未重置为默认值报告警
+    // 非bit56位未复位不报告警
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
     ASSERT_EQ(events.size(), 1U);
@@ -218,11 +218,44 @@ TEST(RegisterSanitizer, set_ctrl_expect_report_exception)
     regSan.Do(record, events);
 
     std::cout << "[UT_DEBUG]msg: \n" << msg << std::endl;
-    ASSERT_EQ(regSan.regValActual_[regIdx][regType].regVal, regvalU64);
+    ASSERT_EQ(regSan.regValActual_[regIdx][regType].regVal, 0); // ctrl寄存器只看bit56
+    ASSERT_EQ(regSan.regValActual_[regIdx][regType].blockId, coreId);
+    ASSERT_TRUE(msg.find("Register " + Sanitizer::g_regInfoTbl[regType].regNameStr + " was not reset to default in block aiv("
+        + std::to_string(coreId) + ")") == std::string::npos);
+    ASSERT_TRUE(msg.find("current value is (" + std::to_string(regvalU64) + ")") == std::string::npos);
+}
+
+TEST(RegisterSanitizer, set_ctrl_bit56_expect_report_exception)
+{
+    RegisterSanitizer regSan {};
+    regSan.Init();
+    std::string msg {};
+    regSan.RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
+
+    std::vector<SanEvent> events {};
+    SanEvent endEvent {};
+    endEvent.isEndFrame = true;
+    SanitizerRecord record {};
+    uint64_t regvalU64 = 1UL << 56;
+    size_t regType = static_cast<size_t>(RegisterType::CTRL);
+    uint64_t regvalU64Dft = Sanitizer::g_regInfoTbl[regType].regDftVal;
+    RecordType recordType = RecordType::SET_CTRL;
+    uint16_t coreId = 0;
+    int64_t regIdx = UT_GetRegIdx();
+
+    // bit56位未重置为默认值报告警
+    UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
+    RecordPreProcess::GetInstance().Process(record, events);
+    ASSERT_EQ(events.size(), 1U);
+    events.emplace_back(endEvent);
+    regSan.Do(record, events);
+
+    std::cout << "[UT_DEBUG]msg: \n" << msg << std::endl;
+    ASSERT_EQ(regSan.regValActual_[regIdx][regType].regVal, regvalU64 >> 56);
     ASSERT_EQ(regSan.regValActual_[regIdx][regType].blockId, coreId);
     ASSERT_TRUE(msg.find("Register " + Sanitizer::g_regInfoTbl[regType].regNameStr + " was not reset to default in block aiv("
         + std::to_string(coreId) + ")") != std::string::npos);
-    ASSERT_TRUE(msg.find("current value is (" + std::to_string(regvalU64) + ")") != std::string::npos);
+    ASSERT_TRUE(msg.find("current value is (" + std::to_string(regvalU64 >> 56) + ")") != std::string::npos);
 }
 
 TEST(RegisterSanitizer, set_ctrl_expect_not_report_exception)

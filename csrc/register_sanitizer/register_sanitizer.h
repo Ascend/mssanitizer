@@ -40,7 +40,7 @@ typedef struct {
 static const CheckedRegInfo g_regInfoTbl[static_cast<size_t>(RegisterType::MAX)] = {
     {RegisterType::VECTOR_MASK_0,   "VECTOR_MASK_0",    ~0ULL,      true},
     {RegisterType::VECTOR_MASK_1,   "VECTOR_MASK_1",    ~0ULL,      true},
-    {RegisterType::CTRL,            "CTRL",             0x08ULL,    true},
+    {RegisterType::CTRL,            "CTRL[56]",         0ULL,       true},  // ctrl寄存器仅检测关心的bit56是否归为0
     {RegisterType::FFTS_BASE_ADDR,  "FFTS_BASE_ADDR",   0ULL,       true},
     {RegisterType::FPC,             "FPC",              0ULL,       true},
     {RegisterType::QUANT_PRE,       "QUANT_PRE",        0ULL,       true},
@@ -60,8 +60,9 @@ public:
     void Exit() override;
 
 private:
-    void ReportRegisterInfo(RegisterDispInfo &info);
     bool Init();
+    bool CheckRegisterVal(uint64_t regVal, uint64_t regDftVal, const CheckedRegInfo &checkInfo);
+    void ReportRegisterInfo(RegisterDispInfo &info);
 
     int16_t checkBlockId_ = CHECK_ALL_BLOCK;
     MSG_FUNC msgFunc_;
