@@ -48,6 +48,7 @@ chmod +x mindstudio-sanitizer_*.run
 #### 2.3.2 安装
 
 将 run 包拷贝到运行环境中（本机安装无需拷贝），执行如下安装操作：
+
 ```shell
 ./mindstudio-sanitizer_*.run --run
 ```
@@ -62,6 +63,7 @@ chmod +x mindstudio-sanitizer_*.run
 #### 2.3.3 卸载
 
 可通过如下命令卸载：
+
 ```shell
 ./mindstudio-sanitizer_*.run --uninstall
 ```
