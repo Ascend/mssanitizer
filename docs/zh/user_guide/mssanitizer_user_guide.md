@@ -545,7 +545,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | --log-level | 指定检测报告输出等级。 | info：输出info/warn/error级别的运行信息。<br>warn：输出warn/error级别的运行信息（默认）。<br>error：输出error级别的运行信息。 | 否 |
 | --max-debuglog-size | 指定检测工具调试输出日志中单个文件大小的上限。 | 可设定范围为1~10240之间的整数，单位为MB。<br>默认值为1024。<br>说明：<br>--max-debuglog-size=100就表示单个调试日志的大小上限为100MB。 | 否 |
 | --block-id | 是否启用单block检测功能。 | 可设定范围为0~200之间的整数。<br>启用前<br>内存检测、未初始化检测和同步检测：默认检测所有block。<br>竞争检测：核间默认检测所有block，核内默认检测block 0的流水内及流水间的竞争。<br>启用后<br>内存检测、未初始化检测和同步检测：检测指定block。<br>竞争检测：核间不进行检测，检测指定block的流水内及流水间的竞争。 | 否 |
-| --cache-size | 表示单block的GM内存大小。 | 单block可设定范围为1~8192之间的整数，单位为MB。<br>单block默认值为100MB，表示单block可申请100MB的内存大小。<br>说明：<br>启用单block检测时，--cache-size的最大值为8192MB。不启用单block检测时，--cache-size可设置的最大值为(24*1024 / block数量) 。<br>当--cache-size值不满足需求时，异常检测工具将会打印信息提示用户重新设置--cache-size值，具体请参见《MindStudio Sanitizier常见问题》中的msSanitizer工具提示--cache-size异常。 | 否 |
+| --cache-size | 表示单block的GM内存大小。 | 单block可设定范围为1~8192之间的整数，单位为MB。<br>单block默认值为100MB，表示单block可申请100MB的内存大小。<br>说明：<br>启用单block检测时，--cache-size的最大值为8192MB。不启用单block检测时，--cache-size可设置的最大值为(24*1024 / block数量) 。<br>当--cache-size值不满足需求时，异常检测工具将会打印信息提示用户重新设置--cache-size值，具体请参见《MindStudio Sanitizer常见问题》中的msSanitizer工具提示--cache-size异常。 | 否 |
 | --kernel-name | 指定要检测的算子名称。 | 支持使用算子名中的部分字符串来进行模糊匹配。如果不指定，则系统默认会对整个程序执行期间所调度的所有算子进行检测。<br>例如，需要同时检测名为"abcd"和"bcd"的算子时，可以通过配置--kernel-name="bc"来实现这一需求，系统会自动识别并检测所有包含"bc"字符串的算子。 | 否 |
 | --full-backtrace | 显示 AscendC API 内的调用栈回溯。 | yes：显示完整的调用栈回溯。<br>no（默认）：不显示 AscendC API 内的调用栈。 | 否 |
 | --demangle | 设置输出中函数名显示的 demangle 模式。 | full（默认）：显示完整的 demangle 后的函数名。<br>simple：仅显示函数名，不包含返回值、参数列表。<br>no：显示未 demangle 的函数名。 | 否 |
