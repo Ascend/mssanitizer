@@ -111,7 +111,7 @@ mssanitizer --tool=racecheck bash run.sh
 
 ```shell
 cd ~/ot_demo/workspace/src/caller
-mssanitizer --tool=initheck bash run.sh
+mssanitizer --tool=initcheck bash run.sh
 ```
 
 工具输出如下错误报告：

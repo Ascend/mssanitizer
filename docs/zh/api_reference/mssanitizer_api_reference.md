@@ -484,7 +484,7 @@ void sanitizerReportFree(void *ptr);
 
 **mstx接口简介**
 
-mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/mstx_api_reference.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
+mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/mstx_api_reference.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
 
 > [!NOTE] 说明      
 >《[MindStudio Sanitizer工具用户指南](../user_guide/mssanitizer_user_guide.md)》中的“异常检测功能介绍>功能说明>调用场景>Kernel直调算子开发”中的内核调用符场景暂不支持使用mstx接口。
@@ -559,7 +559,7 @@ mstxMemVirtualRangeDesc_t rangeDesc = {};
     regionsDesc.regionCount = 1;
     regionsDesc.regionDescArray = rangesDesc;
     regionsDesc.regionHandleArrayOut = regionHandles;
-    mstxMemRegionsRegister(globalDomain, ®ionsDesc);              // 二次分配注册
+    mstxMemRegionsRegister(globalDomain, regionsDesc);              // 二次分配注册
     Do(blockDim, nullptr, stream, gm);                            // 算子Kernel函数
     mstxMemRegionRef_t regionRef[1] = {};
     regionRef[0].refType = MSTX_MEM_REGION_REF_TYPE_HANDLE;

@@ -1,4 +1,4 @@
-# MindStudio Sanitizier常见问题
+# MindStudio Sanitizer常见问题
 
 <br>
 
