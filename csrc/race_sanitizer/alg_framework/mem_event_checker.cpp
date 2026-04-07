@@ -18,6 +18,9 @@
 #include "mem_event_checker.h"
 
 #include "core/framework/constant.h"
+#include "core/framework/event_def.h"
+#include "core/framework/kernel_manager.h"
+#include "core/framework/record_defs.h"
 #include "mem_series.h"
 #include "core/framework/utility/log.h"
 
@@ -31,6 +34,14 @@ void MemEventChecker::Init(KernelType kernelType, DeviceType deviceType, RaceChe
     checkTypeMap_[RaceCheckType::SINGLE_BLOCK_CHECK] = &MemEventChecker::IsInnerCoreRaceEvent;
     checkTypeMap_[RaceCheckType::SINGLE_PIPE_CHECK] = &MemEventChecker::IsSinglePipeRaceEvent;
     checkTypeMap_[RaceCheckType::CROSS_BLOCK_CHECK] = &MemEventChecker::IsCrossCoreRaceEvent;
+    result_ = std::make_shared<std::vector<RaceDispInfo>>();
+}
+
+void MemEventChecker::Init(uint32_t blockNum)
+{
+    blockNum_ = blockNum;
+    this->checkType_ = RaceCheckType::CROSS_NPU_CHECK;
+    checkTypeMap_[RaceCheckType::CROSS_NPU_CHECK] = &MemEventChecker::IsCrossNpuRaceEvent;
     result_ = std::make_shared<std::vector<RaceDispInfo>>();
 }
 
@@ -172,6 +183,39 @@ bool MemEventChecker::IsCrossCoreRaceEvent(uint64_t eventIdx1, uint64_t eventIdx
     }
 
     if (IsAtomicAgainst(event1, event2)) {
+        return false;
+    }
+
+    // 比较内存空间是否存在重叠
+    if (!IsMemSpaceOverlap(event1.memInfo, event2.memInfo)) {
+        return false;
+    }
+    return true;
+}
+
+bool MemEventChecker::IsCrossNpuRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2)
+{
+    auto &event1 = this->events_.at(eventIdx1);
+    auto &event2 = this->events_.at(eventIdx2);
+    // 同一个 device 无需比较
+    if (event1.loc.deviceId == event2.loc.deviceId) {
+        return false;
+    }
+
+    if (!VectorClock::IsNotHappensBefore(event1.vt, event2.vt,
+                                         GetExpandPipeIdx(event1, blockNum_),
+                                         GetExpandPipeIdx(event2, blockNum_))) {
+        return false;
+    }
+
+    // 仅比较相同 kernelname 的算子是否竞争
+    KernelSummary kernelSummary1{};
+    KernelSummary kernelSummary2{};
+    if (!KernelManager::Instance().Get(event1.loc.deviceId, event1.loc.kernelIdx, kernelSummary1) ||
+        !KernelManager::Instance().Get(event2.loc.deviceId, event2.loc.kernelIdx, kernelSummary2)) {
+        return false;
+    }
+    if (std::string(kernelSummary1.kernelName) != std::string(kernelSummary2.kernelName)) {
         return false;
     }
 

@@ -66,6 +66,7 @@ enum class RaceCheckType: uint8_t {
     SINGLE_BLOCK_CHECK = 0U,
     SINGLE_PIPE_CHECK,
     CROSS_BLOCK_CHECK,
+    CROSS_NPU_CHECK,
 };
 
 enum class SyncCheckType : uint8_t {
