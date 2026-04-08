@@ -129,8 +129,8 @@ __aicore__ inline uint64_t CalcDumpBlockIdx(BlockType &blockType, uint64_t block
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__) || \
     (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510))
 #ifdef SIMT_MODE
-    coreId = bisheng::cce::simt::get_coreid();
-    vecSubBlockDim = bisheng::cce::simt::get_subblockdim();
+    coreId = __cce_simt_get_COREID();
+    vecSubBlockDim = __cce_simt_get_SUBBLOCKDIM();
 #else
     coreId = get_coreid();
     vecSubBlockDim = get_subblockdim();
