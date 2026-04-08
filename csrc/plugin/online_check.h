@@ -409,7 +409,7 @@ __aicore__ inline int64_t GetRegisterIdx()
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__) || \
     (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510))
 #ifdef SIMT_MODE
-    coreId = bisheng::cce::simt::get_coreid();
+    coreId = __cce_simt_get_COREID();
 #else
     coreId = get_coreid();
 #endif // SIMT_MODE
