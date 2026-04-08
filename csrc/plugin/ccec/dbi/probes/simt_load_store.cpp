@@ -17,7 +17,7 @@
 
 #include "core/framework/record_defs.h"
 
-#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
 #define SIMT_MODE  // 开启simt模式
 #include "plugin/record_simt_instructions.h"
 #include "plugin/addr_process.h"

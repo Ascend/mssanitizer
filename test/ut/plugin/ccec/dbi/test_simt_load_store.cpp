@@ -23,6 +23,7 @@
 #include "../data_process.h"
 #define BUILD_DYNAMIC_PROBE
 #define __NPU_ARCH__ 3101
+#define __DAV_VEC__
 #include "plugin/ccec/dbi/probes/simt_load_store.cpp"
 
 using namespace Sanitizer;
