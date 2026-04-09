@@ -145,6 +145,10 @@ bool MemEventChecker::IsSinglePipeRaceEvent(uint64_t eventIdx1, uint64_t eventId
         return false;
     }
 
+    if (IsAtomicAgainst(event1, event2)) {
+        return false;
+    }
+
     // 一条流水内指令队列长度上限为 16 或 32, 视架构和流水类型而定。
     // 此处出于性能和实际场景考虑，当两条指令序间隔 16 以上时不检测流水内竞争
     static constexpr uint64_t MAX_SERIAL_NUMBER_DIFF = 16;

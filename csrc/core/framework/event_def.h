@@ -212,7 +212,8 @@ struct MemEvent {
     bool isAtomicMode = false;
 
     explicit MemEvent(const SanEvent &event)
-        : serialNo(event.serialNo), memInfo(event.eventInfo.memInfo), loc(event.loc), pipe(event.pipe)
+        : serialNo(event.serialNo), memInfo(event.eventInfo.memInfo), loc(event.loc), pipe(event.pipe),
+        isAtomicMode(event.isAtomicMode)
     {}
 };
 
