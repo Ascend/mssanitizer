@@ -3306,17 +3306,9 @@ static void ParseMstxCrossCoreBarrier(const KernelRecord &record, std::vector<Sa
 
     SanEvent event;
     SetLocationInfo(event, record.payload.mstxRecord, record.blockType, record.serialNo);
-    event.type = EventType::CROSS_CORE_SYNC_EVENT;
+    event.type = EventType::MSTX_CROSS_CORE_BARRIER;
     event.pipe = PipeType::PIPE_S;
-    event.eventInfo.fftsSyncInfo.opType = SyncType::FFTS_SYNC;
-    event.eventInfo.fftsSyncInfo.dstPipe = PipeType::PIPE_S;
-    constexpr uint8_t virtualFlagId = 31;
-    event.eventInfo.fftsSyncInfo.flagId = virtualFlagId;
-    event.eventInfo.fftsSyncInfo.mode = 0;
-    event.eventInfo.fftsSyncInfo.vecSubBlockDim = 2;
-    events.emplace_back(event);
-
-    event.eventInfo.fftsSyncInfo.opType = SyncType::WAIT_FLAG_DEV;
+    event.eventInfo.mstxCrossCoreBarrier = mstxCrossCoreBarrier;
     events.emplace_back(event);
 }
 
@@ -3386,6 +3378,19 @@ static void ParseMstxSignalWait(const KernelRecord &record, std::vector<SanEvent
     event.type = EventType::MSTX_SIGNAL_WAIT_EVENT;
     event.pipe = PipeType::PIPE_S;
     event.eventInfo.mstxSignalWait = mstxSignalWait;
+    events.emplace_back(event);
+}
+
+static void ParseMstxCrossNpuBarrier(const KernelRecord &record, std::vector<SanEvent> &events)
+{
+    auto &mstxRecord = record.payload.mstxRecord;
+    auto &mstxCrossNpuBarrier = mstxRecord.interface.mstxCrossNpuBarrier;
+
+    SanEvent event;
+    SetLocationInfo(event, record.payload.mstxRecord, record.blockType, record.serialNo);
+    event.type = EventType::MSTX_CROSS_NPU_BARRIER;
+    event.pipe = PipeType::PIPE_S;
+    event.eventInfo.mstxCrossNpuBarrier = mstxCrossNpuBarrier;
     events.emplace_back(event);
 }
 
@@ -3570,6 +3575,8 @@ static void ParseRecordMstxStub(const KernelRecord &record, std::vector<SanEvent
         ParseMstxSignalSet(record, events);
     } else if (mstxRecord.interfaceType == InterfaceType::MSTX_SIGNAL_WAIT) {
         ParseMstxSignalWait(record, events);
+    } else if (mstxRecord.interfaceType == InterfaceType::MSTX_CROSS_NPU_BARRIER) {
+        ParseMstxCrossNpuBarrier(record, events);
     } else if (mstxRecord.interfaceType == InterfaceType::MSTX_VEC_UNARY_OP) {
         ParseRecordMstxVecUnary(record, events);
     } else if (mstxRecord.interfaceType == InterfaceType::MSTX_VEC_BINARY_OP) {

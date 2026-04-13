@@ -36,6 +36,7 @@ enum class InterfaceType : uint32_t {
     MSTX_CROSS_CORE_WAIT_FLAG,
     MSTX_SIGNAL_SET,
     MSTX_SIGNAL_WAIT,
+    MSTX_CROSS_NPU_BARRIER,
 
     MSTX_FUSE_SCOPE_START = 1000,  // 融合语义范围开始标记，范围内的指令记录会被忽略
     MSTX_FUSE_SCOPE_END,           // 融合语义范围结束标记
@@ -108,6 +109,14 @@ struct MstxCrossCoreWaitFlag {
     int32_t eventId;
     int32_t peerCoreId;
     bool pipeBarrierAll;
+};
+
+struct MstxCrossNpuBarrier {
+    uint32_t usedDeviceNum;
+    uint32_t *usedDeviceId;
+    uint32_t usedCoreNum;
+    uint32_t *usedCoreId;
+    bool isAIVOnly;
 };
 
 struct MstxTensorDesc {
@@ -189,6 +198,7 @@ INTERFACE_TYPE_TRAITS_SPEC(MstxCrossCoreSetFlag, InterfaceType::MSTX_CROSS_CORE_
 INTERFACE_TYPE_TRAITS_SPEC(MstxCrossCoreWaitFlag, InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG);
 INTERFACE_TYPE_TRAITS_SPEC(MstxSignalSet, InterfaceType::MSTX_SIGNAL_SET);
 INTERFACE_TYPE_TRAITS_SPEC(MstxSignalWait, InterfaceType::MSTX_SIGNAL_WAIT);
+INTERFACE_TYPE_TRAITS_SPEC(MstxCrossNpuBarrier, InterfaceType::MSTX_CROSS_NPU_BARRIER);
 INTERFACE_TYPE_TRAITS_SPEC(MstxVecUnaryDesc, InterfaceType::MSTX_VEC_UNARY_OP);
 INTERFACE_TYPE_TRAITS_SPEC(MstxVecBinaryDesc, InterfaceType::MSTX_VEC_BINARY_OP);
 INTERFACE_TYPE_TRAITS_SPEC(MstxDataCopyDesc, InterfaceType::MSTX_DATA_COPY);

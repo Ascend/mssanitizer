@@ -26,6 +26,7 @@
 #include <sstream>
 
 #include "record_defs.h"
+#include "sanitizer_report.h"
 
 namespace Sanitizer {
 
@@ -161,6 +162,7 @@ std::ostream &operator<<(std::ostream &os, MstxCrossCoreSetFlag const &record);
 std::ostream &operator<<(std::ostream &os, MstxCrossCoreWaitFlag const &record);
 std::ostream &operator<<(std::ostream &os, MstxSignalSet const &record);
 std::ostream &operator<<(std::ostream &os, MstxSignalWait const &record);
+std::ostream &operator<<(std::ostream &os, MstxCrossNpuBarrier const &record);
 std::ostream &operator<<(std::ostream &os, MstxTensorDesc const &tensor);
 std::ostream &operator<<(std::ostream &os, MstxVecWrapper const &record);
 std::ostream &operator<<(std::ostream &os, MstxVecUnaryDesc const &record);

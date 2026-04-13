@@ -22,6 +22,7 @@
 #include <map>
 
 #include "race_alg_base.h"
+#include "soft_sync_barrier_database.h"
 #include "sync_event_data_base.h"
 
 namespace Sanitizer {
@@ -44,8 +45,11 @@ private:
     ReturnType ProcessSyncEvent(const SanEvent& event);
     ReturnType ProcessTimeEvent(const SanEvent& event);
     ReturnType ProcessBlockSoftSyncEvent(const SanEvent& event);
+    ReturnType ProcessMstxCrossCoreBarrier(const SanEvent& event);
+
 private:
     std::vector<SyncEventDataBase> syncDB_;
+    SoftSyncBarrierDatabase crossCoreBarrier_;
 };
 }
 

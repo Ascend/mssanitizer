@@ -26,6 +26,7 @@
 #include "mem_event_checker.h"
 #include "pipe_line.h"
 #include "signal_database.h"
+#include "soft_sync_barrier_database.h"
 #include "sync_event_data_base.h"
 #include "vector_clock.h"
 
@@ -52,6 +53,8 @@ private:
     ReturnType ProcessMstxCrossSyncEvent(const SanEvent& event);
     ReturnType ProcessMstxSignalSetEvent(const SanEvent &event);
     ReturnType ProcessMstxSignalWaitEvent(const SanEvent &event);
+    ReturnType ProcessMstxCrossCoreBarrier(const SanEvent &event);
+    ReturnType ProcessMstxCrossNpuBarrier(const SanEvent& event);
     void CacheMstxCrossSet(const SanEvent& event);
 
 private:
@@ -63,12 +66,14 @@ private:
     EventContainer eventContainer_;
     MemEventChecker memChecker_;
     SignalDatabase signalDatabase_;
+    SoftSyncBarrierDatabase crossNpuBarrier_;
     // 按最大的 blockDim 数初始化 vc 和 syncDB 数组
     std::vector<VectorTime> vc_;
     std::vector<SyncEventDataBase> syncDB_;
     // 为每张卡上的每个 kernel 创建一份核间检测实例
     std::vector<std::vector<MstxSetCrossMap>> mstxSetCrossMap_;
     std::vector<std::vector<CrossCoreSyncInfoContainer>> crossCoreSyncInfoContainer_;
+    std::vector<std::vector<SoftSyncBarrierDatabase>> crossCoreBarrier_{};
 };
 
 } // namespace Sanitizer

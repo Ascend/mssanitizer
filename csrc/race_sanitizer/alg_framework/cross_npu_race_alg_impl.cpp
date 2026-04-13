@@ -21,6 +21,10 @@
 #include "race_sanitizer/alg_framework/cross_core_sync_info_container.h"
 #include "race_sanitizer/alg_framework/event_container.h"
 #include "race_sanitizer/alg_framework/mem_event_checker.h"
+#include "race_sanitizer/alg_framework/pipe_line.h"
+#include "race_sanitizer/alg_framework/soft_sync_barrier_database.h"
+#include "race_sanitizer/alg_framework/vector_clock.h"
+#include "sanitizer_report.h"
 
 #include "cross_npu_race_alg_impl.h"
 
@@ -37,6 +41,7 @@ void CrossNpuRaceAlgImpl::Init()
     std::size_t deviceNum = DeviceManager::Instance().GetDeviceCount();
     crossCoreSyncInfoContainer_.resize(deviceNum);
     mstxSetCrossMap_.resize(deviceNum);
+    crossCoreBarrier_.resize(deviceNum);
 
     for (std::size_t deviceIdx = 0; deviceIdx < deviceNum; ++deviceIdx) {
         uint32_t deviceId = deviceList[deviceIdx];
@@ -47,6 +52,7 @@ void CrossNpuRaceAlgImpl::Init()
 
         crossCoreSyncInfoContainer_[deviceIdx].resize(kernelCount);
         mstxSetCrossMap_[deviceIdx].resize(kernelCount);
+        crossCoreBarrier_[deviceIdx].resize(kernelCount);
 
         for (std::size_t kernelIdx = 0; kernelIdx < kernelCount; ++kernelIdx) {
             KernelSummary kernelSummary{};
@@ -146,6 +152,10 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
             return ProcessMstxSignalSetEvent(event);
         case EventType::MSTX_SIGNAL_WAIT_EVENT:
             return ProcessMstxSignalWaitEvent(event);
+        case EventType::MSTX_CROSS_CORE_BARRIER:
+            return ProcessMstxCrossCoreBarrier(event);
+        case EventType::MSTX_CROSS_NPU_BARRIER:
+            return ProcessMstxCrossNpuBarrier(event);
         default:
             break;
     }
@@ -330,6 +340,47 @@ ReturnType CrossNpuRaceAlgImpl::ProcessMstxSignalWaitEvent(const SanEvent &event
         return ReturnType::PROCESS_OK;
     }
     return ReturnType::PROCESS_STALLED;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossCoreBarrier(const SanEvent& event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    MstxCrossCoreBarrier const &mstxCrossCoreBarrier = event.eventInfo.mstxCrossCoreBarrier;
+
+    SoftSyncBarrierDatabase::BarrierConf conf;
+    conf.isAIVOnly = mstxCrossCoreBarrier.isAIVOnly;
+    conf.usedDeviceNum = 1;
+    conf.usedCoreNum = mstxCrossCoreBarrier.usedCoreNum;
+    SoftSyncBarrierDatabase &crossCoreBarrier = crossCoreBarrier_[event.loc.deviceIdx][event.loc.kernelIdx];
+    SoftSyncBarrierDatabase::BarrierEvent &barrierEvent = crossCoreBarrier[conf];
+
+    VectorTime vt;
+    if (!barrierEvent.Wait(event.loc.coreId, mstxCrossCoreBarrier, vc_[curPipe], vt)) {
+        return ReturnType::PROCESS_STALLED;
+    }
+    VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossNpuBarrier(const SanEvent& event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    MstxCrossNpuBarrier const &mstxCrossNpuBarrier = event.eventInfo.mstxCrossNpuBarrier;
+
+    SoftSyncBarrierDatabase::BarrierConf conf;
+    conf.isAIVOnly = mstxCrossNpuBarrier.isAIVOnly;
+    conf.usedDeviceNum = mstxCrossNpuBarrier.usedDeviceNum;
+    conf.usedCoreNum = mstxCrossNpuBarrier.usedCoreNum;
+    SoftSyncBarrierDatabase::BarrierEvent &barrierEvent = crossNpuBarrier_[conf];
+
+    VectorTime vt;
+    if (!barrierEvent.Wait(event.loc.deviceId, event.loc.coreId, mstxCrossNpuBarrier, vc_[curPipe], vt)) {
+        return ReturnType::PROCESS_STALLED;
+    }
+    VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+    return ReturnType::PROCESS_OK;
 }
 
 void CrossNpuRaceAlgImpl::CacheMstxCrossSet(const SanEvent& event)

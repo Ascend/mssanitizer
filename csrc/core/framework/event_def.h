@@ -25,6 +25,7 @@
 #include <algorithm>
 #include "arch_def.h"
 #include "record_defs.h"
+#include "sanitizer_report.h"
 #include "utility/log.h"
 
 namespace Sanitizer {
@@ -43,6 +44,8 @@ enum class EventType : uint8_t {
     BUF_SYNC_EVENT,
     MSTX_SIGNAL_SET_EVENT,
     MSTX_SIGNAL_WAIT_EVENT,
+    MSTX_CROSS_CORE_BARRIER,
+    MSTX_CROSS_NPU_BARRIER,
 };
 
 // 算法预处理阶段hset_flag/hwait_flag处理成普通的set_flag/wait_flag
@@ -197,6 +200,8 @@ struct SanEvent {
         HSyncOpInfo hsyncInfo;
         MstxSignalSet mstxSignalSet;
         MstxSignalWait mstxSignalWait;
+        MstxCrossCoreBarrier mstxCrossCoreBarrier;
+        MstxCrossNpuBarrier mstxCrossNpuBarrier;
     } eventInfo{};
     VectorTime timeInfo;
     LocInfo loc{};

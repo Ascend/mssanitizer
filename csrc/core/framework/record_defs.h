@@ -838,6 +838,7 @@ struct MstxRecord {
         MstxCrossCoreWaitFlag mstxCrossCoreWaitFlag;
         MstxSignalSet mstxSignalSet;
         MstxSignalWait mstxSignalWait;
+        MstxCrossNpuBarrier mstxCrossNpuBarrier;
     } interface;
 };
 

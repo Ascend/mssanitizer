@@ -180,6 +180,8 @@ __aicore__ inline void RecordMstxEvent(EXTRA_PARAMS_DEC, uint32_t interfaceId, u
         RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxSignalSet, bufferLens, buffer);
     } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_SIGNAL_WAIT) {
         RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxSignalWait, bufferLens, buffer);
+    } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_CROSS_NPU_BARRIER) {
+        RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxCrossNpuBarrier, bufferLens, buffer);
     } else {
         mstxRecord.error = true;
         recorder.DumpRecord<RecordType::MSTX_STUB>(mstxRecord);

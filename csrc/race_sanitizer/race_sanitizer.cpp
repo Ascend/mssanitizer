@@ -258,6 +258,8 @@ void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
             RaceDispInfo error{};
             BaseEvent event{};
             auto &errorDesc = kernelErrorDesc.payload.raceDesc;
+            event.deviceId = RuntimeContext::Instance().GetDeviceId();
+            event.kernelIdx = RuntimeContext::Instance().kernelIdx_ - 1;
             event.coreId = kernelErrorDesc.location.blockId;
             event.addr = errorDesc.addr;
             event.pc = kernelErrorDesc.location.pc;

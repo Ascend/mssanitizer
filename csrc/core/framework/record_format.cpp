@@ -201,6 +201,7 @@ std::ostream &operator<<(std::ostream &os, InterfaceType interfaceType)
         {InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG, "CROSS_CORE_WAIT_FLAG"},
         {InterfaceType::MSTX_SIGNAL_SET,           "SIGNAL_SET"},
         {InterfaceType::MSTX_SIGNAL_WAIT,          "SIGNAL_WAIT"},
+        {InterfaceType::MSTX_CROSS_NPU_BARRIER,    "CROSS_NPU_BARRIER"},
         {InterfaceType::MSTX_VEC_UNARY_OP,         "VEC_UNARY"},
         {InterfaceType::MSTX_VEC_BINARY_OP,        "VEC_BINARY"},
         {InterfaceType::MSTX_DATA_COPY,            "DATA_COPY"},
@@ -516,6 +517,15 @@ std::ostream &operator<<(std::ostream &os, MstxSignalWait const &record)
               << ", " << "cmpOp:" << record.cmpOp;
 }
 
+std::ostream &operator<<(std::ostream &os, MstxCrossNpuBarrier const &record)
+{
+    return os << ", " << "usedDeviceNum:" << record.usedDeviceNum
+              << ", " << "usedDeviceId:" << record.usedDeviceId
+              << ", " << "usedCoreNum:" << record.usedCoreNum
+              << ", " << "usedCoreId:" << record.usedCoreId
+              << ", " << "isAIVOnly:" << std::boolalpha << record.isAIVOnly;
+}
+
 std::ostream &operator<<(std::ostream &os, MstxTensorDesc const &tensor)
 {
   return os << "(addr:0x" << std::hex << tensor.addr << std::dec
@@ -614,6 +624,8 @@ std::ostream &operator<<(std::ostream &os, MstxRecord const &record)
             [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxSignalSet; }},
         {InterfaceType::MSTX_SIGNAL_WAIT,
             [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxSignalWait; }},
+        {InterfaceType::MSTX_CROSS_NPU_BARRIER,
+            [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxCrossNpuBarrier; }},
         {InterfaceType::MSTX_VEC_UNARY_OP,
             [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxVecUnaryDesc; }},
         {InterfaceType::MSTX_VEC_BINARY_OP,
