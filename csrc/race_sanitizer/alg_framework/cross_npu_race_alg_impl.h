@@ -25,6 +25,7 @@
 #include "event_container.h"
 #include "mem_event_checker.h"
 #include "pipe_line.h"
+#include "signal_database.h"
 #include "sync_event_data_base.h"
 #include "vector_clock.h"
 
@@ -49,6 +50,8 @@ private:
     ReturnType ProcessBlockSoftSyncEvent(const SanEvent& event);
     ReturnType ProcessBlockSyncEvent(const SanEvent& event);
     ReturnType ProcessMstxCrossSyncEvent(const SanEvent& event);
+    ReturnType ProcessMstxSignalSetEvent(const SanEvent &event);
+    ReturnType ProcessMstxSignalWaitEvent(const SanEvent &event);
     void CacheMstxCrossSet(const SanEvent& event);
 
 private:
@@ -59,6 +62,7 @@ private:
 
     EventContainer eventContainer_;
     MemEventChecker memChecker_;
+    SignalDatabase signalDatabase_;
     // 按最大的 blockDim 数初始化 vc 和 syncDB 数组
     std::vector<VectorTime> vc_;
     std::vector<SyncEventDataBase> syncDB_;

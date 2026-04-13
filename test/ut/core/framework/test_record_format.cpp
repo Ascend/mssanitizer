@@ -21,6 +21,7 @@
 
 #include "core/framework/record_defs.h"
 #include "core/framework/record_format.h"
+#include "sanitizer_report.h"
 
 using namespace Sanitizer;
 namespace SanitizerTest {
@@ -1398,6 +1399,34 @@ TEST(RecordFormat, format_scattervnchwconv_record_expect_correct_result)
     ASSERT_NE(broadcastFormat.find("loc--1-34"), std::string::npos);
     ASSERT_NE(broadcastFormat.find("repeat:1"), std::string::npos);
     ASSERT_NE(broadcastFormat.find("111"), std::string::npos);
+}
+
+TEST(RecordFormat, format_mstx_signal_set_record_expect_correct_result)
+{
+    MstxSignalSet record = {
+        .addr = 0x1234,
+        .value = 100
+    };
+    std::stringstream ss;
+    ss << record;
+    std::string const &str = ss.str();
+    ASSERT_NE(str.find("addr:0x1234"), std::string::npos);
+    ASSERT_NE(str.find("value:100"), std::string::npos);
+}
+
+TEST(RecordFormat, format_mstx_signal_wait_record_expect_correct_result)
+{
+    MstxSignalWait record = {
+        .addr = 0x1234,
+        .cmpValue = 100,
+        .cmpOp = CompareOp::EQ
+    };
+    std::stringstream ss;
+    ss << record;
+    std::string const &str = ss.str();
+    ASSERT_NE(str.find("addr:0x1234"), std::string::npos);
+    ASSERT_NE(str.find("cmpValue:100"), std::string::npos);
+    ASSERT_NE(str.find("cmpOp:EQ"), std::string::npos);
 }
 
 }

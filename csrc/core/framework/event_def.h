@@ -41,6 +41,8 @@ enum class EventType : uint8_t {
     REGISTER_EVENT,
     H_SYNC_EVENT,
     BUF_SYNC_EVENT,
+    MSTX_SIGNAL_SET_EVENT,
+    MSTX_SIGNAL_WAIT_EVENT,
 };
 
 // 算法预处理阶段hset_flag/hwait_flag处理成普通的set_flag/wait_flag
@@ -193,6 +195,8 @@ struct SanEvent {
         AtomicModeInfo atomicModeInfo;
         RegisterOpInfo regInfo;
         HSyncOpInfo hsyncInfo;
+        MstxSignalSet mstxSignalSet;
+        MstxSignalWait mstxSignalWait;
     } eventInfo{};
     VectorTime timeInfo;
     LocInfo loc{};

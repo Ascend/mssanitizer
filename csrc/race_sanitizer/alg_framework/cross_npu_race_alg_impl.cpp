@@ -142,6 +142,10 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
             return ProcessBlockSoftSyncEvent(event);
         case EventType::MSTX_CROSS_SYNC_EVENT:
             return ProcessMstxCrossSyncEvent(event);
+        case EventType::MSTX_SIGNAL_SET_EVENT:
+            return ProcessMstxSignalSetEvent(event);
+        case EventType::MSTX_SIGNAL_WAIT_EVENT:
+            return ProcessMstxSignalWaitEvent(event);
         default:
             break;
     }
@@ -305,6 +309,25 @@ ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossSyncEvent(const SanEvent& event)
             }
             return ReturnType::PROCESS_OK;
         }
+    }
+    return ReturnType::PROCESS_STALLED;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxSignalSetEvent(const SanEvent &event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    signalDatabase_.Set(event.eventInfo.mstxSignalSet, vc_[curPipe]);
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxSignalWaitEvent(const SanEvent &event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    VectorTime vt;
+    if (signalDatabase_.Wait(event.eventInfo.mstxSignalWait, vt)) {
+        VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+        VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+        return ReturnType::PROCESS_OK;
     }
     return ReturnType::PROCESS_STALLED;
 }

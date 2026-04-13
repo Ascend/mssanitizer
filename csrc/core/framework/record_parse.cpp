@@ -3363,6 +3363,32 @@ static void ParseMstxCrossCoreWaitFlag(const KernelRecord &record, std::vector<S
     events.emplace_back(event);
 }
 
+static void ParseMstxSignalSet(const KernelRecord &record, std::vector<SanEvent> &events)
+{
+    auto &mstxRecord = record.payload.mstxRecord;
+    auto &mstxSignalSet = mstxRecord.interface.mstxSignalSet;
+
+    SanEvent event;
+    SetLocationInfo(event, record.payload.mstxRecord, record.blockType, record.serialNo);
+    event.type = EventType::MSTX_SIGNAL_SET_EVENT;
+    event.pipe = PipeType::PIPE_S_CAL;
+    event.eventInfo.mstxSignalSet = mstxSignalSet;
+    events.emplace_back(event);
+}
+
+static void ParseMstxSignalWait(const KernelRecord &record, std::vector<SanEvent> &events)
+{
+    auto &mstxRecord = record.payload.mstxRecord;
+    auto &mstxSignalWait = mstxRecord.interface.mstxSignalWait;
+
+    SanEvent event;
+    SetLocationInfo(event, record.payload.mstxRecord, record.blockType, record.serialNo);
+    event.type = EventType::MSTX_SIGNAL_WAIT_EVENT;
+    event.pipe = PipeType::PIPE_S;
+    event.eventInfo.mstxSignalWait = mstxSignalWait;
+    events.emplace_back(event);
+}
+
 static void ParseRecordMstxVecUnary(const KernelRecord &record, std::vector<SanEvent> &events)
 {
     SanEvent event;
@@ -3540,6 +3566,10 @@ static void ParseRecordMstxStub(const KernelRecord &record, std::vector<SanEvent
         ParseMstxCrossCoreSetFlag(record, events);
     } else if (mstxRecord.interfaceType == InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG) {
         ParseMstxCrossCoreWaitFlag(record, events);
+    } else if (mstxRecord.interfaceType == InterfaceType::MSTX_SIGNAL_SET) {
+        ParseMstxSignalSet(record, events);
+    } else if (mstxRecord.interfaceType == InterfaceType::MSTX_SIGNAL_WAIT) {
+        ParseMstxSignalWait(record, events);
     } else if (mstxRecord.interfaceType == InterfaceType::MSTX_VEC_UNARY_OP) {
         ParseRecordMstxVecUnary(record, events);
     } else if (mstxRecord.interfaceType == InterfaceType::MSTX_VEC_BINARY_OP) {
