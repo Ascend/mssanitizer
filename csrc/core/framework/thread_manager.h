@@ -22,6 +22,7 @@
 #include <memory>
 #include <unordered_map>
 #include <thread>
+#include "cross_npu_checker.h"
 #include "config.h"
 #include "utility/log.h"
 #include "checker.h"
@@ -35,10 +36,11 @@ namespace Sanitizer {
 class ThreadManager {
 public:
     ThreadManager(Config const &config, const LogLv &lv, const std::string &logFile)
-        : config_{config}, loglv_(lv), logFd_(GetLogFd(logFile)) {}
+        : config_{config}, loglv_(lv), logFd_(GetLogFd(logFile)), crossNpuChecker_(config) {}
     void PostLog() const;
     Checker& GetChecker(std::thread::id threadId);
     Checker& GetChecker();
+    CrossNpuChecker &GetCrossNpuChecker() { return crossNpuChecker_; }
     Protocol &GetProtocol();
     void ThreadFinish();
     int32_t GetCheckersNum() const { return checkers_.size(); }
@@ -52,6 +54,7 @@ private:
     LogLv loglv_;
     std::ostream& logFd_;
     static std::mutex mutex_;
+    CrossNpuChecker crossNpuChecker_;
 };
 
 } // namespace Sanitizer
