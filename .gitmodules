@@ -8,7 +8,7 @@
 [submodule "thirdparty/makeself"]
 	path = thirdparty/makeself
 	url = https://gitcode.com/cann-src-third-party/makeself.git
-	branch = master
+	branch = v2.5.0.x
 [submodule "thirdparty/llvm-project"]
 	path = thirdparty/llvm-project
 	url = https://gitcode.com/GitHub_Trending/ll/llvm-project.git
