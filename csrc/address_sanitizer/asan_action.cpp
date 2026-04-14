@@ -100,7 +100,8 @@ ErrorMsgList AsanFree::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
             errorMsgs.emplace_back(msg);
         }
     } else {
-        size = shadowMemory.GetHeapBlockSize(record_);
+        size = record_.infoSrc == MemInfoSrc::BYPASS ?
+            shadowMemory.GetHeapBlockBypassSize(record_) : shadowMemory.GetHeapBlockSize(record_);
     }
     // heap unregister之后的内存变为可访问，对于boundsCheck来说，是Add的行为
     msg = record_.infoSrc == MemInfoSrc::MSTX_HEAP ?
@@ -109,7 +110,7 @@ ErrorMsgList AsanFree::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
     if (msg.isError) {
         errorMsgs.emplace_back(msg);
     }
-    if (config.checkUnusedMemory && !ignoreShadowMemory) {
+    if (config.checkUnusedMemory && !ignoreShadowMemory && record_.infoSrc != MemInfoSrc::BYPASS) {
         msg = shadowMemory.CheckUnusedMem(record_.dstAddr, size);
         if (msg.isError) {
             msg.auxData.side = record_.side;
