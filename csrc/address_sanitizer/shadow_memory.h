@@ -95,6 +95,7 @@ public:
     ErrorMsgList DoLeakCheck();
 
     uint64_t GetHeapBlockSize(const MemOpRecord &record) const;
+    uint64_t GetHeapBlockBypassSize(const MemOpRecord &record) const;
 
     /* 设置 shadow memory 原子写状态
      * @param[in] enabled 是否开启原子写
@@ -121,6 +122,7 @@ private:
     std::unique_ptr<PM> gm_;
     std::unique_ptr<PM> private_;
     HeapBlockManager heapBlockManager_;
+    HeapBlockManager heapBlockManagerBypass_;
     UnusedHeap unusedHeap_{};
     ChipInfo chipInfo_{};
     bool atomicEnabled_{false};

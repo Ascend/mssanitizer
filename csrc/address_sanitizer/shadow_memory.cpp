@@ -131,12 +131,20 @@ PM* ShadowMemory::GetMemMap(AddressSpace space) const
 
 bool ShadowMemory::AddHeapBlock(const MemOpRecord &record)
 {
-    return heapBlockManager_.AddHeapBlock(record);
+    if (record.infoSrc == MemInfoSrc::BYPASS) {
+        return heapBlockManagerBypass_.AddHeapBlock(record);
+    } else {
+        return heapBlockManager_.AddHeapBlock(record);
+    }
 }
 
 ErrorMsg ShadowMemory::FreeHeapBlock(const MemOpRecord &record, uint64_t &size)
 {
-    return heapBlockManager_.FreeHeapBlock(record, size);
+    if (record.infoSrc == MemInfoSrc::BYPASS) {
+        return heapBlockManagerBypass_.FreeHeapBlock(record, size);
+    } else {
+        return heapBlockManager_.FreeHeapBlock(record, size);
+    }
 }
 
 ErrorMsg ShadowMemory::CheckUnusedMem(uint64_t addr, uint64_t size)
@@ -200,6 +208,11 @@ ErrorMsgList ShadowMemory::DoLeakCheck()
 uint64_t ShadowMemory::GetHeapBlockSize(const MemOpRecord &record) const
 {
     return heapBlockManager_.GetHeapBlockSize(record);
+}
+
+uint64_t ShadowMemory::GetHeapBlockBypassSize(const MemOpRecord &record) const
+{
+    return heapBlockManagerBypass_.GetHeapBlockSize(record);
 }
 
 ErrorMsgList ShadowMemory::LoadNBytes(MemOpRecordForShadow memOpRecordForShadow, bool initCheck)
