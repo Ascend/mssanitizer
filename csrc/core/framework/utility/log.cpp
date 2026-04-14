@@ -155,8 +155,7 @@ FILE* Log::OpenLogFile(const std::string &path)
         return nullptr;
     }
     if (IsSoftLink(logDirPath.ToString())) {
-        printf("[mssanitizer] ERROR: The kernel binary (%s) is soft link.\n", logDirPath.ToString().c_str());
-        return nullptr;
+        printf("[mssanitizer] WARNING: The kernel binary (%s) is soft link.\n", logDirPath.ToString().c_str());
     }
     return OpenFileWithUmask(path, "a", DEFAULT_UMASK_FOR_LOG_FILE);
 }

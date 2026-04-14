@@ -148,7 +148,7 @@ bool IsLogFileSafe(const std::string &filepath)
     }
     auto logger = [](std::string const &msg) { std::cout <<"[mssanitizer] " << msg << std::endl; };
     if (!IsSafeLogFile(filepath, logger)) {
-        std::cout << "[mssanitizer] ERROR: The assigned file is not safe for log. Please check the permission or try "
+        std::cout << "[mssanitizer] ERROR:  Please check the log file or try "
                      "another file."
                   << std::endl;
         return false;

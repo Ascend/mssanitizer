@@ -35,16 +35,23 @@ bool IsFilePermSafe(const string &dir, mode_t permission, LoggerType logger)
     Path curPath = Path(dir).Absolute();
     string curPathStr = Utility::ReplaceInvalidChar(curPath.ToString());
     mode_t logFileDirMode = permission;
-    mode_t currentMode;
+    mode_t currentMode = 0;
+    bool getCurrentMode = true;
     if (!GetPathMode(curPathStr, currentMode)) {
-        printf("[mssanitizer] ERROR: Get (%s) permission failed.\n", curPathStr.c_str());
-        return false;
+        printf("[mssanitizer] WARNING: Get (%s) permission failed.\n", curPathStr.c_str());
+        getCurrentMode = false;
     }
-    currentMode = currentMode & 07777;
+
     std::stringstream permissionStr;
     std::stringstream currentPermission;
     permissionStr << "0" << std::oct << permission;
-    currentPermission << "0" << std::oct << currentMode;
+    if (getCurrentMode) {
+        currentMode = currentMode & 07777;
+        currentPermission << "0" << std::oct << currentMode;
+    }
+    else {
+        currentPermission << "Get permission failed.";
+    }
 
     std::stringstream msg;
     msg << "Current file or dir permission is " << currentPermission.str() << ", which poses a security risk. " <<
@@ -52,11 +59,12 @@ bool IsFilePermSafe(const string &dir, mode_t permission, LoggerType logger)
     // root用户不强制要求权限，仅对风险权限进行告警
     isTrueOrLog((!IsRootUser() || !curPath.Exists() || IsModeSaferThan(dir, logFileDirMode)),
         (string("WARNING: ") + msg.str()).c_str());
-    return isTrueOrLog(curPath.Exists(), (string("ERROR: Directory (") + curPathStr + ") does not exist.").c_str()) &&
-           isTrueOrLog(IsRootUser() || IsOwnerOf(dir),
-               (string("ERROR: The user is not the owner of the directory (") + curPathStr + ")").c_str()) &&
-           isTrueOrLog(
-               IsRootUser() || IsModeSaferThan(dir, logFileDirMode), (string("ERROR: ") + msg.str()).c_str());
+    // 仅对风险权限和属主进行告警
+    isTrueOrLog(IsRootUser() || IsOwnerOf(dir),
+               (string("WARNING: The user is not the owner of the directory (") + curPathStr + ")").c_str());
+    isTrueOrLog(IsRootUser() || IsModeSaferThan(dir, logFileDirMode), (string("WARNING: ") + msg.str()).c_str());
+
+    return isTrueOrLog(curPath.Exists(), (string("ERROR: Directory (") + curPathStr + ") does not exist.").c_str());
 }
 
 bool IsSafeLogFile(string const & logFile, LoggerType logger)
@@ -73,13 +81,13 @@ bool IsSafeLogFile(string const & logFile, LoggerType logger)
     if (!IsFilePermSafe(parentPath, DIR_FILE_MODE, logger)) {
         return false;
     }
-    return isTrueOrLog(!IsSoftLink(parentPath),
-                       (string("ERROR: The directory (") + parentPath + ") is a soft link.").c_str()) &&
-            // 检查log文件
-            (!Path(logFile).Exists() ||
-            (IsFilePermSafe(logFile, LEAST_OUTPUT_FILE_MODE, logger) &&
-            isTrueOrLog(!IsSoftLink(logFile),
-                        (string("ERROR: The log file (") + logFile + ") is a soft link.").c_str())));
+    // 仅对soft link进行告警
+    isTrueOrLog(!IsSoftLink(parentPath),
+                (string("WARNING: The directory (") + parentPath + ") is a soft link.").c_str());
+    isTrueOrLog(!IsSoftLink(logFile),
+                (string("WARNING: The log file (") + logFile + ") is a soft link.").c_str());
+    // 检查log文件
+    return  !Path(logFile).Exists() || (IsFilePermSafe(logFile, LEAST_OUTPUT_FILE_MODE, logger));
 }
 
 bool GetSelfExePath(Path &path)

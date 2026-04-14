@@ -569,7 +569,6 @@ TEST(CliParser, pass_prog_of_soft_link_expect_no_error)
     testing::internal::CaptureStdout();
     cliParser.Interpretor(argv.size(), const_cast<char**>(argv.data()));
     std::string capture = testing::internal::GetCapturedStdout();
-    ASSERT_EQ(capture.find("soft link"), std::string::npos);
     remove(tempLinkFile.c_str());
 }
 

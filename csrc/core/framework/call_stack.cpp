@@ -142,8 +142,7 @@ std::string CallStack::Load(std::vector<char> const &binary)
         return "";
     }
     if (IsSoftLink(kernelDirStr)) {
-        printf("[mssanitizer] ERROR: The kernel binary (%s) is soft link.\n", kernelDirStr.c_str());
-        return "";
+        printf("[mssanitizer] WARNING: The kernel binary (%s) is soft link.\n", kernelDirStr.c_str());
     }
     if (!WriteBinary(kernelStr, binary.data(), binary.size())) {
         printf("[mssanitizer] ERROR: Callstack may be unavailable: Failed to store kernel binary. Please make sure the "
