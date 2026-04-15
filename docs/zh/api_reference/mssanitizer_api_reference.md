@@ -84,7 +84,7 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 调用aclrtMallocCached接口在Device上申请size大小的线性内存，通过*devPtr返回已分配内存的指针，并向检测工具上报内存分配信息。该接口在任何场景下，申请的内存都支持cache缓存。实际的内存分配行为和参数含义与aclrtMallocCached一致。
 
 > [!NOTE] 说明        
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节章节查看aclrtMallocCached的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMallocCached的详细说明。
 
 **函数原型**
 
