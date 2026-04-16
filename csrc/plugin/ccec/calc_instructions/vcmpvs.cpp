@@ -22,7 +22,7 @@ using namespace Sanitizer;
 namespace {
 
 template <typename TI>
-__aicore__ inline void RecordVcmpvsByConfig(EXTRA_PARAMS_DEC, __ubuf__ uint8_t *dst,
+AICORE_FUNC_HEAD void RecordVcmpvsByConfig(EXTRA_PARAMS_DEC, __ubuf__ uint8_t *dst,
                                             __ubuf__ TI *src0, TI src1, uint64_t config)
 {
     auto repeat = uint8_t{};

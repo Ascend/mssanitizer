@@ -168,6 +168,10 @@ struct Bf16 {
 #define addr_cal_mode_t AddrCalMode
 #endif // addr_cal_mode_t
 
+#ifndef __simt_callee__
+#define __simt_callee__
+#endif // __simt_callee__
+
 #include <cstdint>
 #endif  // __CCE_IS_AICORE__
 

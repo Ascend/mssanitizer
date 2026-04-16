@@ -24,7 +24,7 @@
 namespace Sanitizer {
 
 template<RecordType recordType>
-__aicore__ inline void RecordSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, pipe_t tpipe, uint64_t eventID)
+AICORE_FUNC_HEAD void RecordSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, pipe_t tpipe, uint64_t eventID)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -51,7 +51,7 @@ __aicore__ inline void RecordSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, pipe_t tpi
 }
 
 template<RecordType recordType>
-__aicore__ inline void RecordBufEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t bufId, bool mode)
+AICORE_FUNC_HEAD void RecordBufEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t bufId, bool mode)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -78,7 +78,7 @@ __aicore__ inline void RecordBufEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t bu
 }
 
 template<RecordType recordType>
-__aicore__ inline void RecordSoftSyncEvent(EXTRA_PARAMS_DEC, int32_t waitBlockIdx, int32_t eventID,
+AICORE_FUNC_HEAD void RecordSoftSyncEvent(EXTRA_PARAMS_DEC, int32_t waitBlockIdx, int32_t eventID,
     int32_t usedCores, bool isAIVOnly)
 {
     if (MemInfoIsInvalid(memInfo)) {
@@ -107,7 +107,7 @@ __aicore__ inline void RecordSoftSyncEvent(EXTRA_PARAMS_DEC, int32_t waitBlockId
 }
 
 template<RecordType recordType>
-__aicore__ inline void RecordHardSyncEvent(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordHardSyncEvent(EXTRA_PARAMS_DEC,
                                            pipe_t pipe, pipe_t tpipe, uint64_t eventID, mem_t memory, bool v)
 {
     if (MemInfoIsInvalid(memInfo)) {
@@ -136,7 +136,7 @@ __aicore__ inline void RecordHardSyncEvent(EXTRA_PARAMS_DEC,
     recorder.DumpRecord<recordType>(record);
 }
 
-__aicore__ inline void RecordPipeBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe)
+AICORE_FUNC_HEAD void RecordPipeBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -161,7 +161,7 @@ __aicore__ inline void RecordPipeBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe)
 }
 
 template<RecordType recordType>
-__aicore__ inline void RecordFftsSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t config)
+AICORE_FUNC_HEAD void RecordFftsSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t config)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -188,7 +188,7 @@ __aicore__ inline void RecordFftsSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64
     recorder.DumpRecord<recordType>(record);
 }
 
-__aicore__ inline void RecordWaitFlagDevEvent(EXTRA_PARAMS_DEC, int64_t flagID)
+AICORE_FUNC_HEAD void RecordWaitFlagDevEvent(EXTRA_PARAMS_DEC, int64_t flagID)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -213,7 +213,7 @@ __aicore__ inline void RecordWaitFlagDevEvent(EXTRA_PARAMS_DEC, int64_t flagID)
 }
 
 template<RecordType recordType>
-__aicore__ inline void RecordWaitFlagDevEventWithPipe(EXTRA_PARAMS_DEC, pipe_t pipe, int64_t flagID)
+AICORE_FUNC_HEAD void RecordWaitFlagDevEventWithPipe(EXTRA_PARAMS_DEC, pipe_t pipe, int64_t flagID)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -239,7 +239,7 @@ __aicore__ inline void RecordWaitFlagDevEventWithPipe(EXTRA_PARAMS_DEC, pipe_t p
 }
 
 template<RecordType recordType>
-__aicore__ inline void RecordIntraBlockSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t syncID)
+AICORE_FUNC_HEAD void RecordIntraBlockSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t syncID)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -263,7 +263,7 @@ __aicore__ inline void RecordIntraBlockSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, 
     recorder.DumpRecord<recordType>(record);
 }
 
-__aicore__ inline void RecordSetAtomicEvent(EXTRA_PARAMS_DEC, AtomicMode mode)
+AICORE_FUNC_HEAD void RecordSetAtomicEvent(EXTRA_PARAMS_DEC, AtomicMode mode)
 {
     if (InvalidMemInfo(memInfo)) {
         return;

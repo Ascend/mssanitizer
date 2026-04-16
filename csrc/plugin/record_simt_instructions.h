@@ -25,7 +25,7 @@
 namespace Sanitizer {
 
 template<RecordType recordType, DetailedDataType detailedDataType>
-__aicore__ inline void SimtRecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t addr,
+AICORE_FUNC_HEAD void SimtRecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t addr,
     int64_t offset)
 {
     if (MemInfoIsInvalid(memInfo)) {
@@ -58,7 +58,7 @@ __aicore__ inline void SimtRecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace s
 }
 
 template<RecordType recordType, DetailedDataType detailedDataType>
-__aicore__ inline void SimtRecordAtomEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t addr,
+AICORE_FUNC_HEAD void SimtRecordAtomEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t addr,
     SimtAtomMode option)
 {
     if (MemInfoIsInvalid(memInfo)) {
@@ -92,7 +92,7 @@ __aicore__ inline void SimtRecordAtomEvent(EXTRA_PARAMS_DEC, AddressSpace space,
 }
 
 template<RecordType recordType>
-__aicore__ inline void SimtRecordSyncEvent(EXTRA_PARAMS_DEC)
+AICORE_FUNC_HEAD void SimtRecordSyncEvent(EXTRA_PARAMS_DEC)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;

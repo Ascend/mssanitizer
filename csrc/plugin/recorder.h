@@ -21,7 +21,7 @@
 
 namespace Sanitizer {
 
-__aicore__ inline bool IsTargetBlock(__gm__ uint8_t *memInfo, int16_t blockIdx)
+AICORE_FUNC_HEAD bool IsTargetBlock(__gm__ uint8_t *memInfo, int16_t blockIdx)
 {
     auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
     if (head->checkParms.checkBlockId == CHECK_ALL_BLOCK) {
@@ -35,7 +35,7 @@ __aicore__ inline bool IsTargetBlock(__gm__ uint8_t *memInfo, int16_t blockIdx)
 
 /// 判断是否需要dump某个核的数据
 template<RecordType recordType, typename Record>
-__aicore__ inline bool IsTargetIntrinsic(__gm__ uint8_t *memInfo, int16_t blockIdx, Record const *record)
+AICORE_FUNC_HEAD bool IsTargetIntrinsic(__gm__ uint8_t *memInfo, int16_t blockIdx, Record const *record)
 {
     /// ffts所有核上的相关记录只有c220分离架构才会记录；
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
@@ -73,7 +73,7 @@ __aicore__ inline bool IsTargetIntrinsic(__gm__ uint8_t *memInfo, int16_t blockI
     return IsTargetBlock(memInfo, blockIdx);
 }
 
-__aicore__ inline bool IsInMstxFuseScope(__gm__ uint8_t *memInfoBlock)
+AICORE_FUNC_HEAD bool IsInMstxFuseScope(__gm__ uint8_t *memInfoBlock)
 {
     auto memInfoBlockHead = reinterpret_cast<__gm__ RecordBlockHead *>(memInfoBlock);
     return memInfoBlockHead->mstxFuseScopeDepth > 0;
@@ -81,7 +81,7 @@ __aicore__ inline bool IsInMstxFuseScope(__gm__ uint8_t *memInfoBlock)
 
 /// 入参为gm指针，该函数主要功能为检测传入的gm指针是否为空;以及不为空时，该指针是否由__sanitizer_init接口申请得到
 ///主要作用是为了确保传入的指针为工具自己调用接口申请的指针，而不是由第三方传入，保证插桩后的算子不用工具能正常运行
-__aicore__ inline bool MemInfoIsInvalid(__gm__ uint8_t *memInfo)
+AICORE_FUNC_HEAD bool MemInfoIsInvalid(__gm__ uint8_t *memInfo)
 {
     if (memInfo == nullptr) {
         return true;
@@ -96,7 +96,7 @@ __aicore__ inline bool MemInfoIsInvalid(__gm__ uint8_t *memInfo)
 }
 
 /// 无效的meminfo不再解析该条record
-__aicore__ inline bool InvalidMemInfo(__gm__ uint8_t *memInfo)
+AICORE_FUNC_HEAD bool InvalidMemInfo(__gm__ uint8_t *memInfo)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return true;
@@ -105,13 +105,13 @@ __aicore__ inline bool InvalidMemInfo(__gm__ uint8_t *memInfo)
     return false;
 }
 
-__aicore__ inline uint64_t GetRecordHeadSize(uint32_t hostMemoryNum)
+AICORE_FUNC_HEAD uint64_t GetRecordHeadSize(uint32_t hostMemoryNum)
 {
     return CeilByAlignSize<CACHE_LINE_SIZE>(sizeof(RecordBlockHead) + hostMemoryNum * sizeof(HostMemoryInfo));
 }
 
 /// 计算当前核信息写入memInfo时对应的索引和对应的blockType
-__aicore__ inline uint64_t CalcDumpBlockIdx(BlockType &blockType, uint64_t blockIdx, uint8_t &vecSubBlockDim)
+AICORE_FUNC_HEAD uint64_t CalcDumpBlockIdx(BlockType &blockType, uint64_t blockIdx, uint8_t &vecSubBlockDim)
 {
     uint64_t dumpIdx = blockIdx;
 
@@ -157,7 +157,7 @@ __aicore__ inline uint64_t CalcDumpBlockIdx(BlockType &blockType, uint64_t block
     return dumpIdx;
 }
 
-__aicore__ inline uint64_t CalcMemInfoOffset(__gm__ RecordGlobalHead *head, uint64_t dumpIdx,
+AICORE_FUNC_HEAD uint64_t CalcMemInfoOffset(__gm__ RecordGlobalHead *head, uint64_t dumpIdx,
     uint32_t hostMemoryNum, uint64_t &threadOffset)
 {
     int16_t checkBlockId = head->checkParms.checkBlockId;
@@ -217,7 +217,7 @@ __aicore__ inline uint64_t CalcMemInfoOffset(__gm__ RecordGlobalHead *head, uint
 
 class Recorder {
 public:
-    __aicore__ __attribute__((always_inline)) Recorder(__gm__ uint8_t *memInfo, uint64_t blockIdx) :
+    AICORE_FUNC_HEAD __attribute__((always_inline)) Recorder(__gm__ uint8_t *memInfo, uint64_t blockIdx) :
         memInfo_(memInfo), blockIdx_(blockIdx), check_()
     {
         if (MemInfoIsInvalid(memInfo)) {
@@ -253,23 +253,23 @@ public:
      *        写入的 Record 类型，使得解析时可以根据记录头正确解析 Record
      */
     template<RecordType recordType, typename Record, typename Check = record_type_check<true>>
-    __aicore__ inline void DumpRecord(Record const &record);
+    AICORE_FUNC_HEAD void DumpRecord(Record const &record);
     
     /* @param  type      fmatrix fmatrixB l3dRpt
      * @param  value     寄存器值
      * @brief 将需要的寄存器的值写入header
      */
     template<typename T>
-    __aicore__ inline void SetRegister(T Register::*reg, T value) const;
+    AICORE_FUNC_HEAD void SetRegister(T Register::*reg, T value) const;
  
     /* @param  type      fmatrix fmatrixB l3dRpt
      * @param  value     寄存器值
      * @brief 获取需要的寄存器的值
      */
     template<typename T>
-    __aicore__ inline void GetRegister(T Register::*reg, T &value) const;
+    AICORE_FUNC_HEAD void GetRegister(T Register::*reg, T &value) const;
 
-    __aicore__ inline void SetMstxFuseScope(bool inMstxFuseScope) const;
+    AICORE_FUNC_HEAD void SetMstxFuseScope(bool inMstxFuseScope) const;
 
     /* @tparam recordType 记录类型枚举
      * @tparam Record     记录结构体类型
@@ -279,24 +279,24 @@ public:
      *        写入的 Record 类型，使得解析时可以根据记录头正确解析 Record
      */
     template<RecordType recordType, typename Record, typename Check = record_type_check<true>>
-    __aicore__ inline void Check(Record const &record);
+    AICORE_FUNC_HEAD void Check(Record const &record);
 
      /*
      * @brief 处理para base addr地址，将kernel入参地址写入到blockHead对应位置
      */
-    __aicore__ inline void ProcessParaBaseAddr();
+    AICORE_FUNC_HEAD void ProcessParaBaseAddr();
 
     template<RecordType recordType, typename Record>
-    __aicore__ inline void UpdateSyncThreadCount(Record const &record);
+    AICORE_FUNC_HEAD void UpdateSyncThreadCount(Record const &record);
     
-    __aicore__ inline void SetParaBaseAddr(uint64_t size);
+    AICORE_FUNC_HEAD void SetParaBaseAddr(uint64_t size);
 
 private:
     template<RecordType recordType, typename Record>
-    __aicore__ inline void DumpSimdRecord(Record const &record);
+    AICORE_FUNC_HEAD void DumpSimdRecord(Record const &record);
 
     template<RecordType recordType, typename Record>
-    __aicore__ inline void DumpSimtRecord(Record const &record);
+    AICORE_FUNC_HEAD void DumpSimtRecord(Record const &record);
 
 private:
     __gm__ uint8_t *memInfoSimtBlock_ = nullptr;     // simt信息记录的位置
@@ -307,7 +307,7 @@ private:
 };
 
 template<RecordType recordType, typename Record, typename Check>
-__aicore__ inline void Recorder::DumpRecord(Record const &record)
+AICORE_FUNC_HEAD void Recorder::DumpRecord(Record const &record)
 {
 // 目前大概确认8.1-8.4, 9.1-9.4，11.1-11.4版本有问题，因此这些版本暂时去除检查
 #if defined(__GNUC__) && (__GNUC__ == 8 || __GNUC__ == 9 || __GNUC__ == 11) && (__GNUC_MINOR__ <= 4)
@@ -339,7 +339,7 @@ __aicore__ inline void Recorder::DumpRecord(Record const &record)
 }
 
 template<RecordType recordType, typename Record>
-__aicore__ inline void Recorder::DumpSimdRecord(Record const &record)
+AICORE_FUNC_HEAD void Recorder::DumpSimdRecord(Record const &record)
 {
     __gm__ RecordBlockHead *simdBlockHead = reinterpret_cast<__gm__ RecordBlockHead*>(memInfoSimdBlock_);
     uint64_t writeOffset = simdBlockHead->writeOffset;
@@ -363,7 +363,7 @@ __aicore__ inline void Recorder::DumpSimdRecord(Record const &record)
 }
 
 template<RecordType recordType, typename Record>
-__aicore__ inline void Recorder::DumpSimtRecord(Record const &record)
+AICORE_FUNC_HEAD void Recorder::DumpSimtRecord(Record const &record)
 {
     __gm__ SimtRecordBlockHead *simtBlockHead = reinterpret_cast<__gm__ SimtRecordBlockHead*>(memInfoSimtBlock_);
     uint64_t writeOffset = simtBlockHead->writeOffset;
@@ -385,7 +385,7 @@ __aicore__ inline void Recorder::DumpSimtRecord(Record const &record)
 }
 
 template<typename T>
-__aicore__ inline void Recorder::SetRegister(T Register::*reg, T value) const
+AICORE_FUNC_HEAD void Recorder::SetRegister(T Register::*reg, T value) const
 {
     if (memInfo_ == nullptr) {
         return;
@@ -406,7 +406,7 @@ __aicore__ inline void Recorder::SetRegister(T Register::*reg, T value) const
 }
 
 template<typename T>
-__aicore__ inline void Recorder::GetRegister(T Register::*reg, T &value) const
+AICORE_FUNC_HEAD void Recorder::GetRegister(T Register::*reg, T &value) const
 {
     if (memInfo_ == nullptr) {
         return;
@@ -424,7 +424,7 @@ __aicore__ inline void Recorder::GetRegister(T Register::*reg, T &value) const
     value = globalHead->registers[regIdx].*reg;
 }
 
-__aicore__ inline void Recorder::SetMstxFuseScope(bool inMstxFuseScope) const
+AICORE_FUNC_HEAD void Recorder::SetMstxFuseScope(bool inMstxFuseScope) const
 {
     if (memInfoSimdBlock_ == nullptr) {
         return;
@@ -441,7 +441,7 @@ __aicore__ inline void Recorder::SetMstxFuseScope(bool inMstxFuseScope) const
 }
 
 template<RecordType recordType, typename Record, typename Check>
-__aicore__ inline void Recorder::Check(Record const &record)
+AICORE_FUNC_HEAD void Recorder::Check(Record const &record)
 {
     // 目前大概确认8.1-8.4, 9.1-9.4，11.1-11.4版本有问题，因此这些版本暂时去除检查
 #if defined(__GNUC__) && (__GNUC__ == 8 || __GNUC__ == 9|| __GNUC__ == 11) && (__GNUC_MINOR__ <= 4)
@@ -464,13 +464,13 @@ __aicore__ inline void Recorder::Check(Record const &record)
     check_.Process<recordType>(record);
 }
 
-__aicore__ inline void Recorder::ProcessParaBaseAddr()
+AICORE_FUNC_HEAD void Recorder::ProcessParaBaseAddr()
 {
     check_.ProcessParaBaseAddr();
 }
 
 template<RecordType recordType, typename Record>
-__aicore__ inline void Recorder::UpdateSyncThreadCount(Record const &record)
+AICORE_FUNC_HEAD void Recorder::UpdateSyncThreadCount(Record const &record)
 {
     (void)recordType;
     (void)record;
@@ -489,7 +489,7 @@ __aicore__ inline void Recorder::UpdateSyncThreadCount(Record const &record)
 #endif
 }
 
-__aicore__ inline void Recorder::SetParaBaseAddr(uint64_t size)
+AICORE_FUNC_HEAD void Recorder::SetParaBaseAddr(uint64_t size)
 {
     __gm__ RecordBlockHead *recordBlockHead = reinterpret_cast<__gm__ RecordBlockHead *>(memInfoSimdBlock_);
     recordBlockHead->paraBase.addr = size;

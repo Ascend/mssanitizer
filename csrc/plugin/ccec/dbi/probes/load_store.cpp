@@ -24,7 +24,7 @@ using namespace Sanitizer;
 
 namespace {
 
-inline __aicore__ uint64_t UpdateAddrByOffset(uint64_t addr, int64_t offset, uint64_t post)
+AICORE_FUNC_HEAD uint64_t UpdateAddrByOffset(uint64_t addr, int64_t offset, uint64_t post)
 {
     return post == 1UL ? addr : addr + offset;
 }

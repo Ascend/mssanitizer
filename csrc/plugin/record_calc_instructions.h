@@ -37,7 +37,7 @@ struct DataBitSize<void> {
 };
 
 template <typename Record>
-__aicore__ inline void ParseVectorMask(Record &record, Recorder const &recorder, bool useMask)
+AICORE_FUNC_HEAD void ParseVectorMask(Record &record, Recorder const &recorder, bool useMask)
 {
     if (useMask) {
         recorder.GetRegister(&Register::maskMode, record.maskMode);
@@ -51,7 +51,7 @@ __aicore__ inline void ParseVectorMask(Record &record, Recorder const &recorder,
 }
 
 template <typename T>
-__aicore__ inline void ParseCompareMask(CompareMask &compareMask, __ubuf__ T *ubuf)
+AICORE_FUNC_HEAD void ParseCompareMask(CompareMask &compareMask, __ubuf__ T *ubuf)
 {
     // compare mask 以 128 bits 的方式保存在 UB 上，和 vector mask 保持一致，
     // 高位保存在 mask1 中，低位保存在 mask0 中
@@ -66,7 +66,7 @@ __aicore__ inline void ParseCompareMask(CompareMask &compareMask, __ubuf__ T *ub
 }
 
 template<RecordType recordType, typename TO, typename TI>
-__aicore__ inline void ParseDataBits(UnaryOpRecord &record)
+AICORE_FUNC_HEAD void ParseDataBits(UnaryOpRecord &record)
 {
     if (recordType == RecordType::VCONV_DST_S4_OP) {
         constexpr uint8_t dstS4DataBits = 4U;
@@ -83,7 +83,7 @@ __aicore__ inline void ParseDataBits(UnaryOpRecord &record)
 }
 
 template<RecordType recordType, typename TO, typename TI0, typename TI1>
-__aicore__ inline void ParseDataBits(BinaryOpRecord &record)
+AICORE_FUNC_HEAD void ParseDataBits(BinaryOpRecord &record)
 {
     if (recordType == RecordType::VSEL_OP) {
         record.dstDataBits = DataBitSize<TO>::value;
@@ -96,7 +96,7 @@ __aicore__ inline void ParseDataBits(BinaryOpRecord &record)
     }
 }
 
-__aicore__ inline void ParseVaRegister(Recorder const &recorder, VaRegister &vaRegister0,
+AICORE_FUNC_HEAD void ParseVaRegister(Recorder const &recorder, VaRegister &vaRegister0,
                                        VaRegister &vaRegister1, ub_addr8_t addr)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
@@ -128,7 +128,7 @@ __aicore__ inline void ParseVaRegister(Recorder const &recorder, VaRegister &vaR
 }
 
 template<RecordType recordType, typename TO, typename TI>
-__aicore__ inline void RecordUnaryOpFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordUnaryOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint8_t repeat, uint16_t dstBlockStride, uint16_t srcBlockStride,
     uint16_t dstRepeatStride, uint16_t srcRepeatStride, uint8_t dstBlockNum, uint8_t srcBlockNum,
     uint64_t dstBlockSize, uint64_t srcBlockSize, bool useMask = true)
@@ -166,7 +166,7 @@ template <typename T,
                                              std::is_same<T, uint16_t>::value || std::is_same<T, __bf16>::value ||
                                              std::is_same<T, float>::value || std::is_same<T, uint32_t>::value ||
                                              std::is_same<T, int32_t>::value>::type>
-__aicore__ inline void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst,
+AICORE_FUNC_HEAD void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst,
                                          uint8_t repeat, uint16_t dstBlockStride, uint16_t dstRepeatStride)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -201,7 +201,7 @@ __aicore__ inline void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst,
 }
 
 template <typename T>
-__aicore__ inline void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst, uint64_t config)
+AICORE_FUNC_HEAD void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst, uint64_t config)
 {
     uint8_t repeat = (config >> 56) & 0xFF;
     uint16_t dstBlockStride = config & 0xFFFF;
@@ -214,7 +214,7 @@ __aicore__ inline void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst, uint
 }
 
 template<RecordType recordType, typename TO, typename TI0, typename TI1>
-__aicore__ inline void RecordBinaryOpFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordBinaryOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI0 *src0, __ubuf__ TI1 *src1, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t src0BlockStride, uint16_t src1BlockStride, uint16_t dstRepeatStride, uint16_t src0RepeatStride,
     uint16_t src1RepeatStride, uint8_t dstBlockNum, uint8_t src0BlockNum, uint8_t src1BlockNum,
@@ -253,7 +253,7 @@ __aicore__ inline void RecordBinaryOpFunc(EXTRA_PARAMS_DEC,
     recorder.DumpRecord<recordType>(record);
 }
 
-__aicore__ inline void RecordVgatherbConfigFunc(uint64_t config, uint32_t &offsetAddr, uint16_t &dstRepeatStride,
+AICORE_FUNC_HEAD void RecordVgatherbConfigFunc(uint64_t config, uint32_t &offsetAddr, uint16_t &dstRepeatStride,
                                                 uint8_t &dstBlockStride, uint8_t &repeat)
 {
     offsetAddr = config & 0xFFFFFFFF;
@@ -264,7 +264,7 @@ __aicore__ inline void RecordVgatherbConfigFunc(uint64_t config, uint32_t &offse
 }
 
 template<RecordType recordType, typename TO, typename TI>
-__aicore__ inline void RecordReduceOpFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordReduceOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint8_t repeat, uint16_t dstRepeatStride, uint16_t srcBlockStride,
     uint16_t srcRepeatStride, uint16_t dstRepeatLength, uint8_t dstBlockNum, uint8_t srcBlockNum,
     uint8_t dstBlockSize, uint8_t srcBlockSize, uint16_t dstAlignSize = 32, uint8_t dstDataBitsFactor = 1)
@@ -301,7 +301,7 @@ __aicore__ inline void RecordReduceOpFunc(EXTRA_PARAMS_DEC,
     recorder.DumpRecord<recordType>(record);
 }
 
-__aicore__ inline void ParseVecRegProCoordConfig(uint64_t config, uint8_t& repeat, uint8_t& regionRange)
+AICORE_FUNC_HEAD void ParseVecRegProCoordConfig(uint64_t config, uint8_t& repeat, uint8_t& regionRange)
 {
     constexpr uint8_t repeatShift = 56;
     constexpr uint8_t regionRangeShift = 16;
@@ -314,7 +314,7 @@ __aicore__ inline void ParseVecRegProCoordConfig(uint64_t config, uint8_t& repea
 }
 
 template <RecordType recordType, DataType dataType, typename T>
-__aicore__ inline void RecordVRegPropCoorOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src, uint8_t repeat,
+AICORE_FUNC_HEAD void RecordVRegPropCoorOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src, uint8_t repeat,
                                                 uint8_t regionRange, bool isExtract)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -339,7 +339,7 @@ __aicore__ inline void RecordVRegPropCoorOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *ds
 }
 
 template <RecordType recordType, DataType dataType, typename T>
-__aicore__ inline void RecordVRegPropCoorOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src,
+AICORE_FUNC_HEAD void RecordVRegPropCoorOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src,
                                                 uint64_t config, bool isExtract)
 {
     uint8_t repeat = 0;
@@ -348,7 +348,7 @@ __aicore__ inline void RecordVRegPropCoorOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *ds
     RecordVRegPropCoorOpFunc<recordType, dataType, T>(EXTRA_PARAMS, dst, src, repeat, regionRange, isExtract);
 }
 
-__aicore__ inline void ParseBinaryConfig(uint64_t config, uint8_t &repeat, uint8_t &dstBlockStride,
+AICORE_FUNC_HEAD void ParseBinaryConfig(uint64_t config, uint8_t &repeat, uint8_t &dstBlockStride,
     uint8_t &src0BlockStride, uint8_t &src1BlockStride, uint8_t &dstRepeatStride, uint8_t &src0RepeatStride,
     uint8_t &src1RepeatStride)
 {
@@ -368,7 +368,7 @@ __aicore__ inline void ParseBinaryConfig(uint64_t config, uint8_t &repeat, uint8
     src1RepeatStride = (config >> src1RepeatStrideShift) & 0xFF;
 }
 
-__aicore__ inline void ParseVredecev2Config(uint64_t config, uint16_t &repeat, uint8_t &src0BlockStride,
+AICORE_FUNC_HEAD void ParseVredecev2Config(uint64_t config, uint16_t &repeat, uint8_t &src0BlockStride,
     uint8_t &patternMode, uint16_t &src0RepeatStride, uint16_t &src1RepeatStride)
 {
     constexpr uint64_t highRepeatShift = 56;
@@ -389,7 +389,7 @@ template <typename T,
     std::is_same<T, uint8_t>::value ||
     std::is_same<T, uint16_t>::value >::type
 >
-__aicore__ inline void ParseUnaryConfig(uint64_t config, uint8_t &repeat, uint16_t &dstBlockStride,
+AICORE_FUNC_HEAD void ParseUnaryConfig(uint64_t config, uint8_t &repeat, uint16_t &dstBlockStride,
     uint16_t &srcBlockStride, T &dstRepeatStride, T &srcRepeatStride)
 {
     constexpr uint64_t repeatShift = 56;
@@ -411,7 +411,7 @@ __aicore__ inline void ParseUnaryConfig(uint64_t config, uint8_t &repeat, uint16
     }
 }
 
-__aicore__ inline void ParseUnaryConfigByArch(uint64_t config, uint8_t &repeat, uint16_t &dstBlockStride,
+AICORE_FUNC_HEAD void ParseUnaryConfigByArch(uint64_t config, uint8_t &repeat, uint16_t &dstBlockStride,
     uint16_t &srcBlockStride, uint16_t &dstRepeatStride, uint16_t &srcRepeatStride)
 {
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -425,7 +425,7 @@ __aicore__ inline void ParseUnaryConfigByArch(uint64_t config, uint8_t &repeat, 
 #endif
 }
 
-__aicore__ inline void ParseReduceConfig(uint64_t config, uint8_t &repeat, uint16_t &dstRepeatStride,
+AICORE_FUNC_HEAD void ParseReduceConfig(uint64_t config, uint8_t &repeat, uint16_t &dstRepeatStride,
     uint16_t &srcBlockStride, uint16_t &srcRepeatStride)
 {
     constexpr uint64_t repeatShift = 56;
@@ -448,7 +448,7 @@ __aicore__ inline void ParseReduceConfig(uint64_t config, uint8_t &repeat, uint1
 //  06         00010001…0001
 //  07         11111111…1111
 template<typename TO, typename TI0, typename TI1>
-__aicore__ inline void RecordVreduceFunc(EXTRA_PARAMS_DEC, uint8_t patternMode,
+AICORE_FUNC_HEAD void RecordVreduceFunc(EXTRA_PARAMS_DEC, uint8_t patternMode,
     __ubuf__ TO *dst, __ubuf__ TI0 *src0, __ubuf__ TI1 *src1, uint8_t repeat, uint8_t src0BlockStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, uint8_t src1BlockSize)
 {
@@ -468,7 +468,7 @@ __aicore__ inline void RecordVreduceFunc(EXTRA_PARAMS_DEC, uint8_t patternMode,
 }
 
 template<typename T>
-__aicore__ inline void RecordVreducev2Func(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0, __ubuf__ T *src1,
+AICORE_FUNC_HEAD void RecordVreducev2Func(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0, __ubuf__ T *src1,
                                            uint16_t repeat, uint8_t src0BlockStride, uint8_t patternMode,
                                            uint16_t src0RepeatStride, uint8_t src1RepeatStride)
 {
@@ -518,7 +518,7 @@ __aicore__ inline void RecordVreducev2Func(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __
 ///               vmrgsort4时还不知道寄存器中的值，所以这种情况暂时不考虑。
 /// repeat = 0时，910B上指令被视为NOP，310P没提到，也按NOP处理，直接返回。
 template<RecordType recordType, typename T>
-__aicore__ inline void RecordVmrgsort4OpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0, uint8_t repeat,
+AICORE_FUNC_HEAD void RecordVmrgsort4OpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0, uint8_t repeat,
     uint16_t regionProposalLi0, uint16_t regionProposalLi1, uint16_t regionProposalLi2, uint16_t regionProposalLi3,
     bool isAllStored, uint8_t maskSignal)
 {
@@ -590,7 +590,7 @@ __aicore__ inline void RecordVmrgsort4OpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, 
 }
 
 template<typename T>
-__aicore__ inline void RecordVmrgsort4C220Config(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0,
+AICORE_FUNC_HEAD void RecordVmrgsort4C220Config(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0,
                                                  uint64_t src1, uint64_t config)
 {
     uint8_t repeat = (config >> 0) & 0xFF;
@@ -605,7 +605,7 @@ __aicore__ inline void RecordVmrgsort4C220Config(EXTRA_PARAMS_DEC, __ubuf__ T *d
 }
 
 template<typename T>
-__aicore__ inline void RecordVmrgsort4M200Config(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src, uint64_t config)
+AICORE_FUNC_HEAD void RecordVmrgsort4M200Config(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src, uint64_t config)
 {
     uint8_t repeat = (config >> 0) & 0xFF;
     uint16_t regionProposalLi0 = (config >> 8) & 0xFFF;
@@ -620,7 +620,7 @@ __aicore__ inline void RecordVmrgsort4M200Config(EXTRA_PARAMS_DEC, __ubuf__ T *d
 
 // 从指令行为上来说，c310和c220一致，但是为了避免不同芯片在未来可能的行为差异，写成不同函数
 template<DetailedDataType detailedDataType>
-__aicore__ inline void RecordVmrgsort4C310(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t xm, uint64_t xt)
+AICORE_FUNC_HEAD void RecordVmrgsort4C310(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t xm, uint64_t xt)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -648,7 +648,7 @@ __aicore__ inline void RecordVmrgsort4C310(EXTRA_PARAMS_DEC, uint64_t dst, uint6
 }
 
 template<RecordType recordType, typename TO, typename TI>
-__aicore__ inline void RecordUnaryOpConfigFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordUnaryOpConfigFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint64_t config, uint8_t dstBlockNum, uint8_t srcBlockNum,
     uint16_t dstBlockSize, uint16_t srcBlockSize, bool useMask = true)
 {
@@ -663,7 +663,7 @@ __aicore__ inline void RecordUnaryOpConfigFunc(EXTRA_PARAMS_DEC,
 }
 
 template<RecordType recordType, typename TO, typename TI1, typename TI2>
-__aicore__ inline void RecordBinaryOpConfigFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordBinaryOpConfigFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI1 *src0, __ubuf__ TI2 *src1, uint64_t config, uint8_t dstBlockNum,
     uint8_t src0BlockNum, uint8_t src1BlockNum, uint16_t dstBlockSize, uint16_t src0BlockSize,
     uint16_t src1BlockSize, bool useMask = true)
@@ -682,7 +682,7 @@ __aicore__ inline void RecordBinaryOpConfigFunc(EXTRA_PARAMS_DEC,
         dstBlockNum, src0BlockNum, src1BlockNum, dstBlockSize, src0BlockSize, src1BlockSize, useMask);
 }
 
-__aicore__ inline void ParseUnaryOpWithOffsetConf(uint64_t config, uint8_t &repeat, uint16_t &dstRepeatStride,
+AICORE_FUNC_HEAD void ParseUnaryOpWithOffsetConf(uint64_t config, uint8_t &repeat, uint16_t &dstRepeatStride,
                                                   uint16_t &srcRepeatStride, uint32_t &offsetAddr)
 {
     constexpr uint8_t offsetAddrWidth = 32;
@@ -700,7 +700,7 @@ __aicore__ inline void ParseUnaryOpWithOffsetConf(uint64_t config, uint8_t &repe
     repeat = GetIntFromConf<repeatShift, repeatWidth>(config);
 }
 
-__aicore__ inline bool IsParseElementSuccess(uint64_t secondAddr, uint64_t firstAddr, const AccessType& accessType,
+AICORE_FUNC_HEAD bool IsParseElementSuccess(uint64_t secondAddr, uint64_t firstAddr, const AccessType& accessType,
                                              Recorder& recorder, ElementRecord& element)
 {
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__)
@@ -717,7 +717,7 @@ __aicore__ inline bool IsParseElementSuccess(uint64_t secondAddr, uint64_t first
     return false;
 }
 
-__aicore__ inline void ParseElementRecord(const VgatherRecord& record, Recorder& recorder,
+AICORE_FUNC_HEAD void ParseElementRecord(const VgatherRecord& record, Recorder& recorder,
                                           __ubuf__ uint32_t* src, uint16_t elementNum, uint8_t elementBlockSize)
 {
     auto element = ElementRecord();
@@ -739,7 +739,7 @@ __aicore__ inline void ParseElementRecord(const VgatherRecord& record, Recorder&
 }
 
 // 判断num对应的mask位是否被掩掉，为1表示有效位，返回false
-__aicore__ inline bool IsMaskedData(uint16_t num, const VectorMask& vectorMask)
+AICORE_FUNC_HEAD bool IsMaskedData(uint16_t num, const VectorMask& vectorMask)
 {
     constexpr uint16_t maskBits = 64U;
     // 前64个数用mask0判断掩码
@@ -753,7 +753,7 @@ __aicore__ inline bool IsMaskedData(uint16_t num, const VectorMask& vectorMask)
     return true;
 }
 
-__aicore__ inline void ParseElementRecordMaskNorm(const VgatherRecord& record, Recorder& recorder,
+AICORE_FUNC_HEAD void ParseElementRecordMaskNorm(const VgatherRecord& record, Recorder& recorder,
                                                   __ubuf__ uint32_t* src, uint16_t nNum)
 {
     auto element = ElementRecord();
@@ -793,7 +793,7 @@ __aicore__ inline void ParseElementRecordMaskNorm(const VgatherRecord& record, R
     }
 }
 
-__aicore__ inline void ClassifyVgatherByMaskMode(VgatherRecord& record, Recorder& recorder, uint8_t sizeN,
+AICORE_FUNC_HEAD void ClassifyVgatherByMaskMode(VgatherRecord& record, Recorder& recorder, uint8_t sizeN,
                                                  uint16_t& elementNum, bool& isMaskNorm)
 {
     if (record.maskMode == MaskMode::MASK_NORM && record.vectorMask.mask0 == ~0ULL && record.vectorMask.mask1 == ~0ULL) {
@@ -853,7 +853,7 @@ __aicore__ inline void ClassifyVgatherByMaskMode(VgatherRecord& record, Recorder
 // 如果是mask norm：拆成1次读（完整长度） + 掩码后的N*repeat次读写，即1 + 2*掩码后的N*repeat个ElementRecord
 // 如果是mask count：拆成1次读写（前count个元素）+ count次读，即一个VgatherRecord + count个ElementRecord
 template<typename T>
-__aicore__ inline void RecordVgatherOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ uint32_t *src,
+AICORE_FUNC_HEAD void RecordVgatherOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ uint32_t *src,
                                            uint32_t offsetAddr, uint16_t dstRepeatStride, uint8_t dstBlockStride,
                                            uint8_t repeat, uint8_t sizeN, bool useMask)
 {
@@ -896,7 +896,7 @@ __aicore__ inline void RecordVgatherOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __
 }
 
 template<typename T>
-__aicore__ inline void RecordVgatherOpConfFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ uint32_t *src,
+AICORE_FUNC_HEAD void RecordVgatherOpConfFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ uint32_t *src,
                                                uint64_t config)
 {
     uint32_t offsetAddr = (config & 0xffffffff);
@@ -907,7 +907,7 @@ __aicore__ inline void RecordVgatherOpConfFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst
 }
 
 template<typename T>
-__aicore__ inline void RecordVgatherbConfigFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ uint32_t *src,
+AICORE_FUNC_HEAD void RecordVgatherbConfigFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ uint32_t *src,
                                                 uint64_t config)
 {
     uint32_t offsetAddr = (config & 0xffffffff);
@@ -918,7 +918,7 @@ __aicore__ inline void RecordVgatherbConfigFunc(EXTRA_PARAMS_DEC, __ubuf__ T *ds
 }
 
 template<typename dstT, typename srcT>
-__aicore__ inline void RecordVscatterOpFunc(EXTRA_PARAMS_DEC, __ubuf__ dstT *dst, __ubuf__ srcT *src,
+AICORE_FUNC_HEAD void RecordVscatterOpFunc(EXTRA_PARAMS_DEC, __ubuf__ dstT *dst, __ubuf__ srcT *src,
                                      uint32_t offset, bool strideSizeMode, bool repeatUpdateMode,
                                      uint8_t repeatTimes, uint8_t srcRepeatStrideSize)
 {
@@ -927,7 +927,7 @@ __aicore__ inline void RecordVscatterOpFunc(EXTRA_PARAMS_DEC, __ubuf__ dstT *dst
 }
 
 template<typename dstT, typename srcT>
-__aicore__ inline void RecordVscatterOpConfFunc(EXTRA_PARAMS_DEC, __ubuf__ dstT *dst, __ubuf__ srcT *src,
+AICORE_FUNC_HEAD void RecordVscatterOpConfFunc(EXTRA_PARAMS_DEC, __ubuf__ dstT *dst, __ubuf__ srcT *src,
        uint64_t config)
 {
     constexpr uint8_t strideSizeModeShift = 55;
@@ -946,7 +946,7 @@ __aicore__ inline void RecordVscatterOpConfFunc(EXTRA_PARAMS_DEC, __ubuf__ dstT 
 }
 
 template <RecordType recordType>
-__aicore__ inline void RecordMatrixMulOpFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordMatrixMulOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ void *dst, __ubuf__ void *src0, __ubuf__ void *src1, uint16_t m, uint16_t k, uint16_t n,
     uint16_t src0repeat, uint16_t src0RepeatStride, uint16_t dstBlockNum, uint16_t src0BlockNum, uint16_t src1BlockNum,
     uint16_t dstBlockSize, uint16_t src0BlockSize, uint16_t src1BlockSize, bool cmatrixSource, bool cmatrixInitVal,
@@ -988,7 +988,7 @@ __aicore__ inline void RecordMatrixMulOpFunc(EXTRA_PARAMS_DEC,
 }
 
 template<typename T>
-__aicore__ inline void RecordViouOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0, __ubuf__ T *src1,
+AICORE_FUNC_HEAD void RecordViouOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ T *src0, __ubuf__ T *src1,
                                         uint64_t config)
 {
     constexpr uint8_t RepeatShift = 56;
@@ -1002,7 +1002,7 @@ __aicore__ inline void RecordViouOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubu
                                               ResultSize, PropSize * PropNum, PropSize * PropNum);
 }
 
-__aicore__ inline void ParseMadConfig(uint64_t config, uint16_t &m, uint16_t &k,
+AICORE_FUNC_HEAD void ParseMadConfig(uint64_t config, uint16_t &m, uint16_t &k,
     uint16_t &n, uint8_t &unitFlag, bool &kDirectionAlign, bool &cMatrixSource, bool&cMatrixValueControl)
 {
     constexpr uint64_t kShift = 12;
@@ -1020,7 +1020,7 @@ __aicore__ inline void ParseMadConfig(uint64_t config, uint16_t &m, uint16_t &k,
     cMatrixValueControl = (config >> cMatrixValueControlShift) & 0x1;
 }
 
-__aicore__ inline uint16_t CeilToFractal(uint16_t realSize, uint16_t fractalSize)
+AICORE_FUNC_HEAD uint16_t CeilToFractal(uint16_t realSize, uint16_t fractalSize)
 {
     if (fractalSize == 0) {
         return fractalSize;
@@ -1030,7 +1030,7 @@ __aicore__ inline uint16_t CeilToFractal(uint16_t realSize, uint16_t fractalSize
 
 constexpr uint16_t FRACTAL_SIZE16 = 16;
 constexpr uint16_t FRACTAL_SIZE4 = 4;
-__aicore__ inline void RecordMatrixOpFunc(EXTRA_PARAMS_DEC, __cc__ void *dst,
+AICORE_FUNC_HEAD void RecordMatrixOpFunc(EXTRA_PARAMS_DEC, __cc__ void *dst,
     __ca__ void *src0, __cb__ void *src1, uint16_t m, uint16_t k, uint16_t n, uint8_t unitFlag, bool kDirectionAlign,
     bool cmatrixSource, bool cmatrixInitVal, uint16_t dataBitsDst, uint16_t dataBitsSrc0, uint16_t dataBitsSrc1,
     uint16_t dstAlignSize = 1024, uint16_t src0AlignSize = 512, uint16_t src1AlignSize = 512)
@@ -1072,7 +1072,7 @@ __aicore__ inline void RecordMatrixOpFunc(EXTRA_PARAMS_DEC, __cc__ void *dst,
         dstAlignSize, src0AlignSize, src1AlignSize, enUnitFlag);
 }
 
-__aicore__ inline void RecordMatrixOpConfigFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordMatrixOpConfigFunc(EXTRA_PARAMS_DEC,
     __cc__ void *dst, __ca__ void *src0, __cb__ void *src1, uint64_t config, uint16_t dataBitsDst,
     uint16_t dataBitsSrc0, uint16_t dataBitsSrc1, uint16_t dstAlignSize = 1024,
      uint16_t src0AlignSize = 512, uint16_t src1AlignSize = 512)
@@ -1090,7 +1090,7 @@ __aicore__ inline void RecordMatrixOpConfigFunc(EXTRA_PARAMS_DEC,
 }
 
 template<DetailedDataType src0Dtype, DetailedDataType src1Dtype>
-__aicore__ inline void RecordMmadA5(EXTRA_PARAMS_DEC, __cc__ void *dst, __ca__ void *src0, __cb__ void *src1,
+AICORE_FUNC_HEAD void RecordMmadA5(EXTRA_PARAMS_DEC, __cc__ void *dst, __ca__ void *src0, __cb__ void *src1,
                                     uint64_t config, uint16_t srcAlign = 512)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -1135,7 +1135,7 @@ __aicore__ inline void RecordMmadA5(EXTRA_PARAMS_DEC, __cc__ void *dst, __ca__ v
 }
 
 template<RecordType recordType, typename TO, typename TI>
-__aicore__ inline void RecordReduceOpConfigFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordReduceOpConfigFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint64_t config, uint16_t dstRepeatLength, uint8_t dstBlockNum,
     uint8_t srcBlockNum, uint8_t dstBlockSize, uint8_t srcBlockSize, uint16_t dstAlignSize = 32,
     uint8_t dstDataBitsFactor = 1)
@@ -1156,7 +1156,7 @@ template <typename T,
     std::is_same<T, half>::value ||
     std::is_same<T, float>::value >::type
 >
-__aicore__ inline void ParseOrder(OrderType order, uint16_t &dstRepeatLength, uint8_t &dstDataBitsFactor,
+AICORE_FUNC_HEAD void ParseOrder(OrderType order, uint16_t &dstRepeatLength, uint8_t &dstDataBitsFactor,
                                     uint16_t &dstAlignUnit)
 {
     if (std::is_same<T, half>::value) {
@@ -1179,7 +1179,7 @@ __aicore__ inline void ParseOrder(OrderType order, uint16_t &dstRepeatLength, ui
     }
 }
 
-__aicore__ inline void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t dst, ub_addr8_t src, uint8_t repeat,
+AICORE_FUNC_HEAD void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t dst, ub_addr8_t src, uint8_t repeat,
                                                    uint8_t dstStride, uint8_t srcStride, DataType dataType,
                                                    bool dstHighHalf = false, bool srcHighHalf = false)
 {
@@ -1207,7 +1207,7 @@ __aicore__ inline void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t 
     recorder.DumpRecord<RecordType::SCATTERVNCHWCONV>(record);
 }
  
-__aicore__ inline void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t dst, ub_addr8_t src,
+AICORE_FUNC_HEAD void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t dst, ub_addr8_t src,
                                                    uint64_t config, DataType dataType,
                                                    bool dstHighHalf = false, bool srcHighHalf = false)
 {
@@ -1218,7 +1218,7 @@ __aicore__ inline void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t 
                                 dataType, dstHighHalf, srcHighHalf);
 }
 
-__aicore__ inline void RecordScatterVnchwconvA5(EXTRA_PARAMS_DEC, ub_addr8_t dst, ub_addr8_t src,
+AICORE_FUNC_HEAD void RecordScatterVnchwconvA5(EXTRA_PARAMS_DEC, ub_addr8_t dst, ub_addr8_t src,
                                                 uint64_t config, DataType dataType,
                                                 bool dstHighHalf = false, bool srcHighHalf = false)
 {
@@ -1247,7 +1247,7 @@ __aicore__ inline void RecordScatterVnchwconvA5(EXTRA_PARAMS_DEC, ub_addr8_t dst
 }
 
 template<DataType dataType>
-__aicore__ inline void RecordVbs32A5(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src0, uint64_t src1, uint64_t config)
+AICORE_FUNC_HEAD void RecordVbs32A5(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src0, uint64_t src1, uint64_t config)
 {
     if (InvalidMemInfo(memInfo)) {
         return;

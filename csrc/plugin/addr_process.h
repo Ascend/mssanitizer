@@ -22,7 +22,7 @@
 namespace Sanitizer {
 
 // 参考SU FS资料
-inline __aicore__ AddressSpace RemapAddress(uint64_t &addr) {
+AICORE_FUNC_HEAD AddressSpace RemapAddress(uint64_t &addr) {
     uint64_t sysVaBase = GetSysVaBase();
     uint64_t stackPhyBase = GetStackPhyBase();
 
@@ -60,7 +60,7 @@ inline __aicore__ AddressSpace RemapAddress(uint64_t &addr) {
  * @param dataType size_of_data_type
  * @return AddressSpace 地址所属的内存空间类型
  */
-inline __aicore__ AddressSpace SimtRemapAddress(uint64_t &Rn, int64_t offset, uint8_t dataType) {
+AICORE_FUNC_HEAD AddressSpace SimtRemapAddress(uint64_t &Rn, int64_t offset, uint8_t dataType) {
     uint64_t addr = Rn + offset * dataType;
     uint64_t sysVaBase = GetSysVaBase();
     constexpr uint64_t SHARED_MEM_START = 0x80000;      // Shared Memory 起始偏移
@@ -94,7 +94,7 @@ constexpr uint64_t GM_OFFSET_RANGE_MIN = 24 * TB_TO_B_MULTIPLIER;
 constexpr uint64_t GM_OFFSET_RANGE_MAX = 40 * TB_TO_B_MULTIPLIER;
 
 // 双页表区间gm地址偏移还原
-inline __aicore__ uint64_t GmAddrSubOffset(__gm__ uint8_t *memInfo, MemType memType, uint64_t &addr) {
+AICORE_FUNC_HEAD uint64_t GmAddrSubOffset(__gm__ uint8_t *memInfo, MemType memType, uint64_t &addr) {
     if (memType != MemType::GM) {
         return addr;
     }

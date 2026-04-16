@@ -43,10 +43,12 @@
 #define SANITIZER_REPORT_AICORE(func, ...) \
     extern __attribute__((noinline)) __attribute__((weak)) __simt_callee__ __aicore__ void \
     MACRO_CONCAT(INSTR_STUB_PREFIX, func)(EXTRA_PARAMS_DEC, ## __VA_ARGS__)
+    #define AICORE_FUNC_HEAD __simt_callee__ __aicore__ inline
 #else         // simd
 #define SANITIZER_REPORT_AICORE(func, ...) \
     extern __attribute__((noinline)) __attribute__((weak)) __aicore__ void \
     MACRO_CONCAT(INSTR_STUB_PREFIX, func)(EXTRA_PARAMS_DEC, ## __VA_ARGS__)
+     #define AICORE_FUNC_HEAD __aicore__ inline
 #endif // SIMT_MODE
 
 // HOST 平台使用的 SANITIZER_REPORT 宏，在函数声明前通过 REPORT_API_REGISTER
@@ -64,7 +66,7 @@
 
 // transform config[leftBit, rightBit] into an unsigned integer
 template<uint8_t leftBit, uint8_t rightBit, typename confT>
-__aicore__ inline uint64_t GetUintFromConf(confT config)
+AICORE_FUNC_HEAD uint64_t GetUintFromConf(confT config)
 {
     constexpr uint8_t bitsPerByte= 8U;
     constexpr uint8_t maxBit = sizeof(config) * bitsPerByte - 1;
@@ -76,14 +78,14 @@ __aicore__ inline uint64_t GetUintFromConf(confT config)
 
 // get a single bit
 template<uint8_t leftBit, typename confT>
-__aicore__ inline uint64_t GetUintFromConf(confT config)
+AICORE_FUNC_HEAD uint64_t GetUintFromConf(confT config)
 {
     return GetUintFromConf<leftBit, leftBit>(config);
 }
 
 // config[leftBit, rightBit] = val
 template<uint8_t leftBit, uint8_t rightBit, typename confT, typename uintT>
-__aicore__ inline void SetConfByUint(confT &config, uintT val)
+AICORE_FUNC_HEAD void SetConfByUint(confT &config, uintT val)
 {
     constexpr uint8_t bitsPerByte= 8U;
     constexpr uint8_t maxBit = sizeof(config) * bitsPerByte - 1;
