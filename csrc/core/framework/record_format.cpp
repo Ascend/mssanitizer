@@ -173,6 +173,7 @@ static const std::map<RecordType, std::string> RECORD_TYPE_MAP = {
     {RecordType::MOV_CBUF_TO_BT,              "MOV_CBUF_TO_BT"},
     {RecordType::MOV_CBUF_TO_FB,              "MOV_CBUF_TO_FB"},
     {RecordType::SHADOW_MEMORY,               "SHADOW_MEMORY"},
+    {RecordType::DYNAMIC_OP,                  "DYNAMIC_OP"},
     {RecordType::SET_VECTOR_MASK_0,           "SET_VECTOR_MASK_0"},
     {RecordType::SET_VECTOR_MASK_1,           "SET_VECTOR_MASK_1"},
     {RecordType::SET_CTRL,                    "SET_CTRL"},
@@ -1647,7 +1648,7 @@ static const std::map<RecordType, KernelRecordStreamFunc> KERNEL_RECORD_FORMAT_M
     {RecordType::MOV_UB_TO_UB,  [](std::ostream &os, KernelRecord const &r) { os << r.payload.movL1UbRecord; }},
     {RecordType::MOV_CBUF_TO_BT,  [](std::ostream &os, KernelRecord const &r) { os << r.payload.movL1BtRecord; }},
     {RecordType::MOV_CBUF_TO_FB,  [](std::ostream &os, KernelRecord const &r) { os << r.payload.movL1FbRecord; }},
-    {RecordType::SHADOW_MEMORY,   [](std::ostream &os, KernelRecord const &r) { os << r.payload.shadowMemoryRecord; }},
+    {RecordType::DYNAMIC_OP,   [](std::ostream &os, KernelRecord const &r) { os << r.payload.dynamicRecord; }},
     {RecordType::SET_VECTOR_MASK_0, [](std::ostream &os, KernelRecord const &r) { os << r.payload.registerSetRecord; }},
     {RecordType::SET_VECTOR_MASK_1, [](std::ostream &os, KernelRecord const &r) { os << r.payload.registerSetRecord; }},
     {RecordType::SET_CTRL,        [](std::ostream &os, KernelRecord const &r) { os << r.payload.registerSetRecord; }},
@@ -1825,13 +1826,15 @@ std::ostream &operator<<(std::ostream &os, MovL1FbRecord const &record)
               << ";" << "dstmemblock:" << static_cast<uint32_t>(record.dstMemBlock);
 }
 
-std::ostream &operator<<(std::ostream &os, ShadowMemoryRecord const &record)
+std::ostream &operator<<(std::ostream &os, DynamicRecord const &dynamicRecord)
 {
-    return os << record.location << ", " << record.threadLoc
-              << ";" << "space:" << record.space
-              << ";" << "addr:0x" << std::hex << record.addr << std::dec
-              << ";" << "size:" << record.size
-              << ";" << "type:" << record.opType;
+    if (dynamicRecord.buffer != nullptr && dynamicRecord.count > 0) {
+        if (dynamicRecord.dynamicType == RecordType::SHADOW_MEMORY) {
+            const auto &shRecord = reinterpret_cast<const ShadowMemoryRecord *>(dynamicRecord.buffer);
+            return os << shRecord->location << ", type:" << dynamicRecord.dynamicType << ";count:" << dynamicRecord.count;
+        }
+    }
+    return os << ", type:" << dynamicRecord.dynamicType << ";count:" << dynamicRecord.count;
 }
 
 std::ostream &operator<<(std::ostream &os, RegisterSetRecord const &record)

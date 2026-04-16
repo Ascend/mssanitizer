@@ -69,24 +69,6 @@ AddressSpace FormatConverter::MemTypeToAddrSpace(MemType memType)
     return it == MEM_TYPE_TO_ADDR_SPACE_MAP.cend() ? AddressSpace::INVALID : it->second;
 }
 
-MemType FormatConverter::AddrSpaceToMemType(AddressSpace addrSpace)
-{
-    static const std::map<AddressSpace, MemType> ADDR_SPACE_TO_MEM_TYPE_MAP = {
-        { AddressSpace::L1, MemType::L1 },
-        { AddressSpace::L0A, MemType::L0A },
-        { AddressSpace::L0B, MemType::L0B },
-        { AddressSpace::L0C, MemType::L0C },
-        { AddressSpace::UB, MemType::UB },
-        { AddressSpace::GM, MemType::GM },
-        { AddressSpace::BT, MemType::BT },
-        { AddressSpace::FB, MemType::FB },
-        { AddressSpace::INVALID, MemType::INVALID },
-        { AddressSpace::PRIVATE, MemType::PRIVATE },
-    };
-    auto it = ADDR_SPACE_TO_MEM_TYPE_MAP.find(addrSpace);
-    return it == ADDR_SPACE_TO_MEM_TYPE_MAP.cend() ? MemType::INVALID : it->second;
-}
-
 MemOpType FormatConverter::AccessTypeToMemOpType(AccessType type)
 {
     static const std::map<AccessType, MemOpType> ACCESS_TYPE_TO_MEMOP_TYPE_MAP = {

@@ -32,6 +32,7 @@
 #include "runtime_context.h"
 #include "sanitizer_base.h"
 #include "record_pre_process.h"
+#include "kernel_block.h"
 #include "file_mapping.h"
 #include "utility/ustring.h"
 #include "utility/serializer.h"
@@ -427,6 +428,7 @@ void Checker::Do(const SanitizerRecord &record)
         auto errorCounts = decltype(errorCounts_){};
         std::swap(errorCounts, errorCounts_);
         DisplaySanitizerEnd(errorCounts);
+        KernelBlock::ResetAll();
     }
 
     std::stringstream ss;

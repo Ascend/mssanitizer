@@ -85,6 +85,31 @@ void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
     record.side = MemOpSide::KERNEL;
 }
 
+void TransShadowMemory(std::vector<MemOpRecord> &records, const SanEvent &event)
+{
+    MemOpRecord record{};
+    record.ignoreIllegalCheck = true;
+    record.serialNo = event.serialNo;
+    record.coreId = event.loc.coreId;
+    record.blockType = event.loc.blockType;
+    record.moduleId = -1;
+    record.side = MemOpSide::KERNEL;
+    const auto &varInfo = event.eventInfo.dynamicOpInfo;
+    const auto smRecords = reinterpret_cast<const ShadowMemoryRecord *>(varInfo.buffer);
+    FillFileNameByNo(record, event.loc.fileNo);
+    for (size_t i = 0; i < varInfo.count; ++i) {
+        if (smRecords[i].space == AddressSpace::GM) {
+            record.lineNo = smRecords[i].location.lineNo;
+            record.pc = smRecords[i].location.pc;
+            record.dstAddr = smRecords[i].addr;
+            record.memSize = smRecords[i].size;
+            record.dstSpace = smRecords[i].space;
+            record.type = FormatConverter::AccessTypeToMemOpType(smRecords[i].accessType);
+            records.emplace_back(record);
+        }
+    }
+}
+
 void ProcessAndStoreMemOp(MemOpRecord &record, std::vector<MemOpRecord> &records)
 {
     if (record.type == MemOpType::MEMCPY_BLOCKS) {
@@ -170,15 +195,20 @@ void ConvertMutiRecordRepeats(const SanEvent &event, MemOpRecord &record, std::v
 void AddressSanitizer::ConvertSanEventToMemOpRecords(const SanEvent &event,
     std::vector<MemOpRecord> &records)
 {
-    if (event.type != EventType::MEM_EVENT) {
-        return;
+    if (event.type == EventType::MEM_EVENT) {
+        ConvertMemEvent(event, records);
+    } else if (event.type == EventType::DYNAMIC_MEM_EVENT) {
+        ConvertDynamicMemEvent(event, records);
     }
+}
+
+void AddressSanitizer::ConvertMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
+{
     auto& memInfo = event.eventInfo.memInfo;
     if (memInfo.repeatTimes == 0) {
         return;
     }
-    MemOpRecord record;
-    record.ignoreIllegalCheck = memInfo.ignoreIllegalCheck;
+    MemOpRecord record{};
     SetBasicMemInfo(record, event);
     // 原内存检测解析时是按repeattimes遍历读->写->读->写；
     // 而解析成SanEvent再解析成MemOpRecords后会变成 读读读...->写写写....此处逻辑发生变动
@@ -186,6 +216,14 @@ void AddressSanitizer::ConvertSanEventToMemOpRecords(const SanEvent &event,
         ConvertSingleRecordRepeats(event, record, records);
     } else {
         ConvertMutiRecordRepeats(event, record, records);
+    }
+}
+
+void AddressSanitizer::ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
+{
+    auto& dynamicMemInfo = event.eventInfo.dynamicOpInfo;
+    if (dynamicMemInfo.dynamicType == RecordType::SHADOW_MEMORY) {
+        TransShadowMemory(records, event);
     }
 }
 
@@ -421,6 +459,11 @@ size_t AddressSanitizer::GetRecordsNum(const std::vector<SanEvent> &events) cons
                 numRecords += memInfo.repeatTimes;
             } else {
                 numRecords += memInfo.repeatTimes * memInfo.blockNum;
+            }
+        } else if (event.type == EventType::DYNAMIC_MEM_EVENT) {
+            const auto &varInfo = event.eventInfo.dynamicOpInfo;
+            if (varInfo.dynamicType == RecordType::SHADOW_MEMORY) {
+                numRecords += varInfo.count;
             }
         }
     }

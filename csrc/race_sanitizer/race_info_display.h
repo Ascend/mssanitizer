@@ -38,8 +38,7 @@ inline std::ostream &PrintClassicLocation(std::ostream &os, uint64_t fileNo, uin
                  " (serialNo:" << serialNo << ")" << std::endl;
 }
 
-inline std::ostream &PrintLocationInfo(std::ostream &os, BaseEvent const & event,
-    uint64_t serialNo)
+inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event, uint64_t serialNo)
 {
     if (event.pc == 0UL) {
         return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo);
@@ -84,7 +83,7 @@ inline std::ostream &operator<<(std::ostream &os, SimtThreadLocation const &thre
     return os;
 }
 
-inline void FormatEvent(std::ostream &os, const BaseEvent &event, std::string const &accessType,
+inline void FormatEvent(std::ostream &os, const ErrorEvent &event, std::string const &accessType,
     std::string const &errType)
 {
     os << "======    ";
@@ -102,8 +101,8 @@ inline void FormatEvent(std::ostream &os, const BaseEvent &event, std::string co
 
 inline std::ostream &operator << (std::ostream &os, RaceDispInfo const &raceInfo)
 {
-    BaseEvent raceEvent1{};
-    BaseEvent raceEvent2{};
+    ErrorEvent raceEvent1{};
+    ErrorEvent raceEvent2{};
     if (raceInfo.p1.isSimt && raceInfo.p2.isSimt) {
         // 如果都为simt错误，则默认竞争第一行显示小线程
         raceEvent1 = raceInfo.p1.threadLoc < raceInfo.p2.threadLoc ? raceInfo.p1 : raceInfo.p2;

@@ -54,18 +54,6 @@ inline bool ParseRecordByType(uint8_t const *ptr, Record &record, uint64_t &reco
     return true;
 }
 
-inline void ParseShadowMemoryType(ShadowMemoryRecord const *smRecord, KernelRecord &kernelRecord,
-    std::vector<KernelRecord> &kernelRecords, uint64_t recordCount)
-{
-    for (size_t i = 0; i < recordCount; ++i) {
-        kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
-        kernelRecord.payload.shadowMemoryRecord = smRecord[i];
-        CalRecordPc(kernelRecord.payload.shadowMemoryRecord);
-        kernelRecords.push_back(kernelRecord);
-        ++RuntimeContext::Instance().serialNo_;
-    }
-}
-
 inline bool ParseMemErrorType(uint8_t const *ptr, KernelErrorRecord &errorRecord, uint64_t &recordSize)
 {
     errorRecord = *static_cast<KernelErrorRecord const *>(static_cast<void const *>(ptr));
@@ -585,6 +573,11 @@ bool KernelBlock::ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRec
     return true;
 }
 
+std::vector<uint8_t> KernelBlock::AllocMemory(size_t size) const
+{
+    return std::vector<uint8_t>(size);
+}
+
 void KernelBlock::ParseSimtRecord(std::vector<KernelRecord> &kernelRecords)
 {
     SanitizerRecord sanitizerRecord;
@@ -654,9 +647,27 @@ void KernelBlock::ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecor
 
     KernelRecord kernelRecord{};
     kernelRecord.blockType = this->simdRecordHead_.blockInfo.blockType;
-    kernelRecord.recordType = recordType;
-    auto smRecord = reinterpret_cast<ShadowMemoryRecord const*>(shadowMemoryHead_ + 1);
-    ParseShadowMemoryType(smRecord, kernelRecord, kernelRecords, shadowMemoryHead_->recordCount);
+    kernelRecord.recordType = RecordType::DYNAMIC_OP;
+    auto smRecord = reinterpret_cast<uint8_t const*>(shadowMemoryHead_ + 1);
+    kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
+    auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
+    dynamicRecord.count = shadowMemoryHead_->recordCount;
+    dynamicRecord.dynamicType = recordType;
+    if (dynamicRecord.count > 0) {
+        size_t allocSize = dynamicRecord.count * sizeof(ShadowMemoryRecord);
+        std::vector<uint8_t> memoryVec = AllocMemory(allocSize);
+        dynamicMemorys_.push_back(memoryVec);
+        auto &vecBack = dynamicMemorys_.back();
+        vecBack.assign(smRecord, smRecord + allocSize);
+        dynamicRecord.buffer = static_cast<void *>(vecBack.data());
+    } else {
+        dynamicRecord.buffer = nullptr;
+    }
+    for (size_t i = 0; i < dynamicRecord.count; ++i) {
+        CalRecordPc(reinterpret_cast<ShadowMemoryRecord *>(dynamicRecord.buffer)[i]);
+    }
+    kernelRecords.push_back(kernelRecord);
+    ++RuntimeContext::Instance().serialNo_;
 }
 
 void KernelBlock::PrintCacheSizeLog(uint64_t totalSize)
@@ -692,5 +703,6 @@ uint64_t KernelBlock::GetTotalBlockDim() const
 
 thread_local uint8_t KernelBlock::vecSubBlockDim_{};
 thread_local uint64_t KernelBlock::totalBlockDim_{};
+thread_local std::vector<std::vector<uint8_t>> KernelBlock::dynamicMemorys_{};
 
 } // namespace Sanitizer

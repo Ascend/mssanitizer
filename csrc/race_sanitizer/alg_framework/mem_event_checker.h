@@ -31,11 +31,12 @@
 namespace Sanitizer {
 
 
-inline RaceDispInfo FillRaceDispInfo(const MemEvent &event1, const MemEvent &event2)
+inline RaceDispInfo FillRaceDispInfo(const MemEvent &event1, const MemEvent &event2,
+    uint64_t event1DynamicErrIdx, uint64_t event2DynamicErrIdx)
 {
     auto info = RaceDispInfo{};
-    info.p1.Init(event1);
-    info.p2.Init(event2);
+    info.p1.Init(event1, event1DynamicErrIdx);
+    info.p2.Init(event2, event2DynamicErrIdx);
     return info;
 }
 
@@ -73,6 +74,11 @@ inline uint32_t GetPipeIdxByMemEvent(const MemEvent &event, KernelType kernelTyp
     return (blockIdx * static_cast<uint16_t>(PipeType::SIZE)) + static_cast<uint16_t>(event.pipe);
 }
 
+struct CompareShadowMemoryRecord {
+    ShadowMemoryRecord record;
+    uint64_t idx;                  // record对应的全局索引
+};
+
 inline uint32_t GetExpandPipeIdx(MemEvent const &event, uint32_t blockNum)
 {
     SanEvent sanEvent{};
@@ -87,11 +93,17 @@ inline uint32_t GetExpandPipeIdx(MemEvent const &event, uint32_t blockNum)
 // 新发生的内存事件需要和已经记录的所有内存事件一一比较,并返回相互冲突的事件信息
 class MemEventChecker {
 public:
+    struct EventIdxInfo {
+        uint64_t eventIdx;               // 当前event位于events_的索引
+        uint64_t dynamicErrorIdx;        // dynamicEvent存在错误的前提下，对应的错误索引
+    };
     // 存在竞争的事件对的索引
-    using RaceMemEventsIdx = std::vector<std::pair<uint64_t, uint64_t>>;
+    using RaceMemEventsIdx = std::vector<std::pair<EventIdxInfo, EventIdxInfo>>;
+    // 用来表示地址区间的数据结构，pair<起始地址, 结束地址>
+    using AddrRangeVec = std::vector<std::pair<uint64_t, uint64_t>>;
     void RunAlgorithm();
     // 扫描线算法，事件拆分为开始和结束，按地址排序，再进行检测
-    void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx);
+    void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx) const;
     void PushEvent(const MemEvent& event);
     void Init(KernelType kernelType, DeviceType deviceType, RaceCheckType checkType);
     void Init(uint32_t blockNum);
@@ -105,21 +117,20 @@ private:
     KernelType kernelType_{};
     DeviceType deviceType_{};
     RaceCheckType checkType_{};
-     // 用来表示地址区间的数据结构，pair<起始地址, 结束地址>
-    using AddrRangeVec = std::vector<std::pair<uint64_t, uint64_t>>;
     // 缓存检测结果
     std::shared_ptr<std::vector<RaceDispInfo>> result_;
-    std::unordered_set<RaceDispInfo, RaceEventHash, RaceEventEqual> raceSet_;
-    bool IsMemSpaceOverlap(const MemOpInfo &op1, const MemOpInfo &op2);
-    bool IsAtomicAgainst(const MemEvent& event1, const MemEvent& event2);
-    bool IsInnerCoreRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
-    bool IsSinglePipeRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
-    bool IsCrossCoreRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
-    bool IsCrossNpuRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
+    std::unordered_set<RaceDispInfo, ErrorEventHash, ErrorEventEqual> raceSet_;
+    bool IsMemSpaceOverlap(const MemEvent &op1, const MemEvent &op2,
+        EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
+    bool IsAtomicAgainst(const MemEvent& event1, const MemEvent& event2) const;
+    bool IsInnerCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
+    bool IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
+    bool IsCrossCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
+    bool IsCrossNpuRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
 
-    using CheckTypeFunc = bool (MemEventChecker::*)(uint64_t, uint64_t);
+    using CheckTypeFunc = bool (MemEventChecker::*)(EventIdxInfo&, EventIdxInfo&) const;
     void CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx, CheckTypeFunc checkTypeFunc,
-        uint64_t curEventIdx, RaceMemEventsIdx &raceMemEventsIdx);
+        uint64_t curEventIdx, RaceMemEventsIdx &raceMemEventsIdx) const;
     std::unordered_map<RaceCheckType, CheckTypeFunc> checkTypeMap_;
 };
 

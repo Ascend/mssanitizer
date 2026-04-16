@@ -61,6 +61,8 @@ private:
 
     static void DefaultMsgFunc(LogLv const&, MSG_GEN &&) {};
     static void ConvertSanEventToMemOpRecords(const SanEvent &event, std::vector<MemOpRecord> &records);
+    static void ConvertMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records);
+    static void ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records);
     void DoMemOpRecord(MemOpRecord const &record, bool reduce);
     size_t GetRecordsNum(const std::vector<SanEvent> &events) const;
     void ReportErrorMsg();

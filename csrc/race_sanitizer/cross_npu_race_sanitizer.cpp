@@ -57,7 +57,7 @@ void CrossNpuRaceSanitizer::RaceSanitizerRecord(std::shared_ptr<std::vector<Race
     }
 
     // 当前 NPU 间检测时限定相同的 kernelName 间，因此任意取一个竞争事件用于获取 kernelName
-    BaseEvent const &event = (*p)[0].p1;
+    ErrorEvent const &event = (*p)[0].p1;
     KernelSummary kernelSummary{};
     if (!KernelManager::Instance().Get(event.deviceId, event.kernelIdx, kernelSummary)) {
         SAN_ERROR_LOG("Get kernelSummary failed in RaceSanitizerRecord. deviceId: %u, kernelIdx: %u",

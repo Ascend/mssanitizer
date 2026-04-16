@@ -890,4 +890,96 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode1_expect_success)
     }
 }
 
+TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_write_event_expect_race_error)
+{
+    CrossCoreRaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_910B1, 3);
+    SanEvent event;
+    event.loc.coreId = 0;
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.pipe = PipeType::PIPE_V;
+    event.loc.blockType = BlockType::AIVEC;
+    auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.count = 3;
+    dynamicOpInfo.minAddr = 0X100;
+    dynamicOpInfo.maxAddr = 0x500;
+    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
+        dynamicOpInfo.count, event.loc.coreId);
+    dynamicOpInfo.buffer = shRecords1.data();
+    alg.Do(event);
+    event.loc.coreId = 1;
+    dynamicOpInfo.minAddr = 0x200;
+    dynamicOpInfo.count = 2;
+    std::vector<ShadowMemoryRecord> shRecords2 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
+        dynamicOpInfo.count, event.loc.coreId);
+    event.eventInfo.dynamicOpInfo.buffer = shRecords2.data();
+    alg.Do(event);
+    event.isEndFrame = true;
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 1U);
+}
+
+TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_read_event_expect_normal)
+{
+    CrossCoreRaceAlgImpl alg(KernelType::AICUBE, DeviceType::ASCEND_910B3, 5);
+    SanEvent event;
+    event.loc.coreId = 0;
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.pipe = PipeType::PIPE_V;
+    event.loc.blockType = BlockType::AICUBE;
+    auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.count = 3;
+    dynamicOpInfo.minAddr = 0X100;
+    dynamicOpInfo.maxAddr = 0x500;
+    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
+        dynamicOpInfo.count, event.loc.coreId);
+    dynamicOpInfo.buffer = shRecords1.data();
+    alg.Do(event);
+    event.loc.coreId = 1;
+    dynamicOpInfo.minAddr = 0x400;
+    dynamicOpInfo.count = 2;
+    std::vector<ShadowMemoryRecord> shRecords2 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::READ,
+        dynamicOpInfo.count, event.loc.coreId);
+    event.eventInfo.dynamicOpInfo.buffer = shRecords2.data();
+    alg.Do(event);
+    event.isEndFrame = true;
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 0U);
+}
+
+
+TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
+{
+    CrossCoreRaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_950DT_950x, 3);
+    SanEvent event;
+    event.loc.coreId = 0;
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.pipe = PipeType::PIPE_V;
+    event.loc.blockType = BlockType::AIVEC;
+    auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.count = 3;
+    dynamicOpInfo.minAddr = 0X100;
+    dynamicOpInfo.maxAddr = 0x500;
+    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::READ,
+        dynamicOpInfo.count, event.loc.coreId);
+    dynamicOpInfo.buffer = shRecords1.data();
+    alg.Do(event);
+    event.loc.coreId = 1;
+    event.type = EventType::MEM_EVENT;
+    event.pipe = PipeType::PIPE_S;
+    event.eventInfo.memInfo.opType = AccessType::WRITE;
+    event.eventInfo.memInfo.memType = MemType::GM;
+    event.eventInfo.memInfo.addr = 0x100;
+    event.eventInfo.memInfo.blockNum = 1U;
+    event.eventInfo.memInfo.blockSize = 32U;
+    event.eventInfo.memInfo.blockStride = 1U;
+    event.eventInfo.memInfo.repeatTimes = 1U;
+    alg.Do(event);
+    event.isEndFrame = true;
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 1U);
+}
+
 }

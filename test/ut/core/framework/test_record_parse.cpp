@@ -4724,11 +4724,18 @@ TEST_F(TestRecordParse, parse_shadow_memory_record_and_expect_success)
 {
     std::vector<SanEvent> events;
     KernelRecord record{};
-    record.recordType = RecordType::SHADOW_MEMORY;
+    record.recordType = RecordType::DYNAMIC_OP;
+    std::vector<ShadowMemoryRecord> shRecords;
     ShadowMemoryRecord smRecord{};
     smRecord.addr = 0x100;
     smRecord.size = 10;
-    record.payload.shadowMemoryRecord = smRecord;
+    shRecords.push_back(smRecord);
+    smRecord.addr = 0x200;
+    smRecord.size = 20;
+    shRecords.push_back(smRecord);
+    record.payload.dynamicRecord.buffer = shRecords.data();
+    record.payload.dynamicRecord.count = shRecords.size();
+    record.payload.dynamicRecord.dynamicType = RecordType::SHADOW_MEMORY;
 
     SanitizerRecord sanitizerRecord{};
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -4736,9 +4743,15 @@ TEST_F(TestRecordParse, parse_shadow_memory_record_and_expect_success)
 
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 1);
-    ASSERT_EQ(events[0].eventInfo.memInfo.addr, smRecord.addr);
-    ASSERT_EQ(events[0].eventInfo.memInfo.blockNum, 1);
-    ASSERT_EQ(events[0].eventInfo.memInfo.blockSize, smRecord.size);
+    ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.count, 2);
+    ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.dynamicType, RecordType::SHADOW_MEMORY);
+    ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.minAddr, 0x100);
+    ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.maxAddr, 0x200 + 20);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
+    ASSERT_EQ(events[0].type, EventType::DYNAMIC_MEM_EVENT);
+    auto bufferRecord = reinterpret_cast<const ShadowMemoryRecord*>(events[0].eventInfo.dynamicOpInfo.buffer);
+    ASSERT_EQ(bufferRecord->addr, 0x100);
+    ASSERT_EQ(bufferRecord->size, 10);
 }
 
 }

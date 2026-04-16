@@ -291,7 +291,6 @@ enum class RecordType : uint32_t {
     SIMT_ST,
     SIMT_ATOM,
     SIMT_RED,
-    SHADOW_MEMORY = 40010,
     THREAD_BLOCK_BARRIER,
     SIMT_END = 50000,
 
@@ -308,6 +307,10 @@ enum class RecordType : uint32_t {
     SET_QUANT_PRE,
     SET_QUANT_POST,
     SET_LRELU_ALPHA,
+
+    // 变长协议记录类型，后续可拓展其他变长协议
+    DYNAMIC_OP = 79999,    // 变长协议头
+    SHADOW_MEMORY = 80000, // 变长协议的具体类型
 
     /// BLOCK_FINISH 类型是虚拟出的记录类型，表明单个逻辑核的记录类型已经上报完毕，
     /// 用来通知检测算法重置片上内存状态
@@ -1827,7 +1830,13 @@ struct ShadowMemoryRecord {
     Location location;
     SimtThreadLocation threadLoc;
     AddressSpace space;
-    MemOpType opType;
+    AccessType accessType;
+};
+
+struct DynamicRecord {
+    uint64_t count;
+    RecordType dynamicType;
+    void *buffer;
 };
 
 enum class KernelErrorType : uint8_t {
@@ -1960,7 +1969,7 @@ struct KernelRecord {
         MovL1FbRecord movL1FbRecord;
         Vbs32Record vbs32Record;
         Vms4v2RecordA5 vms4V2RecordA5;
-        ShadowMemoryRecord shadowMemoryRecord;
+        DynamicRecord dynamicRecord;
         RegisterSetRecord registerSetRecord;
         SimtSyncRecord simtSyncRecord;
     } payload;

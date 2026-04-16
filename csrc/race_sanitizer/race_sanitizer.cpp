@@ -199,9 +199,8 @@ void RaceSanitizer::AllBlockRaceCheck(const std::vector<SanEvent> &events)
 
 bool RaceSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
 {
-    // 预处理当前仅处理KernelRecord，并且不处理simt的竞争事件
-    if (record.version == RecordVersion::KERNEL_RECORD &&
-        record.payload.kernelRecord.recordType != RecordType::SHADOW_MEMORY) {
+    // 预处理当前仅处理KernelRecord
+    if (record.version == RecordVersion::KERNEL_RECORD) {
         return true;
     }
     return false;
@@ -256,7 +255,7 @@ void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
             kernelErrorDesc.errorType == KernelErrorType::THREAD_WR_RACE ||
             kernelErrorDesc.errorType == KernelErrorType::THREAD_WW_RACE) {
             RaceDispInfo error{};
-            BaseEvent event{};
+            ErrorEvent event{};
             auto &errorDesc = kernelErrorDesc.payload.raceDesc;
             event.deviceId = RuntimeContext::Instance().GetDeviceId();
             event.kernelIdx = RuntimeContext::Instance().kernelIdx_ - 1;
@@ -268,7 +267,7 @@ void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
             event.blockType = blockType;
             event.isSimt = true;
             event.accessType = ThreadRaceToAccessType(kernelErrorDesc.errorType);
-            event.memType = static_cast<uint8_t>(FormatConverter::AddrSpaceToMemType(kernelErrorDesc.space));
+            event.memType = static_cast<uint8_t>(AddrSpaceToMemType(kernelErrorDesc.space));
             event.threadLoc = kernelErrorDesc.threadLoc;
             error.p1 = event;
             

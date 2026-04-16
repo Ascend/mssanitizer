@@ -34,9 +34,16 @@ public:
 
     uint64_t GetTotalBlockDim() const;
 
+    static void ResetAll()
+    {
+        vecSubBlockDim_ = {};
+        totalBlockDim_ = {};
+        dynamicMemorys_ = {};
+    }
+
 private:
     bool ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRecord);
-    thread_local static uint64_t serialNo;
+    std::vector<uint8_t> AllocMemory(size_t size) const;
 
     RecordGlobalHead recordGlobalHead_ {};
     RecordBlockHead simdRecordHead_ {};
@@ -49,6 +56,7 @@ private:
     uint64_t recordIdx_ {};
     thread_local static uint8_t vecSubBlockDim_;       // mix算子vec核使用的子核数目，只记录在了vec 0核的头部
     thread_local static uint64_t totalBlockDim_;       // 记录的总blockDim数，只记录在了0核的头部
+    thread_local static std::vector<std::vector<uint8_t>> dynamicMemorys_;       // 动态内存记录缓存数组
     uint64_t extendCacheSize_{};                       // 溢出的cacheSize
     uint64_t extendRecordCount_{};                     // 溢出的记录数量
     uint32_t blockIdx_{};

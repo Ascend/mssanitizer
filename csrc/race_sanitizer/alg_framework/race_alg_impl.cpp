@@ -96,6 +96,8 @@ ReturnType RaceAlgImpl::ProcessEvent(const SanEvent& event)
             return ProcessMstxCrossSyncEvent(event);
         case EventType::BUF_SYNC_EVENT:
             return ProcessGetRlsBufSyncEvent(event, RaceCheckType::SINGLE_BLOCK_CHECK);
+        case EventType::DYNAMIC_MEM_EVENT:
+            return ProcessDynamicMemEvent(event);
         default:
             break;
     }

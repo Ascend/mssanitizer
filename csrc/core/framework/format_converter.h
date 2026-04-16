@@ -28,7 +28,6 @@ class FormatConverter {
 public:
     static PipeType QueryPipeType(MemType src, MemType dst);
     static AddressSpace MemTypeToAddrSpace(MemType memType);
-    static MemType AddrSpaceToMemType(AddressSpace addrSpace);
     static MemOpType AccessTypeToMemOpType(AccessType type);
     static uint64_t GetDataSizeByType(DataType dataType);
     static bool GetDataBitSizeByType(DataType dataType, uint16_t &dataBitSize);

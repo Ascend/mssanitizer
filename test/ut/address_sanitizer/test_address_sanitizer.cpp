@@ -3612,4 +3612,49 @@ TEST(AddressSanitizer, malloc_rt_bypass_extra_bypass_memory_expect_get_error)
     ASSERT_TRUE(msg.find("illegal read") != std::string::npos);
 }
 
+TEST(AddressSanitizer, parse_dynamic_shadow_memory_records_expect_success)
+{
+    KernelRecord kernelRecord;
+    kernelRecord.recordType = RecordType::DYNAMIC_OP;
+    auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
+    dynamicRecord.count = 3;
+    dynamicRecord.dynamicType = RecordType::SHADOW_MEMORY;
+    std::vector<ShadowMemoryRecord> shRecords;
+    ShadowMemoryRecord record{};
+    record.addr = 0x100;
+    record.size = 10;
+    record.space = AddressSpace::UB;
+    shRecords.push_back(record);
+    record.addr = 0x200;
+    record.size = 20;
+    record.space = AddressSpace::GM;
+    record.accessType = AccessType::READ;
+    shRecords.push_back(record);
+    record.addr = 0x300;
+    record.size = 30;
+    record.accessType = AccessType::WRITE;
+    shRecords.push_back(record);
+    dynamicRecord.buffer = shRecords.data();
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = kernelRecord;
+ 
+    std::vector<MemOpRecord> records;
+    std::vector<SanEvent> events;
+    RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 1);
+    ConvertSanEventsToMemOpRecords(events, records);
+    ASSERT_EQ(records.size(), 2);
+    ASSERT_EQ(records[0].type, MemOpType::LOAD);
+    ASSERT_EQ(records[0].dstAddr, 0x200);
+    ASSERT_EQ(records[0].memSize, 20);
+    ASSERT_EQ(records[0].dstSpace, AddressSpace::GM);
+    ASSERT_TRUE(records[0].ignoreIllegalCheck);
+    ASSERT_EQ(records[1].type, MemOpType::STORE);
+    ASSERT_EQ(records[1].dstAddr, 0x300);
+    ASSERT_EQ(records[1].memSize, 30);
+    ASSERT_EQ(records[1].dstSpace, AddressSpace::GM);
+    ASSERT_TRUE(records[1].ignoreIllegalCheck);
+}
+
 }

@@ -151,7 +151,7 @@ static void ParseScalarOpRecord(const KernelRecord &record, std::vector<SanEvent
     SetLocationInfo(event, loadStoreRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
     event.pipe = PipeType::PIPE_S_CAL;
-    memInfo.memType = FormatConverter::AddrSpaceToMemType(loadStoreRecord.space);
+    memInfo.memType = AddrSpaceToMemType(loadStoreRecord.space);
 
     if (record.recordType == RecordType::LOAD || record.recordType == RecordType::LD || record.recordType == RecordType::LD_IO ||
         record.recordType == RecordType::LDP || record.recordType == RecordType::LD_DEV) {
@@ -3480,8 +3480,8 @@ static void ParseRecordMstxDataCopy(const KernelRecord &record, std::vector<SanE
     dmaMovRecord.lenBurst = mstxDataCopy.lenBurst;
     dmaMovRecord.srcStride = mstxDataCopy.srcGap;
     dmaMovRecord.dstStride = mstxDataCopy.dstGap;
-    dmaMovRecord.dstMemType = FormatConverter::AddrSpaceToMemType(mstxDataCopy.dst.space);
-    dmaMovRecord.srcMemType = FormatConverter::AddrSpaceToMemType(mstxDataCopy.src.space);
+    dmaMovRecord.dstMemType = AddrSpaceToMemType(mstxDataCopy.dst.space);
+    dmaMovRecord.srcMemType = AddrSpaceToMemType(mstxDataCopy.src.space);
     dmaMovRecord.padMode = PadMode::PAD_NONE;
     dmaMovRecord.byteMode = ByteMode::BM_DISABLE;
     ParseRecordDmaMovImpl(equivalence, events, false);
@@ -3504,8 +3504,8 @@ static void ParseRecordMstxDataCopyPad(const KernelRecord &record, std::vector<S
     movAlignRecord.dstGap = mstxDataCopyPad.dstGap;
     movAlignRecord.lenBurst = mstxDataCopyPad.lenBurst;
     movAlignRecord.nBurst = mstxDataCopyPad.nBurst;
-    movAlignRecord.dstMemType = FormatConverter::AddrSpaceToMemType(mstxDataCopyPad.dst.space);
-    movAlignRecord.srcMemType = FormatConverter::AddrSpaceToMemType(mstxDataCopyPad.src.space);
+    movAlignRecord.dstMemType = AddrSpaceToMemType(mstxDataCopyPad.dst.space);
+    movAlignRecord.srcMemType = AddrSpaceToMemType(mstxDataCopyPad.src.space);
     if (!FormatConverter::GetDataTypeByDataBits(mstxDataCopyPad.dst.dataBits, movAlignRecord.dataType)) {
         SAN_ERROR_LOG("Get data type by data bits failed. dataBits: %d\n",
                       static_cast<int>(mstxDataCopyPad.dst.dataBits));
@@ -3827,21 +3827,39 @@ static void ParseVbs32A5(const KernelRecord &record, std::vector<SanEvent> &even
     events.emplace_back(event);
 }
 
-static void ParseRecordShadowMemory(const KernelRecord &record, std::vector<SanEvent> &events)
+inline void CalShadowMemoryAddrInfo(const ShadowMemoryRecord *smRecord, DynamicOpInfo &dynamicOpInfo)
 {
-    auto& smRecord = record.payload.shadowMemoryRecord;
+    uint64_t minAddr = UINT64_MAX;
+    uint64_t maxAddr{};
+    for (size_t i = 0; i < dynamicOpInfo.count; ++i) {
+        minAddr = std::min(minAddr, smRecord[i].addr);
+        maxAddr = std::max(maxAddr, smRecord[i].addr + smRecord[i].size);
+    }
+    dynamicOpInfo.minAddr = minAddr;
+    dynamicOpInfo.maxAddr = maxAddr;
+}
+
+static void ParseRecordDynamic(const KernelRecord &record, std::vector<SanEvent> &events)
+{
+    auto& dynamicRecord = record.payload.dynamicRecord;
     SanEvent event{};
-    auto& memInfo = event.eventInfo.memInfo;
-    SetLocationInfo(event, smRecord, record.blockType, record.serialNo);
-    event.type = EventType::MEM_EVENT;
-    event.pipe = PipeType::PIPE_V;
-    memInfo.memType = FormatConverter::AddrSpaceToMemType(smRecord.space);
-    memInfo.opType = smRecord.opType == MemOpType::LOAD ? AccessType::READ : AccessType::WRITE;
-    memInfo.repeatTimes = 1;
-    memInfo.blockNum = 1;
-    memInfo.addr = smRecord.addr;
-    memInfo.blockSize = smRecord.size;
-    memInfo.ignoreIllegalCheck = true;
+    event.serialNo = record.serialNo;
+    event.loc.blockType = record.blockType;
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.eventInfo.dynamicOpInfo.count = dynamicRecord.count;
+    event.eventInfo.dynamicOpInfo.dynamicType = dynamicRecord.dynamicType;
+    event.eventInfo.dynamicOpInfo.buffer = dynamicRecord.buffer;
+    if (dynamicRecord.count > 0 && dynamicRecord.buffer != nullptr) {
+        if (dynamicRecord.dynamicType == RecordType::SHADOW_MEMORY) {
+            event.pipe = PipeType::PIPE_V;
+            auto smRecord = reinterpret_cast<const ShadowMemoryRecord *>(dynamicRecord.buffer);
+            event.loc.coreId = smRecord[0].location.blockId;
+            CalShadowMemoryAddrInfo(smRecord, event.eventInfo.dynamicOpInfo);
+        }
+    } else {
+        SAN_WARN_LOG("dynamic reocrd error, record count:%lu serialNo:%lu", dynamicRecord.count, record.serialNo);
+        return;
+    }
     events.emplace_back(event);
 }
 
@@ -4017,7 +4035,7 @@ const std::unordered_map<RecordType, ParseFunc> g_parseFuncs = {
     {RecordType::MOV_UB_TO_UB, ParseRecordMovUb2Ub},
     {RecordType::MOV_CBUF_TO_BT, ParseRecordMovCbuf2Bt},
     {RecordType::MOV_CBUF_TO_FB, ParseRecordMovCbuf2Fb},
-    {RecordType::SHADOW_MEMORY, ParseRecordShadowMemory},
+    {RecordType::DYNAMIC_OP, ParseRecordDynamic},
     {RecordType::SET_VECTOR_MASK_0, ParseRecordRegisterVectorMask0},
     {RecordType::SET_VECTOR_MASK_1, ParseRecordRegisterVectorMask1},
     {RecordType::SET_CTRL, ParseRecordRegisterCtrl},

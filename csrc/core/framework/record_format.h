@@ -185,7 +185,7 @@ std::ostream &operator<<(std::ostream &os, MmadA5Record const &record);
 std::ostream &operator<<(std::ostream &os, DetailedDataType type);
 std::ostream &operator<<(std::ostream &os, MovL1BtRecord const &record);
 std::ostream &operator<<(std::ostream &os, MovL1FbRecord const &record);
-std::ostream &operator<<(std::ostream &os, ShadowMemoryRecord const &record);
+std::ostream &operator<<(std::ostream &os, DynamicRecord const &dynamicRecord);
 std::ostream &operator<<(std::ostream &os, RegisterSetRecord const &record);
 std::ostream &operator<<(std::ostream &os, SimtSyncRecord const &record);
 }  // namespace Sanitizer

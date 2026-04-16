@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <map>
 #include "arch_def.h"
 #include "record_defs.h"
 #include "sanitizer_report.h"
@@ -46,6 +47,7 @@ enum class EventType : uint8_t {
     MSTX_SIGNAL_WAIT_EVENT,
     MSTX_CROSS_CORE_BARRIER,
     MSTX_CROSS_NPU_BARRIER,
+    DYNAMIC_MEM_EVENT,
 };
 
 // 算法预处理阶段hset_flag/hwait_flag处理成普通的set_flag/wait_flag
@@ -170,7 +172,33 @@ struct RegisterOpInfo {
     RegisterPayload regPayLoad;
 };
 
+struct DynamicOpInfo {
+    uint64_t count{};            // buffer包含多少个结构体
+    uint64_t minAddr{};          // 变长协议的最小地址
+    uint64_t maxAddr{};          // 变长协议的最大地址
+    RecordType dynamicType{};    // 表示buffer对应的结构体类型
+    void *buffer{nullptr};       // 变长协议对应的协议内容
+};
+
 using VectorTime = std::vector<uint32_t>;
+
+inline MemType AddrSpaceToMemType(AddressSpace addrSpace)
+{
+    static const std::map<AddressSpace, MemType> ADDR_SPACE_TO_MEM_TYPE_MAP = {
+        { AddressSpace::L1, MemType::L1 },
+        { AddressSpace::L0A, MemType::L0A },
+        { AddressSpace::L0B, MemType::L0B },
+        { AddressSpace::L0C, MemType::L0C },
+        { AddressSpace::UB, MemType::UB },
+        { AddressSpace::GM, MemType::GM },
+        { AddressSpace::BT, MemType::BT },
+        { AddressSpace::FB, MemType::FB },
+        { AddressSpace::INVALID, MemType::INVALID },
+        { AddressSpace::PRIVATE, MemType::PRIVATE },
+    };
+    auto it = ADDR_SPACE_TO_MEM_TYPE_MAP.find(addrSpace);
+    return it == ADDR_SPACE_TO_MEM_TYPE_MAP.cend() ? MemType::INVALID : it->second;
+}
 
 struct LocInfo {
     uint64_t fileNo;
@@ -202,6 +230,7 @@ struct SanEvent {
         MstxSignalWait mstxSignalWait;
         MstxCrossCoreBarrier mstxCrossCoreBarrier;
         MstxCrossNpuBarrier mstxCrossNpuBarrier;
+        DynamicOpInfo dynamicOpInfo;
     } eventInfo{};
     VectorTime timeInfo;
     LocInfo loc{};
@@ -216,17 +245,27 @@ struct MemEvent {
     uint64_t pipeSerialNo = 0U;
     VectorTime vt;
     MemOpInfo memInfo;
+    DynamicOpInfo dynamicMemInfo;
     LocInfo loc;
     PipeType pipe;
     bool isAtomicMode = false;
+    bool isDynamic = false;
 
     explicit MemEvent(const SanEvent &event)
-        : serialNo(event.serialNo), memInfo(event.eventInfo.memInfo), loc(event.loc), pipe(event.pipe),
+        : serialNo(event.serialNo), loc(event.loc), pipe(event.pipe),
         isAtomicMode(event.isAtomicMode)
-    {}
+    {
+        if (event.type == EventType::DYNAMIC_MEM_EVENT) {
+            dynamicMemInfo = event.eventInfo.dynamicOpInfo;
+            isDynamic = true;
+        } else {
+            memInfo = event.eventInfo.memInfo;
+            isDynamic = false;
+        }
+    }
 };
 
-struct BaseEvent {
+struct ErrorEvent {
     uint64_t serialNo;
     uint32_t deviceId;
     uint32_t kernelIdx;
@@ -242,25 +281,39 @@ struct BaseEvent {
     SimtThreadLocation threadLoc;
     bool isSimt;
 
-    void Init(const MemEvent &memEvent)
+    void Init(const MemEvent &memEvent, uint64_t dynamicErrIdx = 0)
     {
         serialNo = memEvent.serialNo;
         deviceId = memEvent.loc.deviceId;
         kernelIdx = memEvent.loc.kernelIdx;
         coreId = memEvent.loc.coreId;
         blockType = memEvent.loc.blockType;
-        addr = memEvent.memInfo.addr;
         fileNo = memEvent.loc.fileNo;
         lineNo = memEvent.loc.lineNo;
-        pc = memEvent.loc.pc;
-        accessType = static_cast<uint8_t>(memEvent.memInfo.opType);
-        memType = static_cast<uint8_t>(memEvent.memInfo.memType);
         pipeType = static_cast<uint8_t>(memEvent.pipe);
+        if (memEvent.isDynamic) {
+            auto &dynamicMemInfo = memEvent.dynamicMemInfo;
+            if (dynamicMemInfo.count > 0 && dynamicMemInfo.buffer != nullptr && dynamicErrIdx < dynamicMemInfo.count &&
+                dynamicMemInfo.dynamicType == RecordType::SHADOW_MEMORY) {
+                auto errorRecord = reinterpret_cast<const ShadowMemoryRecord *>(dynamicMemInfo.buffer)[dynamicErrIdx];
+                addr = errorRecord.addr;
+                pc = errorRecord.location.pc;
+                threadLoc = errorRecord.threadLoc;
+                isSimt = true;
+                accessType = static_cast<uint8_t>(errorRecord.accessType);
+                memType = static_cast<uint8_t>(AddrSpaceToMemType(errorRecord.space));
+                return;
+            }
+        }
+        addr = memEvent.memInfo.addr;
+        pc = memEvent.loc.pc;
         threadLoc = {};
         isSimt = false;
+        accessType = static_cast<uint8_t>(memEvent.memInfo.opType);
+        memType = static_cast<uint8_t>(memEvent.memInfo.memType);
     }
 
-    bool operator == (const BaseEvent &other) const
+    bool operator == (const ErrorEvent &other) const
     {
         return (accessType == other.accessType &&
                 memType == other.memType &&
@@ -274,7 +327,7 @@ struct BaseEvent {
                 isSimt == other.isSimt);
     }
 
-    bool IsSameSimt(const BaseEvent &other) const {
+    bool IsSameSimt(const ErrorEvent &other) const {
          return (coreId == other.coreId &&
                 addr == other.addr &&
                 fileNo == other.fileNo &&
@@ -290,7 +343,7 @@ struct BaseEvent {
 
 // 竞争检测信息展示单元
 struct RaceDispInfo {
-    BaseEvent p1, p2;
+    ErrorEvent p1, p2;
 
     bool IsSameSimt(const RaceDispInfo &other) const {
         return (p1.IsSameSimt(other.p1) && p2.IsSameSimt(other.p2)) ||
@@ -317,7 +370,7 @@ struct RaceDispInfo {
 
 // 同步检测信息展示单元
 struct SyncDispInfo {
-    BaseEvent baseEvent;
+    ErrorEvent baseEvent;
     PipeType srcPipe;
     PipeType dstPipe;
     uint32_t eventId;
@@ -337,14 +390,14 @@ struct SyncDispInfo {
 };
 
 struct RegisterDispInfo {
-    BaseEvent baseEvent;
+    ErrorEvent baseEvent;
     std::string kernelName = "UNKNOWN KERNEL";
     RegisterType regType;    // 未重置的寄存器的名称
     RegisterPayload regExpVal;  // 寄存器预期的默认值
     RegisterPayload regActVal;  // 寄存器实际值
 };
 
-struct RaceEventHash {
+struct ErrorEventHash {
     size_t operator () (const RaceDispInfo &it) const
     {
         return std::hash<uint64_t>()(it.p1.addr) ^ std::hash<uint64_t>()(it.p2.addr) ^
@@ -357,7 +410,7 @@ struct RaceEventHash {
     }
 };
 
-struct RaceEventEqual {
+struct ErrorEventEqual {
     bool operator () (const RaceDispInfo &rd1, const RaceDispInfo &rd2) const noexcept
     {
         return (rd1.p1 == rd2.p1 && rd1.p2 == rd2.p2) || (rd1.p1 == rd2.p2 && rd1.p2 == rd2.p1);

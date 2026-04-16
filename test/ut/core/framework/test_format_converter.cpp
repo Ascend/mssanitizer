@@ -72,7 +72,7 @@ class AddrSpaceToMemTypeTest : public testing::TestWithParam<std::tuple<AddressS
 TEST_P(AddrSpaceToMemTypeTest, addr_space_to_mem_type_given_addr_space_and_expect_correct_mem_type)
 {
     auto [addrSpace, expected] = GetParam();
-    ASSERT_EQ(FormatConverter::AddrSpaceToMemType(addrSpace), expected);
+    ASSERT_EQ(AddrSpaceToMemType(addrSpace), expected);
 }
 INSTANTIATE_TEST_CASE_P(FormatConverter, AddrSpaceToMemTypeTest, testing::Values(
     std::make_tuple(AddressSpace::L1, MemType::L1),

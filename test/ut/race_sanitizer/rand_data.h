@@ -152,6 +152,23 @@ inline void AssignNewAICAIVCoreIdEvent(uint64_t blockDim, SanEvent &event)
     }
 }
 
+inline std::vector<ShadowMemoryRecord> GenShodowMemorys(uint64_t startAddr, AccessType accessType, uint64_t count, size_t coreId)
+{
+    std::vector<ShadowMemoryRecord> shRecords;
+    shRecords.reserve(count);
+    ShadowMemoryRecord smRecord{};
+    smRecord.space = AddressSpace::GM;
+    smRecord.accessType = accessType;
+    smRecord.size = 100;
+    smRecord.location.blockId = coreId;
+    for (size_t i = 0; i < count; ++i) {
+        smRecord.addr = startAddr + i * 0x100;
+        smRecord.location.pc = 0x10 + i * 0x10;
+        shRecords.emplace_back(smRecord);
+    }
+    return shRecords;
+}
+
 }  // namespace Sanitizer
 
 #endif  // TEST_RACE_SANITIZER_RAND_DATA_H
