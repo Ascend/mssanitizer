@@ -29,7 +29,7 @@ namespace {
 
 // 处理 set_cmpmask 对 ubuf 的读取事件
 template <typename T>
-__aicore__ inline void RecordCmpMaskLoad(EXTRA_PARAMS_DEC, uint8_t selectMode)
+AICORE_FUNC_HEAD void RecordCmpMaskLoad(EXTRA_PARAMS_DEC, uint8_t selectMode)
 {
     if (MemInfoIsInvalid(memInfo)) {
         return;
@@ -60,7 +60,7 @@ __aicore__ inline void RecordCmpMaskLoad(EXTRA_PARAMS_DEC, uint8_t selectMode)
 }
 
 template<typename TO, typename TI0, typename TI1>
-__aicore__ inline void RecordVselConfigFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordVselConfigFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI0 *src0, __ubuf__ TI1 *src1, uint64_t config, uint8_t src1BlockSize)
 {
     uint8_t selectMode = (config >> VSEL_MODESHIFT) & 0x3;
@@ -83,7 +83,7 @@ __aicore__ inline void RecordVselConfigFunc(EXTRA_PARAMS_DEC,
 }
 
 template<typename TO, typename TI0, typename TI1>
-__aicore__ inline void RecordVselOpFunc(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordVselOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI0 *src0, __ubuf__ TI1 *src1, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t src0BlockStride, uint16_t src1BlockStride, uint16_t dstRepeatStride, uint16_t src0RepeatStride,
     uint16_t src1RepeatStride, uint8_t selectMode, uint8_t src1BlockSize)

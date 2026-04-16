@@ -25,7 +25,7 @@
 namespace Sanitizer {
 
 template <RecordType recordType>
-__aicore__ inline void DumpRegisterSetRecord(EXTRA_PARAMS_DEC, RegisterSetRecord &record)
+AICORE_FUNC_HEAD void DumpRegisterSetRecord(EXTRA_PARAMS_DEC, RegisterSetRecord &record)
 {
     if (!DoRegisterCheck(memInfo)) {
         return;
@@ -44,7 +44,7 @@ __aicore__ inline void DumpRegisterSetRecord(EXTRA_PARAMS_DEC, RegisterSetRecord
 }
 
 template <typename T>
-__aicore__ inline void RecordRegister(EXTRA_PARAMS_DEC, T Register::*reg, T value)
+AICORE_FUNC_HEAD void RecordRegister(EXTRA_PARAMS_DEC, T Register::*reg, T value)
 {
 #if defined(BUILD_DYNAMIC_PROBE)
     (void)bid;
@@ -63,7 +63,7 @@ __aicore__ inline void RecordRegister(EXTRA_PARAMS_DEC, T Register::*reg, T valu
 }
 
 template <RecordType recordType, typename T>
-__aicore__ inline void RecordSetRegister(EXTRA_PARAMS_DEC, T Register::*reg, T value, RegisterValueType regValType)
+AICORE_FUNC_HEAD void RecordSetRegister(EXTRA_PARAMS_DEC, T Register::*reg, T value, RegisterValueType regValType)
 {
     RegisterSetRecord record {};
     record.regPayLoad.regValType = regValType;
@@ -74,7 +74,7 @@ __aicore__ inline void RecordSetRegister(EXTRA_PARAMS_DEC, T Register::*reg, T v
     DumpRegisterSetRecord<recordType>(EXTRA_PARAMS, record);
 }
 
-__aicore__ inline void RecordVectorMask(EXTRA_PARAMS_DEC, uint64_t reg_idx, uint64_t reg_value)
+AICORE_FUNC_HEAD void RecordVectorMask(EXTRA_PARAMS_DEC, uint64_t reg_idx, uint64_t reg_value)
 {
     RegisterSetRecord record {};
     record.regPayLoad.regValType = RegisterValueType::VAL_UINT64;
@@ -92,7 +92,7 @@ __aicore__ inline void RecordVectorMask(EXTRA_PARAMS_DEC, uint64_t reg_idx, uint
     }
 }
 
-__aicore__ inline void UpdateLreluAlpha(EXTRA_PARAMS_DEC, bool isDstF32)
+AICORE_FUNC_HEAD void UpdateLreluAlpha(EXTRA_PARAMS_DEC, bool isDstF32)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -114,7 +114,7 @@ __aicore__ inline void UpdateLreluAlpha(EXTRA_PARAMS_DEC, bool isDstF32)
 
 
 template <typename T>
-__aicore__ inline void RecordLreluAlpha(EXTRA_PARAMS_DEC, T value, RegisterValueType valType)
+AICORE_FUNC_HEAD void RecordLreluAlpha(EXTRA_PARAMS_DEC, T value, RegisterValueType valType)
 {
     RegisterPayload lreluReg {};
     lreluReg.regValType = valType;
@@ -142,13 +142,13 @@ __aicore__ inline void RecordLreluAlpha(EXTRA_PARAMS_DEC, T value, RegisterValue
     DumpRegisterSetRecord<RecordType::SET_LRELU_ALPHA>(EXTRA_PARAMS, record);
 }
 
-__aicore__ inline void RecordNdPara(EXTRA_PARAMS_DEC, uint64_t reg_value)
+AICORE_FUNC_HEAD void RecordNdPara(EXTRA_PARAMS_DEC, uint64_t reg_value)
 {
     RecordRegister(EXTRA_PARAMS, &Register::ndParaConfig, reg_value);
 }
 
 
-__aicore__ inline void RecordCmpMask(EXTRA_PARAMS_DEC, __ubuf__ void *addr, AccessType accessType, uint64_t size)
+AICORE_FUNC_HEAD void RecordCmpMask(EXTRA_PARAMS_DEC, __ubuf__ void *addr, AccessType accessType, uint64_t size)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -170,7 +170,7 @@ __aicore__ inline void RecordCmpMask(EXTRA_PARAMS_DEC, __ubuf__ void *addr, Acce
 }
 
 
-__aicore__ inline uint64_t ExtractVaBits(uint64_t value)
+AICORE_FUNC_HEAD uint64_t ExtractVaBits(uint64_t value)
 {
     // 右移5位，使第5位成为最低位
     value >>= 5;
@@ -178,7 +178,7 @@ __aicore__ inline uint64_t ExtractVaBits(uint64_t value)
     return value & 0x1FFF;
 }
 
- __aicore__ inline void SetVa32Bits(VaRegister & va, uint16_t Xn, uint16_t Xm, uint8_t idx)
+ AICORE_FUNC_HEAD void SetVa32Bits(VaRegister & va, uint16_t Xn, uint16_t Xm, uint8_t idx)
  {
     // 检查idx是否为合法值（0、2、4、6）
     if ((idx != 0) && (idx != 2) && (idx != 4) && (idx != 6)) {
@@ -212,7 +212,7 @@ __aicore__ inline uint64_t ExtractVaBits(uint64_t value)
     *target = (*target & mask) | (uint64_t(data32) << shift);
 }
 
-__aicore__ inline void UpdateVaRegister(EXTRA_PARAMS_DEC, VaRegister Register::*reg,
+AICORE_FUNC_HEAD void UpdateVaRegister(EXTRA_PARAMS_DEC, VaRegister Register::*reg,
                                         uint32_t bitOffset, uint64_t xn, uint64_t xm)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -228,7 +228,7 @@ __aicore__ inline void UpdateVaRegister(EXTRA_PARAMS_DEC, VaRegister Register::*
     recorder.SetRegister(reg, vaRegister);
 }
 
-__aicore__ inline void RecordVAdPara(EXTRA_PARAMS_DEC, ub_addr8_t addr, uint32_t bitOffset, uint64_t xn, uint64_t xm)
+AICORE_FUNC_HEAD void RecordVAdPara(EXTRA_PARAMS_DEC, ub_addr8_t addr, uint32_t bitOffset, uint64_t xn, uint64_t xm)
 {
     #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
     switch (addr) {
@@ -246,7 +246,7 @@ __aicore__ inline void RecordVAdPara(EXTRA_PARAMS_DEC, ub_addr8_t addr, uint32_t
     #endif
 }
 
-__aicore__ inline void RecordLdva(EXTRA_PARAMS_DEC, ub_addr8_t dst, uint64_t src, bool h)
+AICORE_FUNC_HEAD void RecordLdva(EXTRA_PARAMS_DEC, ub_addr8_t dst, uint64_t src, bool h)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
     auto *s = reinterpret_cast<__ubuf__ uint64_t *>(src);

@@ -23,7 +23,7 @@
 
 namespace Sanitizer {
 
-__aicore__ inline void AssignCrossRecord(MstxRecord &rhs, const MstxCrossRecord &lhs)
+AICORE_FUNC_HEAD void AssignCrossRecord(MstxRecord &rhs, const MstxCrossRecord &lhs)
 {
     auto &record = rhs.interface.mstxCrossRecord;
     record.addr = lhs.addr;
@@ -33,7 +33,7 @@ __aicore__ inline void AssignCrossRecord(MstxRecord &rhs, const MstxCrossRecord 
     record.isMerge = lhs.isMerge;
 }
 
-__aicore__ inline void AssignHcclRecord(MstxRecord &rhs, const MstxHcclRecord &lhs)
+AICORE_FUNC_HEAD void AssignHcclRecord(MstxRecord &rhs, const MstxHcclRecord &lhs)
 {
     auto &record = rhs.interface.mstxHcclRecord;
     record.src = lhs.src;
@@ -52,7 +52,7 @@ __aicore__ inline void AssignHcclRecord(MstxRecord &rhs, const MstxHcclRecord &l
 }
 
 template<typename RecordT>
-__aicore__ inline void RecordMstxPlainRecord(Recorder &recorder, MstxRecord &mstxRecord,
+AICORE_FUNC_HEAD void RecordMstxPlainRecord(Recorder &recorder, MstxRecord &mstxRecord,
                                              RecordT MstxRecord::Interface::*record,
                                              uint32_t bufferLens, void *buffer)
 {
@@ -66,7 +66,7 @@ __aicore__ inline void RecordMstxPlainRecord(Recorder &recorder, MstxRecord &mst
     recorder.DumpRecord<RecordType::MSTX_STUB>(mstxRecord);
 }
 
-__aicore__ inline void RecordMstxCrossRecord(Recorder &recorder, MstxRecord &mstxRecord,
+AICORE_FUNC_HEAD void RecordMstxCrossRecord(Recorder &recorder, MstxRecord &mstxRecord,
                                              uint32_t bufferLens, void *buffer)
 {
     if (bufferLens == sizeof(MstxCrossRecord) && buffer != nullptr) {
@@ -78,7 +78,7 @@ __aicore__ inline void RecordMstxCrossRecord(Recorder &recorder, MstxRecord &mst
     recorder.DumpRecord<RecordType::MSTX_STUB>(mstxRecord);
 }
 
-__aicore__ inline void RecordMstxHcclRecord(Recorder &recorder, MstxRecord &mstxRecord,
+AICORE_FUNC_HEAD void RecordMstxHcclRecord(Recorder &recorder, MstxRecord &mstxRecord,
                                             uint32_t bufferLens, void *buffer)
 {
     if (bufferLens == sizeof(MstxHcclRecord) && buffer != nullptr) {
@@ -91,7 +91,7 @@ __aicore__ inline void RecordMstxHcclRecord(Recorder &recorder, MstxRecord &mstx
     recorder.DumpRecord<RecordType::MSTX_STUB>(mstxRecord);
 }
 
-__aicore__ inline void RecordMstxHcclVRecord(Recorder &recorder, MstxRecord &mstxRecord,
+AICORE_FUNC_HEAD void RecordMstxHcclVRecord(Recorder &recorder, MstxRecord &mstxRecord,
                                              uint32_t bufferLens, void *buffer)
 {
     if (bufferLens == sizeof(MstxHcclRecordV) && buffer != nullptr) {
@@ -113,7 +113,7 @@ __aicore__ inline void RecordMstxHcclVRecord(Recorder &recorder, MstxRecord &mst
 }
 
 template<typename RecordT>
-__aicore__ inline void ProcessMstxVecMask(Recorder &recorder, uint32_t bufferLens, void *buffer)
+AICORE_FUNC_HEAD void ProcessMstxVecMask(Recorder &recorder, uint32_t bufferLens, void *buffer)
 {
     if (bufferLens != sizeof(RecordT) || buffer == nullptr) {
         return;
@@ -129,7 +129,7 @@ __aicore__ inline void ProcessMstxVecMask(Recorder &recorder, uint32_t bufferLen
     }
 }
 
-__aicore__ inline void RecordMstxEvent(EXTRA_PARAMS_DEC, uint32_t interfaceId, uint32_t bufferLens, void *buffer)
+AICORE_FUNC_HEAD void RecordMstxEvent(EXTRA_PARAMS_DEC, uint32_t interfaceId, uint32_t bufferLens, void *buffer)
 {
     if (InvalidMemInfo(memInfo)) { return;}
 

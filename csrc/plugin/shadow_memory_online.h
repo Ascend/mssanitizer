@@ -48,7 +48,7 @@ enum class SyncState : uint8_t {
     POSSIBLE_RACE,                 // 有存在竞争的可能
 };
 
-__aicore__ inline OnlineMemoryType SpaceToOnlineMemory(AddressSpace space)
+AICORE_FUNC_HEAD OnlineMemoryType SpaceToOnlineMemory(AddressSpace space)
 {
     if (space == AddressSpace::GM) {
         return OnlineMemoryType::GM;
@@ -59,9 +59,9 @@ __aicore__ inline OnlineMemoryType SpaceToOnlineMemory(AddressSpace space)
 
 class ShadowMemoryHeapAllocator {
 public:
-    __aicore__ __attribute__((always_inline)) ShadowMemoryHeapAllocator(): heapHeadPtr_(nullptr), isReady_(false) {}
+    AICORE_FUNC_HEAD __attribute__((always_inline)) ShadowMemoryHeapAllocator(): heapHeadPtr_(nullptr), isReady_(false) {}
 
-    __aicore__ inline bool Init(uint64_t heapAddr, uint64_t size)
+    AICORE_FUNC_HEAD bool Init(uint64_t heapAddr, uint64_t size)
     {
         if (heapAddr == 0U || (size == 0U)) {
             return false;
@@ -78,7 +78,7 @@ public:
         return true;
     }
 
-    __aicore__ inline uint64_t AllocHeap(uint64_t allocSize, uint64_t &addr)
+    AICORE_FUNC_HEAD uint64_t AllocHeap(uint64_t allocSize, uint64_t &addr)
     {
         if (!isReady_) {
             return static_cast<uint64_t>(ErrorCode::ALLOCATOR_NOT_READY);
@@ -101,13 +101,13 @@ public:
         return 0U;
     }
 
-    __aicore__ inline uint64_t FreeHeap(uint64_t size)
+    AICORE_FUNC_HEAD uint64_t FreeHeap(uint64_t size)
     {
         // 暂不支持释放内存
         return 0U;
     }
 
-    __aicore__ inline uint64_t GetHeapStartAddr()
+    AICORE_FUNC_HEAD uint64_t GetHeapStartAddr()
     {
         if (!isReady_) {
             return 0U;
@@ -115,7 +115,7 @@ public:
         return heapHeadPtr_->startAddr;
     }
 
-    __aicore__ inline uint64_t GetHeapEndAddr()
+    AICORE_FUNC_HEAD uint64_t GetHeapEndAddr()
     {
         if (!isReady_) {
             return 0U;
@@ -123,7 +123,7 @@ public:
         return heapHeadPtr_->startAddr + heapHeadPtr_->size;
     }
 
-    __aicore__ inline bool IsHeapFreshNew()
+    AICORE_FUNC_HEAD bool IsHeapFreshNew()
     {
         return (AtomicAdd(&(heapHeadPtr_->startAddr), 0U)) == (AtomicAdd(&(heapHeadPtr_->current), 0U));
     }
@@ -137,7 +137,7 @@ private:
 template <typename ByteStatus_t>
 class MemoryByteStatusParser {
 public:
-    __aicore__ static inline ByteStatus_t Construct(uint8_t memoryStatus, uint16_t threadId, uint64_t pc,
+    AICORE_FUNC_HEAD static ByteStatus_t Construct(uint8_t memoryStatus, uint16_t threadId, uint64_t pc,
         OnlineMemoryType memoryType = OnlineMemoryType::GM, SyncState syncThreadState = SyncState::POSSIBLE_RACE)
     {
         static_assert(sizeof(ByteStatus_t) >= sizeof(uint64_t),
@@ -149,39 +149,39 @@ public:
             static_cast<ByteStatus_t>(threadId & THREAD_ID_MASK);
     }
 
-    __aicore__ static inline MemoryByteStatus ExtractMemoryStatus(ByteStatus_t val)
+    AICORE_FUNC_HEAD static MemoryByteStatus ExtractMemoryStatus(ByteStatus_t val)
     {
         return static_cast<MemoryByteStatus>((val >> MEMORY_STATUS_START_BIT) & MEMORY_STATUS_MASK);
     }
 
-    __aicore__ static inline uint16_t ExtractThreadId(ByteStatus_t val)
+    AICORE_FUNC_HEAD static uint16_t ExtractThreadId(ByteStatus_t val)
     {
         return static_cast<uint16_t>(val & THREAD_ID_MASK);
     }
 
-    __aicore__ static inline uint32_t ExtractPc(ByteStatus_t val)
+    AICORE_FUNC_HEAD static uint32_t ExtractPc(ByteStatus_t val)
     {
         return static_cast<uint32_t>((val >> PC_START_BIT) & PC_MASK);
     }
 
-    __aicore__ static inline SyncState ExtractSyncStatus(ByteStatus_t val)
+    AICORE_FUNC_HEAD static SyncState ExtractSyncStatus(ByteStatus_t val)
     {
         return static_cast<SyncState>((val >> SYNC_STATE_START_BIT) & SYNC_STATE_MASK);
     }
 
-    __aicore__ static inline OnlineMemoryType ExtractMemoryType(ByteStatus_t val)
+    AICORE_FUNC_HEAD static OnlineMemoryType ExtractMemoryType(ByteStatus_t val)
     {
         return static_cast<OnlineMemoryType>((val >> MEMORY_TYPE_START_BIT) & MEMORY_TYPE_MASK);
     }
 
-    __aicore__ static inline void ResetSyncStatus(__gm__ ByteStatus_t &value,
+    AICORE_FUNC_HEAD static void ResetSyncStatus(__gm__ ByteStatus_t &value,
         uint8_t syncState = static_cast<uint8_t>(SyncState::IMPOSSIBLE_RACE))
     {
         value = (value & ~(1ULL << SYNC_STATE_START_BIT)) |
             (static_cast<ByteStatus_t>((syncState & SYNC_STATE_MASK)) << SYNC_STATE_START_BIT);
     }
 
-    __aicore__ static inline bool StatusIsValid(ByteStatus_t val)
+    AICORE_FUNC_HEAD static bool StatusIsValid(ByteStatus_t val)
     {
         if ((val == 0x0) || val == static_cast<ByteStatus_t>(OnlineSmAddrStatus::UNALLOCATABLE) ||
             val == static_cast<ByteStatus_t>(OnlineSmAddrStatus::LOCKED_BY_OTHER_THREADS)) {
@@ -191,7 +191,7 @@ public:
     }
 
 private:
-    __aicore__ inline MemoryByteStatusParser() {}
+    AICORE_FUNC_HEAD MemoryByteStatusParser() {}
 };
 
 struct TableLayout {
@@ -200,13 +200,13 @@ struct TableLayout {
     uint64_t blockNum;
     uint64_t blockSize; // block 表达的内存范围大小
 
-    __aicore__ inline TableLayout(): listPtr(0U), mask(0U), blockNum(0U), blockSize(0U) {}
+    AICORE_FUNC_HEAD TableLayout(): listPtr(0U), mask(0U), blockNum(0U), blockSize(0U) {}
 };
 
 template <typename ByteStatus_t>
 class MultiLayerTable {
 public:
-    __aicore__ inline MultiLayerTable(): heapAllocator_()
+    AICORE_FUNC_HEAD MultiLayerTable(): heapAllocator_()
     {
         l0Tbl_.listPtr = 0U;
         l0Tbl_.mask = ONLINE_GLOBAL_MEM_MASK;
@@ -224,7 +224,7 @@ public:
         l2Tbl_.blockNum = ONLINE_ONE_SM_STAND_FOR_BYTE;
     }
 
-    __aicore__ inline bool Init(uint64_t heapAddr, uint64_t size)
+    AICORE_FUNC_HEAD bool Init(uint64_t heapAddr, uint64_t size)
     {
         if (!heapAllocator_.Init(heapAddr, size)) {
             return false;
@@ -238,7 +238,7 @@ public:
         return true;
     }
 
-    __aicore__ inline uint64_t LookUp(const uint64_t addr,
+    AICORE_FUNC_HEAD uint64_t LookUp(const uint64_t addr,
         uint64_t &l1StartAddr, uint64_t &l2StartAddr, uint64_t &l2MemStatusAddr)
     {
         uint64_t ret = 0U;
@@ -259,7 +259,7 @@ public:
     }
 
 private:
-    __aicore__ inline uint64_t LookUpInL0(uint64_t addr, uint64_t &l1StartAddr)
+    AICORE_FUNC_HEAD uint64_t LookUpInL0(uint64_t addr, uint64_t &l1StartAddr)
     {
         uint64_t ret = 0U;
         uint64_t l0Idx = (addr & l0Tbl_.mask) / l0Tbl_.blockSize;
@@ -312,7 +312,7 @@ private:
         return ret;
     }
 
-    __aicore__ inline uint64_t LookUpInL1(uint64_t addr, uint64_t l1StartAddr, uint64_t &l2StartAddr)
+    AICORE_FUNC_HEAD uint64_t LookUpInL1(uint64_t addr, uint64_t l1StartAddr, uint64_t &l2StartAddr)
     {
         uint64_t ret = 0U;
         if (l1StartAddr == 0U) {
@@ -369,7 +369,7 @@ private:
         return ret;
     }
 
-    __aicore__ inline uint64_t LookUpInL2(uint64_t addr, uint64_t l2StartAddr)
+    AICORE_FUNC_HEAD uint64_t LookUpInL2(uint64_t addr, uint64_t l2StartAddr)
     {
         l2Tbl_.listPtr = l2StartAddr;
         __gm__ ByteStatus_t *l2StartPtr = reinterpret_cast<__gm__ ByteStatus_t *>(l2StartAddr);
@@ -410,9 +410,9 @@ public:
         AuxErrorInfo errorInfo[maxErrorNum]{};
     };
 
-    __aicore__ inline ShadowMemoryOnline() : tables_{}, isReady_{false} {}
+    AICORE_FUNC_HEAD ShadowMemoryOnline() : tables_{}, isReady_{false} {}
 
-    __aicore__ inline bool Init(uint64_t heapAddr, uint64_t size, __gm__ uint8_t *memInfo, __gm__ uint8_t *memInfoSimt,
+    AICORE_FUNC_HEAD bool Init(uint64_t heapAddr, uint64_t size, __gm__ uint8_t *memInfo, __gm__ uint8_t *memInfoSimt,
         __gm__ uint8_t *memInfoSimd)
     {
         heapAddr_ = heapAddr;
@@ -430,13 +430,13 @@ public:
     }
 
     template <KernelErrorType errorType>
-    __aicore__ inline void AssignErrorInfo(ByteStatus_t oldValue, uint16_t threadId, AuxInfo &auxInfo);
+    AICORE_FUNC_HEAD void AssignErrorInfo(ByteStatus_t oldValue, uint16_t threadId, AuxInfo &auxInfo);
 
-    __aicore__ inline void LoadNBytes(AddrInfo const &addrInfo, AuxInfo &auxInfo);
+    AICORE_FUNC_HEAD void LoadNBytes(AddrInfo const &addrInfo, AuxInfo &auxInfo);
 
-    __aicore__ inline void StoreNBytes(AddrInfo const &addrInfo, AuxInfo &auxInfo);
+    AICORE_FUNC_HEAD void StoreNBytes(AddrInfo const &addrInfo, AuxInfo &auxInfo);
 
-    __aicore__ inline void ClearSyncThreadState()
+    AICORE_FUNC_HEAD void ClearSyncThreadState()
     {
         uint64_t l0TblNum = (ONLINE_GLOBAL_MEM_MASK + ONLINE_LOCAL_MEM_MASK - 1U) / ONLINE_LOCAL_MEM_MASK;
         uint64_t l1TblNum = (ONLINE_LOCAL_MEM_MASK + ONLINE_ONE_SM_STAND_FOR_BYTE - 1U) / ONLINE_ONE_SM_STAND_FOR_BYTE;
@@ -459,12 +459,12 @@ public:
     }
 
 private:
-    __aicore__ inline bool IsReady() const
+    AICORE_FUNC_HEAD bool IsReady() const
     {
         return isReady_;
     }
 
-    __aicore__ inline bool InvalidRange(AddrInfo const &addrInfo) const
+    AICORE_FUNC_HEAD bool InvalidRange(AddrInfo const &addrInfo) const
     {
         OnlineMemoryType memType = SpaceToOnlineMemory(addrInfo.space);
         // 如下两种异常场景，越界算法会处理，竞争算法直接忽略该异常情况
@@ -477,7 +477,7 @@ private:
         return false;
     }
 
-    __aicore__ inline bool ExistRace(ByteStatus_t value, OnlineMemoryType space) const
+    AICORE_FUNC_HEAD bool ExistRace(ByteStatus_t value, OnlineMemoryType space) const
     {
         if (MBSP::ExtractSyncStatus(value) == SyncState::POSSIBLE_RACE &&
             MBSP::ExtractMemoryType(value) == space) {
@@ -486,7 +486,7 @@ private:
         return false;
     }
 
-    __aicore__ inline ByteStatus_t ExtractSamePcStatus(MemoryByteStatus memoryStatus, ByteStatus_t oldValue,
+    AICORE_FUNC_HEAD ByteStatus_t ExtractSamePcStatus(MemoryByteStatus memoryStatus, ByteStatus_t oldValue,
         uint16_t threadId, AddrInfo const &addrInfo) const
     {
         uint16_t oldThreadId = MBSP::ExtractThreadId(oldValue);
@@ -511,11 +511,11 @@ private:
 };
 
 template <KernelErrorType errorType>
-__aicore__ inline void ShadowMemoryOnline::AssignErrorInfo(ShadowMemoryOnline::ByteStatus_t oldValue,
+AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo(ShadowMemoryOnline::ByteStatus_t oldValue,
     uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo) {}
 
 template<>
-__aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_OVERLAP>(
+AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_OVERLAP>(
     ShadowMemoryOnline::ByteStatus_t oldValue, uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
     if (!DoMemCheck(memInfo_)) { return; }
@@ -529,7 +529,7 @@ __aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THRE
 }
 
 template<>
-__aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_WW_RACE>(
+AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_WW_RACE>(
     ShadowMemoryOnline::ByteStatus_t oldValue, uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
     if (!DoRaceCheck(memInfo_)) { return; }
@@ -542,7 +542,7 @@ __aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THRE
 }
 
 template<>
-__aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_RW_RACE>(
+AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_RW_RACE>(
     ShadowMemoryOnline::ByteStatus_t oldValue, uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
     if (!DoRaceCheck(memInfo_)) { return; }
@@ -555,7 +555,7 @@ __aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THRE
 }
 
 template<>
-__aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_WR_RACE>(
+AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_WR_RACE>(
     ShadowMemoryOnline::ByteStatus_t oldValue, uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
     if (!DoRaceCheck(memInfo_)) { return; }
@@ -567,7 +567,7 @@ __aicore__ inline void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THRE
         raceError.conflictedThreadLoc.idY, raceError.conflictedThreadLoc.idZ);
 }
 
-__aicore__ inline void ShadowMemoryOnline::LoadNBytes(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo)
+AICORE_FUNC_HEAD void ShadowMemoryOnline::LoadNBytes(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
     if (!IsReady() || memInfo_ == nullptr) { return; }
     if (!DoRaceCheck(memInfo_)) { return; }
@@ -621,7 +621,7 @@ __aicore__ inline void ShadowMemoryOnline::LoadNBytes(AddrInfo const &addrInfo, 
     }
 }
 
-__aicore__ inline void ShadowMemoryOnline::StoreNBytes(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo)
+AICORE_FUNC_HEAD void ShadowMemoryOnline::StoreNBytes(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
     if (!IsReady() || memInfo_ == nullptr) { return; }
     if (!DoMemCheck(memInfo_) && !DoRaceCheck(memInfo_)) { return; }

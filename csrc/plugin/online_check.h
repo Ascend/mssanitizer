@@ -39,7 +39,7 @@ namespace Sanitizer {
 
 class OnlineCheck {
 public:
-    __aicore__ __attribute__((always_inline)) OnlineCheck() : memInfo_{nullptr}, memInfoSimt_{nullptr}, memInfoSimd_{nullptr},
+    AICORE_FUNC_HEAD __attribute__((always_inline)) OnlineCheck() : memInfo_{nullptr}, memInfoSimt_{nullptr}, memInfoSimd_{nullptr},
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
         globalHead_{nullptr}, simtBlockHead_{nullptr}, simdBlockHead_{nullptr}, sortedLen_{}, blockIdx_{},
         shadowMemory_()
@@ -54,7 +54,7 @@ public:
       * @param  blockIdx            当前block数
       * @brief  初始化内存检测类
      */
-    __aicore__ inline void Init(__gm__ uint8_t *memInfo, __gm__ uint8_t *memInfoSimt, __gm__ uint8_t *memInfoSimd,
+    AICORE_FUNC_HEAD void Init(__gm__ uint8_t *memInfo, __gm__ uint8_t *memInfoSimt, __gm__ uint8_t *memInfoSimd,
         uint64_t blockIdx);
 
     /* @tparam  recordType    记录类型枚举
@@ -63,15 +63,15 @@ public:
      * @brief   传入栈上的记录，判断栈上的记录存在内存错误行为；
      */
     template<RecordType recordType, typename Record>
-    __aicore__ inline void Process(Record const &record);
+    AICORE_FUNC_HEAD void Process(Record const &record);
 
     /*
      * @brief 处理para base addr地址，将kernel入参地址写入到blockHead对应位置
      */
-    __aicore__ inline void ProcessParaBaseAddr();
+    AICORE_FUNC_HEAD void ProcessParaBaseAddr();
 
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
-    __aicore__ inline void ClearSyncThreadState() {
+    AICORE_FUNC_HEAD void ClearSyncThreadState() {
         shadowMemory_.ClearSyncThreadState();
     }
 #endif
@@ -84,7 +84,7 @@ private:
      * @param  thresholdSize      长度阈值
      * @brief  计算待检查地址和阈值范围的交集长度，返回值表示交集长度
      */
-    __aicore__ inline uint64_t CalIntersectionSize(uint64_t addr, uint64_t size, uint64_t thresholdAddr,
+    AICORE_FUNC_HEAD uint64_t CalIntersectionSize(uint64_t addr, uint64_t size, uint64_t thresholdAddr,
         uint64_t thresholdSize) const;
 
     /* @tparam  recordType  记录类型枚举
@@ -94,24 +94,24 @@ private:
      * @brief 计算内存操作行为的错误信息，支持多种错误类型的同时记录
     */
     template<RecordType recordType, typename Record>
-    __aicore__ inline void Do(AddrInfo const &addrInfo, Record const &record);
+    AICORE_FUNC_HEAD void Do(AddrInfo const &addrInfo, Record const &record);
 
     /* @param addrInfo      simt指令的信息
      * @param illegalSize   错误长度
      * @brief 检测当前gm指令内存行为是否有非法读写行为，如果有则返回非法读写的长度，返回值表示是否有非法行为
     */
-    __aicore__ inline bool GmReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const;
+    AICORE_FUNC_HEAD bool GmReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const;
 
     /* @param addrInfo      simt指令的信息
      * @param illegalSize   错误长度
      * @brief 检测当前ub指令内存行为是否有非法读写行为，如果有则返回非法读写的长度，返回值表示是否有非法行为
     */
-    __aicore__ inline bool UbReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const;
+    AICORE_FUNC_HEAD bool UbReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const;
 
     /* @param addrInfo      simt指令的信息
      * @brief 检测当前内存行为是否有非对齐读写行为，如果有则返回true，否则返回false
     */
-    __aicore__ inline bool AlignCheck(AddrInfo const &addrInfo) const;
+    AICORE_FUNC_HEAD bool AlignCheck(AddrInfo const &addrInfo) const;
 
     /* @tparam  recordType        记录类型枚举
      * @tparam  Record            记录结构体类型
@@ -124,23 +124,23 @@ private:
      * ONLINE_ERROR | KernelErrorRecord | Record | KernelErrorDesc_1 | KernelErrorDesc_2 | .....
      */
     template<RecordType recordType, typename Record>
-    __aicore__ inline void DumpErrorInfo(KernelErrorRecord &errorRecord, KernelErrorDesc const &errorDesc,
+    AICORE_FUNC_HEAD void DumpErrorInfo(KernelErrorRecord &errorRecord, KernelErrorDesc const &errorDesc,
         Record const &record, uint64_t cacheWriteOffset);
 
     /*
      * @brief 将kernel入参地址写入到blockHead对应位置
     */
-    __aicore__ inline bool WriteParaBaseAddr();
+    AICORE_FUNC_HEAD bool WriteParaBaseAddr();
 
     /*
      * @brief 对simdHead处的内存地址进行插入排序，默认升序
     */
-    __aicore__ inline void InsertionSortMemory();
+    AICORE_FUNC_HEAD void InsertionSortMemory();
 
     /*
      * @brief 将simdHead处的内存地址合并为不连续的内存序列，便于后续求越界长度
     */
-    __aicore__ inline void MergeMemory();
+    AICORE_FUNC_HEAD void MergeMemory();
 
 private:
     __gm__ uint8_t *memInfo_;
@@ -152,12 +152,12 @@ private:
     uint32_t sortedLen_;                    // 已经排好序的内存长度
     int16_t blockIdx_;
 #if (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)) || defined(__BUILD_TESTS__)
-    __aicore__ inline void ShadowMemoryCheck(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo);
+    AICORE_FUNC_HEAD void ShadowMemoryCheck(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo);
     ShadowMemoryOnline shadowMemory_; // 用于在线踩踏检测
 #endif
 };
 
-__aicore__ inline void OnlineCheck::Init(__gm__ uint8_t *memInfo, __gm__ uint8_t *memInfoSimt,
+AICORE_FUNC_HEAD void OnlineCheck::Init(__gm__ uint8_t *memInfo, __gm__ uint8_t *memInfoSimt,
     __gm__ uint8_t *memInfoSimd, uint64_t blockIdx)
 {
     memInfo_ = memInfo;
@@ -181,7 +181,7 @@ __aicore__ inline void OnlineCheck::Init(__gm__ uint8_t *memInfo, __gm__ uint8_t
 }
 
 template<RecordType recordType, typename Record>
-__aicore__ inline void OnlineCheck::Process(Record const &record)
+AICORE_FUNC_HEAD void OnlineCheck::Process(Record const &record)
 {
     if (memInfo_ == nullptr) {
         return;
@@ -191,7 +191,7 @@ __aicore__ inline void OnlineCheck::Process(Record const &record)
     Do<recordType>(addrInfo, record);
 }
 
-__aicore__ inline void OnlineCheck::ProcessParaBaseAddr()
+AICORE_FUNC_HEAD void OnlineCheck::ProcessParaBaseAddr()
 {
     if (memInfo_ == nullptr) {
         return;
@@ -205,7 +205,7 @@ __aicore__ inline void OnlineCheck::ProcessParaBaseAddr()
     Flush(memInfoSimd_);
 }
 
-__aicore__ inline uint64_t OnlineCheck::CalIntersectionSize(uint64_t addr, uint64_t size, uint64_t thresholdAddr,
+AICORE_FUNC_HEAD uint64_t OnlineCheck::CalIntersectionSize(uint64_t addr, uint64_t size, uint64_t thresholdAddr,
     uint64_t thresholdSize) const
 {
     /// 不存在交集
@@ -228,7 +228,7 @@ __aicore__ inline uint64_t OnlineCheck::CalIntersectionSize(uint64_t addr, uint6
 }
 
 template<RecordType recordType, typename Record>
-__aicore__ inline void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &record)
+AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &record)
 {
     uint64_t cacheWriteOffset = simtBlockHead_->writeOffset;
     KernelErrorRecord errorRecord{};
@@ -302,7 +302,7 @@ __aicore__ inline void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &r
 }
 
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
-__aicore__ inline void OnlineCheck::ShadowMemoryCheck(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo)
+AICORE_FUNC_HEAD void OnlineCheck::ShadowMemoryCheck(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
     if (addrInfo.space != AddressSpace::GM && addrInfo.space != AddressSpace::UB) {
         return;
@@ -319,7 +319,7 @@ __aicore__ inline void OnlineCheck::ShadowMemoryCheck(AddrInfo const &addrInfo, 
 }
 #endif
 
-__aicore__ inline bool OnlineCheck::GmReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const
+AICORE_FUNC_HEAD bool OnlineCheck::GmReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const
 {
     if (addrInfo.space != AddressSpace::GM) {
         return false;
@@ -340,7 +340,7 @@ __aicore__ inline bool OnlineCheck::GmReadWriteCheck(AddrInfo const &addrInfo, u
     return illegalSize > 0U;
 }
 
-__aicore__ inline bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const
+AICORE_FUNC_HEAD bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const
 {
     if (addrInfo.space != AddressSpace::UB) {
         return false;
@@ -362,7 +362,7 @@ __aicore__ inline bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, u
 /// 记录第一个错误类型时，会记录RecordType/KernelErrorRecord/Record/KernelErrorDesc；
 /// 后续其余的错误类型只会记录KernelErrorDesc，其余的信息只会刷新
 template<RecordType recordType, typename Record>
-__aicore__ inline void OnlineCheck::DumpErrorInfo(KernelErrorRecord &errorRecord, KernelErrorDesc const &errorDesc,
+AICORE_FUNC_HEAD void OnlineCheck::DumpErrorInfo(KernelErrorRecord &errorRecord, KernelErrorDesc const &errorDesc,
     Record const &record, uint64_t cacheWriteOffset)
 {
     constexpr uint32_t FIRST_ERROR_NUM = 1;
@@ -395,13 +395,13 @@ __aicore__ inline void OnlineCheck::DumpErrorInfo(KernelErrorRecord &errorRecord
     Flush(memInfoSimt_);
 }
 
-__aicore__ inline bool CheckRegIdxValid(int64_t regIdx)
+AICORE_FUNC_HEAD bool CheckRegIdxValid(int64_t regIdx)
 {
     return (regIdx >= 0) && (regIdx <= C220_A2_OR_A3_EVEN_DEVICE_VEC_PHYS_CORE_END_IDS);
 }
 
 // 获取跟当前 coreid 匹配的寄存器状态保存结构
-__aicore__ inline int64_t GetRegisterIdx()
+AICORE_FUNC_HEAD int64_t GetRegisterIdx()
 {
     int64_t coreId{};
 
@@ -428,7 +428,7 @@ __aicore__ inline int64_t GetRegisterIdx()
     return coreId;
 }
 
-__aicore__ inline bool OnlineCheck::WriteParaBaseAddr()
+AICORE_FUNC_HEAD bool OnlineCheck::WriteParaBaseAddr()
 {
     /// 如果开启单核检测，则只有目标核会写入extra地址
     if (globalHead_->checkParms.checkBlockId != CHECK_ALL_BLOCK && globalHead_->checkParms.checkBlockId != blockIdx_) {
@@ -459,7 +459,7 @@ __aicore__ inline bool OnlineCheck::WriteParaBaseAddr()
     return true;
 }
 
-__aicore__ inline void OnlineCheck::InsertionSortMemory()
+AICORE_FUNC_HEAD void OnlineCheck::InsertionSortMemory()
 {
     auto &memoryInfoPtr = simdBlockHead_->hostMemoryInfoPtr;
     for (uint32_t i = sortedLen_; i < simdBlockHead_->hostMemoryNum; ++i) {
@@ -481,7 +481,7 @@ __aicore__ inline void OnlineCheck::InsertionSortMemory()
     }
 }
 
-__aicore__ inline void OnlineCheck::MergeMemory()
+AICORE_FUNC_HEAD void OnlineCheck::MergeMemory()
 {
     auto &memoryInfoPtr = simdBlockHead_->hostMemoryInfoPtr;
     if (simdBlockHead_->hostMemoryNum <= 1) {
@@ -516,7 +516,7 @@ __aicore__ inline void OnlineCheck::MergeMemory()
     }
 }
 
-__aicore__ inline bool OnlineCheck::AlignCheck(const AddrInfo &addrInfo) const
+AICORE_FUNC_HEAD bool OnlineCheck::AlignCheck(const AddrInfo &addrInfo) const
 {
     return addrInfo.addr % addrInfo.alignSize != 0;
 }

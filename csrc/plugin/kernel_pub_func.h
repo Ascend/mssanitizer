@@ -23,7 +23,7 @@
 
 namespace Sanitizer {
 
-__aicore__ inline uint64_t GetBlockIdx()
+AICORE_FUNC_HEAD uint64_t GetBlockIdx()
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1 // AICORE
 
@@ -51,12 +51,13 @@ __aicore__ inline uint64_t GetBlockIdx()
 #endif
 }
 
-__aicore__ inline uint64_t GetSysVaBase()
+AICORE_FUNC_HEAD uint64_t GetSysVaBase()
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1 // AICORE
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__) || \
     (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510))
+    using namespace __cce_scalar;
     return get_sys_va_base();
 #else
     return 0;
@@ -67,12 +68,13 @@ __aicore__ inline uint64_t GetSysVaBase()
 #endif
 }
 
-__aicore__ inline uint64_t GetStackPhyBase()
+AICORE_FUNC_HEAD uint64_t GetStackPhyBase()
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1 // AICORE
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__) || \
     (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510))
+    using namespace __cce_scalar;
     return get_stack_phy_base();
 #else
     return 0;
@@ -84,14 +86,14 @@ __aicore__ inline uint64_t GetStackPhyBase()
 }
 
 template<uint8_t shift, uint8_t width>
-__aicore__ inline uint64_t GetIntFromConf(uint64_t config)
+AICORE_FUNC_HEAD uint64_t GetIntFromConf(uint64_t config)
 {
     constexpr uint64_t leftBit = 1;
     static_assert(shift < 64 && width <= 64);
     return (config >> shift) & ((leftBit << width) - 1);
 }
 
-__aicore__ inline uint16_t GetThreadIdX()
+AICORE_FUNC_HEAD uint16_t GetThreadIdX()
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
@@ -101,7 +103,7 @@ __aicore__ inline uint16_t GetThreadIdX()
     return 0;
 }
 
-__aicore__ inline uint16_t GetThreadIdY()
+AICORE_FUNC_HEAD uint16_t GetThreadIdY()
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
@@ -111,7 +113,7 @@ __aicore__ inline uint16_t GetThreadIdY()
     return 0;
 }
 
-__aicore__ inline uint16_t GetThreadIdZ()
+AICORE_FUNC_HEAD uint16_t GetThreadIdZ()
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
@@ -122,7 +124,7 @@ __aicore__ inline uint16_t GetThreadIdZ()
 }
 
 /// x/y/z一维展开，从0开始计数
-__aicore__ inline uint16_t GetThreadId()
+AICORE_FUNC_HEAD uint16_t GetThreadId()
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
@@ -138,7 +140,7 @@ __aicore__ inline uint16_t GetThreadId()
 }
 
 /// 把threadId按三维展开为(x,y,z)
-__aicore__ inline void DecomposeThreadId(uint16_t threadId, uint16_t &x, uint16_t &y, uint16_t &z)
+AICORE_FUNC_HEAD void DecomposeThreadId(uint16_t threadId, uint16_t &x, uint16_t &y, uint16_t &z)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
@@ -157,7 +159,7 @@ __aicore__ inline void DecomposeThreadId(uint16_t threadId, uint16_t &x, uint16_
 }
 
 /// 获取thread各维度大小
-__aicore__ inline void GetThreadDim(uint16_t &x, uint16_t &y, uint16_t &z)
+AICORE_FUNC_HEAD void GetThreadDim(uint16_t &x, uint16_t &y, uint16_t &z)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
@@ -174,7 +176,7 @@ __aicore__ inline void GetThreadDim(uint16_t &x, uint16_t &y, uint16_t &z)
 
 // atomicCAS/atomicExch接口支持 uint32_t/int32_t/uint64_t/int64_t/float/half2/bfloat16x2_t
 // 因shadow memory中仅使用了uint64_t类型的atomicCAS，因此仅声明uint64_t类型的wrapper函数，其他atomic接口同理
-__aicore__ inline uint64_t AtomicCAS(__gm__ uint64_t *gmAddr, uint64_t compare, uint64_t val)
+AICORE_FUNC_HEAD uint64_t AtomicCAS(__gm__ uint64_t *gmAddr, uint64_t compare, uint64_t val)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__) && defined(SIMT_MODE)
@@ -184,7 +186,7 @@ __aicore__ inline uint64_t AtomicCAS(__gm__ uint64_t *gmAddr, uint64_t compare, 
     return compare;
 }
 
-__aicore__ inline uint64_t AtomicExch(__gm__ uint64_t *gmAddr, uint64_t val)
+AICORE_FUNC_HEAD uint64_t AtomicExch(__gm__ uint64_t *gmAddr, uint64_t val)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__) && defined(SIMT_MODE)
@@ -194,7 +196,7 @@ __aicore__ inline uint64_t AtomicExch(__gm__ uint64_t *gmAddr, uint64_t val)
     return 0U;
 }
 
-__aicore__ inline uint64_t AtomicAdd(__gm__ uint64_t *gmAddr, uint64_t val)
+AICORE_FUNC_HEAD uint64_t AtomicAdd(__gm__ uint64_t *gmAddr, uint64_t val)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__) && defined(SIMT_MODE)
@@ -205,7 +207,7 @@ __aicore__ inline uint64_t AtomicAdd(__gm__ uint64_t *gmAddr, uint64_t val)
 }
 
 template<uint32_t alignSize>
-__aicore__ inline uint32_t CeilByAlignSize(uint32_t v)
+AICORE_FUNC_HEAD uint32_t CeilByAlignSize(uint32_t v)
 {
     static_assert(alignSize != 0, "align size cannot be zero");
     return ((v + alignSize - 1) / alignSize) * alignSize;
@@ -217,7 +219,7 @@ __aicore__ inline uint32_t CeilByAlignSize(uint32_t v)
   * @brief 将栈上已经写入的记录信息赋值到GM上
 */
  template<typename Record>
-__aicore__ inline void CopyRecordToGm(__gm__ Record *gmRecord, Record const *stackRecord)
+AICORE_FUNC_HEAD void CopyRecordToGm(__gm__ Record *gmRecord, Record const *stackRecord)
 {
     uint16_t iterations = sizeof(Record) / sizeof(uint32_t);
     uint8_t tail = sizeof(Record) - sizeof(uint32_t) * iterations;
@@ -241,10 +243,11 @@ __aicore__ inline void CopyRecordToGm(__gm__ Record *gmRecord, Record const *sta
  * @param gm 此处需要传入一个 GM 地址，为保证正确性使用 ENTIRE_DATA_CACHE 模式进行刷
  *        新，因此地址值本身不重要
 */
-__aicore__ inline void Flush(__gm__ uint8_t *gm)
+AICORE_FUNC_HEAD void Flush(__gm__ uint8_t *gm)
 {
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 #if (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510))
+        using namespace __cce_scalar;
         dcci((__gm__ uint64_t*)gm, ENTIRE_DATA_CACHE, CACHELINE_ALL);
 #else
         dcci(gm, ENTIRE_DATA_CACHE);
@@ -253,7 +256,7 @@ __aicore__ inline void Flush(__gm__ uint8_t *gm)
 }
 
 // 目前 simt 指令对 GM/UB/STACK 的访问都没有发现特殊对齐逻辑，先按数据类型对齐
-__aicore__ inline uint32_t GetAlignSizeByDataType(DetailedDataType dataType)
+AICORE_FUNC_HEAD uint32_t GetAlignSizeByDataType(DetailedDataType dataType)
 {
     switch (dataType) {
         case DetailedDataType::B4:
@@ -291,7 +294,7 @@ __aicore__ inline uint32_t GetAlignSizeByDataType(DetailedDataType dataType)
     }
 }
 
-__aicore__ inline uint64_t GetDataBits(DetailedDataType type)
+AICORE_FUNC_HEAD uint64_t GetDataBits(DetailedDataType type)
 {
     switch (type) {
         case DetailedDataType::B4:
@@ -330,27 +333,27 @@ __aicore__ inline uint64_t GetDataBits(DetailedDataType type)
 }
 
 /// 不开启竞争检测时，过滤掉同步指令记录
-__aicore__ inline bool DoRaceCheck(__gm__ uint8_t *memInfo)
+AICORE_FUNC_HEAD bool DoRaceCheck(__gm__ uint8_t *memInfo)
 {
     auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
     return head->checkParms.racecheck;
 }
 
 /// 同步检测当前需要判断冗余，需要其他类型的pipe指令
-__aicore__ inline bool DoSyncCheck(__gm__ uint8_t *memInfo)
+AICORE_FUNC_HEAD bool DoSyncCheck(__gm__ uint8_t *memInfo)
 {
     auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
     return head->checkParms.synccheck;
 }
 
-__aicore__ inline bool DoMemCheck(__gm__ uint8_t *memInfo)
+AICORE_FUNC_HEAD bool DoMemCheck(__gm__ uint8_t *memInfo)
 {
     auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
     return head->checkParms.defaultcheck;
 }
 
 /// 同步检测当前需要判断冗余，需要其他类型的pipe指令
-__aicore__ inline bool DoRegisterCheck(__gm__ uint8_t *memInfo)
+AICORE_FUNC_HEAD bool DoRegisterCheck(__gm__ uint8_t *memInfo)
 {
     auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
     return head->checkParms.registerCheck;

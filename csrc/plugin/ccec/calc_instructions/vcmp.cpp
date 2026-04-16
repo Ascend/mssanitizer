@@ -24,7 +24,7 @@ using namespace Sanitizer;
 
 namespace {
 
-__aicore__ inline void ClearCmpMaskAddr(EXTRA_PARAMS_DEC)
+AICORE_FUNC_HEAD void ClearCmpMaskAddr(EXTRA_PARAMS_DEC)
 {
     // VCMP 指令会写入 CMPMASK 寄存器，因此对 set_cmpmask 时绑定的 ubuf 地址
     // 不会产生读取行为，解除绑定

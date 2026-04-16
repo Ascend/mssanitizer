@@ -26,7 +26,7 @@
 
 namespace Sanitizer {
 
-__aicore__ inline uint64_t StackAddrTransform(uint64_t addr)
+AICORE_FUNC_HEAD uint64_t StackAddrTransform(uint64_t addr)
 {
     // 本函数把栈地址转换为从0起始的偏移量，便于后续算法处理
     // 转换策略：转换后地址 = 原始栈地址 - 对应芯片架构设置的栈空间起始偏移
@@ -45,7 +45,7 @@ __aicore__ inline uint64_t StackAddrTransform(uint64_t addr)
 }
 
 template<RecordType recordType, DetailedDataType dataType = DetailedDataType::Default>
-__aicore__ inline void RecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t addr,
+AICORE_FUNC_HEAD void RecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t addr,
                                             uint64_t size, uint8_t alignSize)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -99,7 +99,7 @@ __aicore__ inline void RecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordDmaMovEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordDmaMovEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint8_t sid, uint16_t nBurst, uint16_t lenBurst,
                                          uint16_t srcStride, uint16_t dstStride, PadMode padMode, ByteMode byteMode)
 {
@@ -131,7 +131,7 @@ __aicore__ inline void RecordDmaMovEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordDmaMovEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordDmaMovEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config, PadMode padMode, ByteMode byteMode)
 {
     uint8_t sid = config & 0xF;
@@ -145,7 +145,7 @@ __aicore__ inline void RecordDmaMovEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType srcDataType, DataType dstDataType, RecordType recordType>
-__aicore__ inline void RecordDmaMovConvReluEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint8_t sid,
+AICORE_FUNC_HEAD void RecordDmaMovConvReluEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint8_t sid,
                                                 uint16_t nBurst, uint16_t lenBurst, uint16_t srcStride,
                                                 uint16_t dstStride, ConvRelu crMode)
 {
@@ -179,7 +179,7 @@ __aicore__ inline void RecordDmaMovConvReluEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType srcDataType, DataType dstDataType, RecordType recordType>
-__aicore__ inline void RecordDmaMovConvReluEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordDmaMovConvReluEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                                 uint64_t src, uint64_t config, ConvRelu crMode)
 {
     uint8_t sid = config & 0xF;
@@ -194,7 +194,7 @@ __aicore__ inline void RecordDmaMovConvReluEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordDmaMovNd2nzEvent(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordDmaMovNd2nzEvent(EXTRA_PARAMS_DEC,
                                               uint64_t dst, uint64_t src, uint16_t ndNum, uint16_t nValue,
                                               uint16_t dValue, uint16_t srcNdMatrixStride, uint16_t srcDValue,
                                               uint16_t dstNzC0Stride, uint16_t dstNzNStride,
@@ -233,7 +233,7 @@ __aicore__ inline void RecordDmaMovNd2nzEvent(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordDmaMovNd2nzEvent(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordDmaMovNd2nzEvent(EXTRA_PARAMS_DEC,
                                               uint64_t dst, uint64_t src, uint64_t xm, uint64_t xt)
 {
     uint16_t ndNum = (xm >> 4) & 0xFFF;
@@ -252,7 +252,7 @@ __aicore__ inline void RecordDmaMovNd2nzEvent(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType, RecordType recordType>
-__aicore__ inline void DumpDmaMovNd2nzDavRecord(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void DumpDmaMovNd2nzDavRecord(EXTRA_PARAMS_DEC,
     uint64_t dst, uint64_t src, uint64_t xm, uint64_t xt)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -289,7 +289,7 @@ __aicore__ inline void DumpDmaMovNd2nzDavRecord(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordDmaMovDn2nzEventDav(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordDmaMovDn2nzEventDav(EXTRA_PARAMS_DEC,
                                                  uint64_t dst, uint64_t src, uint64_t xm, uint64_t xt)
 {
     DumpDmaMovNd2nzDavRecord<srcMemType, dstMemType, dataType, RecordType::DMA_MOV_DN2NZ_D>(
@@ -297,7 +297,7 @@ __aicore__ inline void RecordDmaMovDn2nzEventDav(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordDmaMovNd2nzEventDav(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordDmaMovNd2nzEventDav(EXTRA_PARAMS_DEC,
                                                  uint64_t dst, uint64_t src, uint64_t xm, uint64_t xt)
 {
     DumpDmaMovNd2nzDavRecord<srcMemType, dstMemType, dataType, RecordType::DMA_MOV_ND2NZ_D>(
@@ -306,7 +306,7 @@ __aicore__ inline void RecordDmaMovNd2nzEventDav(EXTRA_PARAMS_DEC,
 
 // 与v1版本差异为v2无byteMode，所以复用v1的记录方法
 template <MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordDmaMovV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint8_t sid, uint32_t nBurst,
+AICORE_FUNC_HEAD void RecordDmaMovV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint8_t sid, uint32_t nBurst,
     uint32_t lenBurst, PadMode padFuncMode, uint8_t l2Ctrl, uint64_t srcStride, uint32_t dstStride)
 {
     ByteMode byteMode = ByteMode::BM_DISABLE;
@@ -315,7 +315,7 @@ __aicore__ inline void RecordDmaMovV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint6
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordDmaMovV2Event(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordDmaMovV2Event(EXTRA_PARAMS_DEC,
                                               uint64_t dst, uint64_t src, uint64_t xm, uint64_t xt)
 {
     uint8_t sid = GetUintFromConf<3, 0>(xm);
@@ -332,7 +332,7 @@ __aicore__ inline void RecordDmaMovV2Event(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config, AddrCalMode calMode = AddrCalMode::INC)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -365,7 +365,7 @@ __aicore__ inline void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordLoad2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoad2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
                                            uint64_t src, uint64_t config0, uint64_t config1)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -407,7 +407,7 @@ __aicore__ inline void RecordLoad2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType dstMemType, DetailedDataType detailedDataType>
-__aicore__ inline void RecordLoadL12DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoadL12DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
                                            uint64_t src, uint64_t config0, uint64_t config1,
                                            TransposeMode transposeMode)
 {
@@ -443,7 +443,7 @@ __aicore__ inline void RecordLoadL12DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
 
 // 目前MemType没有L0A(B)_MX，先设定成L0A(B)进行区分
 template<MemType dstMemType>
-__aicore__ inline void RecordLoadL1Mx2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoadL1Mx2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
                                            uint64_t src, uint64_t config0, uint64_t config1)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -475,7 +475,7 @@ __aicore__ inline void RecordLoadL1Mx2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<DetailedDataType detailedDataType>
-__aicore__ inline void RecordLoadL12DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoadL12DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                            uint64_t src, uint64_t config0, uint64_t config1)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -508,7 +508,7 @@ __aicore__ inline void RecordLoadL12DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t d
 }
 
 template<MemType srcMemType>
-__aicore__ inline void RecordLoadSmaskEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoadSmaskEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                             uint64_t src, uint64_t config)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -535,7 +535,7 @@ __aicore__ inline void RecordLoadSmaskEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint16_t baseIdx, uint8_t repeat, uint16_t srcStride,
                                          uint16_t dstStride, uint8_t sid, AddrCalMode calMode = AddrCalMode::INC)
 {
@@ -570,7 +570,7 @@ __aicore__ inline void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordLoad2DSparseEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+AICORE_FUNC_HEAD void RecordLoad2DSparseEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                                uint16_t startId, uint8_t repeat)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -599,7 +599,7 @@ __aicore__ inline void RecordLoad2DSparseEvent(EXTRA_PARAMS_DEC, uint64_t dst, u
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordLoad2DSparseEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
+AICORE_FUNC_HEAD void RecordLoad2DSparseEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
 {
     const uint16_t startId = config & 0xffff;
     const uint8_t repeat = (config >> 16U) & 0xff;
@@ -608,7 +608,7 @@ __aicore__ inline void RecordLoad2DSparseEvent(EXTRA_PARAMS_DEC, uint64_t dst, u
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordLoad2DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t indexID,
+AICORE_FUNC_HEAD void RecordLoad2DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t indexID,
                                          uint8_t repeat, uint16_t srcStride, uint16_t dstStride,
                                          bool addrmode, uint16_t dstFracStride)
 {
@@ -643,7 +643,7 @@ __aicore__ inline void RecordLoad2DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordLoad2DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoad2DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config, uint64_t fracStride)
 {
     const uint16_t indexId = config & 0xffff;
@@ -659,7 +659,7 @@ __aicore__ inline void RecordLoad2DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst
 }
 
 template<MemType srcMemType>
-__aicore__ inline void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src, uint16_t nBlock, uint8_t sid)
+AICORE_FUNC_HEAD void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src, uint16_t nBlock, uint8_t sid)
 {
     (void)sid;
     if (InvalidMemInfo(memInfo)) {
@@ -684,7 +684,7 @@ __aicore__ inline void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t sr
 }
  
 template<MemType srcMemType>
-__aicore__ inline void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src, uint64_t config)
+AICORE_FUNC_HEAD void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src, uint64_t config)
 {
     const uint16_t nBlock = config & 0x3ff;
     const uint8_t sid = (config >> 10U) & 0xf;
@@ -692,7 +692,7 @@ __aicore__ inline void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t sr
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType srcDataType, DataType dstDataType>
-__aicore__ inline void RecordBroadcastEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint8_t nBurst,
+AICORE_FUNC_HEAD void RecordBroadcastEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint8_t nBurst,
                                          uint8_t lenBurst, uint8_t srcGap, uint8_t dstGap, bool enableRepeat = false)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -725,7 +725,7 @@ __aicore__ inline void RecordBroadcastEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType srcDataType, DataType dstDataType>
-__aicore__ inline void RecordBroadcastEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
+AICORE_FUNC_HEAD void RecordBroadcastEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
 {
     const uint8_t nBurst = config & 0xff;
     const uint8_t lenBurst = (config >> 8U) & 0xff;
@@ -737,7 +737,7 @@ __aicore__ inline void RecordBroadcastEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint
                                                             lenBurst, srcGap, dstGap, enableRepeat);
 }
 
-__aicore__ inline void RecordDcPreloadEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t src, int64_t offset)
+AICORE_FUNC_HEAD void RecordDcPreloadEvent(EXTRA_PARAMS_DEC, AddressSpace space, uint64_t src, int64_t offset)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -768,7 +768,7 @@ __aicore__ inline void RecordDcPreloadEvent(EXTRA_PARAMS_DEC, AddressSpace space
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType, typename T>
-__aicore__ inline void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
                                         __ca__ T* dst, __cbuf__ T* src, uint16_t FMWidth, uint16_t FMHeight,
                                         uint16_t FMChannel, uint8_t dstGap, uint8_t colIndicator, uint8_t padModeHc,
                                         uint8_t padModeV, uint16_t stepK, uint16_t posK, uint16_t stepM, uint16_t posM)
@@ -808,7 +808,7 @@ __aicore__ inline void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType, typename T>
-__aicore__ inline void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
                                         __ca__ T* dst, __cbuf__ T* src, uint64_t config0, uint64_t config1)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -843,7 +843,7 @@ __aicore__ inline void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, typename T>
-__aicore__ inline void RecordLoadBWinograd(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordLoadBWinograd(EXTRA_PARAMS_DEC,
                                         __cb__ T* dst, __cbuf__ T* src, uint8_t innerDstStride,
                                         uint16_t srcRepeatStride, uint8_t dstRepeatStride, uint8_t addr_SMASK,
                                         uint8_t weightIndicator, bool repeatIndicator, bool weightMatrixOffset,
@@ -880,7 +880,7 @@ __aicore__ inline void RecordLoadBWinograd(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, typename T>
-__aicore__ inline void RecordLoadBWinograd(EXTRA_PARAMS_DEC, __cb__ T* dst, __cbuf__ T* src, uint64_t config)
+AICORE_FUNC_HEAD void RecordLoadBWinograd(EXTRA_PARAMS_DEC, __cb__ T* dst, __cbuf__ T* src, uint64_t config)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -908,7 +908,7 @@ __aicore__ inline void RecordLoadBWinograd(EXTRA_PARAMS_DEC, __cb__ T* dst, __cb
     recorder.DumpRecord<RecordType::LOAD_B_WINOGRAD>(record);
 }
 
-__aicore__ inline void ParseLoad3DFMap2Config(Load3DRecord &record, uint64_t fmatrixConfig, uint64_t config1)
+AICORE_FUNC_HEAD void ParseLoad3DFMap2Config(Load3DRecord &record, uint64_t fmatrixConfig, uint64_t config1)
 {
     record.fMapW = fmatrixConfig & 0xffff;
     record.fMapH = (fmatrixConfig >> 16U) & 0xffff;
@@ -926,7 +926,7 @@ __aicore__ inline void ParseLoad3DFMap2Config(Load3DRecord &record, uint64_t fma
     record.filterHDilation = (config1 >> 36U) & 0xff;
 }
 
-__aicore__ inline void ParseLoad3DMatrix2Config(Load3DRecord &record, uint64_t config0, uint64_t rpt)
+AICORE_FUNC_HEAD void ParseLoad3DMatrix2Config(Load3DRecord &record, uint64_t config0, uint64_t rpt)
 {
     record.matrixKStep = config0 & 0xffff;
     record.matrixMStep = (config0 >> 16U) & 0xffff;
@@ -944,7 +944,7 @@ __aicore__ inline void ParseLoad3DMatrix2Config(Load3DRecord &record, uint64_t c
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordLoad3DEvent(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordLoad3DEvent(EXTRA_PARAMS_DEC,
                                          uint64_t dst, uint64_t src, uint64_t config0, uint64_t config1)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -980,7 +980,7 @@ __aicore__ inline void RecordLoad3DEvent(EXTRA_PARAMS_DEC,
     recorder.DumpRecord<RecordType::LOAD_3D>(record);
 }
 
-__aicore__ inline void ParseLoad3DV2FMap2Config(Load3DV2Record &record, uint64_t fmatrixConfig, uint64_t config1)
+AICORE_FUNC_HEAD void ParseLoad3DV2FMap2Config(Load3DV2Record &record, uint64_t fmatrixConfig, uint64_t config1)
 {
     record.fMapW = fmatrixConfig & 0xffff;
     record.fMapH = (fmatrixConfig >> 16U) & 0xffff;
@@ -1000,7 +1000,7 @@ __aicore__ inline void ParseLoad3DV2FMap2Config(Load3DV2Record &record, uint64_t
     record.transposeMode = (config1 >> 46) & 0x1;
 }
 
-__aicore__ inline void ParseLoad3DV2Matrix2Config(Load3DV2Record &record, uint64_t config0, uint64_t rpt)
+AICORE_FUNC_HEAD void ParseLoad3DV2Matrix2Config(Load3DV2Record &record, uint64_t config0, uint64_t rpt)
 {
     record.matrixKStep = config0 & 0xffff;
     record.matrixMStep = (config0 >> 16U) & 0xffff;
@@ -1015,7 +1015,7 @@ __aicore__ inline void ParseLoad3DV2Matrix2Config(Load3DV2Record &record, uint64
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordLoad3DV2Event(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordLoad3DV2Event(EXTRA_PARAMS_DEC,
                                          uint64_t dst, uint64_t src, uint64_t config0, uint64_t config1)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -1053,7 +1053,7 @@ __aicore__ inline void RecordLoad3DV2Event(EXTRA_PARAMS_DEC,
 }
 
 template<MemType dstMemType>
-__aicore__ inline void RecordSet2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int64_t repeat)
+AICORE_FUNC_HEAD void RecordSet2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int64_t repeat)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -1081,7 +1081,7 @@ __aicore__ inline void RecordSet2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int64_t 
 }
 
 template<DetailedDataType detailedDataType>
-__aicore__ inline void RecordSetL12DEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src)
+AICORE_FUNC_HEAD void RecordSetL12DEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -1108,7 +1108,7 @@ __aicore__ inline void RecordSetL12DEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64
 /// set_2d指令，A2训练对于L1，blockSize=32; 对于L0A/L0B，blockSize=512;
 /// 对于A2推理芯片，对于L0A/L0B/L1，blockSize=512;
 template<MemType dstMemType>
-__aicore__ inline void RecordM200Set2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int64_t config)
+AICORE_FUNC_HEAD void RecordM200Set2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int64_t config)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -1136,7 +1136,7 @@ __aicore__ inline void RecordM200Set2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int6
 }
 
 template<MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordLoadImageEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordLoadImageEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                             uint16_t horSize, uint16_t verSize, uint16_t horStartP, uint16_t verStartP,
                                             uint16_t sHorRes, uint8_t topPadSize, uint8_t botPadSize, uint16_t lPadSize,
                                             uint16_t rPadSize)
@@ -1171,7 +1171,7 @@ __aicore__ inline void RecordLoadImageEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordLoadImageEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t xs, uint64_t xt)
+AICORE_FUNC_HEAD void RecordLoadImageEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t xs, uint64_t xt)
 {
     uint8_t horSize = xs & 0x1FFF;
     uint16_t verSize = (xs >> 16) & 0x1FFF;
@@ -1187,7 +1187,7 @@ __aicore__ inline void RecordLoadImageEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordMovAlignEvent(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordMovAlignEvent(EXTRA_PARAMS_DEC,
                                            uint64_t dst, uint64_t src, uint8_t sid, uint16_t nBurst, uint32_t lenBurst,
                                            uint8_t leftPaddingNum, uint8_t rightPaddingNum,
                                            uint32_t srcGap, uint32_t dstGap)
@@ -1222,7 +1222,7 @@ __aicore__ inline void RecordMovAlignEvent(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordMovAlignEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordMovAlignEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                            uint64_t src, uint64_t config, uint64_t gapConfig)
 {
     uint8_t sid = config & 0xF;
@@ -1237,7 +1237,7 @@ __aicore__ inline void RecordMovAlignEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordMovAlignEventV2Stride(const Recorder &recorder, uint64_t config, uint64_t strideConfig,
+AICORE_FUNC_HEAD void RecordMovAlignEventV2Stride(const Recorder &recorder, uint64_t config, uint64_t strideConfig,
                                                    MovAlignRecordV2 &record)
 {
     uint64_t loop1Stride{};
@@ -1279,7 +1279,7 @@ __aicore__ inline void RecordMovAlignEventV2Stride(const Recorder &recorder, uin
 }
 
 template<MemType srcMemType, MemType dstMemType, DataType dataType>
-__aicore__ inline void RecordMovAlignEventV2(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordMovAlignEventV2(EXTRA_PARAMS_DEC, uint64_t dst,
                                            uint64_t src, uint64_t config, uint64_t strideConfig)
 {
     static_assert((srcMemType == MemType::UB && dstMemType == MemType::GM) ||
@@ -1322,7 +1322,7 @@ __aicore__ inline void RecordMovAlignEventV2(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<DataType dataType>
-__aicore__ inline void RecordNdDMAOut2Ub(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordNdDMAOut2Ub(EXTRA_PARAMS_DEC, uint64_t dst,
                                            uint64_t src, uint64_t config0, uint64_t config1)
 {
     if (InvalidMemInfo(memInfo)) {
@@ -1371,7 +1371,7 @@ __aicore__ inline void RecordNdDMAOut2Ub(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordMovBtEvent(EXTRA_PARAMS_DEC,
+AICORE_FUNC_HEAD void RecordMovBtEvent(EXTRA_PARAMS_DEC,
                                           uint64_t dst, uint64_t src, uint16_t convControl, uint16_t nBurst,
                                           uint16_t lenBurst, uint16_t sourceGap, uint16_t dstGap)
 {
@@ -1402,7 +1402,7 @@ __aicore__ inline void RecordMovBtEvent(EXTRA_PARAMS_DEC,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordMovBtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
+AICORE_FUNC_HEAD void RecordMovBtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
 {
     uint16_t convControl = (config >> 3) & 0x1;
     uint16_t nBurst = (config >> 4) & 0xFFF;
@@ -1414,7 +1414,7 @@ __aicore__ inline void RecordMovBtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t
                                              srcGap, dstGap);
 }
 
-__aicore__ inline bool IsMovFpQuantToB16(uint64_t quantPRE)
+AICORE_FUNC_HEAD bool IsMovFpQuantToB16(uint64_t quantPRE)
 {
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
     // 950: 1,10,11,16,31,32,33,34
@@ -1425,7 +1425,7 @@ __aicore__ inline bool IsMovFpQuantToB16(uint64_t quantPRE)
 #endif
 }
 
-__aicore__ inline bool IsMovFpQuantToB8(uint64_t quantPRE)
+AICORE_FUNC_HEAD bool IsMovFpQuantToB8(uint64_t quantPRE)
 {
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
     // 950: 2,3,4,5,8,9,12,13,23,24
@@ -1437,13 +1437,13 @@ __aicore__ inline bool IsMovFpQuantToB8(uint64_t quantPRE)
 #endif
 }
 
-__aicore__ inline bool IsMovFpQuantToB4(uint64_t quantPRE)
+AICORE_FUNC_HEAD bool IsMovFpQuantToB4(uint64_t quantPRE)
 {
     // 950/910b: 21,22,25,26
     return (quantPRE == 21 || quantPRE == 22 || quantPRE == 25 || quantPRE == 26);
 }
 
-__aicore__ inline void ParseMovFpQuantBits(uint64_t quantPRE, bool enNDorDN, MovFpRecord& record)
+AICORE_FUNC_HEAD void ParseMovFpQuantBits(uint64_t quantPRE, bool enNDorDN, MovFpRecord& record)
 {
     if (IsMovFpQuantToB16(quantPRE)) {
         record.quantPreBits = 16;  // f16/s16/bf16
@@ -1458,7 +1458,7 @@ __aicore__ inline void ParseMovFpQuantBits(uint64_t quantPRE, bool enNDorDN, Mov
     }
 }
 
-__aicore__ inline void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t nSize,
+AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t nSize,
                                         uint16_t mSize, uint32_t dstStrideDstD, uint16_t srcStride,
                                         uint8_t unitFlag, uint64_t quantPRE, bool channelSplit,
                                         bool enNZ2ND, bool isDstF32)
@@ -1505,7 +1505,7 @@ __aicore__ inline void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t
     recorder.DumpRecord<RecordType::MOV_FP>(record);
 }
 
-__aicore__ inline void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                         uint64_t xm, uint64_t xt, bool isDstF32)
 {
     uint16_t nSize = (xm >> 4) & 0xFFF;
@@ -1522,7 +1522,7 @@ __aicore__ inline void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t
 }
 
 template <RecordType recordType>
-__aicore__ inline void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+AICORE_FUNC_HEAD void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                           uint64_t xm, uint64_t xt, bool isDstF32)
 {
     if (InvalidMemInfo(memInfo)) { return;}
@@ -1582,27 +1582,27 @@ __aicore__ inline void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64
     recorder.DumpRecord<recordType>(record);
 }
 
-__aicore__ inline void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+AICORE_FUNC_HEAD void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                           uint64_t xm, uint64_t xt, bool isDstF32)
 {
     RecordMovFpV2Event<RecordType::MOV_FP>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
 }
  
-__aicore__ inline void RecordFixL0CToL1Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+AICORE_FUNC_HEAD void RecordFixL0CToL1Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                              uint64_t xm, uint64_t xt, bool isDstF32)
 {
     RecordMovFpV2Event<RecordType::FIX_L0C_TO_L1>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
     UpdateLreluAlpha(EXTRA_PARAMS, isDstF32);
 }
  
-__aicore__ inline void RecordFixL0CToUBEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+AICORE_FUNC_HEAD void RecordFixL0CToUBEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                              uint64_t xm, uint64_t xt, bool isDstF32)
 {
     RecordMovFpV2Event<RecordType::FIX_L0C_TO_UB>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
 }
 
 template <MemType srcMemType, MemType dstMemType, DataType dataType,  typename T>
-__aicore__ inline void RecordLoadB2Event(EXTRA_PARAMS_DEC, __cb__ T *dst, __cbuf__ T *src, uint8_t repeat)
+AICORE_FUNC_HEAD void RecordLoadB2Event(EXTRA_PARAMS_DEC, __cb__ T *dst, __cbuf__ T *src, uint8_t repeat)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -1627,7 +1627,7 @@ __aicore__ inline void RecordLoadB2Event(EXTRA_PARAMS_DEC, __cb__ T *dst, __cbuf
 }
 
 template <MemType srcMemType, MemType dstMemType, DataType dataType, typename T>
-__aicore__ inline void RecordLoadB2Event(EXTRA_PARAMS_DEC, __cb__ T *dst, __cbuf__ T *src, uint64_t config)
+AICORE_FUNC_HEAD void RecordLoadB2Event(EXTRA_PARAMS_DEC, __cb__ T *dst, __cbuf__ T *src, uint64_t config)
 {
     if (!memInfo) {
         return;
@@ -1637,7 +1637,7 @@ __aicore__ inline void RecordLoadB2Event(EXTRA_PARAMS_DEC, __cb__ T *dst, __cbuf
 }
 
 template<RecordType recordType, DetailedDataType detailedDataType>
-__aicore__ inline void RecordScalarRedAndAtomEvent(EXTRA_PARAMS_DEC, uint64_t addr, uint64_t size)
+AICORE_FUNC_HEAD void RecordScalarRedAndAtomEvent(EXTRA_PARAMS_DEC, uint64_t addr, uint64_t size)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -1661,7 +1661,7 @@ __aicore__ inline void RecordScalarRedAndAtomEvent(EXTRA_PARAMS_DEC, uint64_t ad
 }
 
 template<MemType srcMemType, MemType dstMemType, RecordType recordType>
-__aicore__ inline void RecordDmaMovL1OrUbEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordDmaMovL1OrUbEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint16_t nBurst, uint16_t lenBurst,
                                          uint16_t srcGap, uint16_t dstGap)
 {
@@ -1691,7 +1691,7 @@ __aicore__ inline void RecordDmaMovL1OrUbEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
  
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordDmaMovL2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordDmaMovL2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config)
 {
     uint8_t ubDestId = config & 0x1;
@@ -1705,7 +1705,7 @@ __aicore__ inline void RecordDmaMovL2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordDmaMovUB2L1Event(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordDmaMovUB2L1Event(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config)
 {
     uint16_t nBurst = (config >> 4) & 0xFFF;
@@ -1718,7 +1718,7 @@ __aicore__ inline void RecordDmaMovUB2L1Event(EXTRA_PARAMS_DEC, uint64_t dst,
 }
  
 template<MemType srcMemType, MemType dstMemType>
-__aicore__ inline void RecordDmaMovUB2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
+AICORE_FUNC_HEAD void RecordDmaMovUB2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config)
 {
     uint16_t nBurst = config & 0xFFFF;
@@ -1731,7 +1731,7 @@ __aicore__ inline void RecordDmaMovUB2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
 }
 
 template<DetailedDataType dataType>
-__aicore__ inline void RecordDmaMovL1BtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
+AICORE_FUNC_HEAD void RecordDmaMovL1BtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
@@ -1759,7 +1759,7 @@ __aicore__ inline void RecordDmaMovL1BtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uin
     recorder.DumpRecord<RecordType::MOV_CBUF_TO_BT>(record);
 }
 
-__aicore__ inline void RecordDmaMovL1FbEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
+AICORE_FUNC_HEAD void RecordDmaMovL1FbEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint64_t config)
 {
     if (InvalidMemInfo(memInfo)) {
         return;
