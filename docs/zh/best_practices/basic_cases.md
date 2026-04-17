@@ -6,20 +6,20 @@
 
 ### 1.1 操作步骤
 
-1. 请参考《mssanitizer_user_guide》中的“使用前准备>开启全量检测>内核调用符场景准备”，完成使用前准备。
-2. 参考《mssanitizer_user_guide》中的“使用前准备”完成相关环境变量的配置。
+1. 参考《[MindStudio Sanitizer 安装指南](../install_guide/mssanitizer_install_guide.md)》完成相关环境变量的配置。
+2. 请参考《[开启全量检测](../user_guide/compile_option_config.md)》中的“内核调用符场景”，完成使用前准备。
 3. 构建单算子可执行文件。
   以Add算子为例，可执行文件的构建命令示例如下：
     一键式编译运行脚本完成后，在工程目录下生成NPU侧可执行文件`_<kernel_name>_npu_`。
 4. 使用msSanitizer检测工具拉起单算子可执行文件（以_add_npu_为例）。
 
-  - 内存检测执行以下命令，具体参数说明请参考《mssanitizer_user_guide》中的“工具概述>命令汇总>通用参数说明表”和《mssanitizer_user_guide》中的“工具概述>命令汇总>内存检测参数说明表”，内存检测请参考[内存检测示例说明](#12-内存检测示例说明)。
+  - 内存检测执行以下命令，具体参数说明请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数汇总>通用参数说明表”和《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数汇总>内存检测参数说明表”，内存检测请参考[内存检测示例说明](#12-内存检测示例说明)。
 
     ```shell
     mssanitizer --tool=memcheck ./add_npu   # 内存检测需指定 --tool=memcheck
     ```
 
-    - 竞争检测执行以下命令，具体参数说明请参考《mssanitizer_user_guide》中的“工具概述>命令汇总>通用参数说明表”，竞争检测请参考[竞争检测示例说明](#13竞争检测示例说明)。
+    - 竞争检测执行以下命令，具体参数说明请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数汇总>通用参数说明表”，竞争检测请参考[竞争检测示例说明](#13竞争检测示例说明)。
     单算子可执行文件所在路径可配置为绝对路径或相对路径，请根据实际环境配置。
 
 ### 1.2 内存检测示例说明
@@ -94,7 +94,7 @@
       mssanitizer --tool=racecheck bash run.sh # 竞争检测需指定 --tool=racecheck
     ```
 
-5. 参考《mssanitizer_user_guide》中的“内存检测>内存异常报告解析”、“竞争检测>竞争异常报告解析”及“未初始化检测>未初始化异常报告解析”分析异常行为。
+5. 参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“内存检测>内存异常报告解析”、“竞争检测>竞争异常报告解析”及“未初始化检测>未初始化异常报告解析”分析异常行为。
 
 ## 3. 检测PyTorch接口调用的算子
 
@@ -171,8 +171,8 @@
       test pass
     ```
 
-5. 启动msSanitizer工具拉起Python程序，进行异常检测，异常检测功能的开启原则请参见《mssanitizer_user_guide》中的“工具概述>异常检测功能启用原则”。
-6. 参考《mssanitizer_user_guide》中的“内存检测>内存异常报告解析”、“竞争检测>竞争异常报告解析”及“未初始化检测>未初始化异常报告解析”分析异常行为。
+5. 启动msSanitizer工具拉起Python程序，进行异常检测，异常检测功能的开启原则请参见《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“检测功能组合规则”。
+6. 参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“内存检测>内存异常报告解析”、“竞争检测>竞争异常报告解析”及“未初始化检测>未初始化异常报告解析”分析异常行为。
 
 ## 4. 检测Triton算子
 
@@ -185,7 +185,7 @@
 
 ### 4.2 操作步骤
 
-1. 请参考《mssanitizer_user_guide》中的“使用前准备>开启全量检测>Triton算子调用场景”准备，完成使用前准备。
+1. 请参考《[开启全量检测](../user_guide/compile_option_config.md)》中的“Triton算子调用场景”，完成使用前准备。
 2. 关闭内存池。
   样例中使用PyTorch创建Tensor，PyTorch框架内默认使用内存池的方式管理GM内存，会对内存检测产生干扰。因此，在检测前需要额外设置如下环境变量关闭内存池，以保证检测结果准确。
 3. 在Triton算子中构造一个非法读写的场景，将第一次load的内存向右偏移100个元素，此时会导致load在GM内存上发生非法读。
@@ -202,7 +202,7 @@
               tmp1 = tl.load(in_ptr1 + (x0), None)
     ```
 
-4. 使用msSanitizer检测工具拉起Triton算子。具体参数说明请参考《mssanitizer_user_guide》中的“工具概述>命令汇总>通用参数说明表”和《mssanitizer_user_guide》中的“工具概述>命令汇总>内存检测参数说明表”，内存检测请参考《mssanitizer_user_guide》中的“内存检测”。
+4. 使用msSanitizer检测工具拉起Triton算子。具体参数说明请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数列表>通用参数说明表”和《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数列表>内存检测参数说明表”，内存检测请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“内存检测”。
 
   ```shell
     mssanitizer -t memcheck -- python sample.py
@@ -250,7 +250,7 @@ flowchart TB
 
 ### 5.2 排查步骤
 
-1. 参考《mssanitizer_user_guide》中的“使用前准备”完成相关环境变量配置。
+1. 参考《[MindStudio Sanitizer 安装指南](../install_guide/mssanitizer_install_guide.md)》完成相关环境变量的配置。
 2. 定界是否为Host侧泄漏。
    2.1 使用msSanitizer检测工具拉起待检测程序，命令示例如下：
 
