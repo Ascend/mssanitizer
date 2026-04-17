@@ -19,16 +19,16 @@
 
 #include <vector>
 
+#include "barrier_database.hpp"
 #include "core/framework/config.h"
 #include "core/framework/event_def.h"
+#include "core/framework/utility/numeric.h"
 #include "cross_core_sync_info_container.h"
 #include "event_container.h"
 #include "mem_event_checker.h"
 #include "pipe_line.h"
 #include "signal_database.h"
-#include "soft_sync_barrier_database.h"
 #include "sync_event_data_base.h"
-#include "vector_clock.h"
 
 namespace Sanitizer {
 
@@ -59,6 +59,10 @@ private:
 
 private:
     using MstxSetCrossMap = std::map<std::pair<uint64_t, uint64_t>, uint64_t>;
+    using CrossNpuBarrierWorker = std::pair<uint32_t, uint32_t>;
+    using CrossCoreBarrierWorker = uint32_t;
+    using CrossNpuBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, CrossNpuBarrierWorker>;
+    using CrossCoreBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, CrossCoreBarrierWorker>;
 
     bool isFinished_{};
     uint32_t totalBlockNum_{};
@@ -66,14 +70,14 @@ private:
     EventContainer eventContainer_;
     MemEventChecker memChecker_;
     SignalDatabase signalDatabase_;
-    SoftSyncBarrierDatabase crossNpuBarrier_;
+    CrossNpuBarrierDatabase crossNpuBarrier_;
     // 按最大的 blockDim 数初始化 vc 和 syncDB 数组
     std::vector<VectorTime> vc_;
     std::vector<SyncEventDataBase> syncDB_;
     // 为每张卡上的每个 kernel 创建一份核间检测实例
     std::vector<std::vector<MstxSetCrossMap>> mstxSetCrossMap_;
     std::vector<std::vector<CrossCoreSyncInfoContainer>> crossCoreSyncInfoContainer_;
-    std::vector<std::vector<SoftSyncBarrierDatabase>> crossCoreBarrier_{};
+    std::vector<std::vector<CrossCoreBarrierDatabase>> crossCoreBarrier_{};
 };
 
 } // namespace Sanitizer

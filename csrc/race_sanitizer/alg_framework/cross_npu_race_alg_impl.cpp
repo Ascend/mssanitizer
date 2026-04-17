@@ -23,7 +23,6 @@
 #include "race_sanitizer/alg_framework/event_container.h"
 #include "race_sanitizer/alg_framework/mem_event_checker.h"
 #include "race_sanitizer/alg_framework/pipe_line.h"
-#include "race_sanitizer/alg_framework/soft_sync_barrier_database.h"
 #include "race_sanitizer/alg_framework/vector_clock.h"
 #include "sanitizer_report.h"
 
@@ -357,15 +356,15 @@ ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossCoreBarrier(const SanEvent& even
     uint32_t curPipe = eventContainer_.GetQueIndex();
     MstxCrossCoreBarrier const &mstxCrossCoreBarrier = event.eventInfo.mstxCrossCoreBarrier;
 
-    SoftSyncBarrierDatabase::BarrierConf conf;
+    CrossNpuBarrierConf conf;
     conf.isAIVOnly = mstxCrossCoreBarrier.isAIVOnly;
     conf.usedDeviceNum = 1;
     conf.usedCoreNum = mstxCrossCoreBarrier.usedCoreNum;
-    SoftSyncBarrierDatabase &crossCoreBarrier = crossCoreBarrier_[event.loc.deviceIdx][event.loc.kernelIdx];
-    SoftSyncBarrierDatabase::BarrierEvent &barrierEvent = crossCoreBarrier[conf];
+    CrossCoreBarrierDatabase &crossCoreBarrier = crossCoreBarrier_[event.loc.deviceIdx][event.loc.kernelIdx];
+    BarrierEvent<CrossCoreBarrierWorker> &barrierEvent = crossCoreBarrier[conf];
 
     VectorTime vt;
-    if (!barrierEvent.Wait(event.loc.coreId, mstxCrossCoreBarrier, vc_[curPipe], vt)) {
+    if (!barrierEvent.Wait(conf.usedCoreNum, event.loc.coreId, vc_[curPipe], vt)) {
         return ReturnType::PROCESS_STALLED;
     }
     VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
@@ -378,14 +377,15 @@ ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossNpuBarrier(const SanEvent& event
     uint32_t curPipe = eventContainer_.GetQueIndex();
     MstxCrossNpuBarrier const &mstxCrossNpuBarrier = event.eventInfo.mstxCrossNpuBarrier;
 
-    SoftSyncBarrierDatabase::BarrierConf conf;
+    CrossNpuBarrierConf conf;
     conf.isAIVOnly = mstxCrossNpuBarrier.isAIVOnly;
     conf.usedDeviceNum = mstxCrossNpuBarrier.usedDeviceNum;
     conf.usedCoreNum = mstxCrossNpuBarrier.usedCoreNum;
-    SoftSyncBarrierDatabase::BarrierEvent &barrierEvent = crossNpuBarrier_[conf];
+    BarrierEvent<CrossNpuBarrierWorker> &barrierEvent = crossNpuBarrier_[conf];
+    std::size_t barrierCount = conf.usedDeviceNum * conf.usedCoreNum;
 
     VectorTime vt;
-    if (!barrierEvent.Wait(event.loc.deviceId, event.loc.coreId, mstxCrossNpuBarrier, vc_[curPipe], vt)) {
+    if (!barrierEvent.Wait(barrierCount, {event.loc.deviceId, event.loc.coreId}, vc_[curPipe], vt)) {
         return ReturnType::PROCESS_STALLED;
     }
     VectorClock::UpdateVectorTime(vt, vc_[curPipe]);

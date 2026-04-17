@@ -177,14 +177,14 @@ ReturnType CrossCoreRaceAlgImpl::ProcessMstxCrossCoreBarrier(const SanEvent& eve
     uint32_t curPipe = eventContainer_.GetQueIndex();
     MstxCrossCoreBarrier const &mstxCrossCoreBarrier = event.eventInfo.mstxCrossCoreBarrier;
 
-    SoftSyncBarrierDatabase::BarrierConf conf;
+    CrossNpuBarrierConf conf;
     conf.isAIVOnly = mstxCrossCoreBarrier.isAIVOnly;
     conf.usedDeviceNum = 1;
     conf.usedCoreNum = mstxCrossCoreBarrier.usedCoreNum;
-    SoftSyncBarrierDatabase::BarrierEvent &barrierEvent = crossCoreBarrier_[conf];
+    BarrierEvent<CrossCoreBarrierWorker> &barrierEvent = crossCoreBarrier_[conf];
 
     VectorTime vt;
-    if (!barrierEvent.Wait(event.loc.coreId, mstxCrossCoreBarrier, vc_[curPipe], vt)) {
+    if (!barrierEvent.Wait(conf.usedCoreNum, event.loc.coreId, vc_[curPipe], vt)) {
         return ReturnType::PROCESS_STALLED;
     }
     VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
