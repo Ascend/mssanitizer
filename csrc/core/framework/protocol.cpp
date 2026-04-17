@@ -174,6 +174,8 @@ Packet MemCheckProtocol::GetPayLoad(PacketHead head)
             return GetTriviallyCopyable<IPCMemRecord>();
         case PacketType::SANITIZER_RECORD:
             return GetTriviallyCopyable<SanitizerRecord>();
+        case PacketType::MEM_REGION_PERMISSION:
+            return GetTriviallyCopyable<MemRegionPermissionDesc>();
         case PacketType::KERNEL_BINARY:
             return GetBinaryDataPacket<Packet::KernelBinary>();
         case PacketType::LOG_STRING:

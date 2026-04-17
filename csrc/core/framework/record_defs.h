@@ -2050,6 +2050,18 @@ struct MemOpRecord {
     {}
 };
 
+static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_NONE = 0x00;
+static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ = 0x01;
+static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE = 0x02;
+static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_SHARED = 0x04;
+
+struct MemRegionPermissionDesc {
+    uint64_t addr;
+    uint64_t size;
+    uint32_t deviceId;
+    uint32_t flags;
+};
+
 enum class RecordVersion {
     MEMORY_RECORD = 0,
     KERNEL_RECORD,

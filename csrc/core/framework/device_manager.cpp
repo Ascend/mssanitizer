@@ -46,4 +46,10 @@ std::vector<DeviceManager::DeviceId> DeviceManager::GetDeviceList() const
     return deviceList;
 }
 
+DeviceManager::SharedMemorySpans &DeviceManager::GetSharedMemorySpans(DeviceId deviceId)
+{
+    std::unique_lock<std::mutex> guard(mtx_);
+    return sharedMemSpans_[deviceId];
+}
+
 } // namespace Sanitizer

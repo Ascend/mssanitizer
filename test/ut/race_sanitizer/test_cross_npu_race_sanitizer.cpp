@@ -186,6 +186,9 @@ TEST_F(TestCrossNpuRaceSanitizer, process_record_on_different_device_expect_repo
     CrossNpuChecker::UpdateLoc(events, 1, 0, 1);
     sanitizer.Do(record, events);
 
+    DeviceManager::Instance().GetSharedMemorySpans(0).Union({storeRecord.addr, storeRecord.addr + storeRecord.size});
+    DeviceManager::Instance().GetSharedMemorySpans(1).Union({storeRecord.addr, storeRecord.addr + storeRecord.size});
+
     // finish flag
     events.clear();
     record.payload.kernelRecord.recordType = RecordType::FINISH;

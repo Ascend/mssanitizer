@@ -18,6 +18,7 @@
 #include "core/framework/event_def.h"
 #include "core/framework/kernel_manager.h"
 #include "core/framework/record_defs.h"
+#include "core/framework/utility/spans.h"
 #include "race_sanitizer/alg_framework/cross_core_sync_info_container.h"
 #include "race_sanitizer/alg_framework/event_container.h"
 #include "race_sanitizer/alg_framework/mem_event_checker.h"
@@ -164,10 +165,19 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
 
 ReturnType CrossNpuRaceAlgImpl::ProcessMemEvent(const SanEvent& event)
 {
-    if (event.eventInfo.memInfo.memType != MemType::GM) {
+    MemOpInfo const &memInfo = event.eventInfo.memInfo;
+    if (memInfo.memType != MemType::GM) {
         // 非GM内存事件不检测
         return ReturnType::PROCESS_OK;
     }
+    // 计算整个内存事件的范围
+    uint64_t range = (memInfo.repeatTimes - 1) * memInfo.repeatStride * memInfo.blockSize +
+        (memInfo.blockNum - 1) * memInfo.blockStride * memInfo.blockSize + memInfo.blockSize;
+    DeviceManager::SharedMemorySpans &sharedMemory = DeviceManager::Instance().GetSharedMemorySpans(event.loc.deviceId);
+    if (!sharedMemory.HasIntersection({memInfo.addr, memInfo.addr + range})) {
+        return ReturnType::PROCESS_OK;
+    }
+
     auto e = MemEvent(event);
     e.isAtomicMode = event.isAtomicMode;
     uint32_t curPipe = eventContainer_.GetQueIndex();

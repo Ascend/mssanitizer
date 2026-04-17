@@ -143,6 +143,9 @@ TEST_F(TestCrossNpuChecker, check_records_on_different_device_expect_report_corr
     storeRecord.addr = 0x00;
     storeRecord.size = 8;
 
+    DeviceManager::Instance().GetSharedMemorySpans(0).Union({storeRecord.addr, storeRecord.addr + storeRecord.size});
+    DeviceManager::Instance().GetSharedMemorySpans(1).Union({storeRecord.addr, storeRecord.addr + storeRecord.size});
+
     checker.GetRecordArray(0).CreateNewKernel();
     checker.GetRecordArray(0).Push(record);
     checker.GetRecordArray(1).CreateNewKernel();
