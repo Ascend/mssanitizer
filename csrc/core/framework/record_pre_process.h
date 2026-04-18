@@ -68,7 +68,7 @@ private:
     friend std::unique_ptr<T> MakeUnique(Args &&... args);
 
     RecordPreProcess() {};
-    void CacheGetRlsBufRecord(const KernelRecord &record);
+    void CacheGetRlsBufRecord(const KernelRecord &dstRecord);
 
 private:
     std::vector<SanitizerRecord> recordBuffer_;               // 缓存记录，主要用于处理有些记录需要依赖后续的记录才能决定当前记录是否保留；

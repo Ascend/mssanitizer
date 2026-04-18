@@ -1417,7 +1417,7 @@ AICORE_FUNC_HEAD void RecordMovBtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t 
 AICORE_FUNC_HEAD bool IsMovFpQuantToB16(uint64_t quantPRE)
 {
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
-    // david: 1,10,11,16,31,32,33,34
+    // 950: 1,10,11,16,31,32,33,34
     return (quantPRE == 1 || quantPRE == 10 || quantPRE == 11 || quantPRE == 16 || (quantPRE >= 31 && quantPRE <= 34));
 #else
     // 910b: 1,6,10,11,12,13,16
@@ -1428,7 +1428,7 @@ AICORE_FUNC_HEAD bool IsMovFpQuantToB16(uint64_t quantPRE)
 AICORE_FUNC_HEAD bool IsMovFpQuantToB8(uint64_t quantPRE)
 {
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
-    // david: 2,3,4,5,8,9,12,13,23,24
+    // 950: 2,3,4,5,8,9,12,13,23,24
     return ((quantPRE >= 2 && quantPRE <= 5) || quantPRE == 8 || quantPRE == 9 ||
         quantPRE == 12 || quantPRE == 13 || quantPRE == 23 || quantPRE == 24);
 #else
@@ -1439,7 +1439,7 @@ AICORE_FUNC_HEAD bool IsMovFpQuantToB8(uint64_t quantPRE)
 
 AICORE_FUNC_HEAD bool IsMovFpQuantToB4(uint64_t quantPRE)
 {
-    // david/910b: 21,22,25,26
+    // 950/910b: 21,22,25,26
     return (quantPRE == 21 || quantPRE == 22 || quantPRE == 25 || quantPRE == 26);
 }
 
