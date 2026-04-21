@@ -686,13 +686,17 @@ struct HostMemoryInfo {
         return size < other.size;
     }
 };
-
 struct SimtInfo {
-    uint64_t offset{};                                // simt信息记录的起始偏移
-    uint64_t threadByteSize{};                        // 每个thread最多存储多少个字节
-    uint64_t shadowMemoryOffset{};                    // shadow memory 起始偏移地址
-    uint64_t shadowMemoryByteSize{};                  // shadow memory 最多使用多少字节
     uint32_t ubDynamicSize{};
+};
+
+// 统一管理所有的协议的长度和偏移信息，偏移指的均是相较于blockHead的偏移
+struct ProtocolOffsetInfo {
+    uint32_t blockHeadSize{};                         // 每个block head的长度
+    uint32_t threadByteSize{};                        // 每个thread最多存储多少个字节
+    uint32_t simtHeadOffset{};                        // simt head的偏移长度
+    uint32_t shadowMemoryByteSize{};                  // shadow memory 最多使用多少字节
+    uint32_t shadowMemoryOffset{};                    // shadow memory 的偏移长度
 };
 
 struct SimtRecordBlockHeadImpl {
@@ -709,6 +713,7 @@ struct RecordGlobalHeadImpl {
     uint64_t securityVal = RECORD_HEAD_SECURITY_VALUE;
     CheckParmsInfo checkParms{};
     KernelInfo kernelInfo{};
+    ProtocolOffsetInfo offsetInfo{};
     SimtInfo simtInfo{};
     bool supportSimt{false};                // 当前芯片类型是否支持simt
 

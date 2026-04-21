@@ -36,20 +36,21 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     RecordGlobalHead head{};
     head.checkParms.defaultcheck = true;
     head.supportSimt = true;
-    head.simtInfo.offset = 1024;
-    head.simtInfo.threadByteSize = 1024 * 10;
-    head.simtInfo.shadowMemoryOffset = 1024 * 1024 * 8;
-    head.simtInfo.shadowMemoryByteSize = 1024 * 1024 * 8;
+    head.offsetInfo.simtHeadOffset = 1024;
+    head.offsetInfo.threadByteSize = 1024 * 10;
+    head.offsetInfo.shadowMemoryOffset = 1024 * 1024 * 8;
+    head.offsetInfo.shadowMemoryByteSize = 1024 * 1024 * 8;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
 
     ShadowMemoryHeapHead smHeapHead;
     smHeapHead.startAddr = reinterpret_cast<uint64_t>(memInfo.data()) + sizeof(RecordGlobalHead) +
-        head.simtInfo.shadowMemoryOffset + sizeof(ShadowMemoryHeapHead);
-    smHeapHead.size = head.simtInfo.shadowMemoryByteSize > sizeof(ShadowMemoryHeapHead) ?
-        head.simtInfo.shadowMemoryByteSize - sizeof(ShadowMemoryHeapHead) : 0U;
+        head.offsetInfo.shadowMemoryOffset + sizeof(ShadowMemoryHeapHead);
+    smHeapHead.size = head.offsetInfo.shadowMemoryByteSize > sizeof(ShadowMemoryHeapHead) ?
+        head.offsetInfo.shadowMemoryByteSize - sizeof(ShadowMemoryHeapHead) : 0U;
     smHeapHead.current = smHeapHead.startAddr;
     smHeapHead.lock = 0U;
-    std::copy_n(reinterpret_cast<uint8_t const*>(&smHeapHead), sizeof(ShadowMemoryHeapHead), memInfo.data() + sizeof(RecordGlobalHead) + head.simtInfo.shadowMemoryByteSize);
+    std::copy_n(reinterpret_cast<uint8_t const*>(&smHeapHead), sizeof(ShadowMemoryHeapHead),
+        memInfo.data() + sizeof(RecordGlobalHead) + head.offsetInfo.shadowMemoryByteSize);
 
     __sanitizer_report_simt_ldg_u8(memInfo.data(), 0x100, 0, 0x1000, 8);
     __sanitizer_report_simt_ldg_u16(memInfo.data(), 0x200, 0, 0x2000, 7);
@@ -91,7 +92,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     __sanitizer_report_simt_stk_b16(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_stk_b32(memInfo.data(), 0x1000, 0, 0x800000, 11);
     auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
-        head.simtInfo.offset);
+        head.offsetInfo.simtHeadOffset);
     ASSERT_EQ(blockHead->recordWriteCount, 30);
     ASSERT_EQ(blockHead->recordCount, 30);
 }
@@ -102,21 +103,21 @@ TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)
     RecordGlobalHead head{};
     head.checkParms.defaultcheck = true;
     head.supportSimt = true;
-    head.simtInfo.offset = 1024;
-    head.simtInfo.threadByteSize = 1024 * 10;
-    head.simtInfo.shadowMemoryOffset = 1024 * 1024 * 8;
-    head.simtInfo.shadowMemoryByteSize = 1024 * 1024 * 8;
+    head.offsetInfo.simtHeadOffset = 1024;
+    head.offsetInfo.threadByteSize = 1024 * 10;
+    head.offsetInfo.shadowMemoryOffset = 1024 * 1024 * 8;
+    head.offsetInfo.shadowMemoryByteSize = 1024 * 1024 * 8;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
 
     ShadowMemoryHeapHead smHeapHead;
     smHeapHead.startAddr = reinterpret_cast<uint64_t>(memInfo.data()) + sizeof(RecordGlobalHead) +
-        head.simtInfo.shadowMemoryOffset + sizeof(ShadowMemoryHeapHead);
-    smHeapHead.size = head.simtInfo.shadowMemoryByteSize > sizeof(ShadowMemoryHeapHead) ?
-        head.simtInfo.shadowMemoryByteSize - sizeof(ShadowMemoryHeapHead) : 0U;
+        head.offsetInfo.shadowMemoryOffset + sizeof(ShadowMemoryHeapHead);
+    smHeapHead.size = head.offsetInfo.shadowMemoryByteSize > sizeof(ShadowMemoryHeapHead) ?
+        head.offsetInfo.shadowMemoryByteSize - sizeof(ShadowMemoryHeapHead) : 0U;
     smHeapHead.current = smHeapHead.startAddr;
     smHeapHead.lock = 0U;
     std::copy_n(reinterpret_cast<uint8_t const*>(&smHeapHead), sizeof(ShadowMemoryHeapHead),
-        memInfo.data() + sizeof(RecordGlobalHead) + head.simtInfo.shadowMemoryByteSize);
+        memInfo.data() + sizeof(RecordGlobalHead) + head.offsetInfo.shadowMemoryByteSize);
 
     __sanitizer_report_red_g_u32(memInfo.data(), 0x1000, 0, 0x10000);
     __sanitizer_report_red_g_s32(memInfo.data(), 0x1000, 0, 0x10000);
@@ -131,7 +132,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)
     __sanitizer_report_red_s_fp32(memInfo.data(), 0x1000, 0, 0x10000);
     __sanitizer_report_red_s_bf16(memInfo.data(), 0x1000, 0, 0x10000);
     auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
-        head.simtInfo.offset);
+        head.offsetInfo.simtHeadOffset);
     ASSERT_EQ(blockHead->recordWriteCount, 12);
     ASSERT_EQ(blockHead->recordCount, 12);
 }
@@ -142,21 +143,21 @@ TEST(SimtLoadStoreInstructions, dump_simt_atom_with_initcheck_expect_get_success
     RecordGlobalHead head{};
     head.checkParms.defaultcheck = true;
     head.supportSimt = true;
-    head.simtInfo.offset = 1024;
-    head.simtInfo.threadByteSize = 1024 * 10;
-    head.simtInfo.shadowMemoryOffset = 1024 * 1024 * 8;
-    head.simtInfo.shadowMemoryByteSize = 1024 * 1024 * 8;
+    head.offsetInfo.simtHeadOffset = 1024;
+    head.offsetInfo.threadByteSize = 1024 * 10;
+    head.offsetInfo.shadowMemoryOffset = 1024 * 1024 * 8;
+    head.offsetInfo.shadowMemoryByteSize = 1024 * 1024 * 8;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
 
     ShadowMemoryHeapHead smHeapHead;
     smHeapHead.startAddr = reinterpret_cast<uint64_t>(memInfo.data()) + sizeof(RecordGlobalHead) +
-        head.simtInfo.shadowMemoryOffset + sizeof(ShadowMemoryHeapHead);
-    smHeapHead.size = head.simtInfo.shadowMemoryByteSize > sizeof(ShadowMemoryHeapHead) ?
-        head.simtInfo.shadowMemoryByteSize - sizeof(ShadowMemoryHeapHead) : 0U;
+        head.offsetInfo.shadowMemoryOffset + sizeof(ShadowMemoryHeapHead);
+    smHeapHead.size = head.offsetInfo.shadowMemoryByteSize > sizeof(ShadowMemoryHeapHead) ?
+        head.offsetInfo.shadowMemoryByteSize - sizeof(ShadowMemoryHeapHead) : 0U;
     smHeapHead.current = smHeapHead.startAddr;
     smHeapHead.lock = 0U;
     std::copy_n(reinterpret_cast<uint8_t const*>(&smHeapHead), sizeof(ShadowMemoryHeapHead),
-        memInfo.data() + sizeof(RecordGlobalHead) + head.simtInfo.shadowMemoryByteSize);
+        memInfo.data() + sizeof(RecordGlobalHead) + head.offsetInfo.shadowMemoryByteSize);
 
     __sanitizer_report_atom_max_s_s32(memInfo.data(), 0x1000, 0, 0x10000);
     __sanitizer_report_atom_min_s_s32(memInfo.data(), 0x1000, 0, 0x10000);
@@ -183,7 +184,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_atom_with_initcheck_expect_get_success
     __sanitizer_report_atom_min_g_s32(memInfo.data(), 0x1000, 0, 0x10000);
     __sanitizer_report_atom_max_g_s32(memInfo.data(), 0x1000, 0, 0x10000);
     auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
-        head.simtInfo.offset);
+        head.offsetInfo.simtHeadOffset);
     ASSERT_EQ(blockHead->recordWriteCount, 24);
     ASSERT_EQ(blockHead->recordCount, 24);
 }

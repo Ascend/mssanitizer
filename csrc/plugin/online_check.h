@@ -168,8 +168,8 @@ AICORE_FUNC_HEAD void OnlineCheck::Init(__gm__ uint8_t *memInfo, __gm__ uint8_t 
     simtBlockHead_ = reinterpret_cast<__gm__ SimtRecordBlockHead *>(memInfoSimt_);
     simdBlockHead_ = reinterpret_cast<__gm__ RecordBlockHead *>(memInfoSimd_);
 #if (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)) || defined(__BUILD_TESTS__)
-    shadowMemory_.Init((uint64_t)(memInfoSimd + globalHead_->simtInfo.shadowMemoryOffset),
-        globalHead_->simtInfo.shadowMemoryByteSize, memInfo, memInfoSimt, memInfoSimd);
+    shadowMemory_.Init((uint64_t)(memInfoSimd + globalHead_->offsetInfo.shadowMemoryOffset),
+        globalHead_->offsetInfo.shadowMemoryByteSize, memInfo, memInfoSimt, memInfoSimd);
     auto &blockInfo = simdBlockHead_->blockInfo;
     uint16_t threadXDim{}, threadYDim{}, threadZDim{};
     GetThreadDim(threadXDim, threadYDim, threadZDim);
@@ -377,7 +377,7 @@ AICORE_FUNC_HEAD void OnlineCheck::DumpErrorInfo(KernelErrorRecord &errorRecord,
     uint64_t stepSize = errorRecord.errorNum == FIRST_ERROR_NUM ? sizeof(RecordType) + sizeof(KernelErrorRecord) +
         sizeof(Record) + sizeof(KernelErrorDesc) : sizeof(KernelErrorDesc);
 
-    if (simtBlockHead_->writeOffset + CACHE_LINE_SIZE + stepSize < globalHead_->simtInfo.threadByteSize &&
+    if (simtBlockHead_->writeOffset + CACHE_LINE_SIZE + stepSize < globalHead_->offsetInfo.threadByteSize &&
       simtBlockHead_->recordCount == simtBlockHead_->recordWriteCount) {
         CopyRecordToGm(gmErrorRecord, &errorRecord);
         CopyRecordToGm(gmRecord, &record);

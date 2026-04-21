@@ -497,7 +497,7 @@ bool ParseRecord(RecordType recordType, uint8_t const *record, KernelRecord &ker
 
 inline uint64_t GetAllThreadSize(RecordGlobalHead const &globalHead)
 {
-    return (globalHead.simtInfo.threadByteSize + sizeof(SimtRecordBlockHead)) * SIMT_THREAD_MAX_SIZE;
+    return (globalHead.offsetInfo.threadByteSize + sizeof(SimtRecordBlockHead)) * SIMT_THREAD_MAX_SIZE;
 }
 
 } // namespace [Dummy]
@@ -589,7 +589,7 @@ void KernelBlock::ParseSimtRecord(std::vector<KernelRecord> &kernelRecords)
     for (size_t threadId = 0; threadId < SIMT_THREAD_MAX_SIZE; ++threadId) {
         if (threadId > 0) {
             uint8_t const *threadHead = reinterpret_cast<uint8_t const*>(simtRecordHead_ + 1) +
-                recordGlobalHead_.simtInfo.threadByteSize;
+                recordGlobalHead_.offsetInfo.threadByteSize;
             simtRecordHead_ = reinterpret_cast<SimtRecordBlockHead const*>(threadHead);
         }
 
@@ -623,7 +623,7 @@ void KernelBlock::ParseSimtRecord(std::vector<KernelRecord> &kernelRecords)
 
     /// 溢出时，计算需要的额外size
     if (simtExtendBytes > 0) {
-        extendCacheSize_ += (recordGlobalHead_.simtInfo.threadByteSize + simtExtendBytes) *
+        extendCacheSize_ += (recordGlobalHead_.offsetInfo.threadByteSize + simtExtendBytes) *
             SIMT_THREAD_MAX_SIZE / SIMT_CACHE_SIZE_RATIO  / MB_TO_BYTES + 1;
         extendRecordCount_ += simtExtendRecordCount;
     }
