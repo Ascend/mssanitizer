@@ -17,6 +17,7 @@
 #include <iostream>
 #include <mutex>
 
+#include "core/framework/platform_config.h"
 #include "core/framework/utility/type_traits.h"
 #include "device_manager.h"
 #include "event_def.h"
@@ -98,6 +99,9 @@ bool CrossNpuChecker::Run()
                 return false;
             }
             sanitizer_.SetKernelInfo(kernelSummary);
+            if (!CheckFilter(deviceInfo, kernelSummary)) {
+                continue;
+            }
             for (auto const & r : kernel) {
                 std::vector<SanEvent> events;
                 RecordPreProcess::GetInstance().Process(r, events);
@@ -149,6 +153,21 @@ void CrossNpuChecker::UpdateLoc(std::vector<SanEvent> &events, uint32_t deviceId
         event.loc.kernelIdx = kernelIdx;
         event.loc.deviceId = deviceId;
     }
+}
+
+bool CrossNpuChecker::CheckFilter(DeviceInfoSummary const &deviceInfo, KernelSummary const &kernelSummary) const
+{
+    // 静态插桩默认处理
+    if (!kernelSummary.isKernelWithDBI) {
+        return true;
+    }
+
+    // Ascend95 已全部改为动态插桩，都要处理
+    if (IsAscend95(deviceInfo.device)) {
+        return true;
+    }
+
+    return false;
 }
 
 } // namespace Sanitizer
