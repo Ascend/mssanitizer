@@ -282,7 +282,7 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     if (runtimeContext.currentBlockIdx_ == kernelBlock->GetTotalBlockDim()) {
         KernelRecordResponse resp{runtimeContext.currentBlockIdx_, ResponseStatus::SUCCESS};
         msgRspFunc(Serialize(PacketType::KERNEL_RECORD_RESPONSE, resp));
-        sanitizerRecord.payload.kernelRecord.recordType = RecordType::FINISH;
+        sanitizerRecord.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
         sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
         checker.Do(sanitizerRecord);
         recordArray.Push(sanitizerRecord);

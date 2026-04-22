@@ -17,6 +17,7 @@
 
 #include "sync_sanitizer.h"
 #include "sync_info_display.h"
+#include "core/framework/event_def.h"
 #include "core/framework/utility/log.h"
 
 namespace Sanitizer {
@@ -195,7 +196,8 @@ void SyncSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent
     }
 
     for (auto& event : events) {
-        if (event.isEndFrame) {
+        if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
+            event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
             isFinished_ = true;
             break;
         }

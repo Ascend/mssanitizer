@@ -34,7 +34,8 @@ RaceAlgImpl::RaceAlgImpl(KernelType kernelType, DeviceType deviceType, uint32_t 
 void RaceAlgImpl::Do(const SanEvent& event)
 {
     // 阶段一 所有事件推入PIPE_S(标量流水)待执行
-    if (!event.isEndFrame) {
+    if (event.type != EventType::SANITIZER_CONTROL_EVENT ||
+        event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         CacheMstxCrossSet(event);
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::SINGLE_BLOCK_CHECK);
         eventContainer_.Push(event, PipeType::PIPE_S, blockIndex);

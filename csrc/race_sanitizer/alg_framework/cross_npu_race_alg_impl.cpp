@@ -42,6 +42,7 @@ void CrossNpuRaceAlgImpl::Init()
     crossCoreSyncInfoContainer_.resize(deviceNum);
     mstxSetCrossMap_.resize(deviceNum);
     crossCoreBarrier_.resize(deviceNum);
+    kernelBarrier_.resize(deviceNum);
 
     for (std::size_t deviceIdx = 0; deviceIdx < deviceNum; ++deviceIdx) {
         uint32_t deviceId = deviceList[deviceIdx];
@@ -53,6 +54,7 @@ void CrossNpuRaceAlgImpl::Init()
         crossCoreSyncInfoContainer_[deviceIdx].resize(kernelCount);
         mstxSetCrossMap_[deviceIdx].resize(kernelCount);
         crossCoreBarrier_[deviceIdx].resize(kernelCount);
+        kernelBarrier_[deviceIdx].resize(kernelCount);
 
         for (std::size_t kernelIdx = 0; kernelIdx < kernelCount; ++kernelIdx) {
             KernelSummary kernelSummary{};
@@ -91,23 +93,43 @@ bool CrossNpuRaceAlgImpl::SetKernelInfo(KernelSummary const &kernelInfo)
 
 void CrossNpuRaceAlgImpl::Do(const SanEvent& event)
 {
-    if (!event.isEndFrame) {
-        CacheMstxCrossSet(event);
-        auto blockIndex = GetEventExpandBlockIndex(event);
-        eventContainer_.Push(event, PipeType::PIPE_S, blockIndex, event.loc.deviceIdx);
+    if (event.type == EventType::SANITIZER_CONTROL_EVENT) {
+        if (event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
+            CreateKernelBarrier(event);
+        } else {
+            PipeLine pipeLine(eventContainer_);
+            pipeLine.RegisterEventFunc(std::bind(&CrossNpuRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
+            pipeLine.Run();
+            memChecker_.RunAlgorithm();
+            isFinished_ = true;
+        }
         return;
     }
 
-    PipeLine pipeLine(eventContainer_);
-    pipeLine.RegisterEventFunc(std::bind(&CrossNpuRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
-    pipeLine.Run();
-    memChecker_.RunAlgorithm();
-    isFinished_ = true;
+    CacheMstxCrossSet(event);
+    auto blockIndex = GetEventExpandBlockIndex(event);
+    eventContainer_.Push(event, PipeType::PIPE_S, blockIndex, event.loc.deviceIdx);
 }
 
 bool CrossNpuRaceAlgImpl::IsFinished() const
 {
     return isFinished_;
+}
+
+void CrossNpuRaceAlgImpl::CreateKernelBarrier(SanEvent event)
+{
+    for (uint32_t blockIdx = 0; blockIdx < totalBlockNum_; ++blockIdx) {
+        event.loc.blockType = blockIdx % C220_MIX_SUB_BLOCKDIM == 2 ? BlockType::AICUBE : BlockType::AIVEC;
+        event.loc.coreId = blockIdx / C220_MIX_SUB_BLOCKDIM *
+            (event.loc.blockType == BlockType::AICUBE ? C220_CUBE_SUB_BLOCKDIM : C220_VEC_SUB_BLOCKDIM) +
+            (event.loc.blockType == BlockType::AICUBE ? 0 : blockIdx % C220_MIX_SUB_BLOCKDIM);
+        for (uint32_t pipeIdx = 1; pipeIdx < static_cast<uint32_t>(PipeType::SIZE); ++pipeIdx) {
+            event.pipe = static_cast<PipeType>(pipeIdx);
+            eventContainer_.Push(event, PipeType::PIPE_S, blockIdx, event.loc.deviceIdx);
+        }
+        event.pipe = PipeType::PIPE_S;
+        eventContainer_.Push(event, PipeType::PIPE_S, blockIdx, event.loc.deviceIdx);
+    }
 }
 
 std::shared_ptr<std::vector<RaceDispInfo>> CrossNpuRaceAlgImpl::GetResult() const
@@ -136,6 +158,8 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
         return ReturnType::PROCESS_OK;
     }
     switch (event.type) {
+        case EventType::SANITIZER_CONTROL_EVENT:
+            return ProcessSanitizerControlEvent(event);
         case EventType::SYNC_EVENT:
             return ProcessSyncEvent(event);
         case EventType::MEM_EVENT:
@@ -159,6 +183,27 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
         default:
             break;
     }
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessSanitizerControlEvent(const SanEvent& event)
+{
+    if (event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
+        uint32_t curPipe = eventContainer_.GetQueIndex();
+        KernelBarrierEvent &kernelBarrier = kernelBarrier_[event.loc.deviceIdx][event.loc.kernelIdx];
+        std::size_t totalSize = totalBlockNum_ * static_cast<std::size_t>(PipeType::SIZE);
+        uint32_t blockIdx = GetEventExpandBlockIndex(event);
+
+        VectorTime vt;
+        if (!kernelBarrier.Wait(totalSize, {blockIdx, event.pipe}, vc_[curPipe], vt)) {
+            return ReturnType::PROCESS_STALLED;
+        }
+
+        VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+        VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+        return ReturnType::PROCESS_OK;
+    }
+
     return ReturnType::PROCESS_OK;
 }
 

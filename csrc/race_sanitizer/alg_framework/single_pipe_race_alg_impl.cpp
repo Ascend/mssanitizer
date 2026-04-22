@@ -28,7 +28,8 @@ SinglePipeRaceAlgImpl::SinglePipeRaceAlgImpl(KernelType kernelType, DeviceType d
 void SinglePipeRaceAlgImpl::Do(const SanEvent& event)
 {
     // 阶段一 除了PIPE_S，其他流水都有可能出现竞争行为，将事件推入对应PIPE
-    if (!event.isEndFrame) {
+    if (event.type != EventType::SANITIZER_CONTROL_EVENT ||
+        event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         if (event.pipe > PipeType::PIPE_S && event.pipe < PipeType::SIZE) {
             eventContainer_.Push(event, event.pipe, 0);
         }

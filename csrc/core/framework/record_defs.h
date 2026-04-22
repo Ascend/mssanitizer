@@ -315,6 +315,8 @@ enum class RecordType : uint32_t {
     /// BLOCK_FINISH 类型是虚拟出的记录类型，表明单个逻辑核的记录类型已经上报完毕，
     /// 用来通知检测算法重置片上内存状态
     BLOCK_FINISH = 100000,
+    /// KERNEL_FINISH 类型是虚拟出的记录类型，表明单个 kernel 的记录已经上报完毕
+    KERNEL_FINISH,
     /// FINISH 类型是虚拟出的记录类型，Device 侧并不会写入这种记录类型，而是在 Host 侧当所有记录
     /// 上报结束后手动上报一次 FINISH，通知检测算法记录已全部上报完成
     FINISH,

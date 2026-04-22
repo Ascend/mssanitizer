@@ -34,7 +34,8 @@ CrossCoreRaceAlgImpl::CrossCoreRaceAlgImpl(KernelType kernelType, DeviceType dev
 
 void CrossCoreRaceAlgImpl::Do(const SanEvent &event)
 {
-    if (!event.isEndFrame) {
+    if (event.type != EventType::SANITIZER_CONTROL_EVENT ||
+        event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         CacheMstxCrossSet(event);
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::CROSS_BLOCK_CHECK);
         eventContainer_.Push(event, PipeType::PIPE_S, blockIndex);

@@ -80,7 +80,8 @@ TEST_F(TestCrossNpuRaceAlgImpl, handle_mem_event_not_on_gm_expect_return_no_race
     event.loc.deviceIdx = 1;
     alg.Do(event);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::FINISH;
     alg.Do(event);
 
     ASSERT_EQ(alg.GetResult()->size(), 0U);
@@ -116,7 +117,8 @@ TEST_F(TestCrossNpuRaceAlgImpl, handle_mem_event_on_gm_expect_return_race)
     DeviceManager::Instance().GetSharedMemorySpans(0).Union({0x50, 0x51});
     DeviceManager::Instance().GetSharedMemorySpans(1).Union({0x50, 0x51});
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::FINISH;
     alg.Do(event);
 
     ASSERT_EQ(alg.GetResult()->size(), 1U);

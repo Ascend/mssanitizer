@@ -98,7 +98,7 @@ inline bool RaceSanitizer::IsTargetBlockId(uint32_t blockId)
 
 bool RaceSanitizer::IsTargetEvent(const SanEvent &event, BlockType targetBlockType)
 {
-    if (event.isEndFrame) {
+    if (event.type == EventType::SANITIZER_CONTROL_EVENT) {
         return true;
     }
 
@@ -176,12 +176,13 @@ void RaceSanitizer::SinglePipeRaceCheck(const std::vector<SanEvent> &events)
 {
     for (const auto &event : events) {
         if ((IsTargetBlockId(event.loc.coreId) && (event.loc.blockType == BlockType::AIVEC ||
-            event.loc.blockType == BlockType::AICORE)) || event.isEndFrame) {
+            event.loc.blockType == BlockType::AICORE)) || event.type == EventType::SANITIZER_CONTROL_EVENT) {
             raceAlgs_[static_cast<uint8_t>(RaceAlgCheckBlockType::RACE_ALG_AIV_PIPE_CHECK)]->Do(event);
         }
     }
     for (const auto &event : events) {
-        if ((IsTargetBlockId(event.loc.coreId) && event.loc.blockType == BlockType::AICUBE) || event.isEndFrame) {
+        if ((IsTargetBlockId(event.loc.coreId) && event.loc.blockType == BlockType::AICUBE) ||
+            event.type == EventType::SANITIZER_CONTROL_EVENT) {
             raceAlgs_[static_cast<uint8_t>(RaceAlgCheckBlockType::RACE_ALG_AIC_PIPE_CHECK)]->Do(event);
         }
     }
@@ -230,7 +231,7 @@ void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent
 
     // 显示simt核内线程间的竞争结果
     if (record.version == RecordVersion::KERNEL_RECORD &&
-        record.payload.kernelRecord.recordType == RecordType::FINISH) {
+        record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
         MergeSimtErrors();
         RaceSanitizerRecord(simtErrors_);
         simtErrors_->clear();

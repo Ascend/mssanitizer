@@ -3588,10 +3588,24 @@ static void ParseRecordMstxStub(const KernelRecord &record, std::vector<SanEvent
     }
 }
 
+static void ParseRecordKernelFinish(const KernelRecord &record, std::vector<SanEvent> &events)
+{
+    SanEvent event;
+    event.serialNo = record.serialNo;
+    event.loc.deviceId = RuntimeContext::Instance().GetDeviceId();
+    event.loc.kernelIdx = RuntimeContext::Instance().kernelIdx_ - 1;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+    events.emplace_back(event);
+}
+
 static void ParseRecordFinish(const KernelRecord &record, std::vector<SanEvent> &events)
 {
     SanEvent event;
-    event.isEndFrame = true;
+    event.serialNo = record.serialNo;
+    event.loc.deviceId = RuntimeContext::Instance().GetDeviceId();
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::FINISH;
     events.emplace_back(event);
 }
 
@@ -4029,6 +4043,7 @@ const std::unordered_map<RecordType, ParseFunc> g_parseFuncs = {
     {RecordType::SCALAR_RED, ParseRedAndAtomRecord},
     {RecordType::SCALAR_ATOM, ParseRedAndAtomRecord},
     {RecordType::LDVA, ParseLdvaRecord},
+    {RecordType::KERNEL_FINISH, ParseRecordKernelFinish},
     {RecordType::FINISH, ParseRecordFinish},
     {RecordType::SET_L1_2D, ParseRecordSetL12D},
     {RecordType::MOV_UB_TO_L1, ParseRecordMovUb2L1},
@@ -4088,7 +4103,7 @@ void RecordParse::DfsSrcGraph(PipeType targetPipe, std::unordered_set<PipeType> 
 /// 按顺序集齐一对wait指令就插入一个pipe_barrier，并将状态值归零；遇到内存指令就结束判断，将对应pipe的状态值归零
 void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEvent> &events)
 {
-    if (record.recordType == RecordType::BLOCK_FINISH || record.recordType == RecordType::FINISH) {
+    if (record.recordType == RecordType::BLOCK_FINISH || record.recordType == RecordType::KERNEL_FINISH) {
         ResetSyncInPipeInfo();
         return;
     }
@@ -4304,7 +4319,7 @@ void RecordParse::ReplaceSetSyncPipeScalar(std::vector<SanEvent> &events)
 void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &events)
 {
     KernelRecord const& kernelRecord = record.payload.kernelRecord;
-    if (kernelRecord.recordType == RecordType::BLOCK_FINISH || kernelRecord.recordType == RecordType::FINISH) {
+    if (kernelRecord.recordType == RecordType::BLOCK_FINISH || kernelRecord.recordType == RecordType::KERNEL_FINISH) {
         ResetAll();
     }
     auto it = g_parseFuncs.find(kernelRecord.recordType);

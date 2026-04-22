@@ -44,6 +44,7 @@ public:
     bool IsFinished() const;
 
 private:
+    ReturnType ProcessSanitizerControlEvent(const SanEvent& event);
     ReturnType ProcessEvent(const SanEvent& event);
     ReturnType ProcessMemEvent(const SanEvent& event);
     ReturnType ProcessSyncEvent(const SanEvent& event);
@@ -56,13 +57,16 @@ private:
     ReturnType ProcessMstxCrossCoreBarrier(const SanEvent &event);
     ReturnType ProcessMstxCrossNpuBarrier(const SanEvent& event);
     void CacheMstxCrossSet(const SanEvent& event);
+    void CreateKernelBarrier(SanEvent event);
 
 private:
     using MstxSetCrossMap = std::map<std::pair<uint64_t, uint64_t>, uint64_t>;
     using CrossNpuBarrierWorker = std::pair<uint32_t, uint32_t>;
     using CrossCoreBarrierWorker = uint32_t;
+    using KernelBarrierWorker = std::pair<uint32_t, PipeType>;
     using CrossNpuBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, CrossNpuBarrierWorker>;
     using CrossCoreBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, CrossCoreBarrierWorker>;
+    using KernelBarrierEvent = BarrierEvent<KernelBarrierWorker>;
 
     bool isFinished_{};
     uint32_t totalBlockNum_{};
@@ -78,6 +82,7 @@ private:
     std::vector<std::vector<MstxSetCrossMap>> mstxSetCrossMap_;
     std::vector<std::vector<CrossCoreSyncInfoContainer>> crossCoreSyncInfoContainer_;
     std::vector<std::vector<CrossCoreBarrierDatabase>> crossCoreBarrier_{};
+    std::vector<std::vector<KernelBarrierEvent>> kernelBarrier_{};
 };
 
 } // namespace Sanitizer

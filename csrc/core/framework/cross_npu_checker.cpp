@@ -99,10 +99,6 @@ bool CrossNpuChecker::Run()
             }
             sanitizer_.SetKernelInfo(kernelSummary);
             for (auto const & r : kernel) {
-                if (r.payload.kernelRecord.recordType == RecordType::FINISH) {
-                    // 忽略每个 kernel 的 finish flag，在所有记录都处理完毕后再触发检测
-                    continue;
-                }
                 std::vector<SanEvent> events;
                 RecordPreProcess::GetInstance().Process(r, events);
                 UpdateLoc(events, deviceIdx, kernelIdx, deviceId);

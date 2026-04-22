@@ -430,7 +430,7 @@ TEST(AddressSanitizer, same_record_on_different_blocks_expect_get_reduced_errors
     RecordPreProcess::GetInstance().Process(record, events);
     asan->Do(record, events);
     // report finish to reduce error msgs
-    record.payload.kernelRecord.recordType = RecordType::FINISH;
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
     ASSERT_TRUE(asan->CheckRecordBeforeProcess(record));
     RecordPreProcess::GetInstance().Process(record, events);
     asan->Do(record, events);
@@ -470,7 +470,7 @@ TEST(AddressSanitizer, record_with_aicore_blocks_expect_get_reduced_errors)
     RecordPreProcess::GetInstance().Process(record, events);
     asan->Do(record, events);
     // report finish to reduce error msgs
-    record.payload.kernelRecord.recordType = RecordType::FINISH;
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
     ASSERT_TRUE(asan->CheckRecordBeforeProcess(record));
     RecordPreProcess::GetInstance().Process(record, events);
     asan->Do(record, events);
@@ -2611,7 +2611,7 @@ TEST(AddressSanitizer, parse_mstx_wait_cross_records_with_more_times_expect_get_
     sanitizerRecord.payload.kernelRecord.recordType = RecordType::MSTX_STUB;
     sanitizerRecord.payload.kernelRecord.payload.mstxRecord.interface.mstxCrossRecord.addr = 0x500;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
-    sanitizerRecord.payload.kernelRecord.recordType = RecordType::FINISH;
+    sanitizerRecord.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
 
     /// 重置buffer和合并信息，防止对其他UT产生干扰；
@@ -2626,7 +2626,8 @@ TEST(AddressSanitizer, parse_mstx_wait_cross_records_with_more_times_expect_get_
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].eventInfo.mstxCrossInfo.addr, 0x400);
     ASSERT_EQ(events[events.size() - 2].eventInfo.mstxCrossInfo.addr, 0x500);
-    ASSERT_TRUE(events[events.size() - 1].isEndFrame);
+    ASSERT_EQ(events[events.size() - 1].type, EventType::SANITIZER_CONTROL_EVENT);
+    ASSERT_EQ(events[events.size() - 1].eventInfo.sanitizerControlInfo.type, SanitizerControlType::KERNEL_FINISH);
 }
 
 TEST(AddressSanitizer, parse_ib_set_records_with_two_times_and_expect_get_correct_records)

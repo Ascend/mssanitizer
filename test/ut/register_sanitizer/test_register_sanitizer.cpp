@@ -64,7 +64,8 @@ TEST(RegisterSanitizer, set_vector_mask_0_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123456;
     size_t regType = static_cast<size_t>(RegisterType::VECTOR_MASK_0);
@@ -97,7 +98,8 @@ TEST(RegisterSanitizer, set_vector_mask_0_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123456;
     size_t regType = static_cast<size_t>(RegisterType::VECTOR_MASK_0);
@@ -132,7 +134,8 @@ TEST(RegisterSanitizer, set_vector_mask_1_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123457;
     size_t regType = static_cast<size_t>(RegisterType::VECTOR_MASK_1);
@@ -166,7 +169,8 @@ TEST(RegisterSanitizer, set_vector_mask_1_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123457;
     size_t regType = static_cast<size_t>(RegisterType::VECTOR_MASK_1);
@@ -201,7 +205,8 @@ TEST(RegisterSanitizer, set_ctrl_non_bit56_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123458;
     size_t regType = static_cast<size_t>(RegisterType::CTRL);
@@ -234,7 +239,8 @@ TEST(RegisterSanitizer, set_ctrl_bit56_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 1UL << 56;
     size_t regType = static_cast<size_t>(RegisterType::CTRL);
@@ -267,7 +273,8 @@ TEST(RegisterSanitizer, set_ctrl_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123458;
     size_t regType = static_cast<size_t>(RegisterType::CTRL);
@@ -302,7 +309,8 @@ TEST(RegisterSanitizer, set_ffts_base_addr_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123459;
     size_t regType = static_cast<size_t>(RegisterType::FFTS_BASE_ADDR);
@@ -335,7 +343,8 @@ TEST(RegisterSanitizer, set_ffts_base_addr_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123459;
     size_t regType = static_cast<size_t>(RegisterType::FFTS_BASE_ADDR);
@@ -370,7 +379,8 @@ TEST(RegisterSanitizer, set_fpc_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123460;
     size_t regType = static_cast<size_t>(RegisterType::FPC);
@@ -403,7 +413,8 @@ TEST(RegisterSanitizer, set_fpc_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123460;
     size_t regType = static_cast<size_t>(RegisterType::FPC);
@@ -439,7 +450,8 @@ TEST(RegisterSanitizer, set_quant_pre_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123461;
     size_t regType = static_cast<size_t>(RegisterType::QUANT_PRE);
@@ -472,7 +484,8 @@ TEST(RegisterSanitizer, set_quant_pre_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123461;
     size_t regType = static_cast<size_t>(RegisterType::QUANT_PRE);
@@ -507,7 +520,8 @@ TEST(RegisterSanitizer, set_quant_post_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123462;
     size_t regType = static_cast<size_t>(RegisterType::QUANT_POST);
@@ -540,7 +554,8 @@ TEST(RegisterSanitizer, set_quant_post_expect_not_report_exception_2)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123462;
     size_t regType = static_cast<size_t>(RegisterType::QUANT_POST);
@@ -575,7 +590,8 @@ TEST(RegisterSanitizer, set_lrelu_alpha_uint64_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123463;
     uint16_t regvalHalf = 123464;
@@ -610,7 +626,8 @@ TEST(RegisterSanitizer, set_lrelu_alpha_uint64_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123463;
     uint16_t regvalHalf = 123464;
@@ -647,7 +664,8 @@ TEST(RegisterSanitizer, set_lrelu_alpha_half_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123463;
     uint16_t regvalHalf = 123464;
@@ -682,7 +700,8 @@ TEST(RegisterSanitizer, set_lrelu_alpha_half_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123463;
     uint16_t regvalHalf = 123464;
@@ -719,7 +738,8 @@ TEST(RegisterSanitizer, set_lrelu_alpha_float_expect_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123463;
     uint16_t regvalHalf = 123464;
@@ -754,7 +774,8 @@ TEST(RegisterSanitizer, set_lrelu_alpha_float_expect_not_report_exception)
 
     std::vector<SanEvent> events {};
     SanEvent endEvent {};
-    endEvent.isEndFrame = true;
+    endEvent.type = EventType::SANITIZER_CONTROL_EVENT;
+    endEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     SanitizerRecord record {};
     uint64_t regvalU64 = 123463;
     uint16_t regvalHalf = 123464;

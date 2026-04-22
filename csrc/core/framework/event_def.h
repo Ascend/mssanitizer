@@ -34,6 +34,7 @@ namespace Sanitizer {
 // 该头文件定义承载竞争检测算法所需的基础架构,数据类型
 
 enum class EventType : uint8_t {
+    SANITIZER_CONTROL_EVENT,
     MEM_EVENT,
     SYNC_EVENT,
     TIME_EVENT,
@@ -48,6 +49,11 @@ enum class EventType : uint8_t {
     MSTX_CROSS_CORE_BARRIER,
     MSTX_CROSS_NPU_BARRIER,
     DYNAMIC_MEM_EVENT,
+};
+
+enum class SanitizerControlType : uint8_t {
+    KERNEL_FINISH = 0,
+    FINISH
 };
 
 // 算法预处理阶段hset_flag/hwait_flag处理成普通的set_flag/wait_flag
@@ -88,6 +94,10 @@ enum class FftsSyncMode : uint8_t {
     MODE2,
     MODE3,
     MODE4,
+};
+
+struct SanitizerControlInfo {
+    SanitizerControlType type;
 };
 
 struct MemOpInfo {
@@ -217,6 +227,7 @@ struct SanEvent {
     EventType type{};
     PipeType pipe{};
     union {
+        SanitizerControlInfo sanitizerControlInfo;
         SyncOpInfo syncInfo;
         MemOpInfo memInfo;
         FftsSyncInfo fftsSyncInfo;
@@ -234,7 +245,6 @@ struct SanEvent {
     } eventInfo{};
     VectorTime timeInfo;
     LocInfo loc{};
-    bool isEndFrame = false;
     bool isAtomicMode = false;
 };
 

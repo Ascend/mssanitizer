@@ -16,6 +16,7 @@
 
 #include "register_sanitizer.h"
 #include "register_info_display.h"
+#include "core/framework/event_def.h"
 #include "core/framework/utility/log.h"
 #include "core/framework/utility/ustring.h"
 
@@ -74,7 +75,8 @@ void RegisterSanitizer::Do(const SanitizerRecord &record, const std::vector<SanE
 
     for (auto& event : events) {
         // 某个算子的事件记录全部结束后，检查是否所有需要检查的寄存器都还原回默认值
-        if (event.isEndFrame) {
+        if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
+            event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
             for (int i = 0; i < C220_A2_A3_MAXCORE_NUM; ++i) {
                 for (int regIdx = 0; regIdx < static_cast<int>(RegisterType::MAX); ++regIdx) {
                     if ((regValActual_[i][regIdx].regVal != g_regInfoTbl[regIdx].regDftVal) &&

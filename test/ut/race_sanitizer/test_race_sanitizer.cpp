@@ -76,7 +76,8 @@ TEST(RaceSanitizer, race_sanitizer_detect_cntmask_overlapping_mem_race_events_ex
         alg.Do(event);
     }
     SanEvent event;
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 
@@ -94,7 +95,8 @@ TEST(RaceSanitizer, race_sanitizer_detect_cntmask_overlapping_mem_race_events_ex
     for (const auto &event : events) {
         alg1.Do(event);
     }
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg1.Do(event);
     ASSERT_EQ(alg1.GetRaceCount(), 0U);
 }
@@ -125,7 +127,8 @@ TEST(RaceSanitizer, race_sanitizer_detect_race_events_mask_count_expect_success)
     for (const auto &event : events) {
         alg.Do(event);
     }
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
     ASSERT_EQ(alg.IsFinished(), true);
@@ -140,7 +143,8 @@ TEST(RaceSanitizer, race_sanitizer_detect_race_events_mask_count_expect_success)
     for (const auto &event : events) {
         alg1.Do(event);
     }
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg1.Do(event);
     ASSERT_EQ(alg1.GetRaceCount(), 1U);
     ASSERT_EQ(alg1.IsFinished(), true);
@@ -206,7 +210,7 @@ TEST(RaceSanitizer, race_sanitizer_can_detect_aiv_pipe_race_events_expect_succes
     kernelRecord.serialNo++;
     RecordPreProcess::GetInstance().Process(record, events);
     ASSERT_EQ(events.size(), 5);
-    kernelRecord.recordType = RecordType::FINISH;
+    kernelRecord.recordType = RecordType::KERNEL_FINISH;
     RecordPreProcess::GetInstance().Process(record, events);
     ASSERT_EQ(events.size(), 6);
     alg.Do(record, events);
@@ -289,7 +293,8 @@ TEST(RaceSanitizer, race_sanitizer_with_default_check_and_ffts_set_or_wait_can_d
         ASSERT_TRUE(alg.IsTargetEvent(event, blockType));
         event.type = EventType::SYNC_EVENT;
         ASSERT_FALSE(alg.IsTargetEvent(event, blockType));
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         ASSERT_TRUE(alg.IsTargetEvent(event, blockType));
     }
 }
@@ -341,7 +346,8 @@ TEST(RaceSanitizer, race_sanitizer_with_single_block_check_cant_detect_target_ev
         ASSERT_TRUE(alg.IsTargetEvent(event, blockType));
         event.type = EventType::SYNC_EVENT;
         ASSERT_FALSE(alg.IsTargetEvent(event, blockType));
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         ASSERT_TRUE(alg.IsTargetEvent(event, blockType));
     }
 }

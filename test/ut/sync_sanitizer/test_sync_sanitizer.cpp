@@ -56,7 +56,8 @@ TEST(SyncSanitizer, unpaired_set_flag_instruction_expect_return_synccheck_detect
     ASSERT_TRUE(syncSan->CheckRecordBeforeProcess(record));
 
     SanEvent event {};
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan->Do(record, events);
     ASSERT_TRUE(msg.find("Unpaired set_flag instructions detected") != std::string::npos);
@@ -78,7 +79,8 @@ TEST(SyncSanitizer, unpaired_set_flag_instructions_on_different_blocks_expect_al
     std::string msg {};
     syncSan.RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
     SanEvent event {};
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     ASSERT_EQ(syncSan.syncEvents_.size(), 3U);
@@ -104,7 +106,8 @@ TEST(SyncSanitizer, unpaired_set_flag_instructions_on_different_blocks_expect_sp
     std::string msg {};
     syncSan.RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
     SanEvent event {};
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     ASSERT_EQ(syncSan.syncEvents_.size(), 1U);
@@ -130,7 +133,8 @@ TEST(SyncSanitizer, multi_instructions_with_no_paired_flag)
     std::string msg {};
     syncSan.RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
     SanEvent event {};
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     ASSERT_EQ(syncSan.syncEvents_.size(), 4U);
@@ -155,7 +159,8 @@ TEST(SyncSanitizer, multi_instructions_with_one_paired_flag)
     std::string msg {};
     syncSan.RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
     SanEvent event {};
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     ASSERT_EQ(syncSan.syncEvents_.size(), 2U);
@@ -186,7 +191,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_instruction_expect_return_sync
     g_fillSyncRecord(record, 0U);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -203,7 +209,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_instruction_expect_return_sync
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -232,7 +239,8 @@ TEST(SyncSanitizer, redundancy_continuous_set_flag_wait_flag_instruction_expect_
     g_fillSyncRecord(record, 0U);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -251,7 +259,8 @@ TEST(SyncSanitizer, redundancy_continuous_set_flag_wait_flag_instruction_expect_
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -280,7 +289,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_with_pipe_barrier_instruction_
     g_fillSyncRecord(record, 0U);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -299,7 +309,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_with_pipe_barrier_instruction_
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -328,7 +339,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_with_sync_instruction_expect_n
     g_fillSyncRecord(record, 0U);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -347,7 +359,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_with_sync_instruction_expect_n
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -392,7 +405,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_with_mem_instruction_expect_no
 
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -408,7 +422,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_with_mem_instruction_expect_no
     RecordPreProcess::GetInstance().Process(record, events);
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -435,7 +450,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_dst_pipe_diff_instruction_expe
     g_fillSyncRecord(record, 0U, RecordType::SET_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE2);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -452,7 +468,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_dst_pipe_diff_instruction_expe
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE2);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -479,7 +496,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_src_pipe_diff_instruction_expe
     g_fillSyncRecord(record, 0U, RecordType::SET_FLAG, PipeType::PIPE_MTE2, PipeType::PIPE_MTE1);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -496,7 +514,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_src_pipe_diff_instruction_expe
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_MTE2, PipeType::PIPE_MTE1);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -523,7 +542,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_src_pipe_diff_dst_pipe_diff_in
     g_fillSyncRecord(record, 0U, RecordType::SET_FLAG, PipeType::PIPE_MTE2, PipeType::PIPE_MTE3);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -540,7 +560,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_src_pipe_diff_dst_pipe_diff_in
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_MTE2, PipeType::PIPE_MTE3);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -567,7 +588,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_blockid_diff_instruction_expec
     g_fillSyncRecord(record, 1U);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -584,7 +606,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_blockid_diff_instruction_expec
     g_fillSyncRecord(record, 1U, RecordType::WAIT_FLAG);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -613,7 +636,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_eventid_diff_instruction_expec
     g_fillSyncRecord(record, 0U, RecordType::SET_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE1, EventID::EVENT_ID0);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;
@@ -632,7 +656,8 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_eventid_diff_instruction_expec
     g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE1, EventID::EVENT_ID0);
     RecordPreProcess::GetInstance().Process(record, events);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     events.emplace_back(event);
     syncSan.Do(record, events);
     std::cout << msg << std::endl;

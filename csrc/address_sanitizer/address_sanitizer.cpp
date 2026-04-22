@@ -303,7 +303,7 @@ bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
             shadowMemory_->ResetPrivateMemory();
             return true;
         }
-        if (record.payload.kernelRecord.recordType == RecordType::FINISH) {
+        if (record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
             this->ReportErrorMsg();
             AlignChecker::Instance().Notify();
             this->errorBuffer_.Clear();

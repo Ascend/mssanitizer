@@ -165,6 +165,7 @@ static const std::map<RecordType, std::string> RECORD_TYPE_MAP = {
     {RecordType::SCALAR_ATOM,                 "SCALAR_ATOM"},
     {RecordType::LDVA,                        "LDVA"},
     {RecordType::FINISH,                      "FINISH"},
+    {RecordType::KERNEL_FINISH,               "KERNEL_FINISH"},
     {RecordType::BLOCK_FINISH,                "BLOCK_FINISH"},
     {RecordType::SET_L1_2D,                   "SET_L1_2D"},
     {RecordType::MOV_L1_TO_UB,                "MOV_L1_TO_UB"},
