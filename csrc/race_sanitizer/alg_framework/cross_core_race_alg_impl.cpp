@@ -145,6 +145,20 @@ ReturnType CrossCoreRaceAlgImpl::ProcessMemEvent(const SanEvent &event)
     return ReturnType::PROCESS_OK;
 }
 
+ReturnType CrossCoreRaceAlgImpl::ProcessDynamicMemEvent(const SanEvent& event)
+{
+    if (event.eventInfo.dynamicOpInfo.memType != MemType::GM) {
+        // 非GM内存事件不检测
+        return ReturnType::PROCESS_OK;
+    }
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+    auto e = MemEvent(event);
+    e.vt = vc_[curPipe];
+    memChecker_.PushEvent(e);
+    return ReturnType::PROCESS_OK;
+}
+
 ReturnType CrossCoreRaceAlgImpl::ProcessSyncEvent(const SanEvent &event)
 {
     auto e = SyncEvent{};

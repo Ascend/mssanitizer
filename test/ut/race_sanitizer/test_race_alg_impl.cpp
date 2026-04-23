@@ -524,7 +524,7 @@ TEST(RaceAlgImpl, race_alg_with_ffts_mode0_1_ratio_2_non_circular_ffts_expect_ca
     }
 }
 
-TEST(RaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
+TEST(RaceAlgImpl, dynamic_gm_write_event_with_mem_event_expect_race_error)
 {
     RaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_950DT_950x, 3);
     SanEvent event;
@@ -533,6 +533,7 @@ TEST(RaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
     event.pipe = PipeType::PIPE_V;
     event.loc.blockType = BlockType::AIVEC;
     auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.memType = MemType::GM;
     dynamicOpInfo.count = 3;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
@@ -558,7 +559,7 @@ TEST(RaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 
-TEST(RaceAlgImpl, dynamic_write_event_with_mem_event_expect_normal)
+TEST(RaceAlgImpl, dynamic_gm_write_event_with_mem_event_expect_normal)
 {
     RaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_950DT_950x, 3);
     SanEvent event;
@@ -567,6 +568,7 @@ TEST(RaceAlgImpl, dynamic_write_event_with_mem_event_expect_normal)
     event.pipe = PipeType::PIPE_V;
     event.loc.blockType = BlockType::AIVEC;
     auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.memType = MemType::GM;
     dynamicOpInfo.count = 2;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
@@ -590,4 +592,74 @@ TEST(RaceAlgImpl, dynamic_write_event_with_mem_event_expect_normal)
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
+}
+
+TEST(RaceAlgImpl, dynamic_ub_write_event_with_mem_event_expect_normal)
+{
+    RaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_950DT_950x, 3);
+    SanEvent event;
+    event.loc.coreId = 0;
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.pipe = PipeType::PIPE_V;
+    event.loc.blockType = BlockType::AIVEC;
+    auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.memType = MemType::UB;
+    dynamicOpInfo.count = 2;
+    dynamicOpInfo.minAddr = 0X100;
+    dynamicOpInfo.maxAddr = 0x500;
+    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
+        dynamicOpInfo.count, event.loc.coreId);
+    dynamicOpInfo.buffer = shRecords1.data();
+    alg.Do(event);
+    event.loc.coreId = 0;
+    event.type = EventType::MEM_EVENT;
+    event.pipe = PipeType::PIPE_S;
+    event.eventInfo.memInfo.opType = AccessType::WRITE;
+    event.eventInfo.memInfo.memType = MemType::UB;
+    event.eventInfo.memInfo.addr = 0x500;
+    event.eventInfo.memInfo.blockNum = 1U;
+    event.eventInfo.memInfo.blockSize = 32U;
+    event.eventInfo.memInfo.blockStride = 1U;
+    event.eventInfo.memInfo.repeatTimes = 1U;
+    alg.Do(event);
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 0U);
+}
+
+TEST(RaceAlgImpl, dynamic_ub_write_event_with_mem_event_expect_race_error)
+{
+    RaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_950DT_950x, 3);
+    SanEvent event;
+    event.loc.coreId = 0;
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.pipe = PipeType::PIPE_V;
+    event.loc.blockType = BlockType::AIVEC;
+    auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.memType = MemType::UB;
+    dynamicOpInfo.count = 3;
+    dynamicOpInfo.minAddr = 0X100;
+    dynamicOpInfo.maxAddr = 0x500;
+    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::READ,
+        dynamicOpInfo.count, event.loc.coreId);
+    dynamicOpInfo.buffer = shRecords1.data();
+    alg.Do(event);
+    event.loc.coreId = 0;
+    event.type = EventType::MEM_EVENT;
+    event.pipe = PipeType::PIPE_S;
+    event.eventInfo.memInfo.opType = AccessType::WRITE;
+    event.eventInfo.memInfo.memType = MemType::UB;
+    event.eventInfo.memInfo.addr = 0x100;
+    event.eventInfo.memInfo.blockNum = 1U;
+    event.eventInfo.memInfo.blockSize = 32U;
+    event.eventInfo.memInfo.blockStride = 1U;
+    event.eventInfo.memInfo.repeatTimes = 1U;
+    alg.Do(event);
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 1U);
 }

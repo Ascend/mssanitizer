@@ -47,6 +47,7 @@ private:
     ReturnType ProcessBlockSoftSyncEvent(const SanEvent& event);
     ReturnType ProcessMstxCrossCoreBarrier(const SanEvent& event);
     ReturnType ProcessMstxCrossNpuBarrier(const SanEvent& event);
+    ReturnType ProcessDynamicMemEvent(const SanEvent& event);
 
 private:
     using CrossCoreBarrierWorker = uint32_t;

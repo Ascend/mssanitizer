@@ -920,6 +920,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_write_event_expect_r
     event.pipe = PipeType::PIPE_V;
     event.loc.blockType = BlockType::AIVEC;
     auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.memType = MemType::GM;
     dynamicOpInfo.count = 3;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
@@ -950,6 +951,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_read_event_expect_no
     event.pipe = PipeType::PIPE_V;
     event.loc.blockType = BlockType::AICUBE;
     auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
+    dynamicOpInfo.memType = MemType::GM;
     dynamicOpInfo.count = 3;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
@@ -982,6 +984,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
     event.loc.blockType = BlockType::AIVEC;
     auto &dynamicOpInfo = event.eventInfo.dynamicOpInfo;
     dynamicOpInfo.count = 3;
+    dynamicOpInfo.memType = MemType::GM;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
     dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;

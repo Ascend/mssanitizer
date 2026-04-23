@@ -3871,6 +3871,8 @@ static void ParseRecordDynamic(const KernelRecord &record, std::vector<SanEvent>
         if (dynamicRecord.dynamicType == RecordType::SHADOW_MEMORY) {
             event.pipe = PipeType::PIPE_V;
             auto smRecord = reinterpret_cast<const ShadowMemoryRecord *>(dynamicRecord.buffer);
+            // 协议解析时，已经保证了动态记录里所有的记录地址空间相同
+            event.eventInfo.dynamicOpInfo.memType = AddrSpaceToMemType(smRecord[0].space);
             event.loc.coreId = smRecord[0].location.blockId;
             CalShadowMemoryAddrInfo(smRecord, event.eventInfo.dynamicOpInfo);
         }

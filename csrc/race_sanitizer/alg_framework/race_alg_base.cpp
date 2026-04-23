@@ -119,15 +119,5 @@ ReturnType RaceAlgBase::ProcessGetRlsBufSyncEvent(const SanEvent& event, RaceChe
     return ReturnType::PROCESS_OK;
 }
 
-ReturnType RaceAlgBase::ProcessDynamicMemEvent(const SanEvent& event)
-{
-    uint32_t curPipe = eventContainer_.GetQueIndex();
-    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
-    auto e = MemEvent(event);
-    e.vt = vc_[curPipe];
-    memChecker_.PushEvent(e);
-    return ReturnType::PROCESS_OK;
-}
-
 }
 

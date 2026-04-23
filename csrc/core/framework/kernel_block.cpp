@@ -567,7 +567,8 @@ bool KernelBlock::ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRec
     /// 后续字段赋值，需要在ParseRecord之后赋值，ParseRecord会重新解析record，在此之前赋值会导致信息丢失；
     if (*recordTypePtr == RecordType::FFTS_SYNC || *recordTypePtr == RecordType::FFTS_SYNC_V) {
         kernelRecord.payload.fftsSyncRecord.vecSubBlockDim = vecSubBlockDim_;
-    } else if (*recordTypePtr == RecordType::SET_INTRA_BLOCK || *recordTypePtr == RecordType::SET_INTRA_BLOCKI || *recordTypePtr == RecordType::SET_INTRA_BLOCK_V || *recordTypePtr == RecordType::SET_INTRA_BLOCKI_V) {
+    } else if (*recordTypePtr == RecordType::SET_INTRA_BLOCK || *recordTypePtr == RecordType::SET_INTRA_BLOCKI ||
+        *recordTypePtr == RecordType::SET_INTRA_BLOCK_V || *recordTypePtr == RecordType::SET_INTRA_BLOCKI_V) {
         kernelRecord.payload.intraBlockSyncRecord.vecSubBlockDim = vecSubBlockDim_;
     }
     return true;
@@ -634,6 +635,27 @@ void KernelBlock::ParseSimtRecord(std::vector<KernelRecord> &kernelRecords)
     }
 }
 
+void KernelBlock::PushShadowMemoryRecord(size_t recordCount, KernelRecord &kernelRecord,
+    std::vector<KernelRecord> &kernelRecords, uint32_t offset) const
+{
+    auto smRecord = reinterpret_cast<uint8_t const*>(shadowMemoryHead_ + 1);
+    auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
+    kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
+    dynamicRecord.count = recordCount;
+    size_t allocSize = recordCount * sizeof(ShadowMemoryRecord);
+    std::vector<uint8_t> memoryVec = AllocMemory(allocSize);
+    dynamicMemorys_.push_back(memoryVec);
+    auto &vecBack = dynamicMemorys_.back();
+    vecBack.assign(smRecord + offset, smRecord + offset + allocSize);
+    dynamicRecord.buffer = static_cast<void *>(vecBack.data());
+    for (size_t i = 0; i < dynamicRecord.count; ++i) {
+        CalRecordPc(reinterpret_cast<ShadowMemoryRecord *>(dynamicRecord.buffer)[i]);
+    }
+    kernelRecords.push_back(kernelRecord);
+    ++RuntimeContext::Instance().serialNo_;
+}
+
+// 目前 shadowMemory协议如下： UBRecord | UBRecord | ... | GMRecord | GMRecord | ...
 void KernelBlock::ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecords)
 {
     if (shadowMemoryHead_->recordCount == 0) {
@@ -649,25 +671,21 @@ void KernelBlock::ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecor
     kernelRecord.blockType = this->simdRecordHead_.blockInfo.blockType;
     kernelRecord.recordType = RecordType::DYNAMIC_OP;
     auto smRecord = reinterpret_cast<uint8_t const*>(shadowMemoryHead_ + 1);
-    kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
+    auto shadowMemoryRecord = reinterpret_cast<ShadowMemoryRecord const*>(smRecord);
     auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
-    dynamicRecord.count = shadowMemoryHead_->recordCount;
     dynamicRecord.dynamicType = recordType;
-    if (dynamicRecord.count > 0) {
-        size_t allocSize = dynamicRecord.count * sizeof(ShadowMemoryRecord);
-        std::vector<uint8_t> memoryVec = AllocMemory(allocSize);
-        dynamicMemorys_.push_back(memoryVec);
-        auto &vecBack = dynamicMemorys_.back();
-        vecBack.assign(smRecord, smRecord + allocSize);
-        dynamicRecord.buffer = static_cast<void *>(vecBack.data());
-    } else {
-        dynamicRecord.buffer = nullptr;
+    size_t ubRecordCount = 0;
+    for (size_t i = 0; i < shadowMemoryHead_->recordCount; ++i) {
+        if (shadowMemoryRecord[i].space == AddressSpace::GM) { break; }
+        ubRecordCount++;
     }
-    for (size_t i = 0; i < dynamicRecord.count; ++i) {
-        CalRecordPc(reinterpret_cast<ShadowMemoryRecord *>(dynamicRecord.buffer)[i]);
+    if (ubRecordCount > 0) {
+        PushShadowMemoryRecord(ubRecordCount, kernelRecord, kernelRecords);
     }
-    kernelRecords.push_back(kernelRecord);
-    ++RuntimeContext::Instance().serialNo_;
+    size_t gmRecordCount = shadowMemoryHead_->recordCount - ubRecordCount;
+    if (gmRecordCount > 0) {
+        PushShadowMemoryRecord(gmRecordCount, kernelRecord, kernelRecords, ubRecordCount * sizeof(ShadowMemoryRecord));
+    }
 }
 
 void KernelBlock::PrintCacheSizeLog(uint64_t totalSize)

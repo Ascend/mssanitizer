@@ -94,19 +94,17 @@ void TransShadowMemory(std::vector<MemOpRecord> &records, const SanEvent &event)
     record.blockType = event.loc.blockType;
     record.moduleId = -1;
     record.side = MemOpSide::KERNEL;
+    record.dstSpace = AddressSpace::GM;
     const auto &varInfo = event.eventInfo.dynamicOpInfo;
     const auto smRecords = reinterpret_cast<const ShadowMemoryRecord *>(varInfo.buffer);
     FillFileNameByNo(record, event.loc.fileNo);
     for (size_t i = 0; i < varInfo.count; ++i) {
-        if (smRecords[i].space == AddressSpace::GM) {
-            record.lineNo = smRecords[i].location.lineNo;
-            record.pc = smRecords[i].location.pc;
-            record.dstAddr = smRecords[i].addr;
-            record.memSize = smRecords[i].size;
-            record.dstSpace = smRecords[i].space;
-            record.type = FormatConverter::AccessTypeToMemOpType(smRecords[i].accessType);
-            records.emplace_back(record);
-        }
+        record.lineNo = smRecords[i].location.lineNo;
+        record.pc = smRecords[i].location.pc;
+        record.dstAddr = smRecords[i].addr;
+        record.memSize = smRecords[i].size;
+        record.type = FormatConverter::AccessTypeToMemOpType(smRecords[i].accessType);
+        records.emplace_back(record);
     }
 }
 
@@ -222,7 +220,7 @@ void AddressSanitizer::ConvertMemEvent(const SanEvent &event, std::vector<MemOpR
 void AddressSanitizer::ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
 {
     auto& dynamicMemInfo = event.eventInfo.dynamicOpInfo;
-    if (dynamicMemInfo.dynamicType == RecordType::SHADOW_MEMORY) {
+    if (dynamicMemInfo.dynamicType == RecordType::SHADOW_MEMORY && dynamicMemInfo.memType == MemType::GM) {
         TransShadowMemory(records, event);
     }
 }

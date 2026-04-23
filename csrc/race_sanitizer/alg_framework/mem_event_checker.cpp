@@ -414,8 +414,9 @@ void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx) cons
         auto opType = curEvent.memInfo.opType;
         auto memType = curEvent.memInfo.memType;
         if (curEvent.isDynamic) {
+            // 动态内存事件先统一转换为写事件，保证不漏检，后续细粒度判断会过滤掉读读竞争事件
             opType = AccessType::WRITE;
-            memType = MemType::GM;
+            memType = curEvent.dynamicMemInfo.memType;
         }
         if (metaData.isStart) {
             // 检查与历史写事件的冲突

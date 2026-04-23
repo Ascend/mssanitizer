@@ -187,6 +187,7 @@ struct DynamicOpInfo {
     uint64_t minAddr{};          // 变长协议的最小地址
     uint64_t maxAddr{};          // 变长协议的最大地址
     RecordType dynamicType{};    // 表示buffer对应的结构体类型
+    MemType memType{};           // 变长协议对应的内存类型
     void *buffer{nullptr};       // 变长协议对应的协议内容
 };
 

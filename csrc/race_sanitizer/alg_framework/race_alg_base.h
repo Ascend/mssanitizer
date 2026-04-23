@@ -52,7 +52,6 @@ public:
     virtual void CacheMstxCrossSet(const SanEvent& event) final;
     virtual ReturnType ProcessMstxCrossSyncEvent(const SanEvent& event) final;
     virtual ReturnType ProcessGetRlsBufSyncEvent(const SanEvent& event, RaceCheckType checkType) final;
-    virtual ReturnType ProcessDynamicMemEvent(const SanEvent& event) final;
 
 protected:
     EventContainer eventContainer_;

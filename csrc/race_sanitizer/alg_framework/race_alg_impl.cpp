@@ -117,6 +117,16 @@ ReturnType RaceAlgImpl::ProcessMemEvent(const SanEvent& event)
     return ReturnType::PROCESS_OK;
 }
 
+ReturnType RaceAlgImpl::ProcessDynamicMemEvent(const SanEvent& event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+    auto e = MemEvent(event);
+    e.vt = vc_[curPipe];
+    memChecker_.PushEvent(e);
+    return ReturnType::PROCESS_OK;
+}
+
 ReturnType RaceAlgImpl::ProcessSyncEvent(const SanEvent& event)
 {
     auto e = SyncEvent {};

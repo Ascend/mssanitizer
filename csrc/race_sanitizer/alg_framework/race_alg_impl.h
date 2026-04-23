@@ -43,6 +43,7 @@ private:
     ReturnType ProcessMemEvent(const SanEvent& event);
     ReturnType ProcessSyncEvent(const SanEvent& event);
     ReturnType ProcessTimeEvent(const SanEvent& event);
+    ReturnType ProcessDynamicMemEvent(const SanEvent& event);
 private:
     SyncEventDataBase syncDB_;
 };

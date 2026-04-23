@@ -45,6 +45,16 @@ private:
     bool ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRecord);
     std::vector<uint8_t> AllocMemory(size_t size) const;
 
+    /**
+     * @brief 申请动态内存存放动态内存记录，并将动态记录放入kernelRecords中
+     * @param recordCount      动态记录包含的单个内存记录数量
+     * @param kernelRecord     动态记录对应的kernelRecord
+     * @param kernelRecords    kernel侧记录缓存队列
+     * @param offset           动态记录相较于起始地址的偏移
+     */
+    void PushShadowMemoryRecord(size_t recordCount, KernelRecord &kernelRecord,
+        std::vector<KernelRecord> &kernelRecords, uint32_t offset = 0) const;
+
     RecordGlobalHead recordGlobalHead_ {};
     RecordBlockHead simdRecordHead_ {};
     SimtRecordBlockHead const *simtRecordHead_ {};

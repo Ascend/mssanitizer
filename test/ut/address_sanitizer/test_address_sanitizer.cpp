@@ -3618,14 +3618,10 @@ TEST(AddressSanitizer, parse_dynamic_shadow_memory_records_expect_success)
     KernelRecord kernelRecord;
     kernelRecord.recordType = RecordType::DYNAMIC_OP;
     auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
-    dynamicRecord.count = 3;
+    dynamicRecord.count = 2;
     dynamicRecord.dynamicType = RecordType::SHADOW_MEMORY;
     std::vector<ShadowMemoryRecord> shRecords;
     ShadowMemoryRecord record{};
-    record.addr = 0x100;
-    record.size = 10;
-    record.space = AddressSpace::UB;
-    shRecords.push_back(record);
     record.addr = 0x200;
     record.size = 20;
     record.space = AddressSpace::GM;
@@ -3656,6 +3652,19 @@ TEST(AddressSanitizer, parse_dynamic_shadow_memory_records_expect_success)
     ASSERT_EQ(records[1].memSize, 30);
     ASSERT_EQ(records[1].dstSpace, AddressSpace::GM);
     ASSERT_TRUE(records[1].ignoreIllegalCheck);
+
+    shRecords.clear();
+    events.clear();
+    records.clear();
+    record.addr = 0x200;
+    record.size = 20;
+    record.space = AddressSpace::UB;
+    shRecords.push_back(record);
+    dynamicRecord.buffer = shRecords.data();
+    sanitizerRecord.payload.kernelRecord = kernelRecord;
+    RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
+    ConvertSanEventsToMemOpRecords(events, records);
+    ASSERT_EQ(records.size(), 0);
 }
 
 }
