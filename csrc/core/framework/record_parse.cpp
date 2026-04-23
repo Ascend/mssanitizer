@@ -3386,6 +3386,10 @@ static void ParseMstxCrossNpuBarrier(const KernelRecord &record, std::vector<San
     auto &mstxRecord = record.payload.mstxRecord;
     auto &mstxCrossNpuBarrier = mstxRecord.interface.mstxCrossNpuBarrier;
 
+    if (mstxCrossNpuBarrier.pipeBarrierAll) {
+        CreatePipeAllSyncEvent(record, events, mstxRecord);
+    }
+
     SanEvent event;
     SetLocationInfo(event, record.payload.mstxRecord, record.blockType, record.serialNo);
     event.type = EventType::MSTX_CROSS_NPU_BARRIER;

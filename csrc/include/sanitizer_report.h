@@ -117,6 +117,7 @@ struct MstxCrossNpuBarrier {
     uint32_t usedCoreNum;
     uint32_t *usedCoreId;
     bool isAIVOnly;
+    bool pipeBarrierAll;
 };
 
 struct MstxTensorDesc {
