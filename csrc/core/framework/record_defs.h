@@ -281,7 +281,7 @@ enum class RecordType : uint32_t {
     RLS_BUF_V,
     RLS_BUFI_V,
     SIMT_START = 39999,
-    SIMT_LDG,
+    SIMT_LDG = 40000,
     SIMT_STG,
     SIMT_LDS,
     SIMT_STS,
@@ -291,8 +291,12 @@ enum class RecordType : uint32_t {
     SIMT_ST,
     SIMT_ATOM,
     SIMT_RED,
-    THREAD_BLOCK_BARRIER,
+    THREAD_BLOCK_BARRIER = 40010,
     SIMT_END = 50000,
+
+    MAIN_SCALAR_EMPTY_START = 51000,
+    SIMT_CALL,
+    MAIN_SCALAR_EMPTY_END = 52000,
 
    /// online检测对应的错误类型
     ONLINE_ERROR = 60000,
@@ -1821,7 +1825,11 @@ struct SimtAtomRecord {
     SimtAtomMode option;
 };
 
-struct SimtSyncRecord {
+struct MainScalarEmptyRecord {
+    Location location;
+};
+
+struct SimtEmptyRecord {
     Location location;
     SimtThreadLocation threadLoc;
 };
@@ -1978,7 +1986,8 @@ struct KernelRecord {
         Vms4v2RecordA5 vms4V2RecordA5;
         DynamicRecord dynamicRecord;
         RegisterSetRecord registerSetRecord;
-        SimtSyncRecord simtSyncRecord;
+        SimtEmptyRecord simtEmptyRecord;
+        MainScalarEmptyRecord mainScalarEmptyRecord;
     } payload;
 };
 

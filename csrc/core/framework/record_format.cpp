@@ -184,6 +184,9 @@ static const std::map<RecordType, std::string> RECORD_TYPE_MAP = {
     {RecordType::SET_QUANT_POST,              "SET_QUANT_POST"},
     {RecordType::SET_LRELU_ALPHA,             "SET_LRELU_ALPHA"},
     {RecordType::THREAD_BLOCK_BARRIER,        "THREAD_BLOCK_BARRIER"},
+    {RecordType::SIMT_START,                  "SIMT_START"},
+    {RecordType::SIMT_END,                    "SIMT_END"},
+    {RecordType::SIMT_CALL,                   "SIMT_CALL"},
 };
 
 std::ostream &operator<<(std::ostream &os, RecordType recordType)
@@ -1658,7 +1661,10 @@ static const std::map<RecordType, KernelRecordStreamFunc> KERNEL_RECORD_FORMAT_M
     {RecordType::SET_QUANT_PRE,   [](std::ostream &os, KernelRecord const &r) { os << r.payload.registerSetRecord; }},
     {RecordType::SET_QUANT_POST,  [](std::ostream &os, KernelRecord const &r) { os << r.payload.registerSetRecord; }},
     {RecordType::SET_LRELU_ALPHA, [](std::ostream &os, KernelRecord const &r) { os << r.payload.registerSetRecord; }},
-    {RecordType::THREAD_BLOCK_BARRIER, [](std::ostream &os, KernelRecord const &r) { os << r.payload.simtSyncRecord; }}
+    {RecordType::THREAD_BLOCK_BARRIER, [](std::ostream &os, KernelRecord const &r) { os << r.payload.simtEmptyRecord; }},
+    {RecordType::SIMT_START, [](std::ostream &os, KernelRecord const &r) { os << r.payload.simtEmptyRecord; }},
+    {RecordType::SIMT_END, [](std::ostream &os, KernelRecord const &r) { os << r.payload.simtEmptyRecord; }},
+    {RecordType::SIMT_CALL, [](std::ostream &os, KernelRecord const &r) { os << r.payload.mainScalarEmptyRecord; }}
 };
 
 std::ostream &operator<<(std::ostream &os, KernelRecord const &record)
@@ -1845,9 +1851,14 @@ std::ostream &operator<<(std::ostream &os, RegisterSetRecord const &record)
               << "regVal:" << record.regPayLoad.regVal;
 }
 
-std::ostream &operator<<(std::ostream &os, SimtSyncRecord const &record)
+std::ostream &operator<<(std::ostream &os, SimtEmptyRecord const &record)
 {
     return os << record.location << ", " << record.threadLoc;
+}
+
+std::ostream &operator<<(std::ostream &os, MainScalarEmptyRecord const &record)
+{
+    return os << record.location;
 }
 
 }  // namespace Sanitizer

@@ -479,7 +479,16 @@ const std::map<RecordType, std::function<bool(uint8_t const *, KernelRecord &, u
         return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
     }},
     {RecordType::THREAD_BLOCK_BARRIER, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtSyncRecord, offset);
+        return ParseRecordByType(record, kernelRecord.payload.simtEmptyRecord, offset);
+    }},
+    {RecordType::SIMT_START, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+        return ParseRecordByType(record, kernelRecord.payload.simtEmptyRecord, offset);
+    }},
+    {RecordType::SIMT_END, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+        return ParseRecordByType(record, kernelRecord.payload.simtEmptyRecord, offset);
+    }},
+    {RecordType::SIMT_CALL, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+        return ParseRecordByType(record, kernelRecord.payload.mainScalarEmptyRecord, offset);
     }}
 };
 

@@ -187,7 +187,8 @@ std::ostream &operator<<(std::ostream &os, MovL1BtRecord const &record);
 std::ostream &operator<<(std::ostream &os, MovL1FbRecord const &record);
 std::ostream &operator<<(std::ostream &os, DynamicRecord const &dynamicRecord);
 std::ostream &operator<<(std::ostream &os, RegisterSetRecord const &record);
-std::ostream &operator<<(std::ostream &os, SimtSyncRecord const &record);
+std::ostream &operator<<(std::ostream &os, SimtEmptyRecord const &record);
+std::ostream &operator<<(std::ostream &os, MainScalarEmptyRecord const &record);
 }  // namespace Sanitizer
 
 #endif  // CORE_FRAMEWORK_RECORD_FORMAT_H
