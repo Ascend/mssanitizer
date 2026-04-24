@@ -21,7 +21,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
     git clone https://gitee.com/ascend/samples.git -b 8.0.RC2
     ```
 
-    > [!NOTE] 说明  
+    > [!NOTE]   
     > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品和Atlas 350 加速卡。
 
 2. 进行算子代码编译，需添加以下编译选项：
@@ -44,7 +44,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
     增加-g选项使编译器生成定位信息，将会在异常报告输出时打印异常发生的具体位置（文件名、行号以及调用栈等信息）。
 
-    > [!NOTE] 说明  
+    > [!NOTE]   
     > - --cce-enable-sanitizer和-O0同时开启的情况下，需要增加编译选项 --cce-ignore-always-inline=false。  
     > - 添加-g编译选项会在生成的二进制文件中附带调试信息，建议限制带有调试信息的用户程序的访问权限，确保只有授权人员可以访问该二进制文件。  
     > - 增加--cce-enable-sanitizer编译选项生成的算子二进制，需与msSanitizer工具配套使用。不建议单独使用该二进制，单独使用可能会导致不可预见的问题。  
@@ -77,7 +77,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
 1. 单击[AddCustom代码示例](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AddCustom)，在${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch目录下运行install.sh脚本，生成自定义算子工程。
 
-    > [!NOTE] 说明  
+    > [!NOTE]   
     > 下载代码样例时，需执行以下命令指定分支版本。
     > 
     > ```sh 

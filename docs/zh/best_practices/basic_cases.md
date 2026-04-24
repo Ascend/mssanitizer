@@ -40,7 +40,7 @@
 
 单击[AclNNInvocation示例代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation)获取样例工程，为进行算子检测做准备。
 
-> [!NOTE] 说明
+> [!NOTE] 
 >
 > - 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
 > - 下载代码样例时，需执行以下命令指定分支版本。
@@ -57,10 +57,10 @@
     bash install.sh -v Ascendxxxyy    # xxxyy为用户实际使用的具体芯片类型
     ```
 
-2. 请参考《msopgen_user_guide》中的“算子编译部署”章节，完成算子的编译部署。
+2. 请参考《[MindStudio Ops Generator工具用户指南](https://gitcode.com/Ascend/msopgen/blob/26.0.0/docs/zh/user_guide/msopgen_user_guide.md)》中的“算子编译部署”章节，完成算子的编译部署。
 
-    > [!NOTE] 说明  
-    > 在样例工程的${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp目录下，修改在op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能
+    > [!NOTE]   
+    > 在样例工程的\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp目录下，修改在op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能
     >
     > ```cmake
     > add_ops_compile_options(ALL OPTIONS -sanitizer)
@@ -101,9 +101,9 @@
 ### 3.1 前提条件
 
 - 单击[AddCustom示例代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AddCustom)获取样例工程，为进行算子检测做准备。
-  > [!NOTE] 说明
+  > [!NOTE] 
   >
-  > - 此样例工程仅支持Python3.9，若要在其他Python版本上运行，需要修改${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation目录下run_op_plugin.sh文件中的Python版本。
+  > - 此样例工程仅支持Python3.9，若要在其他Python版本上运行，需要修改\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation目录下run_op_plugin.sh文件中的Python版本。
   > - 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
   > - 下载代码样例时，需执行以下命令指定分支版本。
   >
@@ -111,7 +111,7 @@
   > git clone https://gitee.com/ascend/samples.git -b master
   > ```
 >
-- 已参考《Ascend Extension for PyTorch 软件安装指南》，完成PyTorch框架和torch_npu插件的安装。
+- 已参考《[Ascend Extension for PyTorch 软件安装指南](https://www.hiascend.com/document/detail/zh/Pytorch/730/configandinstg/instg/docs/zh/installation_guide/installation_description.md)》，完成PyTorch框架和torch_npu插件的安装。
 
 ### 3.2 操作步骤
 
@@ -121,10 +121,10 @@
       bash install.sh -v Ascendxxxyy    # xxxyy为用户实际使用的具体芯片类型
     ```
 
-2. 参考《msopgen_user_guide》中的“算子编译部署”章节，完成算子的编译部署。
+2. 参考《[MindStudio Ops Generator工具用户指南](https://gitcode.com/Ascend/msopgen/blob/26.0.0/docs/zh/user_guide/msopgen_user_guide.md)》中的“算子编译部署”章节，，完成算子的编译部署。
 
-    > [!NOTE] 说明
-    > 编辑样例工程目录${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp/op_kernel下的CMakeLists.txt文件，增加编译选项-sanitizer。
+    > [!NOTE]   
+    > 编辑样例工程目录\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp/op_kernel下的CMakeLists.txt文件，增加编译选项-sanitizer。
     >
     > ```cmake
     > add_ops_compile_options(ALL OPTIONS -sanitizer)
@@ -286,16 +286,16 @@ flowchart TB
 
 1. 单击[AddKernelInvocationNeo样例代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo)，获取验证代码的样例工程。
 
-    > [!NOTE] 说明
+    > [!NOTE] 
     > 下载代码样例时，需执行以下命令指定分支版本。
     >
     > ```shell
     > git clone https://gitee.com/ascend/samples.git -b master
     > ```
     >
-2. 在${git_clone_path}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo目录中，将main.cpp文件引入的“acl/acl.h”头文件替换为msSanitizer工具提供的头文件“acl.h”。
+2. 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo目录中，将main.cpp文件引入的“acl/acl.h”头文件替换为msSanitizer工具提供的头文件“acl.h”。
 
-    > [!NOTE] 说明
+    > [!NOTE] 
     > 在模板库场景下，需将Ascend C模板库**/examples/common/helper.hpp**路径下的**#include <acl/acl.h>**替换为**#include "acl.h"**，具体操作步骤如下。
     >
     > - 1.执行以下命令，下载[catlass代码仓](https://gitcode.com/cann/catlass/tree/catlass-v1-stable)中的Ascend C模板库。
@@ -312,10 +312,9 @@ flowchart TB
     >
     > - 3.将**#include <acl/acl.h>**替换为**#include "acl.h"**。
     >
-3. 在${git_clone_path}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo目录下编辑CMakeLists.txt文件，导入API头文件路径  ${INSTALL_DIR}/tools/mssanitizer/include/acl和动态库路径
-  ${INSTALL_DIR}/tools/mssanitizer/lib64/libascend_acl_hook.so。
+3. 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo目录下编辑CMakeLists.txt文件，导入API头文件路径  ${INSTALL_DIR}/tools/mssanitizer/include/acl和动态库路径\$\{INSTALL_DIR\}/tools/mssanitizer/lib64/libascend_acl_hook.so。
 
-    > [!NOTE] 说明
+    > [!NOTE] 
     >
     > - 模板库场景仅适用于Atlas A2 训练系列产品/Atlas A2 推理系列产品。
     > - 模板库场景时，可通过以下方式增加检测编译选项。
@@ -328,5 +327,5 @@ flowchart TB
     >
 4. 导入环境变量，并重新编译算子。
 
-    > [!NOTE] 说明
+    > [!NOTE]   
     > 在安装昇腾AI处理器的服务器执行**npu-smi info**命令进行查询，获取**Chip Name**信息。实际配置值为AscendChip Name，例如**Chip Name**取值为_xxxyy_，实际配置值为Ascend_xxxyy_。

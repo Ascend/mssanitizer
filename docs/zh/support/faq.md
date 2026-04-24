@@ -2,7 +2,7 @@
 
 <br>
 
-## 1. msSanitizer工具异常报告中未打印正确的文件名和行号
+## msSanitizer工具异常报告中未打印正确的文件名和行号
 
 **问题现象**
 
@@ -21,7 +21,7 @@
 
     这种情况一般是因为使用了"-O2"或"-O3"编译选项进行算子代码编译，编译器对算子代码进行优化时导致代码行变化，可通过在算子编译阶段使用"-O0"禁用编译器优化来解决这个问题。
 
-## 2. msSanitizer工具使用"--cce-enable-sanitizer -g"编译算子时出现"InputSection too large"错误
+## msSanitizer工具使用"--cce-enable-sanitizer -g"编译算子时出现"InputSection too large"错误
 
 **问题现象**
 
@@ -45,7 +45,7 @@ target_compile_options(${smoke_testcase}_npu PRIVATE
 )
 ```
 
-## 3. msSanitizer工具提示--cache-size异常
+## msSanitizer工具提示--cache-size异常
 
 **问题现象**
 

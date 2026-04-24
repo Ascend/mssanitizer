@@ -43,8 +43,8 @@ msSanitizer工具包含sanitizer接口和mstx扩展接口两种类型。sanitize
 
 调用aclrtMalloc接口在Device上分配size大小的线性内存，并通过*devPtr返回已分配内存的指针，并向检测工具上报内存分配信息。实际的内存分配行为和参数含义与aclrtMalloc一致。
 
->[!NOTE] 说明
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMalloc的详细说明。
+> [!NOTE]   
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMalloc的详细说明。
 
 **函数原型**
 
@@ -83,7 +83,7 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 
 调用aclrtMallocCached接口在Device上申请size大小的线性内存，通过*devPtr返回已分配内存的指针，并向检测工具上报内存分配信息。该接口在任何场景下，申请的内存都支持cache缓存。实际的内存分配行为和参数含义与aclrtMallocCached一致。
 
-> [!NOTE] 说明        
+> [!NOTE]         
 > 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMallocCached的详细说明。
 
 **函数原型**
@@ -123,8 +123,8 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 
 调用aclrtFree接口释放Device上的内存，并向检测工具上报内存释放信息。实际的内存释放行为和参数含义与aclrtFree一致。
 
->[!NOTE] 说明 
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtFree的详细说明。
+> [!NOTE]  
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtFree的详细说明。
 
 **函数原型**
 
@@ -161,8 +161,8 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 
 调用aclrtMemset接口初始化内存，将内存中的内容设置为指定值，并向检测工具上报内存初始化信息。实际的内存初始化行为和参数含义与aclrtMemset一致。
 
->[!NOTE] 说明
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemset的详细说明。
+> [!NOTE]   
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemset的详细说明。
 
 **函数原型**
 
@@ -202,8 +202,8 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 
 调用aclrtMemsetAsync接口初始化内存，将内存中的内容设置为指定的值，并向检测工具上报内存初始化信息。此接口为异步接口。实际的内存初始化行为和参数含义与aclrtMemsetAsync一致。
 
->[!NOTE] 说明
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemsetAsync的详细说明。
+> [!NOTE]   
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemsetAsync的详细说明。
 
 **函数原型**
 
@@ -244,8 +244,8 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 
 调用aclrtMemcpy接口完成内存复制，并向检测工具上报内存复制信息。实际的内存复制行为和参数含义与aclrtMemcpy一致。
 
->[!NOTE] 说明
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy的详细说明。
+> [!NOTE]   
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy的详细说明。
 
 **函数原型**
 
@@ -286,8 +286,8 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 
 调用aclrtMemcpyAsync接口完成内存复制，并向检测工具上报内存复制信息。此接口为异步接口。实际的内存复制行为和参数含义与aclrtMemcpyAsync一致。
 
->[!NOTE] 说明
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpyAsync的详细说明。
+> [!NOTE]   
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpyAsync的详细说明。
 
 **函数原型**
 
@@ -329,8 +329,8 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 
 调用aclrtMemcpy2d接口完成矩阵数据内存复制，并向检测工具上报内存复制信息。实际的矩阵数据内存复制行为和参数含义与aclrtMemcpy2d一致。
 
->[!NOTE] 说明
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2d的详细说明。
+> [!NOTE]   
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2d的详细说明。
 
 **函数原型**
 
@@ -373,8 +373,8 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 
 调用aclrtMemcpy2dAsync接口完成矩阵数据内存复制，并向检测工具上报内存复制信息。此接口为异步接口。实际的矩阵数据内存复制行为和参数含义与aclrtMemcpy2dAsync一致。
 
->[!NOTE] 说明
->可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2dAsync的详细说明。
+> [!NOTE]   
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2dAsync的详细说明。
 
 **函数原型**
 
@@ -424,7 +424,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 void sanitizerReportMalloc(void *ptr, uint64_t size);
 ```
 
-> [!NOTE] 说明      
+> [!NOTE]       
 > 此接口是__sanitizer_report_malloc接口的封装，__sanitizer_report_malloc接口为弱函数，只有当用户程序被检测工具拉起时才会生效。
 
 **参数说明**
@@ -445,7 +445,6 @@ void sanitizerReportMalloc(void *ptr, uint64_t size);
 无
 
 <br>
-<br>
 
 ### sanitizerReportFree
 
@@ -461,8 +460,8 @@ void sanitizerReportMalloc(void *ptr, uint64_t size);
 void sanitizerReportFree(void *ptr);
 ```
 
->[!NOTE] 说明   
->此接口是__sanitizer_report_free接口的封装，__sanitizer_report_free接口为弱函数，只有当用户程序被检测工具拉起时才会生效。
+> [!NOTE]      
+> 此接口是__sanitizer_report_free接口的封装，__sanitizer_report_free接口为弱函数，只有当用户程序被检测工具拉起时才会生效。
 
 **参数说明**
 
@@ -484,9 +483,9 @@ void sanitizerReportFree(void *ptr);
 
 **mstx接口简介**
 
-mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.0.0/docs/zh/api_reference/mstx_api_reference.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
+mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.0.0/docs/zh/api_reference/README.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
 
-> [!NOTE] 说明      
+> [!NOTE]       
 >《[MindStudio Sanitizer工具用户指南](../user_guide/mssanitizer_user_guide.md)》中的“异常检测功能介绍>功能说明>调用场景>Kernel直调算子开发”中的内核调用符场景暂不支持使用mstx接口。
 
 **mstx接口列表**
@@ -508,10 +507,10 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 - msSanitizer工具默认使能mstx接口，允许用户使用mstx接口自定义算子使用的内存空间地址和大小，可识别并快速界定算子的内存问题。
 - mstx当前提供了两种API的使用方式：库文件和头文件，以[AclNNInvocation中代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation)为例：
 
-    >[!NOTE] 说明  
+    >[!NOTE]      
     > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
 
-- 在${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt路径下新增库文件libms_tools_ext.so，地址为：${INSTALL_DIR}/lib64/libms_tools_ext.so。
+- 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt路径下新增库文件libms_tools_ext.so，地址为：${INSTALL_DIR}/lib64/libms_tools_ext.so。
     
     ```c  
         # Header path
@@ -527,7 +526,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 
     ```
 
-- 在${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp路径下，将用户程序编译链接dl库，对应的头文件ms_tools_ext.h地址：${INSTALL_DIR}/include/mstx。
+- 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp路径下，将用户程序编译链接dl库，对应的头文件ms_tools_ext.h地址：${INSTALL_DIR}/include/mstx。
     
     ```c
     ...
@@ -535,7 +534,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
     ...
     ```
 
-    > [!NOTE] 说明        
+    > [!NOTE]         
     > ${INSTALL_DIR}请替换为CANN软件安装后文件存储路径。以root用户安装为例，安装后文件默认存储路径为：/usr/local/Ascend/cann。 
 
 **调用示例**

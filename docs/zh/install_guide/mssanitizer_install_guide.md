@@ -4,8 +4,8 @@
 
 msSanitizer工具的安装方式包括：
 
-- 二进制安装：msSanitizer工具完整功能已集成在CANN包中发布，可直接安装CANN包，具体请参见[二进制安装](#二进制安装)。
-- 源码安装：如需使用最新代码的功能，或对源码进行修改以增强功能，可下载本仓库代码，自行编译、打包工具并完成安装，具体请参见[源码安装](#源码安装)。
+- 二进制安装：msSanitizer工具完整功能已集成在CANN包中发布，可直接安装CANN包，具体请参见[二进制安装](#1-二进制安装)。
+- 源码安装：如需使用最新代码的功能，或对源码进行修改以增强功能，可下载本仓库代码，自行编译、打包工具并完成安装，具体请参见[源码安装](#2-源码安装)。
 
 <br>
 
@@ -35,7 +35,7 @@ msSanitizer工具的安装方式包括：
 python build.py
 ```
 
-### 2.3 安装与卸载
+### 2.3 安装
 
 #### 2.3.1 准备 run 包
 
@@ -55,13 +55,14 @@ chmod +x mindstudio-sanitizer_*.run
 ```
 
 若系统中已安装该工具的旧版本，安装过程中会提示是否替换；输入 "y" 可执行覆盖安装。
->[!NOTE]安装路径说明   
+> [!NOTE] 
+> 安装路径说明   
 > 若环境中已配置 `ASCEND_HOME_PATH` 环境变量，工具将安装至 `$ASCEND_HOME_PATH` 目录；
 > 否则，默认安装至 `$HOME/Ascend` 目录；  
 > 如需指定自定义安装路径，请使用 `--install-path` 选项，例如：
 > `./mindstudio-sanitizer_*.run --install-path=./xxx --run`，即可将该运行包安装至 `xxx` 目录。
 
-#### 2.3.3 卸载
+### 2.4 卸载
 
 可通过如下命令卸载：
 
@@ -69,18 +70,19 @@ chmod +x mindstudio-sanitizer_*.run
 ./mindstudio-sanitizer_*.run --uninstall
 ```
 
->[!NOTE]卸载路径说明   
+> [!NOTE]
+> 卸载路径说明   
 > 默认将在 `$HOME/Ascend` 目录下卸载；若先前安装时通过 `--install-path` 指定了自定义路径，
 > 则卸载时也需显式添加 `--install-path` 选项，例如：
 > `./mindstudio-sanitizer_*.run --install-path=./xxx --uninstall`。
 
-#### 2.3.4 升级
+### 2.5 升级
 
 升级操作本质上是卸载旧版本并安装新版本，与[2.3.2 安装](#232-安装)中所述的覆盖安装方式一致，请参见相关操作说明。
 
-### 2.4 FAQ
+## 3. FAQ
 
-#### 2.4.1 安装完成后，执行命令未调用新编译的工具
+### 安装完成后，执行命令未调用新编译的工具
 
 请参考以下命令，检查相关环境变量是否配置正确，以确保系统优先使用新安装的算子工具：
 
@@ -90,7 +92,7 @@ export PATH=$ASCEND_HOME_PATH/bin:$PATH
 export LD_LIBRARY_PATH=$ASCEND_HOME_PATH/lib64:$LD_LIBRARY_PATH
 ```
 
-#### 2.4.2 run 包已删除时如何卸载？
+### run 包已删除时如何卸载？
 
 可通过以下命令执行卸载操作：
 
