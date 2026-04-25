@@ -101,7 +101,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 1. PyTorch图模式（TorchAir）下，仅支持在msSanitizer工具不添加编译选项的情况下进行检测，具体请参见[5. 算子编译选项配置（可选）](#5-算子编译选项配置可选)。
 2. PyTorch图模式（TorchAir）下，支持Ascend IR图执行模式和aclgraph图执行模式，具体请参见《[Ascend Extension for PyTorch](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00015.html)》中“PyTorch图模式使用(TorchAir)>reduce-overhead模式功能>reduce-overhead模式配置”章节。
-3. PyTorch框架调用场景，详细信息可参考《[Ascend Extension for PyTorch](https://www.hiascend.com/document/detail/zh/Pytorch/720/ptmoddevg/Frameworkfeatures/featuresguide_00021.html)》中“PyTorch框架特性指南>自定义算子适配开发>基于OpPlugin算子适配开发”章节。具体操作请参见《[基础案例](../best_practices/basic_cases.md)》中的“检测PyTorch接口调用的算子”。
+3. PyTorch框架调用场景，详细信息可参考《[Ascend Extension for PyTorch](https://www.hiascend.com/document/detail/zh/Pytorch/720/ptmoddevg/Frameworkfeatures/featuresguide_00021.html)》中“PyTorch框架特性指南>自定义算子适配开发>基于OpPlugin算子适配开发”章节。具体操作请参见《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测PyTorch接口调用的算子”。
 
 ### 4.4 Triton 算子调用场景
 
@@ -122,7 +122,7 @@ mssanitizer --tool=memcheck ./add_npu
 > [!NOTE] 
 > Triton 场景会使用 PyTorch 创建 Tensor，PyTorch 框架内默认以内存池的方式管理 GM 内存，会对内存检测产生干扰，因此必须关闭内存缓存以保证检测的有效性。
 
-详细使用示例可参考《[基础案例](../best_practices/basic_cases.md)》中的"检测 Triton 算子"章节。
+详细使用示例可参考《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中的"检测 Triton 算子"章节。
 
 ## 5. 算子编译选项配置（可选）
 

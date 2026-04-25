@@ -14,7 +14,7 @@
 
     说明msSanitizer工具没有解析到正确的文件名和行号，根据用户的检测场景有以下两种解决方法：
 
-    - 如果启用了"--check-cann-heap=yes"选项，对CANN软件栈内存进行检测，则可以通过引入Sanitizer API头文件并重新编译用户程序使检测工具获取到正确的文件名和行号，具体可参考《[example](../best_practices/basic_cases.md)》中“检测CANN软件栈的内存>内存泄漏检测使用原理>步骤4”。
+    - 如果启用了"--check-cann-heap=yes"选项，对CANN软件栈内存进行检测，则可以通过引入Sanitizer API头文件并重新编译用户程序使检测工具获取到正确的文件名和行号，具体可参考《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中“检测CANN软件栈的内存>内存泄漏检测使用原理>步骤4”。
     - 如果正在对算子进行异常检测，那么可能是在算子编译阶段未启用"-g"编译选项，启用"-g"编译选项后才能生成正确的文件名和行号，具体可参考《[MindStudio Sanitizer工具用户指南](../user_guide/mssanitizer_user_guide.md)》中的“使用前准备>内核调用符场景准备”。
 
 - 文件名显示正确，但行号显示为"0"。
