@@ -44,13 +44,13 @@ msSanitizer 工具用于检测内存越界、竞争条件、未初始化变量�
 
 ```shell
 cd ~/ot_demo/workspace/src/AddCustom
-\cp -f op_kernel/CMakeLists.txt op_kernel/CMakeLists.txt.orig.bak
-sed -i "1i\\add_ops_compile_options(ALL OPTIONS -sanitizer)" op_kernel/CMakeLists.txt
+\cp -f op_kernel/CMakeLists.txt op_kernel/CMakeLists.txt.bak
+printf '%s\n' "if(COMMAND add_ops_compile_options)" "  add_ops_compile_options(ALL OPTIONS -sanitizer)" "elseif(COMMAND npu_op_kernel_options)" "  npu_op_kernel_options(ascendc_kernels ALL OPTIONS -sanitizer)" "endif()" | cat - op_kernel/CMakeLists.txt > tmp && mv -f tmp op_kernel/CMakeLists.txt;
 ```
 
 #### 2.3.2 构造内存越界错误
 
-修改 op_kernel/add_custom.cpp 中的 CopyOut 函数，具体修改如下（将DataCopy内存拷贝长度从TILE_LENGTH改为2 * TILE_LENGTH）：
+修改 op_kernel/add_custom.cpp 中的 CopyOut 函数，具体修改如下（将DataCopy内存拷贝长度增加一倍，触发 “非法读取”）：
 
 ```diff
 - AscendC::DataCopy(zGm[progress * this->tileLength], zLocal, this->tileLength);
@@ -134,5 +134,6 @@ mssanitizer --tool=initcheck bash run.sh
 
 ```shell
 cd ~/ot_demo/workspace/src/AddCustom
-\cp -f op_kernel/CMakeLists.txt.orig.bak op_kernel/CMakeLists.txt
+\cp -f ~/ot_demo/msot/example/quick_start/msopgen/code/op_kernel/add_custom.cpp ~/ot_demo/workspace/src/AddCustom/op_kernel/
+\cp -f op_kernel/CMakeLists.txt.bak op_kernel/CMakeLists.txt
 ```
