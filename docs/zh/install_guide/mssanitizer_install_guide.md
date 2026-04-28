@@ -97,7 +97,7 @@ export LD_LIBRARY_PATH=$ASCEND_HOME_PATH/lib64:$LD_LIBRARY_PATH
 可通过以下命令执行卸载操作：
 
 ```shell
-bash $HOME/Ascend/share/info/mindstudio-sanitizer/script/uninstall.sh
+bash $HOME/Ascend/cann/share/info/mindstudio-sanitizer/script/uninstall.sh
 ```
 
 对于指定路径安装的场景，请使用对应路径下的卸载脚本：
