@@ -6,7 +6,7 @@
 
 **接口简介**
 
-msSanitizer工具包含sanitizer接口和mstx扩展接口两种类型。sanitizer接口用于CANN软件栈的检测，与ACL系列接口一一对应。此类接口会在ACL对应接口的功能基础上，额外向工具上报接口调用位置的代码文件和行号信息，使用时需导入sanitizer API头文件和链接动态库，具体请参见《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>导入API头文件和链接动态库”。mstx扩展接口用于用户自定义上报内存池信息，以实现更准确的检测，具体请参见[mstx扩展功能](#mstx扩展功能)。
+msSanitizer工具包含sanitizer接口和mstx扩展接口两种类型。sanitizer接口用于CANN软件栈的检测，与ACL系列接口一一对应。此类接口会在ACL对应接口的功能基础上，额外向工具上报接口调用位置的代码文件和行号信息，使用时需导入sanitizer API头文件和链接动态库，具体请参见《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>导入API头文件和链接动态库”。mstx扩展接口用于用户自定义上报内存池信息，以实现更准确的检测，具体请参见[mstx扩展功能](#mstx扩展功能)。
 
 **表 1**  msSanitizer工具接口列表
 
@@ -70,7 +70,7 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -110,7 +110,7 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -148,7 +148,7 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -189,7 +189,7 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -231,7 +231,7 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -273,7 +273,7 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -316,7 +316,7 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -349,7 +349,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 |src|输入|源内存地址指针。|
 |spitch|输入|源内存中相邻两列向量的地址距离。|
 |width|输入|待复制的矩阵宽度。|
-|height|输入|待复制的矩阵高度。height最大设置为5*1024*1024=5242880，否则接口返回失败。|
+|height|输入|待复制的矩阵高度。height最大可设置为5*1024*1024=5242880，否则接口返回失败。|
 |kind|输入|内存复制的类型。|
 |filename|输入|矩阵数据内存复制被调用处的文件名。|
 |lineno|输入|矩阵数据内存复制被调用处的行号。|
@@ -360,7 +360,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -405,7 +405,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 
 **调用示例**
 
-具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
+具体操作请参见使用示例的《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>排查步骤里的步骤4”。
 
 <br>
 <br>
@@ -490,7 +490,7 @@ mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程
 
 **mstx接口列表**
 
-msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用状况请参考《mstx_api》。
+msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《mstx_api》。
 
 **表 1**  msSanitizer工具调用的mstx接口列表<a name="table111"></a>
 
@@ -510,7 +510,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
     >[!NOTE]     
     > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
 
-- 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt路径下新增库文件libms_tools_ext.so，地址为：${INSTALL_DIR}/lib64/libms_tools_ext.so。
+- 在`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt`路径下新增库文件`libms_tools_ext.so`，地址为：`${INSTALL_DIR}/lib64/libms_tools_ext.so`。
     
     ```c  
         # Header path
@@ -526,7 +526,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 
     ```
 
-- 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp路径下，将用户程序编译链接dl库，对应的头文件ms_tools_ext.h地址：${INSTALL_DIR}/include/mstx。
+- 在`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp`路径下，将用户程序编译链接dl库，对应的头文件ms_tools_ext.h地址：`${INSTALL_DIR}/include/mstx`。
     
     ```c
     ...

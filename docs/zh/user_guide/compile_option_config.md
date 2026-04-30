@@ -15,7 +15,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
 ## 2. 内核调用符场景
 
-1. 样例工程代码请参考[LAddKernelInvocationk代码示例](https://gitee.com/ascend/samples/tree/8.0.RC2/operator/AddCustomSample/KernelLaunch/AddKernelInvocation)，执行以下命令，下载分支版本的样例代码。
+1. 样例工程代码请参考[LAddKernelInvocation代码示例](https://gitee.com/ascend/samples/tree/8.0.RC2/operator/AddCustomSample/KernelLaunch/AddKernelInvocation)，执行以下命令，下载分支版本的样例代码。
 
     ```sh
     git clone https://gitee.com/ascend/samples.git -b 8.0.RC2
