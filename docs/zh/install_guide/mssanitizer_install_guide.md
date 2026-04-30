@@ -6,10 +6,10 @@
 
 msSanitizer工具的安装方式包括：
 
-- 使用CANN包安装：msSanitizer工具完整功能已集成在CANN包中发布，可直接安装CANN包，请参考《[CANN 快速安装](https://www.hiascend.com/cann/download)》，逐步完成安装与配置。
-- 源码安装：如需使用最新代码的功能，或对源码进行修改以增强功能，可下载本仓库代码，自行编译、打包工具并完成安装，具体请参见[源码安装](#2-源码安装)。
+- 使用CANN包安装：msSanitizer工具完整功能已集成在CANN包中，请参考《[CANN 快速安装](https://www.hiascend.com/cann/download)》安装昇腾NPU驱动和CANN软件（包含Toolkit和ops包），并配置环境变量。
+- 源码编译安装：如需使用最新代码的功能，或对源码进行修改以增强功能，可下载本仓库代码，自行编译、打包工具并完成安装，具体请参见[源码编译安装](#2-源码编译安装)。
 
-## 2. 源码安装
+## 2. 源码编译安装
 
 ### 2.1 环境准备
 
@@ -17,11 +17,18 @@ msSanitizer工具的安装方式包括：
 
 ### 2.2 执行编译打包
 
-通过一键式脚本自动完成依赖仓库的下载与构建流程：
+- 克隆本仓库
 
-```shell
-python build.py
-```
+    ```sh
+    git clone https://gitcode.com/Ascend/mssanitizer.git
+    ```
+
+- 通过一键式脚本自动完成依赖仓库的下载与构建流程：
+
+    ```shell
+    cd mssanitizer
+    python build.py
+    ```
 
 ### 2.3 安装
 
@@ -43,8 +50,11 @@ chmod +x mindstudio-sanitizer_*.run
 ```
 
 若系统中已安装该工具的旧版本，安装过程中会提示是否替换；输入 "y" 可执行覆盖安装。
+
 > [!NOTE] 
+> 
 > 安装路径说明   
+> 
 > 若环境中已配置 `ASCEND_HOME_PATH` 环境变量，工具将安装至 `$ASCEND_HOME_PATH` 目录；
 > 否则，默认安装至 `$HOME/Ascend` 目录；  
 > 如需指定自定义安装路径，请使用 `--install-path` 选项，例如：

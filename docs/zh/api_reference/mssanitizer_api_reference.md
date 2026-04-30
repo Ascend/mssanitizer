@@ -349,7 +349,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 |src|输入|源内存地址指针。|
 |spitch|输入|源内存中相邻两列向量的地址距离。|
 |width|输入|待复制的矩阵宽度。|
-|height|输入|待复制的矩阵高度。height最大设置为5*1024*1024=5242880，否则接口返回失败。|
+|height|输入|待复制的矩阵高度。height最大可设置为5*1024*1024=5242880，否则接口返回失败。|
 |kind|输入|内存复制的类型。|
 |filename|输入|矩阵数据内存复制被调用处的文件名。|
 |lineno|输入|矩阵数据内存复制被调用处的行号。|
@@ -490,7 +490,7 @@ mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程
 
 **mstx接口列表**
 
-msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用状况请参考《mstx_api》。
+msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《mstx_api》。
 
 **表 1**  msSanitizer工具调用的mstx接口列表<a name="table111"></a>
 
@@ -510,7 +510,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
     >[!NOTE]      
     > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
 
-- 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt路径下新增库文件libms_tools_ext.so，地址为：${INSTALL_DIR}/lib64/libms_tools_ext.so。
+- 在`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt`路径下新增库文件`libms_tools_ext.so`，地址为：`${INSTALL_DIR}/lib64/libms_tools_ext.so`。
     
     ```c  
         # Header path
@@ -526,7 +526,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 
     ```
 
-- 在\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp路径下，将用户程序编译链接dl库，对应的头文件ms_tools_ext.h地址：${INSTALL_DIR}/include/mstx。
+- 在`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp`路径下，将用户程序编译链接dl库，对应的头文件ms_tools_ext.h地址：`${INSTALL_DIR}/include/mstx`。
     
     ```c
     ...

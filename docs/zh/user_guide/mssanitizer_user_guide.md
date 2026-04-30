@@ -205,7 +205,7 @@ mssanitizer --tool=memcheck ./add_npu
 >
 > - 当用户程序运行完成后，界面将会打印异常报告。
 > - 当用户使用PyTorch等框架接入算子时，框架内部可能会通过内存池管理GM内存，而内存池通常会一次性分配大量GM内存，并在运行过程中复用。此时，若用户对算子进行检测并记录GM上所有内存分配和释放的信息，会因为内存池的内存管理方式导致检测信息不准确。因此检测工具提供了手动上报GM内存分配信息的接口，方便用户在算子调用时手动上报该算子应当使用的GM内存范围，详细接口介绍请参见《[MindStudio Sanitizer对外接口使用说明](../api_reference/mssanitizer_api_reference.md)》中的sanitizerReportMalloc和sanitizerReportFree接口。
-> - msSanitizer工具也支持对Atlas A2 训练系列产品/Atlas A2 推理系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3 训练系列产品/Atlas A3 推理系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/ascendcopapi/atlasascendc_api_07_0869.html)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
+> - msSanitizer工具也支持对Atlas A2 训练系列产品/Atlas A2 推理系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3 训练系列产品/Atlas A3 推理系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
 > - msSanitizer工具也支持对通算融合类算子的非法读写检测。
 > - 当前Atlas 350 加速卡支持内存检测中GM/UB/L1/L0A/L0B/L0C，其他暂不支持。
 
