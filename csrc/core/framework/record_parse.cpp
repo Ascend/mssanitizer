@@ -3868,7 +3868,7 @@ static void ParseRecordDynamic(const KernelRecord &record, std::vector<SanEvent>
     event.eventInfo.dynamicOpInfo.dynamicType = dynamicRecord.dynamicType;
     event.eventInfo.dynamicOpInfo.buffer = dynamicRecord.buffer;
     if (dynamicRecord.count > 0 && dynamicRecord.buffer != nullptr) {
-        if (dynamicRecord.dynamicType == RecordType::SHADOW_MEMORY) {
+        if (dynamicRecord.dynamicType == RecordType::SIMT_ENTRY) {
             event.pipe = PipeType::PIPE_V;
             auto smRecord = reinterpret_cast<const ShadowMemoryRecord *>(dynamicRecord.buffer);
             // 协议解析时，已经保证了动态记录里所有的记录地址空间相同

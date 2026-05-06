@@ -4735,7 +4735,7 @@ TEST_F(TestRecordParse, parse_shadow_memory_record_and_expect_success)
     shRecords.push_back(smRecord);
     record.payload.dynamicRecord.buffer = shRecords.data();
     record.payload.dynamicRecord.count = shRecords.size();
-    record.payload.dynamicRecord.dynamicType = RecordType::SHADOW_MEMORY;
+    record.payload.dynamicRecord.dynamicType = RecordType::SIMT_ENTRY;
 
     SanitizerRecord sanitizerRecord{};
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -4744,7 +4744,7 @@ TEST_F(TestRecordParse, parse_shadow_memory_record_and_expect_success)
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.count, 2);
-    ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.dynamicType, RecordType::SHADOW_MEMORY);
+    ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.dynamicType, RecordType::SIMT_ENTRY);
     ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.minAddr, 0x100);
     ASSERT_EQ(events[0].eventInfo.dynamicOpInfo.maxAddr, 0x200 + 20);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);

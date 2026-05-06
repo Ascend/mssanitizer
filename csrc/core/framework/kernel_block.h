@@ -26,12 +26,13 @@ namespace Sanitizer {
 
 class KernelBlock {
 public:
-    static std::unique_ptr<KernelBlock> CreateKernelBlock(uint8_t const *memInfo, uint32_t blockIdx);
-    void ParseSimtRecord(std::vector<KernelRecord> &kernelRecords);
+    static std::unique_ptr<KernelBlock> CreateKernelBlock(uint8_t const *memInfo, uint64_t memSize, uint32_t blockIdx);
     void PrintCacheSizeLog(uint64_t totalSize);
     bool NextSimd(KernelRecord &kernelRecord);
+    void ParseSimtErrorRecord(std::vector<KernelRecord> &kernelRecords);
     void ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecords);
-
+    bool ParseSimtEntryRecord(KernelRecord &kernelRecord);
+    RecordBlockHead GetRecordBlockHead() const { return simdRecordHead_; }
     uint64_t GetTotalBlockDim() const;
 
     static void ResetAll()
@@ -55,12 +56,15 @@ private:
     void PushShadowMemoryRecord(size_t recordCount, KernelRecord &kernelRecord,
         std::vector<KernelRecord> &kernelRecords, uint32_t offset = 0) const;
 
+    void CacheDynamicRecord(uint8_t *startPtr, size_t recordCount, KernelRecord &kernelRecord, uint32_t offset = 0) const;
+
     RecordGlobalHead recordGlobalHead_ {};
     RecordBlockHead simdRecordHead_ {};
-    SimtRecordBlockHead const *simtRecordHead_ {};
-    ShadowMemoryRecordHead const *shadowMemoryHead_ {};
-    uint8_t const *simdRecords_ {};
-    uint8_t const *simtRecords_ {};
+    SimtRecordBlockHead const *simtRecordHead_ {nullptr};
+    ShadowMemoryRecordHead const *shadowMemoryHead_ {nullptr};
+    SimtEntryBlockHead *simtEntryHead_ {nullptr};
+    uint8_t const *simdRecords_ {nullptr};
+    uint8_t const *simtRecords_ {nullptr};
     uint64_t simdOffset_ {};
     uint64_t simtOffset_ {};
     uint64_t recordIdx_ {};

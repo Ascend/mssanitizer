@@ -3619,7 +3619,7 @@ TEST(AddressSanitizer, parse_dynamic_shadow_memory_records_expect_success)
     kernelRecord.recordType = RecordType::DYNAMIC_OP;
     auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
     dynamicRecord.count = 2;
-    dynamicRecord.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicRecord.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords;
     ShadowMemoryRecord record{};
     record.addr = 0x200;

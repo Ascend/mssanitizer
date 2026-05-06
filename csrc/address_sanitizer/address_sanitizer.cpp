@@ -85,7 +85,7 @@ void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
     record.side = MemOpSide::KERNEL;
 }
 
-void TransShadowMemory(std::vector<MemOpRecord> &records, const SanEvent &event)
+void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event)
 {
     MemOpRecord record{};
     record.ignoreIllegalCheck = true;
@@ -220,8 +220,8 @@ void AddressSanitizer::ConvertMemEvent(const SanEvent &event, std::vector<MemOpR
 void AddressSanitizer::ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
 {
     auto& dynamicMemInfo = event.eventInfo.dynamicOpInfo;
-    if (dynamicMemInfo.dynamicType == RecordType::SHADOW_MEMORY && dynamicMemInfo.memType == MemType::GM) {
-        TransShadowMemory(records, event);
+    if (dynamicMemInfo.dynamicType == RecordType::SIMT_ENTRY && dynamicMemInfo.memType == MemType::GM) {
+        SimtEntryToSingle(records, event);
     }
 }
 
@@ -460,7 +460,7 @@ size_t AddressSanitizer::GetRecordsNum(const std::vector<SanEvent> &events) cons
             }
         } else if (event.type == EventType::DYNAMIC_MEM_EVENT) {
             const auto &varInfo = event.eventInfo.dynamicOpInfo;
-            if (varInfo.dynamicType == RecordType::SHADOW_MEMORY) {
+            if (varInfo.dynamicType == RecordType::SIMT_ENTRY) {
                 numRecords += varInfo.count;
             }
         }

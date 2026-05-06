@@ -255,6 +255,16 @@ AICORE_FUNC_HEAD void Flush(__gm__ uint8_t *gm)
 #endif
 }
 
+AICORE_FUNC_HEAD uint8_t CountOneBits(uint64_t number)
+{
+    uint8_t count = 0;
+    while (number != 0) {
+        number &= number - 1;
+        ++count;
+    }
+    return count;
+}
+
 // 目前 simt 指令对 GM/UB/STACK 的访问都没有发现特殊对齐逻辑，先按数据类型对齐
 AICORE_FUNC_HEAD uint32_t GetAlignSizeByDataType(DetailedDataType dataType)
 {

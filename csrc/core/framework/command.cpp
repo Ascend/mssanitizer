@@ -239,7 +239,7 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
 {
     RuntimeContext &runtimeContext = RuntimeContext::Instance();
     auto memInfo = static_cast<uint8_t const *>(static_cast<void const *>(payload.buf));
-    auto kernelBlock = KernelBlock::CreateKernelBlock(memInfo, runtimeContext.currentBlockIdx_);
+    auto kernelBlock = KernelBlock::CreateKernelBlock(memInfo, payload.len, runtimeContext.currentBlockIdx_);
     if (kernelBlock == nullptr) {
         ++runtimeContext.currentBlockIdx_;
         return;
@@ -251,12 +251,26 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     while (kernelBlock->NextSimd(sanitizerRecord.payload.kernelRecord)) {
         checker.Do(sanitizerRecord);
         recordArray.Push(sanitizerRecord);
+
+        // 如果simd记录为SIMT_CALL，则当前记录后插入simt_entry动态记录，将记录执行序还原为发射序
+        if (sanitizerRecord.payload.kernelRecord.recordType == RecordType::SIMT_CALL) {
+            if (kernelBlock->GetRecordBlockHead().blockInfo.simtEndCount !=
+                kernelBlock->GetRecordBlockHead().blockInfo.simtCallCount) {
+                SAN_ERROR_LOG("parse simt entry error, simtEndCount:%u, simtCallCount:%u, serialNo:%lu",
+                    kernelBlock->GetRecordBlockHead().blockInfo.simtEndCount,
+                    kernelBlock->GetRecordBlockHead().blockInfo.simtCallCount, RuntimeContext::Instance().serialNo_);
+            } else {
+                if (kernelBlock->ParseSimtEntryRecord(sanitizerRecord.payload.kernelRecord)) {
+                    checker.Do(sanitizerRecord);
+                }
+            }
+        }
     }
 
     /// 当device支持simt并且是目标核的情况下才解析simt指令，否则会内存越界
     if (checker.SupportSimt() && checker.IsTargetBlock(runtimeContext.currentBlockIdx_)) {
         std::vector<KernelRecord> kernelRecords;
-        kernelBlock->ParseSimtRecord(kernelRecords);
+        kernelBlock->ParseSimtErrorRecord(kernelRecords);
         for (const auto &record : kernelRecords) {
             sanitizerRecord.payload.kernelRecord = record;
             checker.Do(sanitizerRecord);

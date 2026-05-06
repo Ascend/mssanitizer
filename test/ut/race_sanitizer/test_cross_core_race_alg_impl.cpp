@@ -924,7 +924,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_write_event_expect_r
     dynamicOpInfo.count = 3;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
-    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
         dynamicOpInfo.count, event.loc.coreId);
     dynamicOpInfo.buffer = shRecords1.data();
@@ -955,7 +955,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_read_event_expect_no
     dynamicOpInfo.count = 3;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
-    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
         dynamicOpInfo.count, event.loc.coreId);
     dynamicOpInfo.buffer = shRecords1.data();
@@ -987,7 +987,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
     dynamicOpInfo.memType = MemType::GM;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
-    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::READ,
         dynamicOpInfo.count, event.loc.coreId);
     dynamicOpInfo.buffer = shRecords1.data();

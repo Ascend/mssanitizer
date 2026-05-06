@@ -422,6 +422,7 @@ public:
         globalHead_ = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo_);
         simtBlockHead_ = reinterpret_cast<__gm__ SimtRecordBlockHead *>(memInfoSimt_);
         simdBlockHead_ = reinterpret_cast<__gm__ RecordBlockHead *>(memInfoSimd_);
+        memInfoSimtEntry_ = memInfoSimd_ + globalHead_->offsetInfo.simtEntryInfo.offset;
         if (!tables_.Init(heapAddr, size)) {
             return false;
         }
@@ -456,6 +457,64 @@ public:
                 }
             }
         }
+    }
+
+    AICORE_FUNC_HEAD void CopyShadowMemoryToMemInfo()
+    {
+        uint64_t l0TblNum = (ONLINE_GLOBAL_MEM_MASK + ONLINE_LOCAL_MEM_MASK - 1U) / ONLINE_LOCAL_MEM_MASK;
+        uint64_t l1TblNum = (ONLINE_LOCAL_MEM_MASK + ONLINE_ONE_SM_STAND_FOR_BYTE - 1U) / ONLINE_ONE_SM_STAND_FOR_BYTE;
+        __gm__ uint64_t *l0TblPtr = reinterpret_cast<__gm__ uint64_t *>(heapAddr_ + sizeof(ShadowMemoryHeapHead));
+        auto memInfoSimtEntryHead = reinterpret_cast<__gm__ SimtEntryBlockHead*>(memInfoSimtEntry_ +
+            simdBlockHead_->blockInfo.simtEntryUseSize);
+        auto gmEntryRecord = reinterpret_cast<__gm__ SimtEntryRecord*>(memInfoSimtEntryHead + 1);
+        SimtEntryBlockHead entryHead{};
+        simdBlockHead_->blockInfo.simtEntryUseSize += sizeof(SimtEntryBlockHead);
+        uint8_t l1OneBits = CountOneBits(ONLINE_LOCAL_MEM_MASK);
+        uint8_t l2OneBits = CountOneBits(ONLINE_ONE_SM_STAND_FOR_BYTE - 1);
+        for (size_t l0Idx = 0; l0Idx < l0TblNum; ++l0Idx) {
+            uint64_t l0Val = l0TblPtr[l0Idx];
+            if (!MemoryByteStatusParser<ByteStatus_t>::StatusIsValid(l0Val)) continue;
+            auto l1TblPtr = reinterpret_cast<__gm__ uint64_t *>(l0Val);
+            for (size_t l1Idx = 0; l1Idx < l1TblNum; ++l1Idx) {
+                uint64_t l1Val = l1TblPtr[l1Idx];
+                if (!MemoryByteStatusParser<ByteStatus_t>::StatusIsValid(l1Val)) continue;
+                auto l2TblPtr = reinterpret_cast<__gm__ uint64_t *>(l1Val);
+                for (size_t l2Idx = 0; l2Idx < ONLINE_ONE_SM_STAND_FOR_BYTE; ++l2Idx) {
+                    uint64_t l2Val = l2TblPtr[l2Idx];
+                    if (!MemoryByteStatusParser<ByteStatus_t>::StatusIsValid(l2Val)) continue;
+                    if (simdBlockHead_->blockInfo.simtEntryUseSize + sizeof(SimtEntryRecord) <=
+                        globalHead_->offsetInfo.simtEntryInfo.size) {
+                        SimtEntryRecord entryRecord{};
+                        entryRecord.addr = (l0Idx << l1OneBits) | (l1Idx << l2OneBits) | l2Idx;
+                        entryRecord.size = 1;
+                        entryRecord.status = l2Val;
+                        auto preEntryRecord = entryHead.recordWriteCount > 0 ?
+                            gmEntryRecord + entryHead.recordWriteCount - 1 : gmEntryRecord;
+                        // 判断记录是否可以合并，可以合并则更新之前的记录size；否则搬入一个新的记录
+                        if ((preEntryRecord->status == entryRecord.status) &&
+                            (preEntryRecord->addr + preEntryRecord->size == entryRecord.addr)) {
+                            preEntryRecord->size++;
+                        } else {
+                            CopyRecordToGm(gmEntryRecord + entryHead.recordWriteCount, &entryRecord);
+                            entryHead.recordWriteCount++;
+                            entryHead.recordCount++;
+                            simdBlockHead_->blockInfo.simtEntryUseSize += sizeof(SimtEntryRecord);
+                        }
+                    } else {
+                        entryHead.exceedSize += sizeof(SimtEntryRecord);
+                    }
+                    // 搬运之后将shadowMemory状态还原为初始状态
+#if defined(BISHENG_SUPPORT_SIMT_CALL_DBI)
+                    l2TblPtr[l2Idx] = 0;
+#endif
+                }
+            }
+        }
+        memInfoSimtEntryHead->recordCount = entryHead.recordCount;
+        memInfoSimtEntryHead->recordWriteCount = entryHead.recordWriteCount;
+        memInfoSimtEntryHead->exceedSize = entryHead.exceedSize > 0 ?
+            entryHead.exceedSize + sizeof(SimtEntryBlockHead) : 0;
+        simdBlockHead_->blockInfo.simtEndCount++;
     }
 
 private:
@@ -504,6 +563,7 @@ private:
     __gm__ uint8_t *memInfo_;
     __gm__ uint8_t *memInfoSimt_;
     __gm__ uint8_t *memInfoSimd_;
+    __gm__ uint8_t *memInfoSimtEntry_;
     __gm__ RecordGlobalHead *globalHead_;
     __gm__ SimtRecordBlockHead *simtBlockHead_;
     __gm__ RecordBlockHead *simdBlockHead_;

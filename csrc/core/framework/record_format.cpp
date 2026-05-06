@@ -173,7 +173,7 @@ static const std::map<RecordType, std::string> RECORD_TYPE_MAP = {
     {RecordType::MOV_UB_TO_UB,                "MOV_UB_TO_UB"},
     {RecordType::MOV_CBUF_TO_BT,              "MOV_CBUF_TO_BT"},
     {RecordType::MOV_CBUF_TO_FB,              "MOV_CBUF_TO_FB"},
-    {RecordType::SHADOW_MEMORY,               "SHADOW_MEMORY"},
+    {RecordType::SIMT_ENTRY,                  "SIMT_ENTRY"},
     {RecordType::DYNAMIC_OP,                  "DYNAMIC_OP"},
     {RecordType::SET_VECTOR_MASK_0,           "SET_VECTOR_MASK_0"},
     {RecordType::SET_VECTOR_MASK_1,           "SET_VECTOR_MASK_1"},
@@ -1836,9 +1836,11 @@ std::ostream &operator<<(std::ostream &os, MovL1FbRecord const &record)
 std::ostream &operator<<(std::ostream &os, DynamicRecord const &dynamicRecord)
 {
     if (dynamicRecord.buffer != nullptr && dynamicRecord.count > 0) {
-        if (dynamicRecord.dynamicType == RecordType::SHADOW_MEMORY) {
+        if (dynamicRecord.dynamicType == RecordType::SIMT_ENTRY) {
             const auto &shRecord = reinterpret_cast<const ShadowMemoryRecord *>(dynamicRecord.buffer);
-            return os << shRecord->location << ", type:" << dynamicRecord.dynamicType << ";count:" << dynamicRecord.count;
+            return os << shRecord->location << ", type:" << dynamicRecord.dynamicType << ";"
+                << "space:" << shRecord->space << ";"
+                << "count:" << dynamicRecord.count;
         }
     }
     return os << ", type:" << dynamicRecord.dynamicType << ";count:" << dynamicRecord.count;

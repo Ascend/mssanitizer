@@ -506,14 +506,35 @@ bool ParseRecord(RecordType recordType, uint8_t const *record, KernelRecord &ker
 
 inline uint64_t GetAllThreadSize(RecordGlobalHead const &globalHead)
 {
-    return (globalHead.offsetInfo.threadByteSize + sizeof(SimtRecordBlockHead)) * SIMT_THREAD_MAX_SIZE;
+    return (globalHead.offsetInfo.simtErrorInfo.size + sizeof(SimtRecordBlockHead)) * SIMT_THREAD_MAX_SIZE;
+}
+
+
+/// 把threadId按三维展开为(x,y,z)
+inline void DecomposeThreadId(uint16_t threadId, RecordBlockHead const &head, SimtThreadLocation &threadLoc)
+{
+    uint16_t threadXDim = head.blockInfo.threadXDim;
+    uint16_t threadYDim = head.blockInfo.threadYDim;
+    if (threadXDim == 0 || threadYDim == 0) {
+        SAN_ERROR_LOG("threadXDim or threadYDim equal 0 error in blockId:%d", head.blockInfo.blockId);
+        return;
+    }
+    threadLoc.idX = threadId % threadXDim;
+    threadLoc.idY = (threadId % (threadXDim * threadYDim)) / threadXDim;
+    threadLoc.idZ = threadId / (threadXDim * threadYDim);
+}
+
+inline bool IsReadStatus(OnlineShadowMemory::MemoryByteStatus memStatus)
+{
+    return (memStatus == OnlineShadowMemory::MemoryByteStatus::GLOBAL_READ) ||
+        (memStatus == OnlineShadowMemory::MemoryByteStatus::READ);
 }
 
 } // namespace [Dummy]
 
 namespace Sanitizer {
 
-std::unique_ptr<KernelBlock> KernelBlock::CreateKernelBlock(uint8_t const *memInfo, uint32_t blockIdx)
+std::unique_ptr<KernelBlock> KernelBlock::CreateKernelBlock(uint8_t const *memInfo, uint64_t memSize, uint32_t blockIdx)
 {
     if (memInfo == nullptr) {
         SAN_ERROR_LOG("MemInfo is nullptr in kernel block from block %u", blockIdx);
@@ -544,8 +565,16 @@ std::unique_ptr<KernelBlock> KernelBlock::CreateKernelBlock(uint8_t const *memIn
     kernelBlock->simdRecords_ = memInfo + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
     kernelBlock->simtRecordHead_ = reinterpret_cast<SimtRecordBlockHead const*>(
         kernelBlock->simdRecords_ + simdRecordHead->writeOffset);
-    kernelBlock->shadowMemoryHead_ = reinterpret_cast<ShadowMemoryRecordHead const*>(
-        kernelBlock->simdRecords_ + simdRecordHead->writeOffset + GetAllThreadSize(*recordGlobalHead));
+    if (sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) + simdRecordHead->writeOffset +
+        GetAllThreadSize(*recordGlobalHead) < memSize) {
+        kernelBlock->shadowMemoryHead_ = reinterpret_cast<ShadowMemoryRecordHead const*>(
+            kernelBlock->simdRecords_ + simdRecordHead->writeOffset + GetAllThreadSize(*recordGlobalHead));
+    }
+    if (kernelBlock->shadowMemoryHead_ != nullptr) {
+        kernelBlock->simtEntryHead_ = reinterpret_cast<SimtEntryBlockHead *>(
+            reinterpret_cast<uint8_t *>(const_cast<ShadowMemoryRecordHead *>(kernelBlock->shadowMemoryHead_+ 1)) +
+            kernelBlock->shadowMemoryHead_->recordCount * sizeof(ShadowMemoryRecord));
+    }
     kernelBlock->blockIdx_ = blockIdx;
     if (blockIdx == 0) {
         KernelBlock::totalBlockDim_ = recordGlobalHead->kernelInfo.totalBlockDim;
@@ -588,7 +617,7 @@ std::vector<uint8_t> KernelBlock::AllocMemory(size_t size) const
     return std::vector<uint8_t>(size);
 }
 
-void KernelBlock::ParseSimtRecord(std::vector<KernelRecord> &kernelRecords)
+void KernelBlock::ParseSimtErrorRecord(std::vector<KernelRecord> &kernelRecords)
 {
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -599,7 +628,7 @@ void KernelBlock::ParseSimtRecord(std::vector<KernelRecord> &kernelRecords)
     for (size_t threadId = 0; threadId < SIMT_THREAD_MAX_SIZE; ++threadId) {
         if (threadId > 0) {
             uint8_t const *threadHead = reinterpret_cast<uint8_t const*>(simtRecordHead_ + 1) +
-                recordGlobalHead_.offsetInfo.threadByteSize;
+                recordGlobalHead_.offsetInfo.simtErrorInfo.size;
             simtRecordHead_ = reinterpret_cast<SimtRecordBlockHead const*>(threadHead);
         }
 
@@ -633,7 +662,7 @@ void KernelBlock::ParseSimtRecord(std::vector<KernelRecord> &kernelRecords)
 
     /// 溢出时，计算需要的额外size
     if (simtExtendBytes > 0) {
-        extendCacheSize_ += (recordGlobalHead_.offsetInfo.threadByteSize + simtExtendBytes) *
+        extendCacheSize_ += (recordGlobalHead_.offsetInfo.simtErrorInfo.size + simtExtendBytes) *
             SIMT_THREAD_MAX_SIZE / SIMT_CACHE_SIZE_RATIO  / MB_TO_BYTES + 1;
         extendRecordCount_ += simtExtendRecordCount;
     }
@@ -664,15 +693,33 @@ void KernelBlock::PushShadowMemoryRecord(size_t recordCount, KernelRecord &kerne
     ++RuntimeContext::Instance().serialNo_;
 }
 
+void KernelBlock::CacheDynamicRecord(uint8_t *startPtr, size_t recordCount, KernelRecord &kernelRecord, uint32_t offset) const
+{
+    auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
+    kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
+    dynamicRecord.count = recordCount;
+    size_t allocSize = recordCount * sizeof(ShadowMemoryRecord);
+    std::vector<uint8_t> memoryVec = AllocMemory(allocSize);
+    dynamicMemorys_.push_back(memoryVec);
+    auto &vecBack = dynamicMemorys_.back();
+    vecBack.assign(startPtr + offset, startPtr + offset + allocSize);
+    dynamicRecord.buffer = static_cast<void *>(vecBack.data());
+    for (size_t i = 0; i < dynamicRecord.count; ++i) {
+        CalRecordPc(reinterpret_cast<ShadowMemoryRecord *>(dynamicRecord.buffer)[i]);
+    }
+    ++RuntimeContext::Instance().serialNo_;
+}
+
 // 目前 shadowMemory协议如下： UBRecord | UBRecord | ... | GMRecord | GMRecord | ...
 void KernelBlock::ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecords)
 {
+    if (shadowMemoryHead_ == nullptr) return;
     if (shadowMemoryHead_->recordCount == 0) {
         return;
     }
 
     auto recordType = static_cast<const RecordType>(shadowMemoryHead_->type);
-    if (recordType != RecordType::SHADOW_MEMORY) {
+    if (recordType != RecordType::SIMT_ENTRY) {
         return;
     }
 
@@ -695,6 +742,53 @@ void KernelBlock::ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecor
     if (gmRecordCount > 0) {
         PushShadowMemoryRecord(gmRecordCount, kernelRecord, kernelRecords, ubRecordCount * sizeof(ShadowMemoryRecord));
     }
+}
+
+bool KernelBlock::ParseSimtEntryRecord(KernelRecord &kernelRecord)
+{
+    if (simtEntryHead_ == nullptr) return false;
+    using namespace OnlineShadowMemory;
+    auto entryRecord = reinterpret_cast<SimtEntryRecord *>(simtEntryHead_ + 1);
+    if (simtEntryHead_->exceedSize > 0) {
+        extendCacheSize_ += simtEntryHead_->exceedSize;
+        extendRecordCount_++;
+    }
+    std::vector<ShadowMemoryRecord> records;
+    records.reserve(simtEntryHead_->recordWriteCount);
+    size_t ubRecordCount = 0;
+    for (size_t i = 0; i < simtEntryHead_->recordWriteCount; ++i) {
+        ShadowMemoryRecord record{};
+        record.addr = entryRecord[i].addr;
+        record.size = entryRecord[i].size;
+        uint64_t status = entryRecord[i].status;
+        auto memType = static_cast<OnlineMemoryType>((status >> MEMORY_TYPE_START_BIT) & MEMORY_TYPE_MASK);
+        auto memStatus = static_cast<MemoryByteStatus>((status >> MEMORY_STATUS_START_BIT) & MEMORY_STATUS_MASK);
+        record.space = memType == OnlineMemoryType::GM ? AddressSpace::GM : AddressSpace::UB;
+        record.accessType = IsReadStatus(memStatus) ? AccessType::READ : AccessType::WRITE;
+        if (record.space == AddressSpace::UB) ubRecordCount++;
+        uint16_t threadId = status & THREAD_ID_MASK;
+        DecomposeThreadId(threadId, simdRecordHead_, record.threadLoc);
+        record.location.pc = (status >> PC_START_BIT) & PC_MASK;
+        record.location.blockId = simdRecordHead_.blockInfo.blockId;
+        records.emplace_back(record);
+    }
+    kernelRecord.blockType = this->simdRecordHead_.blockInfo.blockType;
+    kernelRecord.recordType = RecordType::DYNAMIC_OP;
+    auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
+    dynamicRecord.dynamicType = RecordType::SIMT_ENTRY;
+    if (ubRecordCount > 0) {
+        CacheDynamicRecord(reinterpret_cast<uint8_t *>(records.data()), ubRecordCount, kernelRecord);
+    }
+    size_t gmRecordCount = simtEntryHead_->recordWriteCount - ubRecordCount;
+    if (gmRecordCount > 0) {
+        CacheDynamicRecord(reinterpret_cast<uint8_t *>(records.data()), gmRecordCount, kernelRecord,
+            ubRecordCount * sizeof(ShadowMemoryRecord));
+    }
+    // 缓存记录后处理当前simt_entry的偏移
+    uint8_t *nextSimtEntryHead = reinterpret_cast<uint8_t *>(simtEntryHead_) + sizeof(SimtEntryBlockHead) +
+        simtEntryHead_->recordWriteCount * sizeof(SimtEntryRecord);
+    simtEntryHead_ = reinterpret_cast<SimtEntryBlockHead *>(nextSimtEntryHead);
+    return true;
 }
 
 void KernelBlock::PrintCacheSizeLog(uint64_t totalSize)

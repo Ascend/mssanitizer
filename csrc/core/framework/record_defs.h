@@ -96,7 +96,10 @@ constexpr uint16_t SIMT_THREAD_MAX_SIZE = 2048;
 constexpr float SIMT_CACHE_SIZE_RATIO  = 0.1;
 
 // shadow memory占总cache-size比例
-constexpr float SHADOW_MEM_CACHE_SIZE_RATIO = 0.5;
+constexpr float SHADOW_MEM_CACHE_SIZE_RATIO = 0.3;
+
+// simt entry 占总cache-size比例
+constexpr float SIMT_ENTRY_CACHE_SIZE_RATIO = 0.3;
 
 // shadow memory能正常运行所需GM的最小size,12MB
 constexpr uint64_t SHADOW_MEM_MIN_BYTE_SIZE = 12 * 1024 * 1024;
@@ -142,6 +145,13 @@ constexpr uint64_t MEMORY_TYPE_MASK = 0x1U;
 constexpr uint64_t MEMORY_STATUS_START_BIT = 11;
 constexpr uint64_t MEMORY_STATUS_MASK = 0xFU;
 constexpr uint64_t THREAD_ID_MASK = 0x7FFU;
+
+struct SimtEntryRecord {
+    uint64_t addr;              // 地址
+    uint64_t status;            // 地址对应的状态，具体包括pc/threadId等
+    uint16_t size;              // 地址长度
+};
+
 } // namespace OnlineShadowMemory
 
 // 在线shadow memory的单字节状态
@@ -314,7 +324,7 @@ enum class RecordType : uint32_t {
 
     // 变长协议记录类型，后续可拓展其他变长协议
     DYNAMIC_OP = 79999,    // 变长协议头
-    SHADOW_MEMORY = 80000, // 变长协议的具体类型
+    SIMT_ENTRY = 80000,    // 变长协议的具体类型
 
     /// BLOCK_FINISH 类型是虚拟出的记录类型，表明单个逻辑核的记录类型已经上报完毕，
     /// 用来通知检测算法重置片上内存状态
@@ -662,6 +672,10 @@ struct KernelInfo {
 /// 该结构体主要包含当前block包含的信息，保存在每个核的头部
 struct BlockInfo {
     uint64_t simtSyncThreadCount{};                 // 当前核上simt单元多少个线程已经运行了sync_thread指令
+    uint64_t simtEndThreadCount{};                  // 当前核上simt单元多少个线程已经运行了simt_end指令
+    uint64_t simtEntryUseSize{};                    // 当前核上存放simtEntry记录已经用了多少内存
+    uint32_t simtEndCount{};                        // 当前核上运行了多少次simt_end桩
+    uint32_t simtCallCount{};                       // 当前核上运行了多少次simt_call桩
     uint16_t blockId{};
     uint16_t threadXDim{};
     uint16_t threadYDim{};
@@ -696,13 +710,17 @@ struct SimtInfo {
     uint32_t ubDynamicSize{};
 };
 
+struct OffsetInfo {
+    uint32_t offset{};
+    uint32_t size{};
+};
+
 // 统一管理所有的协议的长度和偏移信息，偏移指的均是相较于blockHead的偏移
 struct ProtocolOffsetInfo {
+    OffsetInfo simtErrorInfo;                         // simt指令相关的协议，主要用于存储simt指令和simt在线检测错误
+    OffsetInfo shadowMemoryInfo;                      // shadowMemory相关的协议
+    OffsetInfo simtEntryInfo;                         // simt_emtry整个函数相关的协议
     uint32_t blockHeadSize{};                         // 每个block head的长度
-    uint32_t threadByteSize{};                        // 每个thread最多存储多少个字节
-    uint32_t simtHeadOffset{};                        // simt head的偏移长度
-    uint32_t shadowMemoryByteSize{};                  // shadow memory 最多使用多少字节
-    uint32_t shadowMemoryOffset{};                    // shadow memory 的偏移长度
 };
 
 struct SimtRecordBlockHeadImpl {
@@ -714,6 +732,15 @@ struct SimtRecordBlockHeadImpl {
 
 using SimtRecordBlockHead = StructAlignBy<SimtRecordBlockHeadImpl, 64UL>;
 static_assert(sizeof(SimtRecordBlockHead) % 64UL == 0UL, "SimtRecordBlockHead size should aligned by 64 bytes");
+
+struct SimtEntryBlockHeadImpl {
+    uint64_t recordCount{};                 // 记录数量
+    uint64_t recordWriteCount{};            // 已经写入的记录数量
+    uint64_t exceedSize{};                  // 溢出了多少size
+};
+
+using SimtEntryBlockHead = StructAlignBy<SimtEntryBlockHeadImpl, 64UL>;
+static_assert(sizeof(SimtEntryBlockHead) % 64UL == 0UL, "SimtEntryBlockHead size should aligned by 64 bytes");
 
 struct RecordGlobalHeadImpl {
     uint64_t securityVal = RECORD_HEAD_SECURITY_VALUE;
@@ -1835,7 +1862,7 @@ struct SimtEmptyRecord {
 };
 
 struct ShadowMemoryRecordHead {
-    uint32_t type = static_cast<uint32_t>(RecordType::SHADOW_MEMORY);
+    uint32_t type = static_cast<uint32_t>(RecordType::SIMT_ENTRY);
     uint64_t recordCount;
 };
 

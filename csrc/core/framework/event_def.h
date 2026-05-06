@@ -305,7 +305,7 @@ struct ErrorEvent {
         if (memEvent.isDynamic) {
             auto &dynamicMemInfo = memEvent.dynamicMemInfo;
             if (dynamicMemInfo.count > 0 && dynamicMemInfo.buffer != nullptr && dynamicErrIdx < dynamicMemInfo.count &&
-                dynamicMemInfo.dynamicType == RecordType::SHADOW_MEMORY) {
+                dynamicMemInfo.dynamicType == RecordType::SIMT_ENTRY) {
                 auto errorRecord = reinterpret_cast<const ShadowMemoryRecord *>(dynamicMemInfo.buffer)[dynamicErrIdx];
                 addr = errorRecord.addr;
                 pc = errorRecord.location.pc;

@@ -34,7 +34,7 @@ TEST(OnlineCheck, check_illegal_simt_record_expect_one_error)
     hostmems.push_back({0x300, 50});
     blockHead.hostMemoryInfoPtr = reinterpret_cast<HostMemoryInfo *>(hostmems.data());
     blockHead.hostMemoryNum = hostmems.size();
-    head.offsetInfo.threadByteSize = 500;
+    head.offsetInfo.simtErrorInfo.size = 500;
     head.checkParms.defaultcheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
     std::copy_n(reinterpret_cast<uint8_t const*>(&blockHead), sizeof(RecordBlockHead),
@@ -284,7 +284,7 @@ TEST(OnlineCheck, check_unaligned_simt_record_expect_one_error)
     hostmems.push_back({0x300, 50});
     blockHead.hostMemoryInfoPtr = reinterpret_cast<HostMemoryInfo *>(hostmems.data());
     blockHead.hostMemoryNum = hostmems.size();
-    head.offsetInfo.threadByteSize = 500;
+    head.offsetInfo.simtErrorInfo.size = 500;
     head.checkParms.defaultcheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
     std::copy_n(reinterpret_cast<uint8_t const*>(&blockHead), sizeof(RecordBlockHead),

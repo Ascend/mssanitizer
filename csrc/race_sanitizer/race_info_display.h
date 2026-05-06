@@ -53,12 +53,7 @@ inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event
         return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo);
     }
 
-    os << "at pc current 0x" << std::hex << event.pc << std::dec;
-    if (!event.isSimt) {
-        os << " (serialNo:" << serialNo << ")";
-    };
-    os << std::endl;
-
+    os << "at pc current 0x" << std::hex << event.pc << std::dec << " (serialNo:" << serialNo << ")" << std::endl;
     return CallStack::Instance().FormatCallStack(os, stack);
 }
 

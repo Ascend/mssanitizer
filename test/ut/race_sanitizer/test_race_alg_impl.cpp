@@ -537,7 +537,7 @@ TEST(RaceAlgImpl, dynamic_gm_write_event_with_mem_event_expect_race_error)
     dynamicOpInfo.count = 3;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
-    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::READ,
         dynamicOpInfo.count, event.loc.coreId);
     dynamicOpInfo.buffer = shRecords1.data();
@@ -572,7 +572,7 @@ TEST(RaceAlgImpl, dynamic_gm_write_event_with_mem_event_expect_normal)
     dynamicOpInfo.count = 2;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
-    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
         dynamicOpInfo.count, event.loc.coreId);
     dynamicOpInfo.buffer = shRecords1.data();
@@ -607,7 +607,7 @@ TEST(RaceAlgImpl, dynamic_ub_write_event_with_mem_event_expect_normal)
     dynamicOpInfo.count = 2;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
-    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::WRITE,
         dynamicOpInfo.count, event.loc.coreId);
     dynamicOpInfo.buffer = shRecords1.data();
@@ -642,7 +642,7 @@ TEST(RaceAlgImpl, dynamic_ub_write_event_with_mem_event_expect_race_error)
     dynamicOpInfo.count = 3;
     dynamicOpInfo.minAddr = 0X100;
     dynamicOpInfo.maxAddr = 0x500;
-    dynamicOpInfo.dynamicType = RecordType::SHADOW_MEMORY;
+    dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
     std::vector<ShadowMemoryRecord> shRecords1 = GenShodowMemorys(dynamicOpInfo.minAddr, AccessType::READ,
         dynamicOpInfo.count, event.loc.coreId);
     dynamicOpInfo.buffer = shRecords1.data();

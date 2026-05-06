@@ -143,7 +143,7 @@ AICORE_FUNC_HEAD void SimtRecordEmptyEvent(EXTRA_PARAMS_DEC)
     record.location.pc = static_cast<uint64_t>(pc);
 
     Recorder recorder(memInfo, blockIdx);
-    recorder.DumpRecord<recordType>(record);
+    recorder.CopyShadowMemoryToMemInfo<recordType>(record);
 }
 
 }

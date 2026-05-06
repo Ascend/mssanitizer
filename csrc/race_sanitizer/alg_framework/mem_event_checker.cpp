@@ -86,8 +86,8 @@ std::vector<CompareShadowMemoryRecord> TransToRecords(void *buffer, size_t count
 bool IsMemoryOverlap(const DynamicOpInfo &op1, const DynamicOpInfo &op2, MemEventChecker::EventIdxInfo &idxInfo1, MemEventChecker::EventIdxInfo &idxInfo2)
 {
     bool existRace{};
-    if (op1.dynamicType == RecordType::SHADOW_MEMORY && op1.count > 0 && op1.buffer != nullptr &&
-        op2.dynamicType == RecordType::SHADOW_MEMORY && op2.count > 0 && op2.buffer != nullptr) {
+    if (op1.dynamicType == RecordType::SIMT_ENTRY && op1.count > 0 && op1.buffer != nullptr &&
+        op2.dynamicType == RecordType::SIMT_ENTRY && op2.count > 0 && op2.buffer != nullptr) {
         std::vector<CompareShadowMemoryRecord> op1Records = TransToRecords(op1.buffer, op1.count);
         std::vector<CompareShadowMemoryRecord> op2Records = TransToRecords(op2.buffer, op2.count);
         auto it1 = op1Records.cbegin();
@@ -136,7 +136,7 @@ void SplitMem(const MemOpInfo &op, MemEventChecker::AddrRangeVec &addrRangeVec)
 
 bool IsMemoryOverlap(const MemOpInfo &op1, const DynamicOpInfo &op2, MemEventChecker::EventIdxInfo &idxInfo2)
 {
-    if (op2.dynamicType == RecordType::SHADOW_MEMORY && op2.count > 0 && op2.buffer != nullptr) {
+    if (op2.dynamicType == RecordType::SIMT_ENTRY && op2.count > 0 && op2.buffer != nullptr) {
         std::vector<CompareShadowMemoryRecord> op2Records = TransToRecords(op2.buffer, op2.count);
         MemEventChecker::AddrRangeVec op1AddrRangeVec;
         SplitMem(op1, op1AddrRangeVec);

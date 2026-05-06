@@ -173,8 +173,8 @@ AICORE_FUNC_HEAD uint64_t CalcMemInfoOffset(__gm__ RecordGlobalHead *head, uint6
     uint64_t simdHeadSize = GetRecordHeadSize(hostMemoryNum);
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
     uint64_t threadId = GetThreadId();
-    threadOffset = head->offsetInfo.simtHeadOffset +
-        threadId * (head->offsetInfo.threadByteSize + sizeof(SimtRecordBlockHead));
+    threadOffset = head->offsetInfo.simtErrorInfo.offset +
+        threadId * (head->offsetInfo.simtErrorInfo.size + sizeof(SimtRecordBlockHead));
 #endif
 
     if (checkBlockId == CHECK_ALL_BLOCK) {
@@ -296,6 +296,14 @@ public:
 
     template<RecordType recordType, typename Record>
     AICORE_FUNC_HEAD void UpdateSyncThreadCount(Record const &record);
+
+     /* @tparam recordType 记录类型枚举
+     * @tparam Record     记录结构体类型
+     * @param  record     要写入的记录
+     * @brief 将shadowMemory上的所有内存记录拷贝到MemInfo处
+     */
+    template<RecordType recordType, typename Record>
+    AICORE_FUNC_HEAD void CopyShadowMemoryToMemInfo(Record const &record);
     
     AICORE_FUNC_HEAD void SetParaBaseAddr(uint64_t size);
 
@@ -339,6 +347,13 @@ AICORE_FUNC_HEAD void Recorder::DumpRecord(Record const &record)
         return;
     }
 
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
+    if (recordType == RecordType::SIMT_CALL) {
+        __gm__ RecordBlockHead *simdBlockHead = reinterpret_cast<__gm__ RecordBlockHead*>(memInfoSimdBlock_);
+        simdBlockHead->blockInfo.simtCallCount++;
+    }
+#endif
+
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
     DumpSimtRecord<recordType>(record);
 #else
@@ -354,7 +369,7 @@ AICORE_FUNC_HEAD void Recorder::DumpSimdRecord(Record const &record)
     __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo_);
     uint64_t stepSizes = sizeof(RecordType) + sizeof(Record);
     uint64_t simdEndOffset = globalHead->supportSimt ?
-        globalHead->offsetInfo.simtHeadOffset : globalHead->checkParms.cacheSize * MB_TO_BYTES;
+        globalHead->offsetInfo.simtErrorInfo.offset : globalHead->checkParms.cacheSize * MB_TO_BYTES;
     if (writeOffset + CACHE_LINE_SIZE + stepSizes < simdEndOffset &&
         simdBlockHead->recordCount == simdBlockHead->recordWriteCount) {
         auto recordTypePtr = reinterpret_cast<__gm__ RecordType*>(memInfoSimdBlock_ +
@@ -377,7 +392,7 @@ AICORE_FUNC_HEAD void Recorder::DumpSimtRecord(Record const &record)
     uint64_t writeOffset = simtBlockHead->writeOffset;
     __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo_);
     uint64_t stepSizes = sizeof(RecordType) + sizeof(Record);
-    if (writeOffset + CACHE_LINE_SIZE + stepSizes < globalHead->offsetInfo.threadByteSize &&
+    if (writeOffset + CACHE_LINE_SIZE + stepSizes < globalHead->offsetInfo.simtErrorInfo.size &&
         simtBlockHead->recordCount == simtBlockHead->recordWriteCount) {
         auto recordTypePtr = reinterpret_cast<__gm__ RecordType*>(memInfoSimtBlock_ + sizeof(SimtRecordBlockHead) +
            writeOffset);
@@ -494,6 +509,26 @@ AICORE_FUNC_HEAD void Recorder::UpdateSyncThreadCount(Record const &record)
         check_.ClearSyncThreadState();
         blockInfo.simtSyncThreadCount = 0;
     }
+    Flush(memInfoSimdBlock_);
+#endif
+}
+
+template<RecordType recordType, typename Record>
+AICORE_FUNC_HEAD void Recorder::CopyShadowMemoryToMemInfo(Record const &record)
+{
+    (void)recordType;
+    (void)record;
+    if (memInfo_ == nullptr) { return; }
+
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
+    auto memInfoBlockHead = reinterpret_cast<__gm__ RecordBlockHead *>(memInfoSimdBlock_);
+    auto &blockInfo = memInfoBlockHead->blockInfo;
+    AtomicAdd(&blockInfo.simtEndThreadCount, 1);
+    if (blockInfo.simtEndThreadCount == blockInfo.threadXDim * blockInfo.threadYDim * blockInfo.threadZDim) {
+        check_.CopyShadowMemoryToMemInfo();
+        blockInfo.simtEndThreadCount = 0;
+    }
+    Flush(memInfoSimdBlock_);
 #endif
 }
 
