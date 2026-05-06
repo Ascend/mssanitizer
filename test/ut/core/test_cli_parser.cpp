@@ -825,6 +825,67 @@ TEST(CliParser, set_check_cross_npu_races_yes_expect_get_check_cross_npu_races_t
     ASSERT_TRUE(cmd.config.checkCrossNpuRaces);
 }
 
+TEST(CliParser, do_not_set_padding_expect_get_default_value)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+    };
+
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_EQ(cmd.config.gmBufferGuardSize, GM_BUFFER_GUARD_DFT_SIZE);
+}
+
+TEST(CliParser, set_padding_no_expect_get_valid_value)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--padding=64"  // 有效范围 32 - 1024
+    };
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_EQ(cmd.config.gmBufferGuardSize, 64);
+
+    std::vector<const char*> argv2 = {
+        "mssanitizer",
+        "--padding=1024"
+    };
+    cmd = cliParser.Parse(argv2.size(), const_cast<char**>(argv2.data()));
+    ASSERT_EQ(cmd.config.gmBufferGuardSize, 1024);
+
+    std::vector<const char*> argv3 = {
+        "mssanitizer",
+        "--padding=32"
+    };
+    cmd = cliParser.Parse(argv3.size(), const_cast<char**>(argv3.data()));
+    ASSERT_EQ(cmd.config.gmBufferGuardSize, 32);
+}
+
+TEST(CliParser, set_invalid_padding_expect_get_default_value)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--padding=31"  // 有效范围 32 - 1024
+    };
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_EQ(cmd.config.gmBufferGuardSize, 32);
+
+    std::vector<const char*> argv2 = {
+        "mssanitizer",
+        "--padding=1025"
+    };
+    cmd = cliParser.Parse(argv2.size(), const_cast<char**>(argv2.data()));
+    ASSERT_EQ(cmd.config.gmBufferGuardSize, 32);
+
+    std::vector<const char*> argv3 = {
+        "mssanitizer",
+        "--padding=a"
+    };
+    cmd = cliParser.Parse(argv3.size(), const_cast<char**>(argv3.data()));
+    ASSERT_EQ(cmd.config.gmBufferGuardSize, 32);
+}
+
 TEST(CliParser, set_check_cross_npu_races_no_expect_get_check_cross_npu_races_false)
 {
     std::vector<const char*> argv = {

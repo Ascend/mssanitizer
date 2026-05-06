@@ -74,6 +74,7 @@ private:
     std::string ScopeToString(BoundsCheckScope scope);
     void UpdateHeapInfo(MemOpRecord const &record);
     void DoWithLocalTensor(const MstxRecord &record, const std::vector<MemOpRecord> &records);
+    void AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord);
 
     std::unique_ptr<ShadowMemory> shadowMemory_;
     MSG_FUNC msgFunc_;

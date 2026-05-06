@@ -133,7 +133,7 @@ TEST(Protocol, get_host_mem_record_from_protocol_expect_success_and_equal_to_pac
     };
 
     PacketHead recordHeader;
-    recordHeader.type = PacketType::HOST_RECORD;
+    recordHeader.type = PacketType::MEMORY_RECORD;
     HostMemRecord record{
         .type = MemOpType::MALLOC,
         .infoSrc = MemInfoSrc::BYPASS,
@@ -158,7 +158,7 @@ TEST(Protocol, get_host_mem_record_from_protocol_expect_success_and_equal_to_pac
 
     protocol.Feed(Serialize(record));
     packet = protocol.GetPacket();
-    ASSERT_EQ(packet.GetType(), PacketType::HOST_RECORD);
+    ASSERT_EQ(packet.GetType(), PacketType::MEMORY_RECORD);
     HostMemRecord ret = packet.GetPayload().hostMemRecord;
     ASSERT_EQ(record, ret);
 }

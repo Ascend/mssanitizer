@@ -38,11 +38,12 @@ enum class PacketType : uint32_t {
     LOG_STRING,          // 子进程日志信息
 
     // sanitizer 特有的协议
-    HOST_RECORD = 1000,  // Host 侧内存操作记录
+    MEMORY_RECORD = 1000,  // Host 侧内存操作记录
     KERNEL_RECORD,       // kernel 侧上报的记录块
     IPC_RECORD,          // IPC 类操作记录
     MEM_REGION_PERMISSION, // 内存权限分配
     SANITIZER_RECORD,    // 用于上报 SanitizerRecord 记录
+    GM_ADDR_OUT_OF_BOUND_RECORD,  // GM地址越界写记录
 
     // 用于server向client发送的消息
     IPC_RESPONSE = 3000,
@@ -77,6 +78,7 @@ public:
         BinaryPayload binary;
         IPCMemRecord ipcMemRecord;
         MemRegionPermissionDesc memPermission;
+        GMAddrOutOfBoundRecord gmAddrOutOfBoundRecord;
     };
 
 public:
@@ -110,7 +112,7 @@ public:
     {
         payload_.kernelSummary = summary;
     }
-    explicit Packet(HostMemRecord const &record) : type_{PacketType::HOST_RECORD}
+    explicit Packet(HostMemRecord const &record) : type_{PacketType::MEMORY_RECORD}
     {
         payload_.hostMemRecord = record;
     }
@@ -125,6 +127,10 @@ public:
     explicit Packet(MemRegionPermissionDesc const &desc) : type_{PacketType::MEM_REGION_PERMISSION}
     {
         payload_.memPermission = desc;
+    }
+    explicit Packet(GMAddrOutOfBoundRecord const &record) : type_{PacketType::GM_ADDR_OUT_OF_BOUND_RECORD}
+    {
+        payload_.gmAddrOutOfBoundRecord = record;
     }
     Packet(PacketType type, std::string const &binaryData) : type_{type}
     {

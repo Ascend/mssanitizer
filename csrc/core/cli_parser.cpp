@@ -54,6 +54,7 @@ enum class OptVal : int32_t {
     KERNEL_NAME,
     DEMANGLE_MODE,
     CHECK_CROSS_NPU_RACES,
+    GM_BUFFER_GUARD_SIZE,
 };
 
 std::vector<option> GetLongOptArray()
@@ -75,6 +76,7 @@ std::vector<option> GetLongOptArray()
         {"full-backtrace", required_argument, nullptr, static_cast<int32_t>(OptVal::FULL_BACKTRACE)},
         {"demangle", required_argument, nullptr, static_cast<int32_t>(OptVal::DEMANGLE_MODE)},
         {"check-cross-npu-races", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES)},
+        {"padding", required_argument, nullptr, static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE)},
         {nullptr, 0, nullptr, 0},
     };
     return longOpts;
@@ -414,6 +416,30 @@ void ParseCheckCrossNpuRaces(const std::string &param, UserCommand &userCommand)
     }
 }
 
+void ParseGMBufferGuardSize(const std::string &param, UserCommand &userCommand)
+{
+    constexpr uint32_t minSize = 32UL;
+    constexpr uint32_t maxSize = 1024UL;
+    auto parseFailed = [&userCommand](void) {
+        std::cout << "[mssanitizer] ERROR: --padding param is invalid. "
+                  << "range: " << minSize << "-" << maxSize << " (bytes), default:32 (bytes)" << std::endl;
+        userCommand.printHelpInfo = true;
+    };
+
+    long userSize{};
+    try {
+        userSize = std::stol(param);
+    } catch (std::exception& e) {
+        return parseFailed();
+    }
+
+    if (userSize < minSize || userSize > maxSize) {
+        return parseFailed();
+    }
+
+    userCommand.config.gmBufferGuardSize = userSize;
+}
+
 using ParseHandler = std::function<void(const std::string &, UserCommand &)>;
 std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
 {
@@ -435,6 +461,7 @@ std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
         {static_cast<int32_t>(OptVal::FULL_BACKTRACE), ParseFullBacktrace},
         {static_cast<int32_t>(OptVal::DEMANGLE_MODE), ParseDemangleMode},
         {static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES), ParseCheckCrossNpuRaces},
+        {static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE), ParseGMBufferGuardSize},
     };
 
     return handlers;
@@ -737,7 +764,8 @@ bool IsSupportDigital(int32_t opt, char ch)
     if ((opt == static_cast<int32_t>(OptVal::LOG_FILE) ||
         opt == static_cast<int32_t>(OptVal::MAX_DEBUGLOG_SIZE) ||
         opt == static_cast<int32_t>(OptVal::BLOCK_ID) ||
-        opt == static_cast<int32_t>(OptVal::CACHE_SIZE)) &&
+        opt == static_cast<int32_t>(OptVal::CACHE_SIZE) ||
+        opt == static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE)) &&
         IsDigital(ch)) {
         return true;
     }

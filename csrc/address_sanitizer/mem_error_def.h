@@ -74,6 +74,9 @@ enum class MemErrorType : uint8_t {
 
     INTERNAL_ERROR,
 
+    // AICPU Tiling场景下，GM地址越界
+    GM_ADDR_OUT_OF_BOUND,
+
     INVALID,
 };
 
@@ -87,12 +90,13 @@ struct ErrorMsg {
     MemErrorType type;
     bool isError;
     struct AuxData {
-        AuxData() : badAddr{}, nBadBytes{0UL}, space{AddressSpace::INVALID},
+        AuxData() : badAddr{}, nBadBytes{0UL}, nBadBytes_forward{0UL}, space{AddressSpace::INVALID},
                     moduleId(-1), fileName{}, lineNo{0UL}, coreId{0UL},
                     blockType{BlockType::AICUBE}, pc{0UL}, serialNo(0L),
                     side{MemOpSide::HOST}, threadLoc{}, conflictedThreadLoc{}, isSimtError{false} { }
         Addr badAddr;
         uint64_t nBadBytes;
+        uint64_t nBadBytes_forward; // 向前越界字节数
         AddressSpace space;
         int32_t moduleId;
         std::string fileName;
@@ -412,6 +416,30 @@ inline std::ostream &PrintInternalError(std::ostream &out, const ReducedErrorMsg
     return PrintLocationInfo(out, msg);
 }
 
+inline std::ostream &PrintGMAddrError(std::ostream &out, const ReducedErrorMsg &reducedMsg)
+{
+    ErrorMsg const &msg = reducedMsg.errorMsg;
+
+    std::string errStr = "";
+    if (msg.auxData.nBadBytes_forward != 0) {
+        errStr += std::to_string(msg.auxData.nBadBytes_forward) + " bytes on left bound";
+    }
+    if (msg.auxData.nBadBytes != 0) {
+        if (errStr.length() != 0) {
+            errStr += " and ";
+        }
+        errStr += std::to_string(msg.auxData.nBadBytes) + " bytes on right bound";
+    }
+
+    out <<
+        "====== ERROR: illegal write of " << errStr << std::endl <<
+        "======    at " << msg.auxData.badAddr << " on GM in "<< RuntimeContext::Instance().kernelNameDisplay <<
+        " on device " << RuntimeContext::Instance().GetDeviceId() << std::endl <<
+        "======    by host api calling in <unknown>:0 (serialNo:" << msg.auxData.serialNo << ") " << std::endl;
+
+    return out;
+}
+
 inline std::ostream &operator<<(std::ostream &out, const ReducedErrorMsg &reducedMsg)
 {
     using PrintFunc = std::function<std::ostream &(std::ostream &, const ReducedErrorMsg &)>;
@@ -425,6 +453,7 @@ inline std::ostream &operator<<(std::ostream &out, const ReducedErrorMsg &reduce
         {MemErrorType::MEM_UNUSED, PrintUnusedMem},
         {MemErrorType::UNINITIALIZED_READ, PrintUninitializedRead},
         {MemErrorType::INTERNAL_ERROR, PrintInternalError},
+        {MemErrorType::GM_ADDR_OUT_OF_BOUND, PrintGMAddrError},
     };
     auto it = PRINT_FUNC_MAP.find(reducedMsg.errorMsg.type);
     if (it != PRINT_FUNC_MAP.end()) {
