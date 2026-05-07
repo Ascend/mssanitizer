@@ -151,8 +151,8 @@ void HandleGMAddrOutOfBoundRecord(Checker &checker, GMAddrOutOfBoundRecord const
     memOpRecord.srcSpace = AddressSpace::GM;
     memOpRecord.dstSpace = AddressSpace::GM;
     memOpRecord.lineNo = 0;
-    memOpRecord.dstAddr = record.userAddr;
-    memOpRecord.memSize = record.size;
+    memOpRecord.dstAddr = record.outAddr;
+    memOpRecord.memSize = record.outSize;
     memOpRecord.gmAddrOutOfBoundsRecord = record;
 
     SanitizerRecord sanitizerRecord {};

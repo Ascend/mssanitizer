@@ -344,6 +344,7 @@ std::ostream &operator<<(std::ostream &os, MemOpType memOpType)
         {MemOpType::MEMCPY_BLOCKS, "MEMCPY_BLOCKS"},
         {MemOpType::LOAD,          "LOAD"},
         {MemOpType::STORE,         "STORE"},
+        {MemOpType::GM_ADDR_OUT_OF_BOUND,   "GM_ADDR_OUT_OF_BOUND"},
     };
 
     return FormatEnum(os, MEM_OP_TYPE_MAP, memOpType, "MemOpType");

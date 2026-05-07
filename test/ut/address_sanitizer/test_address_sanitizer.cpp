@@ -3683,47 +3683,26 @@ TEST(AddressSanitizer, get_gm_buffer_out_of_bound_record_and_print_excep)
     MemOpRecord memoryRecord{};
     memoryRecord.serialNo = 0;
     memoryRecord.type = MemOpType::GM_ADDR_OUT_OF_BOUND;
-    memoryRecord.gmAddrOutOfBoundsRecord.userAddr = 0x123456789abcdef;
-    memoryRecord.gmAddrOutOfBoundsRecord.size = 1024;
-    memoryRecord.gmAddrOutOfBoundsRecord.frontOutSize = 0;
-    memoryRecord.gmAddrOutOfBoundsRecord.backOutSize = 32;
+    memoryRecord.gmAddrOutOfBoundsRecord.userAddr = 0x12c0c0016020;
+    memoryRecord.gmAddrOutOfBoundsRecord.userSize = 1024;
+    memoryRecord.gmAddrOutOfBoundsRecord.outAddr = 0x12c0c0016423;
+    memoryRecord.gmAddrOutOfBoundsRecord.outSize = 5;
     memoryRecord.serialNo = 10;
     record.payload.memoryRecord = memoryRecord;
     
     // 示例：
-    // ====== ERROR: illegal write of 100 bytes on left bound and 200 bytes on right bound
-    // ======    at 0x12c0c0015000 on GM in add_custom on device 0
-    // ======    by host api calling in <unknown>:0 (serialNo:10)
+    // ====== ERROR: illegal write of size 5 bytes
+    // ======    Access to 0x12c0c0016423 on GM is 3 bytes after the nearest allocation at 0x12c0c0016020 of size 1024 bytes
+    // ======    in _Z13MyAicpuKernelN10KernelInfo10KernelArgsE_interface on device 0
 
     // 右侧越界32字节
     std::string msg;
     asan->RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
     std::cout << "msg:" << std::endl << msg;
-    ASSERT_TRUE(msg.find("====== ERROR: illegal write of 32 bytes on right bound") != std::string::npos);
-    ASSERT_TRUE(msg.find("======    at 0x123456789abcdef on GM in  on device 0") != std::string::npos);
-    ASSERT_TRUE(msg.find("======    by host api calling in <unknown>:0 (serialNo:10)") != std::string::npos);
-    msg = "";
-
-    // 左侧越界32字节
-    record.payload.memoryRecord.gmAddrOutOfBoundsRecord.frontOutSize = 32;
-    record.payload.memoryRecord.gmAddrOutOfBoundsRecord.backOutSize = 0;
-    record.payload.memoryRecord.serialNo = 20;
-    ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
-    std::cout << "msg:" << std::endl << msg;
-    ASSERT_TRUE(msg.find("====== ERROR: illegal write of 32 bytes on left bound") != std::string::npos);
-    ASSERT_TRUE(msg.find("======    at 0x123456789abcdef on GM in  on device 0") != std::string::npos);
-    ASSERT_TRUE(msg.find("======    by host api calling in <unknown>:0 (serialNo:20)") != std::string::npos);
-    msg = "";
-
-    // 左右侧都越界32字节
-    record.payload.memoryRecord.gmAddrOutOfBoundsRecord.backOutSize = 32;
-    record.payload.memoryRecord.serialNo = 30;
-    ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
-    std::cout << "msg:" << std::endl << msg;
-    ASSERT_TRUE(msg.find("====== ERROR: illegal write of 32 bytes on left bound and 32 bytes on right bound") != std::string::npos);
-    ASSERT_TRUE(msg.find("======    at 0x123456789abcdef on GM in  on device 0") != std::string::npos);
-    ASSERT_TRUE(msg.find("======    by host api calling in <unknown>:0 (serialNo:30)") != std::string::npos);
+    ASSERT_TRUE(msg.find("====== ERROR: illegal write of size 5 byte(s)") != std::string::npos);
+    ASSERT_TRUE(msg.find("======    Access to 0x12c0c0016423 on GM is 3 byte(s) after the nearest allocation at 0x12c0c0016020 of size 1024 byte(s)") != std::string::npos);
+    ASSERT_TRUE(msg.find("======    in  on device 0") != std::string::npos);
     msg = "";
 }
 

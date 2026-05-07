@@ -104,7 +104,7 @@ constexpr float SIMT_ENTRY_CACHE_SIZE_RATIO = 0.3;
 // shadow memory能正常运行所需GM的最小size,12MB
 constexpr uint64_t SHADOW_MEM_MIN_BYTE_SIZE = 12 * 1024 * 1024;
 
-// GM 内存地址buffer前后安全区默认长度，单位字节
+// GM 内存地址buffer安全区默认长度，单位字节
 constexpr uint32_t GM_BUFFER_GUARD_DFT_SIZE = 32;
 
 // 非法的地址信息
@@ -697,7 +697,7 @@ struct CheckParmsInfo {
     bool initcheck{};                                 // 是否开启未初始化检测
     bool synccheck{};                                 // 是否开启同步检测
     bool registerCheck{};                             // 是否开启寄存器检测
-    uint32_t gmBufferGuardSize = GM_BUFFER_GUARD_DFT_SIZE;  // GM 内存地址buffer前后安全区长度，单位字节
+    uint32_t gmBufferGuardSize = GM_BUFFER_GUARD_DFT_SIZE;  // GM 内存地址buffer安全区长度，单位字节
 };
 
 struct HostMemoryInfo {
@@ -2068,10 +2068,10 @@ struct HostMemRecord {
 
 // GM地址越界写异常记录 Payload
 struct GMAddrOutOfBoundRecord {
-    uint64_t userAddr;      // 用户申请地址
-    uint64_t size;          // 用户申请内存有效长度
-    uint32_t frontOutSize;  // 向前越界长度
-    uint32_t backOutSize;   // 向后越界长度
+    uint64_t userAddr;      // 用户申请内存起始地址
+    uint32_t userSize;      // 用户申请内存有效长度
+    uint64_t outAddr;       // 安全区越界起始地址
+    uint32_t outSize;       // 安全区越界长度
 };
 
 /// 原始的内存检测记录结构体，为保证向后兼容保留

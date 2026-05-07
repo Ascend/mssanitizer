@@ -90,13 +90,14 @@ struct ErrorMsg {
     MemErrorType type;
     bool isError;
     struct AuxData {
-        AuxData() : badAddr{}, nBadBytes{0UL}, nBadBytes_forward{0UL}, space{AddressSpace::INVALID},
+        AuxData() : badAddr{}, nBadBytes{0UL}, baseAddr{}, baseSize{}, space{AddressSpace::INVALID},
                     moduleId(-1), fileName{}, lineNo{0UL}, coreId{0UL},
                     blockType{BlockType::AICUBE}, pc{0UL}, serialNo(0L),
                     side{MemOpSide::HOST}, threadLoc{}, conflictedThreadLoc{}, isSimtError{false} { }
         Addr badAddr;
         uint64_t nBadBytes;
-        uint64_t nBadBytes_forward; // 向前越界字节数
+        Addr baseAddr;
+        uint64_t baseSize;
         AddressSpace space;
         int32_t moduleId;
         std::string fileName;
@@ -420,22 +421,16 @@ inline std::ostream &PrintGMAddrError(std::ostream &out, const ReducedErrorMsg &
 {
     ErrorMsg const &msg = reducedMsg.errorMsg;
 
-    std::string errStr = "";
-    if (msg.auxData.nBadBytes_forward != 0) {
-        errStr += std::to_string(msg.auxData.nBadBytes_forward) + " bytes on left bound";
-    }
-    if (msg.auxData.nBadBytes != 0) {
-        if (errStr.length() != 0) {
-            errStr += " and ";
-        }
-        errStr += std::to_string(msg.auxData.nBadBytes) + " bytes on right bound";
-    }
+    // 当前无前保护区，越界起始距离 = 越界起始地址 - 用户起始地址（与真实地址相同） - 用户地址大小
+    uint64_t errDis = msg.auxData.badAddr.addr - msg.auxData.baseAddr.addr - msg.auxData.baseSize;
 
     out <<
-        "====== ERROR: illegal write of " << errStr << std::endl <<
-        "======    at " << msg.auxData.badAddr << " on GM in "<< RuntimeContext::Instance().kernelNameDisplay <<
-        " on device " << RuntimeContext::Instance().GetDeviceId() << std::endl <<
-        "======    by host api calling in <unknown>:0 (serialNo:" << msg.auxData.serialNo << ") " << std::endl;
+        "====== ERROR: illegal write of size " << msg.auxData.nBadBytes << " byte(s)" << std::endl <<
+        "======    Access to " << msg.auxData.badAddr << " on GM is " << errDis <<
+            " byte(s) after the nearest allocation at " << msg.auxData.baseAddr <<
+            " of size " << msg.auxData.baseSize << " byte(s)" << std::endl <<
+        "======    in " << RuntimeContext::Instance().kernelNameDisplay <<
+            " on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
 
     return out;
 }
