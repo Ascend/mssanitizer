@@ -94,6 +94,11 @@ void ThreadManager::ThreadFinish()
 {
     checkers_.clear();
     protocols_.clear();
+
+    if (config_.checkCrossNpuRaces) {
+        crossNpuChecker_.SetDetectionInfo(loglv_, logFd_);
+        crossNpuChecker_.Run();
+    }
 }
 
 void ThreadManager::PostLog() const

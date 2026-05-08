@@ -273,7 +273,8 @@ inline std::ostream &PrintLocationInfo(std::ostream &os, const ErrorMsg &msg)
         return PrintClassicLocation(os, msg);
     }
 
-    CallStack::Stack stack = CallStack::Instance().Query(msg.auxData.pc);
+    CallStack::Stack stack = CallStack::Instance().Query(RuntimeContext::Instance().kernelSummary_.kernelName,
+                                                         msg.auxData.pc);
     if (stack.empty()) {
         return PrintClassicLocation(os, msg);
     }

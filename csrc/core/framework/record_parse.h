@@ -23,6 +23,7 @@
 #include <unordered_set>
 
 #include "record_defs.h"
+#include "runtime_context.h"
 #include "event_def.h"
 
 namespace Sanitizer {
@@ -35,6 +36,8 @@ inline void SetLocationInfo(SanEvent &event, Record const &record, const BlockTy
 {
     event.serialNo = serialNo;
     event.loc.blockType = blockType;
+    event.loc.deviceId = RuntimeContext::Instance().GetDeviceId();
+    event.loc.kernelIdx = RuntimeContext::Instance().kernelIdx_ - 1;
     event.loc.coreId = record.location.blockId;
     event.isAtomicMode = GetMapAtomicMode()[event.loc.coreId];
     event.loc.fileNo = record.location.fileNo;

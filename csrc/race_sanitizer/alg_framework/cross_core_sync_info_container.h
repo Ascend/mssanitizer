@@ -19,17 +19,13 @@
 #define RACE_SANITIZER_ALG_FRAMEWORK_CROSS_CORE_SYNC_INFO_CONTAINER_H
 #include <queue>
 #include <map>
-#include <mutex>
 #include "core/framework/event_def.h"
 namespace Sanitizer {
 
 class SemCores {
 public:
-    SemCores() {}
-
     bool Wait()
     {
-        std::unique_lock<std::mutex> lock(mutex_);
         if (semSync_ == 0) {
             semAfterSync_--;
             return true;
@@ -58,13 +54,11 @@ public:
 
     void Reset(int32_t cores)
     {
-        std::unique_lock<std::mutex> lock(mutex_);
         cores_ = cores;
         semSync_ = static_cast<uint32_t>(cores);
         semAfterSync_ = static_cast<uint32_t>(cores);
     }
 private:
-    std::mutex mutex_;
     int32_t cores_ = 0; // 初始化的usedCores值
     uint32_t semSync_ = 0; // 调用syncAll的pipe数
     uint32_t semAfterSync_ = 0; // 跳出syncAll等待的pipe数

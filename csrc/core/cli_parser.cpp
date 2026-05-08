@@ -53,6 +53,7 @@ enum class OptVal : int32_t {
     FULL_BACKTRACE,
     KERNEL_NAME,
     DEMANGLE_MODE,
+    CHECK_CROSS_NPU_RACES,
 };
 
 std::vector<option> GetLongOptArray()
@@ -73,6 +74,7 @@ std::vector<option> GetLongOptArray()
         {"kernel-name", required_argument, nullptr, static_cast<int32_t>(OptVal::KERNEL_NAME)},
         {"full-backtrace", required_argument, nullptr, static_cast<int32_t>(OptVal::FULL_BACKTRACE)},
         {"demangle", required_argument, nullptr, static_cast<int32_t>(OptVal::DEMANGLE_MODE)},
+        {"check-cross-npu-races", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES)},
         {nullptr, 0, nullptr, 0},
     };
     return longOpts;
@@ -400,6 +402,18 @@ void ParseDemangleMode(const std::string &param, UserCommand &userCommand)
     }
 }
 
+void ParseCheckCrossNpuRaces(const std::string &param, UserCommand &userCommand)
+{
+    if (param == "yes") {
+        userCommand.config.checkCrossNpuRaces = true;
+    } else if (param == "no") {
+    } else {
+        std::cout << "[mssanitizer] ERROR: --check-cross-npu-races param is invalid" << std::endl;
+        userCommand.printHelpInfo = true;
+        return;
+    }
+}
+
 using ParseHandler = std::function<void(const std::string &, UserCommand &)>;
 std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
 {
@@ -420,6 +434,7 @@ std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
         {static_cast<int32_t>(OptVal::KERNEL_NAME), ParseKernelName},
         {static_cast<int32_t>(OptVal::FULL_BACKTRACE), ParseFullBacktrace},
         {static_cast<int32_t>(OptVal::DEMANGLE_MODE), ParseDemangleMode},
+        {static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES), ParseCheckCrossNpuRaces},
     };
 
     return handlers;
@@ -463,7 +478,7 @@ void ShowHelpInfo()
         "    --kernel-name=<name> only the kernel with the specified name <kernel> is going to be checked" << std::endl <<
         "    --demangle=<mode>    set the demangling <mode> of device funtion name. [full]" << std::endl <<
         std::endl <<
-        "  user options for Memcheck:" << std::endl <<
+        "  user options for memcheck:" << std::endl <<
         "    --leak-check=no|yes  search for memory leaks at exit [no]" << std::endl <<
         "    --check-unused-memory=no|yes" << std::endl <<
         "                         search for unused memory allocations [no]" << std::endl <<
@@ -474,8 +489,13 @@ void ShowHelpInfo()
         "    --block-id=<block-id>" << std::endl <<
         "                         set check block id, default check all block" << std::endl <<
         "    --cache-size=<size>" << std::endl <<
-        "                         set single block records size to <size> (MB), default:100, max: " << MAX_RECORD_BUF_SIZE_EACH_BLOCK
-        << std::endl;
+        "                         set single block records size to <size> (MB), default:100, max: " <<
+        MAX_RECORD_BUF_SIZE_EACH_BLOCK << std::endl <<
+        std::endl <<
+        "  user options for racecheck:" << std::endl <<
+        "    --check-cross-npu-races=no|yes" << std::endl <<
+        "                         check races for kernel on different NPUs [no]" << std::endl <<
+        std::endl;
 }
 
 std::string GetFuncInjectionRevision()

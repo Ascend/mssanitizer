@@ -17,6 +17,7 @@
 
 #include "race_sanitizer.h"
 #include <sstream>
+#include "core/framework/runtime_context.h"
 #include "core/framework/utility/log.h"
 #include "alg_framework/race_alg_factory.h"
 #include "core/framework/format_converter.h"
@@ -146,7 +147,7 @@ void RaceSanitizer::RaceSanitizerRecord(std::shared_ptr<std::vector<RaceDispInfo
         pcOffsets.insert(error.p1.pc);
         pcOffsets.insert(error.p2.pc);
     }
-    CallStack::Instance().CachePcOffsets(pcOffsets);
+    CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
 
     for (const auto &it : *p) {
         msgFunc_(LogLv::ERROR, [&it](void) {

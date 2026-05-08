@@ -20,19 +20,26 @@
 
 namespace Sanitizer {
 
-void EventContainer::Init(uint32_t blockNum)
+void EventContainer::Init(uint32_t blockNum, uint32_t deviceNum)
 {
+    deviceNum_ = deviceNum;
     maxBlockNum_ = blockNum;
-    ques_.resize(blockNum * (static_cast<uint32_t>(PipeType::SIZE)));
+    ques_.resize(deviceNum * blockNum * (static_cast<uint32_t>(PipeType::SIZE)));
 }
+
 // 将事件保存到对应block的PIPE队列中
-void EventContainer::Push(const SanEvent &e, PipeType pipe, uint32_t blockIdx)
+void EventContainer::Push(const SanEvent &e, PipeType pipe, uint32_t blockIdx, uint32_t deviceIdx)
 {
     if (blockIdx >= maxBlockNum_) {
-        SAN_WARN_LOG("Invalid blockIdx %u , serialNo %lu", blockIdx, e.serialNo);
+        SAN_ERROR_LOG("Invalid blockIdx %u, serialNo %lu", blockIdx, e.serialNo);
         return;
     }
-    uint32_t pipeIndex = static_cast<uint32_t>(pipe) + blockIdx * static_cast<uint32_t>(PipeType::SIZE);
+    if (deviceIdx >= deviceNum_) {
+        SAN_ERROR_LOG("Invalid deviceIdx %u, serialNo %lu", deviceIdx, e.serialNo);
+        return;
+    }
+
+    uint32_t pipeIndex = FlattenPipeIdx(static_cast<uint32_t>(pipe), blockIdx, deviceIdx);
     if (e.type == EventType::MEM_EVENT && e.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS) {
         SanEvent event = e;
         event.eventInfo.memInfo.opType = AccessType::READ;
@@ -48,25 +55,26 @@ void EventContainer::Push(const SanEvent &e, PipeType pipe, uint32_t blockIdx)
 SanEvent EventContainer::Front()
 {
     // Front前先判空, 判空由调用方做
-    return ques_[(blockIndex_ * (static_cast<uint32_t>(PipeType::SIZE))) + pipeIndex_].front();
+    return ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].front();
 }
 
 void EventContainer::Pop()
 {
-    isEventCntsChanged_ = true;
-    popCount_ += 1;
-    ques_[(blockIndex_ * (static_cast<uint32_t>(PipeType::SIZE))) + pipeIndex_].pop();
+    ++blockPopCount_;
+    ++devicePopCount_;
+    ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].pop();
 }
 
 bool EventContainer::IsCurQueEmpty() const
 {
-    return ques_[(blockIndex_ * (static_cast<uint32_t>(PipeType::SIZE))) + pipeIndex_].empty();
+    return ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].empty();
 }
 
 bool EventContainer::IsCurBlockEmpty() const
 {
-    for (auto i = blockIndex_ * static_cast<uint32_t>(PipeType::SIZE);
-        i < ((blockIndex_ + 1) * static_cast<uint32_t>(PipeType::SIZE)); ++i) {
+    uint32_t startIdx = FlattenPipeIdx(0, blockIndex_, deviceIndex_);
+    uint32_t endIdx = startIdx + static_cast<uint32_t>(PipeType::SIZE);
+    for (auto i = startIdx; i < endIdx; ++i) {
         if (!ques_[i].empty()) {
             return false;
         }
@@ -75,14 +83,30 @@ bool EventContainer::IsCurBlockEmpty() const
     return true;
 }
 
-bool EventContainer::IsNeedSwitchNextBlock()
+bool EventContainer::IsCurDeviceEmpty() const
 {
-    if (popCount_ == 0) {
+    uint32_t startIdx = FlattenPipeIdx(0, 0, deviceIndex_);
+    uint32_t endIdx = startIdx + maxBlockNum_ * static_cast<uint32_t>(PipeType::SIZE);
+    for (uint32_t i = startIdx; i < endIdx; ++i) {
+        if (!ques_[i].empty()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool EventContainer::IsNeedSwitchNextBlock() const
+{
+    if (isBlockStuck_) {
         return true;
     }
     return IsCurBlockEmpty();
 }
 
+bool EventContainer::IsNeedSwitchNextDevice() const
+{
+    return isDeviceStuck_ || IsCurDeviceEmpty();
+}
 
 bool EventContainer::IsEmpty() const
 {
@@ -95,19 +119,19 @@ bool EventContainer::IsEmpty() const
     return true;
 }
 
-bool EventContainer::IsTraveAllAndEventsNoChanged() const
+void EventContainer::CheckCurDeviceStuck()
 {
-    return cntNoChangedBlocks_ == maxBlockNum_;
+    if (isDeviceStuck_) {
+        ++stuckDeviceNum_;
+    } else {
+        // 当前 device 有处理事件，则重新计数
+        stuckDeviceNum_ = 0;
+    }
 }
 
-void EventContainer::CheckEventCntsChangedTag()
+bool EventContainer::IsAllDeviceStuck() const
 {
-    if (isEventCntsChanged_) {
-        cntNoChangedBlocks_ = 0;
-        isEventCntsChanged_ = false;
-    } else {
-        cntNoChangedBlocks_++;
-    }
+    return stuckDeviceNum_ == deviceNum_;
 }
 
 void EventContainer::PrintStuckSerialNo() const
@@ -121,19 +145,37 @@ void EventContainer::PrintStuckSerialNo() const
     }
 }
 
+void EventContainer::SwitchToNextDevice()
+{
+    deviceIndex_ = (deviceIndex_ + 1U) % deviceNum_;
+    blockIndex_ = 0U;
+    pipeIndex_ = 0U;
+    blockPopCount_ = 0U;
+    devicePopCount_ = 0U;
+    isBlockStuck_ = false;
+    isDeviceStuck_ = false;
+}
+
 void EventContainer::SwitchToNextBlock()
 {
     blockIndex_ = (blockIndex_ + 1U) % maxBlockNum_;
-    popCount_ = 1U;
     pipeIndex_ = 0U;
+    blockPopCount_ = 0U;
+    isBlockStuck_ = false;
+    // 遍历完一轮 block 后，检查当前 device 是否阻塞
+    if (blockIndex_ == 0U) {
+        isDeviceStuck_ = devicePopCount_ == 0U;
+        devicePopCount_ = 0U;
+    }
 }
 
 void EventContainer::SwitchToNextPipe()
 {
     pipeIndex_ = (pipeIndex_ + 1U) % static_cast<uint32_t>(PipeType::SIZE);
-    // 每次遍历一轮pipe，刷新本轮此popCount
+    // 遍历完一轮 pipe 后，检查当前 block 是否阻塞
     if (pipeIndex_ == static_cast<uint32_t>(PipeType::PIPE_S)) {
-        popCount_ = popCount_ > 1U ? 1U : 0U;
+        isBlockStuck_ = blockPopCount_ == 0U;
+        blockPopCount_ = 0U;
     }
 }
 
@@ -144,7 +186,7 @@ PipeType EventContainer::GetPipeIndex() const
 
 uint32_t EventContainer::GetQueIndex() const
 {
-    return pipeIndex_ + blockIndex_ * static_cast<uint32_t>(PipeType::SIZE);
+    return FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_);
 }
 
 uint32_t EventContainer::GetBlockIndex() const
@@ -170,6 +212,12 @@ uint32_t EventContainer::GetAllQueSize() const
 void EventContainer::SetQueIndex(PipeType pipe)
 {
     pipeIndex_ = static_cast<uint32_t>(pipe);
+}
+
+uint32_t EventContainer::FlattenPipeIdx(uint32_t pipeIdx, uint32_t blockIdx, uint32_t deviceIdx) const
+{
+    return deviceIdx * maxBlockNum_ * static_cast<uint32_t>(PipeType::SIZE) +
+        blockIdx * static_cast<uint32_t>(PipeType::SIZE) + pipeIdx;
 }
 
 }

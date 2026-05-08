@@ -26,7 +26,9 @@
 #include <iostream>
 
 #include "core/framework/constant.h"
+#include "core/framework/kernel_binary_manager.h"
 #include "core/framework/utility/log.h"
+#include "core/framework/utility/type_traits.h"
 #include "core/framework/utility/umask_guard.h"
 #include "core/framework/utility/ustring.h"
 #include "core/framework/utility/file_system.h"
@@ -108,19 +110,14 @@ namespace Sanitizer {
 
 CallStack::~CallStack(void)
 {
-    if (this->kernelPath_.empty() || !IsPathExists(this->kernelPath_)) {
-        return;
+    for (auto const &kernelPath : kernelPaths_) {
+        // try to clean up kernel.o cache
+        remove(kernelPath.c_str());
     }
-
-    // try to clean up kernel.o cache
-    remove(this->kernelPath_.c_str());
 }
 
-void CallStack::Load(std::vector<char> const &binary)
+std::string CallStack::Load(std::vector<char> const &binary)
 {
-    isBinaryEmpty_ = binary.empty();
-    this->kernelPath_.clear();
-    this->pcStackMap_.clear();
     Path kernelPath = Path(OUTPUT_DIR) / Path(CreateKernelFileName());
     std::string const &kernelStr = kernelPath.ToString();
     UmaskGuard umaskGuard(REGULAR_MODE_MASK);
@@ -137,33 +134,39 @@ void CallStack::Load(std::vector<char> const &binary)
         if (mkdir(kernelDirStr.c_str(), Sanitizer::DIR_FILE_MODE) != 0) {
             printf("[mssanitizer] ERROR: Failed to create directory (%s). Please make sure current user has write "
                    "permission to the working directory.\n", kernelDirStr.c_str());
-            return;
+            return "";
         }
     }
     auto logger = [](std::string const &msg) { std::cout << "[mssanitizer] "<< msg << std::endl; };
     if (!IsFilePermSafe(kernelDirStr, DIR_FILE_MODE, logger)) {
-        return;
+        return "";
     }
     if (IsSoftLink(kernelDirStr)) {
         printf("[mssanitizer] ERROR: The kernel binary (%s) is soft link.\n", kernelDirStr.c_str());
-        return;
+        return "";
     }
     if (!WriteBinary(kernelStr, binary.data(), binary.size())) {
         printf("[mssanitizer] ERROR: Callstack may be unavailable: Failed to store kernel binary. Please make sure the "
                "user has write permission to the directory (%s).\n",
             kernelDirStr.c_str());
-        return;
+        return "";
     }
-    this->kernelPath_ = kernelStr;
+
+    std::lock_guard<std::mutex> guard{mtx_};
+    kernelPaths_.emplace_back(kernelStr);
+    return kernelStr;
 }
 
-CallStack::Stack CallStack::Query(uint64_t pcOffset)
+CallStack::Stack CallStack::Query(std::string const &kernelName, uint64_t pcOffset)
 {
     {
         std::lock_guard<std::mutex> guard{this->mtx_};
-        typename std::unordered_map<uint64_t, Stack>::const_iterator it = this->pcStackMap_.find(pcOffset);
-        if (it != this->pcStackMap_.end()) {
-            return it->second;
+        auto kernelIt = as_const(pcStackMap_).find(kernelName);
+        if (kernelIt != this->pcStackMap_.cend()) {
+            auto stackIt = kernelIt->second.find(pcOffset);
+            if (stackIt != kernelIt->second.cend()) {
+                return stackIt->second;
+            }
         }
     }
 
@@ -172,38 +175,31 @@ CallStack::Stack CallStack::Query(uint64_t pcOffset)
         return {};
     }
 
-    if (this->kernelPath_.empty()) {
-        SAN_WARN_LOG("Failed to query callstack: kernelPath is empty");
-        return {};
-    }
-    if (this->isBinaryEmpty_) {
-        SAN_WARN_LOG("Failed to query callstack: binary is empty");
-        return {};
-    }
-    Path tmpDirPath = Path(OUTPUT_DIR).Absolute();
-    auto tmpDirStr = tmpDirPath.ToString();
-
-    auto logger = [](std::string const &msg) { std::cout << "[mssanitizer] "<< msg << std::endl; };
-    if (!IsFilePermSafe(tmpDirStr, DIR_FILE_MODE, logger)) {
-        printf("[mssanitizer] WARN: Failed to query callstack.\n");
-        return {};
-    }
-    if (IsSoftLink(tmpDirStr)) {
-        printf("[mssanitizer] WARN: The kernel binary (%s) is soft link.\n", tmpDirStr.c_str());
-        return {};
-    }
-
     SAN_INFO_LOG("Pc offset %#lx missed in cahced stack map. Rebuild stack map", pcOffset);
-    this->CachePcOffsets({ pcOffset });
+    this->CachePcOffsets(kernelName, { pcOffset });
 
     std::lock_guard<std::mutex> guard{this->mtx_};
-    return this->pcStackMap_[pcOffset];
+    return this->pcStackMap_[kernelName][pcOffset];
 }
 
-void CallStack::CachePcOffsets(std::set<uint64_t> pcOffsets)
+void CallStack::CachePcOffsets(std::string const &kernelName, std::set<uint64_t> pcOffsets)
 {
     // 过滤 INVALID_PC_OFFSET
     pcOffsets.erase(INVALID_PC_OFFSET);
+
+    StackEachKernel stacks;
+    {
+        // 过滤已缓存过的 pcOffset
+        std::lock_guard<std::mutex> guard{this->mtx_};
+        stacks = pcStackMap_[kernelName];
+    }
+    for (auto it = pcOffsets.begin(); it != pcOffsets.cend();) {
+        if (as_const(stacks).find(*it) != stacks.cend()) {
+            it = pcOffsets.erase(it);
+        } else {
+            ++it;
+        }
+    }
 
     if (pcOffsets.empty()) {
         // 当 pc offset 列表为空时，llvm-symbolizer 会等待标准输入导致进程卡住，需要直接返回
@@ -212,14 +208,24 @@ void CallStack::CachePcOffsets(std::set<uint64_t> pcOffsets)
     }
 
     SAN_INFO_LOG("Build stack map with %zu pc offsets", pcOffsets.size());
-    std::string symbolizerOutput = RunSymbolizer(this->kernelPath_, pcOffsets);
-    StackCacheMap stackCacheMap = this->ParseStacks(symbolizerOutput);
+
+    std::vector<char> binary;
+    if (!KernelBinaryManager::Instance().Get(kernelName, binary)) {
+        SAN_ERROR_LOG("Get kernel binary from KernelBinaryManager failed. kernelName: %s", kernelName.c_str());
+        return;
+    }
+    std::string kernelPath = this->Load(binary);
+    if (kernelPath.empty()) {
+        return;
+    }
+    std::string symbolizerOutput = RunSymbolizer(kernelPath, pcOffsets);
+    StackEachKernel stackCacheMap = this->ParseStacks(symbolizerOutput);
 
     std::lock_guard<std::mutex> guard{this->mtx_};
-    this->pcStackMap_.insert(stackCacheMap.begin(), stackCacheMap.end());
+    pcStackMap_[kernelName].insert(stackCacheMap.begin(), stackCacheMap.end());
 }
 
-void CallStack::ParseEachStack(nlohmann::json const &stackJson, StackCacheMap &stackCacheMap) const
+void CallStack::ParseEachStack(nlohmann::json const &stackJson, StackEachKernel &stackCacheMap) const
 {
     std::string stackJsonLog = Utility::ReplaceInvalidChar(stackJson.dump());
     if (stackJson.contains("Error")) {
@@ -256,7 +262,7 @@ void CallStack::ParseEachStack(nlohmann::json const &stackJson, StackCacheMap &s
     stackCacheMap[pcOffset] = std::move(stack);
 }
 
-CallStack::StackCacheMap CallStack::ParseStacks(std::string const &msg) const
+CallStack::StackEachKernel CallStack::ParseStacks(std::string const &msg) const
 {
     std::vector<std::string> lines;
     std::string stripped = Utility::RStrip(msg, "\n");
@@ -264,7 +270,7 @@ CallStack::StackCacheMap CallStack::ParseStacks(std::string const &msg) const
     Utility::Split(stripped, std::back_inserter(lines), "\n", true);
     std::string msgLog = Utility::ReplaceInvalidChar(msg);
 
-    StackCacheMap stackCacheMap;
+    StackEachKernel stackCacheMap;
     nlohmann::json jsonObject;
     std::string jsonObjectLog = Utility::ReplaceInvalidChar(jsonObject.dump());
     for (std::string const &line : lines) {

@@ -289,7 +289,7 @@ void AddressSanitizer::ReportErrorMsg()
     for (ReducedErrorMsg const &error : errorList) {
         pcOffsets.insert(error.errorMsg.auxData.pc);
     }
-    CallStack::Instance().CachePcOffsets(pcOffsets);
+    CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
 
     for (ReducedErrorMsg const &error : errorList) {
         msgFunc_(GetNotifyLv(error.errorMsg.type), [&error](void) {

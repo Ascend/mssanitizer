@@ -30,7 +30,8 @@ enum class ReturnType : int8_t {
 
 // 定义PIPE流水执行状态机各状态
 enum class PipeState : int8_t {
-    CHECK_ALL_BLOCK,
+    CHECK_ALL_DEVICE,
+    CHECK_CUR_DEVICE,
     CHECK_CUR_BLOCK,
     CHECK_CUR_PIPE,
     PROCESS_EVENT,
@@ -45,7 +46,8 @@ public:
     void RegisterEventFunc(const EventFunc &f);
     void Run();
 private:
-    PipeState CheckAllBlock();
+    PipeState CheckAllDevice();
+    PipeState CheckCurDevice();
     PipeState CheckCurBlock();
     PipeState CheckCurPipe();
     PipeState Process();
@@ -53,7 +55,7 @@ private:
 private:
     EventContainer &events_;
     EventFunc func_;
-    PipeState pipeState_ = PipeState::CHECK_ALL_BLOCK;
+    PipeState pipeState_ = PipeState::CHECK_ALL_DEVICE;
 };
 }
 #endif

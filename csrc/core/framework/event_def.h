@@ -65,6 +65,7 @@ enum class RaceCheckType: uint8_t {
     SINGLE_BLOCK_CHECK = 0U,
     SINGLE_PIPE_CHECK,
     CROSS_BLOCK_CHECK,
+    CROSS_NPU_CHECK,
 };
 
 enum class SyncCheckType : uint8_t {
@@ -168,6 +169,9 @@ struct LocInfo {
     uint64_t fileNo;
     uint64_t lineNo;
     uint64_t pc;
+    uint32_t deviceIdx;
+    uint32_t kernelIdx;
+    uint32_t deviceId;
     uint32_t coreId;
     BlockType blockType;
 };
@@ -213,6 +217,8 @@ struct MemEvent {
 
 struct BaseEvent {
     uint64_t serialNo;
+    uint32_t deviceId;
+    uint32_t kernelIdx;
     uint32_t coreId;
     uint64_t addr;
     uint64_t fileNo;
@@ -228,6 +234,8 @@ struct BaseEvent {
     void Init(const MemEvent &memEvent)
     {
         serialNo = memEvent.serialNo;
+        deviceId = memEvent.loc.deviceId;
+        kernelIdx = memEvent.loc.kernelIdx;
         coreId = memEvent.loc.coreId;
         blockType = memEvent.loc.blockType;
         addr = memEvent.memInfo.addr;

@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 #include <thread>
 
 #include "record_defs.h"
@@ -41,6 +42,7 @@ public:
 public:
     DeviceInfoSummary deviceSummary_ {};
     KernelSummary kernelSummary_{};
+    uint32_t kernelIdx_{};
     uint32_t currentBlockIdx_ {};
     uint64_t serialNo_ {};
     bool determined_ {};

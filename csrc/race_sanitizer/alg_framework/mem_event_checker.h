@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include "core/framework/event_def.h"
 #include "core/framework/platform_config.h"
+#include "core/framework/record_defs.h"
 #include "vector_clock.h"
 
 namespace Sanitizer {
@@ -43,6 +44,15 @@ inline bool NeedExpandBlockDim(KernelType kernelType, DeviceType deviceType)
     return kernelType == KernelType::MIX && HasSubBlocks(deviceType);
 }
 
+inline uint32_t GetEventExpandBlockIndex(const SanEvent &event)
+{
+    uint32_t aicoreIndex =
+        event.loc.blockType == BlockType::AIVEC ? event.loc.coreId / C220_VEC_SUB_BLOCKDIM : event.loc.coreId;
+    uint32_t subBlockIndex =
+        event.loc.blockType == BlockType::AIVEC ? event.loc.coreId % C220_VEC_SUB_BLOCKDIM : C220_VEC_SUB_BLOCKDIM;
+    return aicoreIndex * C220_MIX_SUB_BLOCKDIM + subBlockIndex;
+}
+
 inline uint32_t GetEventBlockIndex(const SanEvent &event, KernelType kernelType, DeviceType deviceType, RaceCheckType checkType)
 {
     if (!NeedExpandBlockDim(kernelType, deviceType)) {
@@ -51,11 +61,7 @@ inline uint32_t GetEventBlockIndex(const SanEvent &event, KernelType kernelType,
         }
         return event.loc.coreId;
     }
-    uint32_t aicoreIndex =
-        event.loc.blockType == BlockType::AIVEC ? event.loc.coreId / C220_VEC_SUB_BLOCKDIM : event.loc.coreId;
-    uint32_t subBlockIndex =
-        event.loc.blockType == BlockType::AIVEC ? event.loc.coreId % C220_VEC_SUB_BLOCKDIM : C220_VEC_SUB_BLOCKDIM;
-    return aicoreIndex * C220_MIX_SUB_BLOCKDIM + subBlockIndex;
+    return GetEventExpandBlockIndex(event);
 }
 
 template <RaceCheckType checkType>
@@ -65,6 +71,15 @@ inline uint32_t GetPipeIdxByMemEvent(const MemEvent &event, KernelType kernelTyp
     sanEvent.loc = event.loc;
     uint32_t blockIdx = GetEventBlockIndex(sanEvent, kernelType, deviceType, checkType);
     return (blockIdx * static_cast<uint16_t>(PipeType::SIZE)) + static_cast<uint16_t>(event.pipe);
+}
+
+inline uint32_t GetExpandPipeIdx(MemEvent const &event, uint32_t blockNum)
+{
+    SanEvent sanEvent{};
+    sanEvent.loc = event.loc;
+    uint32_t blockIdx = GetEventExpandBlockIndex(sanEvent);
+    return event.loc.deviceIdx * blockNum * static_cast<uint32_t>(PipeType::SIZE) +
+        blockIdx * static_cast<uint32_t>(PipeType::SIZE) + static_cast<uint32_t>(event.pipe);
 }
 
 // 该类集成了内存块之间做竞争比较的功能。
@@ -79,12 +94,14 @@ public:
     void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx);
     void PushEvent(const MemEvent& event);
     void Init(KernelType kernelType, DeviceType deviceType, RaceCheckType checkType);
+    void Init(uint32_t blockNum);
     std::shared_ptr<std::vector<RaceDispInfo>> GetResult() const;
     // 测试接口
     uint32_t GetRaceCount() const;
     std::vector<MemEvent> events_;
 private:
     uint32_t raceCnt_ = 0U;
+    uint32_t blockNum_{};
     KernelType kernelType_{};
     DeviceType deviceType_{};
     RaceCheckType checkType_{};
@@ -98,6 +115,7 @@ private:
     bool IsInnerCoreRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
     bool IsSinglePipeRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
     bool IsCrossCoreRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
+    bool IsCrossNpuRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
 
     using CheckTypeFunc = bool (MemEventChecker::*)(uint64_t, uint64_t);
     void CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx, CheckTypeFunc checkTypeFunc,

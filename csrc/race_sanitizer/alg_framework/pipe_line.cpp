@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #include "pipe_line.h"
 #include "core/framework/utility/log.h"
 
@@ -28,8 +27,11 @@ void PipeLine::Run()
 {
     while ((pipeState_ != PipeState::EXIT) && (pipeState_ != PipeState::EXCEPTION)) {
         switch (pipeState_) {
-            case PipeState::CHECK_ALL_BLOCK:
-                pipeState_ = CheckAllBlock();
+            case PipeState::CHECK_ALL_DEVICE:
+                pipeState_ = CheckAllDevice();
+                break;
+            case PipeState::CHECK_CUR_DEVICE:
+                pipeState_ = CheckCurDevice();
                 break;
             case PipeState::CHECK_CUR_BLOCK:
                 pipeState_ = CheckCurBlock();
@@ -49,9 +51,24 @@ void PipeLine::Run()
     }
 }
 
-PipeState PipeLine::CheckAllBlock()
+PipeState PipeLine::CheckAllDevice()
 {
-    return (events_.IsEmpty()) ? PipeState::EXIT : PipeState::CHECK_CUR_BLOCK;
+    return (events_.IsEmpty()) ? PipeState::EXIT : PipeState::CHECK_CUR_DEVICE;
+}
+
+PipeState PipeLine::CheckCurDevice()
+{
+    if (!events_.IsNeedSwitchNextDevice()) {
+        return PipeState::CHECK_CUR_BLOCK;
+    }
+    events_.CheckCurDeviceStuck();
+    if (events_.IsAllDeviceStuck()) {
+        SAN_ERROR_LOG("The pipe line is in the infinite loop!");
+        events_.PrintStuckSerialNo();
+        return PipeState::EXCEPTION;
+    }
+    events_.SwitchToNextDevice();
+    return PipeState::CHECK_ALL_DEVICE;
 }
 
 PipeState PipeLine::CheckCurBlock()
@@ -60,13 +77,7 @@ PipeState PipeLine::CheckCurBlock()
         return PipeState::CHECK_CUR_PIPE;
     }
     events_.SwitchToNextBlock();
-    events_.CheckEventCntsChangedTag();
-    if (events_.IsTraveAllAndEventsNoChanged()) {
-        SAN_ERROR_LOG("The pipe line is in the infinite loop!");
-        events_.PrintStuckSerialNo();
-        return PipeState::EXCEPTION;
-    }
-    return PipeState::CHECK_ALL_BLOCK;
+    return PipeState::CHECK_CUR_DEVICE;
 }
 
 PipeState PipeLine::CheckCurPipe()
@@ -82,14 +93,14 @@ PipeState PipeLine::Process()
 {
     SanEvent event = events_.Front();
     if (!func_) {
-        return PipeState::CHECK_ALL_BLOCK;
+        return PipeState::EXCEPTION;
     }
     if (func_(event) == ReturnType::PROCESS_OK) {
         events_.Pop();
+        return PipeState::CHECK_CUR_PIPE;
     } else {
         events_.SwitchToNextPipe();
+        return PipeState::CHECK_CUR_BLOCK;
     }
-
-    return PipeState::CHECK_CUR_BLOCK;
 }
 }

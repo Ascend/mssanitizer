@@ -48,6 +48,11 @@ public:
     void SetUp() override
     {
         ASSERT_TRUE(IsPathExists(initDir.c_str()));
+        CallStack::Instance().pcStackMap_.clear();
+    }
+    void TearDown() override
+    {
+        CallStack::Instance().pcStackMap_.clear();
     }
     static std::string initDir;
     static std::string testDir;
@@ -67,14 +72,14 @@ TEST_F(TestCallStack, load_from_buffer_stream_expect_get_empty_map)
 TEST_F(TestCallStack, query_invalid_pc_expect_get_none)
 {
     CallStack &callStack = CallStack::Instance();
-    CallStack::Stack stack = callStack.Query(INVALID_PC_OFFSET);
+    CallStack::Stack stack = callStack.Query("kernel", INVALID_PC_OFFSET);
     ASSERT_EQ(stack.size(), 0);
 }
 
 TEST_F(TestCallStack, not_load_query_valid_pc_expect_get_none)
 {
     CallStack &callStack = CallStack::Instance();
-    CallStack::Stack stack = callStack.Query(3);
+    CallStack::Stack stack = callStack.Query("kernel", 3);
     ASSERT_EQ(stack.size(), 0);
 }
 
@@ -152,7 +157,7 @@ TEST_F(TestCallStack, query_valid_pc_with_unset_env_expect_none)
     std::vector<char> buffer(binaryBuffSize);
     callStack.Load(buffer);
     unsetenv("ASCEND_HOME_PATH");
-    CallStack::Stack stack = callStack.Query(3);
+    CallStack::Stack stack = callStack.Query("kernel", 3);
     ASSERT_EQ(stack.size(), 0);
 }
 
@@ -163,6 +168,6 @@ TEST_F(TestCallStack, query_valid_pc_with_invalid_env_expect_none)
     std::vector<char> buffer(binaryBuffSize);
     callStack.Load(buffer);
     setenv("ASCEND_HOME_PATH", "/a/", 1);
-    CallStack::Stack stack = callStack.Query(3);
+    CallStack::Stack stack = callStack.Query("kernel", 3);
     ASSERT_EQ(stack.size(), 0);
 }

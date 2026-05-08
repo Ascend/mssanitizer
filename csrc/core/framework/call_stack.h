@@ -31,8 +31,10 @@
 
 namespace Sanitizer {
 
-class CallStack : public ThreadSingleton<CallStack> {
+class CallStack : public Singleton<CallStack> {
 public:
+    friend class Singleton<CallStack>;
+
     struct Location {
         std::string funcName;
         std::string fileName;
@@ -41,28 +43,45 @@ public:
     };
 
     using Stack = std::vector<Location>;
-    using StackCacheMap = std::unordered_map<uint64_t, Stack>;
+    using StackEachKernel = std::unordered_map<uint64_t, Stack>;
+    using StackCacheMap = std::unordered_map<std::string, StackEachKernel>;
 
 public:
-    void Load(std::vector<char> const &binary);
-    void CachePcOffsets(std::set<uint64_t> pcOffsets);
-    Stack Query(uint64_t pcOffset);
-    friend class std::pair<const std::thread::id, CallStack>;
+    /**
+     * @brief 缓存指定 kernel 的 pc 对应的调用栈
+     * @param kernelName [in] 要缓存的 pc 对应的 kernelName
+     * @param pcOffsets [in] 要缓存的 pc 集合
+     */
+    void CachePcOffsets(std::string const &kernelName, std::set<uint64_t> pcOffsets);
+
+    /**
+     * @brief 查询指定 kernel 对应的 pc 的调用栈
+     * @param kernelName [in] 要查询的 pc 对应的 kernelName
+     * @param pcOffset [in] 要查询的 pcOffset
+     */
+    Stack Query(std::string const &kernelName, uint64_t pcOffset);
+
     void SetIsPrintFullStack(bool isPrintFullStack){ isPrintFullStack_ = isPrintFullStack; }
+
     bool IsPrintFullStack() const { return isPrintFullStack_; }
+
+    /**
+     * @brief 格式化调用栈
+     */
     std::ostream &FormatCallStack(std::ostream &os, Stack const &stack) const;
 
 private:
-    CallStack(void) : isBinaryEmpty_(true) { }
+    CallStack(void) { }
     ~CallStack(void);
-    StackCacheMap ParseStacks(std::string const &msg) const;
-    void ParseEachStack(nlohmann::json const &stackJson, StackCacheMap &stackCacheMap) const;
 
-    bool isBinaryEmpty_;
-    std::string kernelPath_;
+    std::string Load(std::vector<char> const &binary);
+    StackEachKernel ParseStacks(std::string const &msg) const;
+    void ParseEachStack(nlohmann::json const &stackJson, StackEachKernel &stackCacheMap) const;
+
     mutable StackCacheMap pcStackMap_;
-    std::mutex mtx_;
+    mutable std::mutex mtx_;
     bool isPrintFullStack_{false};
+    std::vector<std::string> kernelPaths_;
 };
 
 } // namespace Sanitizer

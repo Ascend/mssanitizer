@@ -131,7 +131,7 @@ void RegisterSanitizer::ReportRegisterInfo(RegisterDispInfo &dispInfo)
 {
     std::set<uint64_t> pcOffsets;
     pcOffsets.insert(dispInfo.baseEvent.pc);
-    CallStack::Instance().CachePcOffsets(pcOffsets);
+    CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
     msgFunc_(LogLv::WARN, [&dispInfo](void) {
         std::stringstream ss;
         ss << dispInfo << std::endl;

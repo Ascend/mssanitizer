@@ -242,7 +242,7 @@ void SyncSanitizer::ReportUnpairedInfo()
     if (dispEvents.empty()) {
         return;
     }
-    CallStack::Instance().CachePcOffsets(pcOffsets);
+    CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
     for (SyncDispInfo const &it : dispEvents) {
         msgFunc_(LogLv::WARN, [&it](void) {
             std::stringstream ss;
@@ -259,7 +259,7 @@ void SyncSanitizer::ReportRedundancyInfo() const
         pcOffsets.insert(info.baseEvent.pc);
     }
 
-    CallStack::Instance().CachePcOffsets(pcOffsets);
+    CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
     for (SyncDispInfo const &it : redundancyInfo_) {
         msgFunc_(LogLv::WARN, [&it](void) {
             std::stringstream ss;

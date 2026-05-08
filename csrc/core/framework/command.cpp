@@ -22,6 +22,10 @@
 #include <sstream>
 #include <experimental/filesystem>
 
+#include "core/framework/device_manager.h"
+#include "core/framework/kernel_binary_manager.h"
+#include "core/framework/kernel_manager.h"
+#include "cross_npu_checker.h"
 #include "utility/umask_guard.h"
 #include "utility/ustring.h"
 #include "utility/serializer.h"
@@ -76,6 +80,7 @@ void HandleDeviceInfo(Checker &checker, DeviceInfoSummary const &summary)
 {
     SAN_INFO_LOG("Receive device summary. device:%u, blockSize:%u, blockNum:%u, deviceId:%d",
         static_cast<uint32_t>(summary.device), summary.blockSize, summary.blockNum, summary.deviceId);
+    DeviceManager::Instance().Set(summary.deviceId, summary);
     RuntimeContext::Instance().deviceSummary_ = summary;
     checker.SetDeviceInfo(summary);
 }
@@ -112,7 +117,8 @@ std::string GetDisplayKernelName(KernelSummary const &kernelSummary, DemangleMod
     return "\"" + demangled + "\"";
 }
 
-void HandleKernelInfo(Checker &checker, KernelSummary const &kernelSummary, Config const &config)
+void HandleKernelInfo(Checker &checker, CrossNpuChecker &crossNpuChecker,
+                      KernelSummary const &kernelSummary, Config const &config)
 {
     std::string kernelNameLog = Utility::ReplaceInvalidChar(std::string(kernelSummary.kernelName));
     SAN_INFO_LOG("Receive kernel summary. kernelName: %s, pcStartAddr:0x%lx, "
@@ -120,10 +126,13 @@ void HandleKernelInfo(Checker &checker, KernelSummary const &kernelSummary, Conf
                  kernelNameLog.c_str(), kernelSummary.pcStartAddr, kernelSummary.blockDim,
                  static_cast<uint32_t>(kernelSummary.kernelType), kernelSummary.isKernelWithDBI);
 
+    RuntimeContext::Instance().kernelIdx_++;
     RuntimeContext::Instance().currentBlockIdx_ = 0;
     RuntimeContext::Instance().kernelSummary_ = kernelSummary;
     RuntimeContext::Instance().kernelNameDisplay = GetDisplayKernelName(kernelSummary, config.demangleMode);
+    KernelManager::Instance().Add(RuntimeContext::Instance().GetDeviceId(), kernelSummary);
     checker.SetKernelInfo(kernelSummary);
+    crossNpuChecker.GetRecordArray(RuntimeContext::Instance().GetDeviceId()).CreateNewKernel();
 }
 
 void HandleHostMemRecord(Checker &checker, HostMemRecord const &record)
@@ -225,8 +234,8 @@ std::string ProcessIPCUnmapEvent(IPCMemRecord const &record, ThreadManager &thre
     return Serialize(PacketType::IPC_RESPONSE, resp);
 }
 
-void HandleKernelBlock(
-    Checker &checker, Packet::BinaryPayload const &payload, Process::MsgRspFunc &msgRspFunc)
+void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
+                       Packet::BinaryPayload const &payload, Process::MsgRspFunc &msgRspFunc)
 {
     RuntimeContext &runtimeContext = RuntimeContext::Instance();
     auto memInfo = static_cast<uint8_t const *>(static_cast<void const *>(payload.buf));
@@ -238,8 +247,10 @@ void HandleKernelBlock(
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    CrossNpuChecker::RecordArray &recordArray = crossNpuChecker.GetRecordArray(runtimeContext.GetDeviceId());
     while (kernelBlock->NextSimd(sanitizerRecord.payload.kernelRecord)) {
         checker.Do(sanitizerRecord);
+        recordArray.Push(sanitizerRecord);
     }
 
     /// 当device支持simt并且是目标核的情况下才解析simt指令，否则会内存越界
@@ -262,6 +273,7 @@ void HandleKernelBlock(
     sanitizerRecord.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
     sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
     checker.Do(sanitizerRecord);
+    recordArray.Push(sanitizerRecord);
 
     // wait for next block
     ++runtimeContext.currentBlockIdx_;
@@ -273,6 +285,7 @@ void HandleKernelBlock(
         sanitizerRecord.payload.kernelRecord.recordType = RecordType::FINISH;
         sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
         checker.Do(sanitizerRecord);
+        recordArray.Push(sanitizerRecord);
         SAN_INFO_LOG("Finish processing the last kernel block.");
     }
 }
@@ -281,7 +294,7 @@ inline void HandleKernelBinary(Packet::BinaryPayload const &payload)
 {
     std::vector<char> buffer(payload.buf, payload.buf + payload.len);
 
-    CallStack::Instance().Load(buffer);
+    KernelBinaryManager::Instance().Set(RuntimeContext::Instance().kernelSummary_.kernelName, buffer);
 
     auto loader = Sanitizer::ElfLoader();
     if (!loader.FromBuffer(buffer)) {
@@ -356,11 +369,13 @@ void Command::Exec(const ParamList &execParams)
     auto socketPath = process.CreateSockPath();
     // 线程管理类，负责多线程开始前和结束后的工作
     ThreadManager threadManager(config_, loglv_, logFile_);
+    KernelManager::Instance().SetDemangleMode(config_.demangleMode);
 
     auto msgSplitFunc = [&threadManager, this](
                             const std::string &manyMsg, Process::MsgRspFunc &msgRspFunc) {
         CallStack::Instance().SetIsPrintFullStack(config_.isPrintFullStack);
         Checker& checker = threadManager.GetChecker();
+        CrossNpuChecker &crossNpuChecker = threadManager.GetCrossNpuChecker();
         auto &protocol = threadManager.GetProtocol();
         protocol.Feed(manyMsg);
         while (true) {
@@ -370,13 +385,13 @@ void Command::Exec(const ParamList &execParams)
                     HandleDeviceInfo(checker, packet.GetPayload().deviceSummary);
                     break;
                 case PacketType::KERNEL_SUMMARY:
-                    HandleKernelInfo(checker, packet.GetPayload().kernelSummary, config_);
+                    HandleKernelInfo(checker, crossNpuChecker, packet.GetPayload().kernelSummary, config_);
                     break;
                 case PacketType::HOST_RECORD:
                     HandleHostMemRecord(checker, packet.GetPayload().hostMemRecord);
                     break;
                 case PacketType::KERNEL_RECORD:
-                    HandleKernelBlock(checker, packet.GetPayload().binary, msgRspFunc);
+                    HandleKernelBlock(checker, crossNpuChecker, packet.GetPayload().binary, msgRspFunc);
                     break;
                 case PacketType::IPC_RECORD:
                     HandleIpcMemRecord(checker, packet.GetPayload().ipcMemRecord, threadManager, msgRspFunc);

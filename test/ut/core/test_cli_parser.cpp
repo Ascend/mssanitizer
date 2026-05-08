@@ -814,4 +814,28 @@ TEST(CliParser, set_invalid_demangle_mode_parameter_expect_print_help)
     ASSERT_TRUE(cmd.printHelpInfo);
 }
 
+TEST(CliParser, set_check_cross_npu_races_yes_expect_get_check_cross_npu_races_true)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--check-cross-npu-races=yes"
+    };
+
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_TRUE(cmd.config.checkCrossNpuRaces);
+}
+
+TEST(CliParser, set_check_cross_npu_races_no_expect_get_check_cross_npu_races_false)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--check-cross-npu-races=no"
+    };
+
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_FALSE(cmd.config.checkCrossNpuRaces);
+}
+
 }
