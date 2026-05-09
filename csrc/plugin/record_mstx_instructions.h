@@ -176,6 +176,12 @@ AICORE_FUNC_HEAD void RecordMstxEvent(EXTRA_PARAMS_DEC, uint32_t interfaceId, ui
         RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxCrossCoreSetFlag, bufferLens, buffer);
     } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG) {
         RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxCrossCoreWaitFlag, bufferLens, buffer);
+    } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_SIGNAL_SET) {
+        RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxSignalSet, bufferLens, buffer);
+    } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_SIGNAL_WAIT) {
+        RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxSignalWait, bufferLens, buffer);
+    } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_CROSS_NPU_BARRIER) {
+        RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxCrossNpuBarrier, bufferLens, buffer);
     } else {
         mstxRecord.error = true;
         recorder.DumpRecord<RecordType::MSTX_STUB>(mstxRecord);

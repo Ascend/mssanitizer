@@ -18,6 +18,10 @@
 #ifndef MSSANITIZER_SANITIZER_REPORT_H
 #define MSSANITIZER_SANITIZER_REPORT_H
 
+#if !(defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1)
+#include <cstdint>
+#endif
+
 namespace Sanitizer {
 
 constexpr std::size_t MSTX_API_NAME_LENGTH = 64UL;
@@ -30,6 +34,9 @@ enum class InterfaceType : uint32_t {
     MSTX_CROSS_CORE_BARRIER = 4,
     MSTX_CROSS_CORE_SET_FLAG,
     MSTX_CROSS_CORE_WAIT_FLAG,
+    MSTX_SIGNAL_SET,
+    MSTX_SIGNAL_WAIT,
+    MSTX_CROSS_NPU_BARRIER,
 
     MSTX_FUSE_SCOPE_START = 1000,  // 融合语义范围开始标记，范围内的指令记录会被忽略
     MSTX_FUSE_SCOPE_END,           // 融合语义范围结束标记
@@ -60,6 +67,15 @@ enum class MaskMode : uint8_t {
     MASK_COUNT,
 };
 
+enum class CompareOp {
+    EQ = 0,
+    NE,
+    GT,
+    GE,
+    LT,
+    LE
+};
+
 struct VectorMask {
     uint64_t mask0;
     uint64_t mask1;
@@ -78,9 +94,29 @@ struct MstxCrossCoreSetFlag {
     bool pipeBarrierAll;
 };
 
+struct MstxSignalSet {
+    uint64_t addr;
+    int64_t value;
+};
+
+struct MstxSignalWait {
+    uint64_t addr;
+    int64_t cmpValue;
+    CompareOp cmpOp;
+};
+
 struct MstxCrossCoreWaitFlag {
     int32_t eventId;
     int32_t peerCoreId;
+    bool pipeBarrierAll;
+};
+
+struct MstxCrossNpuBarrier {
+    uint32_t usedDeviceNum;
+    uint32_t *usedDeviceId;
+    uint32_t usedCoreNum;
+    uint32_t *usedCoreId;
+    bool isAIVOnly;
     bool pipeBarrierAll;
 };
 
@@ -161,6 +197,9 @@ struct InterfaceTypeTraits {};
 INTERFACE_TYPE_TRAITS_SPEC(MstxCrossCoreBarrier, InterfaceType::MSTX_CROSS_CORE_BARRIER);
 INTERFACE_TYPE_TRAITS_SPEC(MstxCrossCoreSetFlag, InterfaceType::MSTX_CROSS_CORE_SET_FLAG);
 INTERFACE_TYPE_TRAITS_SPEC(MstxCrossCoreWaitFlag, InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG);
+INTERFACE_TYPE_TRAITS_SPEC(MstxSignalSet, InterfaceType::MSTX_SIGNAL_SET);
+INTERFACE_TYPE_TRAITS_SPEC(MstxSignalWait, InterfaceType::MSTX_SIGNAL_WAIT);
+INTERFACE_TYPE_TRAITS_SPEC(MstxCrossNpuBarrier, InterfaceType::MSTX_CROSS_NPU_BARRIER);
 INTERFACE_TYPE_TRAITS_SPEC(MstxVecUnaryDesc, InterfaceType::MSTX_VEC_UNARY_OP);
 INTERFACE_TYPE_TRAITS_SPEC(MstxVecBinaryDesc, InterfaceType::MSTX_VEC_BINARY_OP);
 INTERFACE_TYPE_TRAITS_SPEC(MstxDataCopyDesc, InterfaceType::MSTX_DATA_COPY);

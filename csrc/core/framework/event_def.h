@@ -25,6 +25,7 @@
 #include <algorithm>
 #include "arch_def.h"
 #include "record_defs.h"
+#include "sanitizer_report.h"
 #include "utility/log.h"
 
 namespace Sanitizer {
@@ -32,6 +33,7 @@ namespace Sanitizer {
 // 该头文件定义承载竞争检测算法所需的基础架构,数据类型
 
 enum class EventType : uint8_t {
+    SANITIZER_CONTROL_EVENT,
     MEM_EVENT,
     SYNC_EVENT,
     TIME_EVENT,
@@ -40,6 +42,15 @@ enum class EventType : uint8_t {
     MSTX_CROSS_SYNC_EVENT,
     REGISTER_EVENT,
     H_SYNC_EVENT,
+    MSTX_SIGNAL_SET_EVENT,
+    MSTX_SIGNAL_WAIT_EVENT,
+    MSTX_CROSS_CORE_BARRIER,
+    MSTX_CROSS_NPU_BARRIER,
+};
+
+enum class SanitizerControlType : uint8_t {
+    KERNEL_FINISH = 0,
+    FINISH
 };
 
 // 算法预处理阶段hset_flag/hwait_flag处理成普通的set_flag/wait_flag
@@ -80,6 +91,10 @@ enum class FftsSyncMode : uint8_t {
     MODE2,
     MODE3,
     MODE4,
+};
+
+struct SanitizerControlInfo {
+    SanitizerControlType type;
 };
 
 struct MemOpInfo {
@@ -182,6 +197,7 @@ struct SanEvent {
     EventType type{};
     PipeType pipe{};
     union {
+        SanitizerControlInfo sanitizerControlInfo;
         SyncOpInfo syncInfo;
         MemOpInfo memInfo;
         FftsSyncInfo fftsSyncInfo;
@@ -191,10 +207,13 @@ struct SanEvent {
         AtomicModeInfo atomicModeInfo;
         RegisterOpInfo regInfo;
         HSyncOpInfo hsyncInfo;
+        MstxSignalSet mstxSignalSet;
+        MstxSignalWait mstxSignalWait;
+        MstxCrossCoreBarrier mstxCrossCoreBarrier;
+        MstxCrossNpuBarrier mstxCrossNpuBarrier;
     } eventInfo{};
     VectorTime timeInfo;
     LocInfo loc{};
-    bool isEndFrame = false;
     bool isAtomicMode = false;
 };
 

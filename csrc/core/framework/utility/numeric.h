@@ -19,6 +19,7 @@
 #define SANITIZERS_NUMERIC_H
 
 #include <functional>
+#include <type_traits>
 
 namespace Sanitizer {
 
@@ -38,7 +39,23 @@ size_t HashEnum(EnumT e)
     return std::hash<hashUnderlyingT>{}(EnumToUnderlying(e));
 }
 
-}
+template <typename T>
+struct Hash {
+    std::size_t operator()(T const &p) const
+    {
+        return std::hash<T>{}(p);
+    }
+};
+
+template <typename T1, typename T2>
+struct Hash<std::pair<T1, T2>> {
+    std::size_t operator()(std::pair<T1, T2> const &p) const
+    {
+        return std::hash<T1>{}(p.first) ^ std::hash<T2>{}(p.second);
+    }
+};
+
+} // namespace Sanitizer
 
 #endif // SANITIZERS_NUMERIC_H
 

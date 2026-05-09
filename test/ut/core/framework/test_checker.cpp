@@ -149,7 +149,7 @@ TEST(Checker, set_multi_detect_then_fake_many_records_and_run_parallel_expect_no
         checker->Do(kernelSanRecord);
     }
     SanitizerRecord lastSanRecord = CreateKernelSanRecord();
-    lastSanRecord.payload.kernelRecord.recordType = RecordType::FINISH;
+    lastSanRecord.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
     checker->Do(lastSanRecord);
     size_t matchCnt = GetDetectInfoNum(ss.str());
     ASSERT_EQ(matchCnt, 0);
@@ -231,7 +231,7 @@ TEST(Checker, test_element_alignment_for_310p_expect_no_misalignment)
     checker->Do(record);
     kernelRecord.recordType = RecordType::BLOCK_FINISH;
     checker->Do(record);
-    kernelRecord.recordType = RecordType::FINISH;
+    kernelRecord.recordType = RecordType::KERNEL_FINISH;
     checker->Do(record);
     checker->Finish();
     ASSERT_EQ(ss.str().find("misalign"), std::string::npos);
@@ -260,7 +260,7 @@ TEST(Checker, test_element_alignment_for_910b_expect_misalignment)
     checker->Do(record);
     kernelRecord.recordType = RecordType::BLOCK_FINISH;
     checker->Do(record);
-    kernelRecord.recordType = RecordType::FINISH;
+    kernelRecord.recordType = RecordType::KERNEL_FINISH;
     checker->Do(record);
     checker->Finish();
     ASSERT_NE(ss.str().find("misalign"), std::string::npos);

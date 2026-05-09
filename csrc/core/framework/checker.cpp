@@ -408,7 +408,7 @@ void Checker::Do(const SanitizerRecord &record)
             workerArgs_[i].push(std::move(workargs));
         }
     }
-    if (record.payload.kernelRecord.recordType != RecordType::FINISH) {
+    if (record.payload.kernelRecord.recordType != RecordType::KERNEL_FINISH) {
         workerCv_.notify_all();
     } else {
         finishProduce_ = true;

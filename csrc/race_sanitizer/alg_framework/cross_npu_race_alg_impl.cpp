@@ -18,9 +18,13 @@
 #include "core/framework/event_def.h"
 #include "core/framework/kernel_manager.h"
 #include "core/framework/record_defs.h"
+#include "core/framework/utility/spans.h"
 #include "race_sanitizer/alg_framework/cross_core_sync_info_container.h"
 #include "race_sanitizer/alg_framework/event_container.h"
 #include "race_sanitizer/alg_framework/mem_event_checker.h"
+#include "race_sanitizer/alg_framework/pipe_line.h"
+#include "race_sanitizer/alg_framework/vector_clock.h"
+#include "sanitizer_report.h"
 
 #include "cross_npu_race_alg_impl.h"
 
@@ -37,6 +41,8 @@ void CrossNpuRaceAlgImpl::Init()
     std::size_t deviceNum = DeviceManager::Instance().GetDeviceCount();
     crossCoreSyncInfoContainer_.resize(deviceNum);
     mstxSetCrossMap_.resize(deviceNum);
+    crossCoreBarrier_.resize(deviceNum);
+    kernelBarrier_.resize(deviceNum);
 
     for (std::size_t deviceIdx = 0; deviceIdx < deviceNum; ++deviceIdx) {
         uint32_t deviceId = deviceList[deviceIdx];
@@ -47,6 +53,8 @@ void CrossNpuRaceAlgImpl::Init()
 
         crossCoreSyncInfoContainer_[deviceIdx].resize(kernelCount);
         mstxSetCrossMap_[deviceIdx].resize(kernelCount);
+        crossCoreBarrier_[deviceIdx].resize(kernelCount);
+        kernelBarrier_[deviceIdx].resize(kernelCount);
 
         for (std::size_t kernelIdx = 0; kernelIdx < kernelCount; ++kernelIdx) {
             KernelSummary kernelSummary{};
@@ -85,23 +93,43 @@ bool CrossNpuRaceAlgImpl::SetKernelInfo(KernelSummary const &kernelInfo)
 
 void CrossNpuRaceAlgImpl::Do(const SanEvent& event)
 {
-    if (!event.isEndFrame) {
-        CacheMstxCrossSet(event);
-        auto blockIndex = GetEventExpandBlockIndex(event);
-        eventContainer_.Push(event, PipeType::PIPE_S, blockIndex, event.loc.deviceIdx);
+    if (event.type == EventType::SANITIZER_CONTROL_EVENT) {
+        if (event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
+            CreateKernelBarrier(event);
+        } else {
+            PipeLine pipeLine(eventContainer_);
+            pipeLine.RegisterEventFunc(std::bind(&CrossNpuRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
+            pipeLine.Run();
+            memChecker_.RunAlgorithm();
+            isFinished_ = true;
+        }
         return;
     }
 
-    PipeLine pipeLine(eventContainer_);
-    pipeLine.RegisterEventFunc(std::bind(&CrossNpuRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
-    pipeLine.Run();
-    memChecker_.RunAlgorithm();
-    isFinished_ = true;
+    CacheMstxCrossSet(event);
+    auto blockIndex = GetEventExpandBlockIndex(event);
+    eventContainer_.Push(event, PipeType::PIPE_S, blockIndex, event.loc.deviceIdx);
 }
 
 bool CrossNpuRaceAlgImpl::IsFinished() const
 {
     return isFinished_;
+}
+
+void CrossNpuRaceAlgImpl::CreateKernelBarrier(SanEvent event)
+{
+    for (uint32_t blockIdx = 0; blockIdx < totalBlockNum_; ++blockIdx) {
+        event.loc.blockType = blockIdx % C220_MIX_SUB_BLOCKDIM == 2 ? BlockType::AICUBE : BlockType::AIVEC;
+        event.loc.coreId = blockIdx / C220_MIX_SUB_BLOCKDIM *
+            (event.loc.blockType == BlockType::AICUBE ? C220_CUBE_SUB_BLOCKDIM : C220_VEC_SUB_BLOCKDIM) +
+            (event.loc.blockType == BlockType::AICUBE ? 0 : blockIdx % C220_MIX_SUB_BLOCKDIM);
+        for (uint32_t pipeIdx = 1; pipeIdx < static_cast<uint32_t>(PipeType::SIZE); ++pipeIdx) {
+            event.pipe = static_cast<PipeType>(pipeIdx);
+            eventContainer_.Push(event, PipeType::PIPE_S, blockIdx, event.loc.deviceIdx);
+        }
+        event.pipe = PipeType::PIPE_S;
+        eventContainer_.Push(event, PipeType::PIPE_S, blockIdx, event.loc.deviceIdx);
+    }
 }
 
 std::shared_ptr<std::vector<RaceDispInfo>> CrossNpuRaceAlgImpl::GetResult() const
@@ -130,6 +158,8 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
         return ReturnType::PROCESS_OK;
     }
     switch (event.type) {
+        case EventType::SANITIZER_CONTROL_EVENT:
+            return ProcessSanitizerControlEvent(event);
         case EventType::SYNC_EVENT:
             return ProcessSyncEvent(event);
         case EventType::MEM_EVENT:
@@ -142,18 +172,56 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
             return ProcessBlockSoftSyncEvent(event);
         case EventType::MSTX_CROSS_SYNC_EVENT:
             return ProcessMstxCrossSyncEvent(event);
+        case EventType::MSTX_SIGNAL_SET_EVENT:
+            return ProcessMstxSignalSetEvent(event);
+        case EventType::MSTX_SIGNAL_WAIT_EVENT:
+            return ProcessMstxSignalWaitEvent(event);
+        case EventType::MSTX_CROSS_CORE_BARRIER:
+            return ProcessMstxCrossCoreBarrier(event);
+        case EventType::MSTX_CROSS_NPU_BARRIER:
+            return ProcessMstxCrossNpuBarrier(event);
         default:
             break;
     }
     return ReturnType::PROCESS_OK;
 }
 
+ReturnType CrossNpuRaceAlgImpl::ProcessSanitizerControlEvent(const SanEvent& event)
+{
+    if (event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
+        uint32_t curPipe = eventContainer_.GetQueIndex();
+        KernelBarrierEvent &kernelBarrier = kernelBarrier_[event.loc.deviceIdx][event.loc.kernelIdx];
+        std::size_t totalSize = totalBlockNum_ * static_cast<std::size_t>(PipeType::SIZE);
+        uint32_t blockIdx = GetEventExpandBlockIndex(event);
+
+        VectorTime vt;
+        if (!kernelBarrier.Wait(totalSize, {blockIdx, event.pipe}, vc_[curPipe], vt)) {
+            return ReturnType::PROCESS_STALLED;
+        }
+
+        VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+        VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+        return ReturnType::PROCESS_OK;
+    }
+
+    return ReturnType::PROCESS_OK;
+}
+
 ReturnType CrossNpuRaceAlgImpl::ProcessMemEvent(const SanEvent& event)
 {
-    if (event.eventInfo.memInfo.memType != MemType::GM) {
+    MemOpInfo const &memInfo = event.eventInfo.memInfo;
+    if (memInfo.memType != MemType::GM) {
         // 非GM内存事件不检测
         return ReturnType::PROCESS_OK;
     }
+    // 计算整个内存事件的范围
+    uint64_t range = (memInfo.repeatTimes - 1) * memInfo.repeatStride * memInfo.blockSize +
+        (memInfo.blockNum - 1) * memInfo.blockStride * memInfo.blockSize + memInfo.blockSize;
+    DeviceManager::SharedMemorySpans &sharedMemory = DeviceManager::Instance().GetSharedMemorySpans(event.loc.deviceId);
+    if (!sharedMemory.HasIntersection({memInfo.addr, memInfo.addr + range})) {
+        return ReturnType::PROCESS_OK;
+    }
+
     auto e = MemEvent(event);
     e.isAtomicMode = event.isAtomicMode;
     uint32_t curPipe = eventContainer_.GetQueIndex();
@@ -307,6 +375,67 @@ ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossSyncEvent(const SanEvent& event)
         }
     }
     return ReturnType::PROCESS_STALLED;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxSignalSetEvent(const SanEvent &event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    signalDatabase_.Set(event.eventInfo.mstxSignalSet, vc_[curPipe]);
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxSignalWaitEvent(const SanEvent &event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    VectorTime vt;
+    if (signalDatabase_.Wait(event.eventInfo.mstxSignalWait, vt)) {
+        VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+        VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+        return ReturnType::PROCESS_OK;
+    }
+    return ReturnType::PROCESS_STALLED;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossCoreBarrier(const SanEvent& event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    MstxCrossCoreBarrier const &mstxCrossCoreBarrier = event.eventInfo.mstxCrossCoreBarrier;
+
+    CrossNpuBarrierConf conf;
+    conf.isAIVOnly = mstxCrossCoreBarrier.isAIVOnly;
+    conf.usedDeviceNum = 1;
+    conf.usedCoreNum = mstxCrossCoreBarrier.usedCoreNum;
+    CrossCoreBarrierDatabase &crossCoreBarrier = crossCoreBarrier_[event.loc.deviceIdx][event.loc.kernelIdx];
+    BarrierEvent<CrossCoreBarrierWorker> &barrierEvent = crossCoreBarrier[conf];
+
+    VectorTime vt;
+    if (!barrierEvent.Wait(conf.usedCoreNum, event.loc.coreId, vc_[curPipe], vt)) {
+        return ReturnType::PROCESS_STALLED;
+    }
+    VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType CrossNpuRaceAlgImpl::ProcessMstxCrossNpuBarrier(const SanEvent& event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    MstxCrossNpuBarrier const &mstxCrossNpuBarrier = event.eventInfo.mstxCrossNpuBarrier;
+
+    CrossNpuBarrierConf conf;
+    conf.isAIVOnly = mstxCrossNpuBarrier.isAIVOnly;
+    conf.usedDeviceNum = mstxCrossNpuBarrier.usedDeviceNum;
+    conf.usedCoreNum = mstxCrossNpuBarrier.usedCoreNum;
+    BarrierEvent<CrossNpuBarrierWorker> &barrierEvent = crossNpuBarrier_[conf];
+    std::size_t barrierCount = conf.usedDeviceNum * conf.usedCoreNum;
+
+    VectorTime vt;
+    if (!barrierEvent.Wait(barrierCount, {event.loc.deviceId, event.loc.coreId}, vc_[curPipe], vt)) {
+        return ReturnType::PROCESS_STALLED;
+    }
+    VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+    return ReturnType::PROCESS_OK;
 }
 
 void CrossNpuRaceAlgImpl::CacheMstxCrossSet(const SanEvent& event)

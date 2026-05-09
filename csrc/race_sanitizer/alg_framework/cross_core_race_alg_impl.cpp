@@ -34,7 +34,8 @@ CrossCoreRaceAlgImpl::CrossCoreRaceAlgImpl(KernelType kernelType, DeviceType dev
 
 void CrossCoreRaceAlgImpl::Do(const SanEvent &event)
 {
-    if (!event.isEndFrame) {
+    if (event.type != EventType::SANITIZER_CONTROL_EVENT ||
+        event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         CacheMstxCrossSet(event);
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::CROSS_BLOCK_CHECK);
         eventContainer_.Push(event, PipeType::PIPE_S, blockIndex);
@@ -90,6 +91,10 @@ ReturnType CrossCoreRaceAlgImpl::ProcessEvent(const SanEvent &event)
             return ProcessBlockSoftSyncEvent(event);
         case EventType::MSTX_CROSS_SYNC_EVENT:
             return ProcessMstxCrossSyncEvent(event);
+        case EventType::MSTX_CROSS_CORE_BARRIER:
+            return ProcessMstxCrossCoreBarrier(event);
+        case EventType::MSTX_CROSS_NPU_BARRIER:
+            return ProcessMstxCrossNpuBarrier(event);
         default:
             break;
     }
@@ -164,6 +169,40 @@ ReturnType CrossCoreRaceAlgImpl::ProcessSyncEvent(const SanEvent &event)
         }
     }
     return ReturnType::PROCESS_OK;
+}
+
+ReturnType CrossCoreRaceAlgImpl::ProcessMstxCrossCoreBarrier(const SanEvent& event)
+{
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    MstxCrossCoreBarrier const &mstxCrossCoreBarrier = event.eventInfo.mstxCrossCoreBarrier;
+
+    CrossNpuBarrierConf conf;
+    conf.isAIVOnly = mstxCrossCoreBarrier.isAIVOnly;
+    conf.usedDeviceNum = 1;
+    conf.usedCoreNum = mstxCrossCoreBarrier.usedCoreNum;
+    BarrierEvent<CrossCoreBarrierWorker> &barrierEvent = crossCoreBarrier_[conf];
+
+    VectorTime vt;
+    if (!barrierEvent.Wait(conf.usedCoreNum, event.loc.coreId, vc_[curPipe], vt)) {
+        return ReturnType::PROCESS_STALLED;
+    }
+    VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+    VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType CrossCoreRaceAlgImpl::ProcessMstxCrossNpuBarrier(const SanEvent& event)
+{
+    // 退化成核间同步
+    SanEvent decayEvent(event);
+    decayEvent.type = EventType::MSTX_CROSS_CORE_BARRIER;
+    MstxCrossCoreBarrier &crossCoreBarrier = decayEvent.eventInfo.mstxCrossCoreBarrier;
+    MstxCrossNpuBarrier const &crossNpuBarrier = event.eventInfo.mstxCrossNpuBarrier;
+    crossCoreBarrier.usedCoreId = crossNpuBarrier.usedCoreId;
+    crossCoreBarrier.usedCoreNum = crossNpuBarrier.usedCoreNum;
+    crossCoreBarrier.isAIVOnly = crossNpuBarrier.isAIVOnly;
+    crossCoreBarrier.pipeBarrierAll = crossNpuBarrier.pipeBarrierAll;
+    return ProcessMstxCrossCoreBarrier(decayEvent);
 }
 
 ReturnType CrossCoreRaceAlgImpl::ProcessTimeEvent(const SanEvent &event)

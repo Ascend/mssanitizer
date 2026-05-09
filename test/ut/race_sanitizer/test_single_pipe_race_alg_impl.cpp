@@ -48,7 +48,8 @@ TEST(SinglePipeRaceAlgImpl, race_alg_can_detect_race_events_expect_success)
     event.serialNo = 3U;
     alg.Do(event);
     ASSERT_EQ(alg.IsFinished(), false);
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 2U);
     ASSERT_EQ(alg.IsFinished(), true);
@@ -82,7 +83,8 @@ TEST(SinglePipeRaceAlgImpl, race_alg_detect_pipe_barrier_expect_no_race)
     event.serialNo = 3U;
     alg.Do(event);
     ASSERT_EQ(alg.IsFinished(), false);
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
     ASSERT_EQ(alg.IsFinished(), true);

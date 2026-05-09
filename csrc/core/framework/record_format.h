@@ -26,6 +26,7 @@
 #include <sstream>
 
 #include "record_defs.h"
+#include "sanitizer_report.h"
 
 namespace Sanitizer {
 
@@ -100,6 +101,7 @@ std::ostream &operator<<(std::ostream &os, BlockType blockType);
 std::ostream &operator<<(std::ostream &os, AccessType accessType);
 std::ostream &operator<<(std::ostream &os, MaskMode maskMode);
 std::ostream &operator<<(std::ostream &os, MemInfoSrc memInfoSrc);
+std::ostream &operator<<(std::ostream &os, CompareOp cmpOp);
 std::ostream &operator<<(std::ostream &os, DeviceInfoSummary const &summary);
 std::ostream &operator<<(std::ostream &os, Location const &location);
 std::ostream &operator<<(std::ostream &os, VectorMask const &vectorMask);
@@ -158,6 +160,9 @@ std::ostream &operator<<(std::ostream &os, CmpMaskRecord const &record);
 std::ostream &operator<<(std::ostream &os, MstxCrossCoreBarrier const &record);
 std::ostream &operator<<(std::ostream &os, MstxCrossCoreSetFlag const &record);
 std::ostream &operator<<(std::ostream &os, MstxCrossCoreWaitFlag const &record);
+std::ostream &operator<<(std::ostream &os, MstxSignalSet const &record);
+std::ostream &operator<<(std::ostream &os, MstxSignalWait const &record);
+std::ostream &operator<<(std::ostream &os, MstxCrossNpuBarrier const &record);
 std::ostream &operator<<(std::ostream &os, MstxTensorDesc const &tensor);
 std::ostream &operator<<(std::ostream &os, MstxVecWrapper const &record);
 std::ostream &operator<<(std::ostream &os, MstxVecUnaryDesc const &record);

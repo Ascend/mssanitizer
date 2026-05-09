@@ -22,6 +22,7 @@
 #include <unordered_map>
 
 #include "record_defs.h"
+#include "utility/spans.hpp"
 #include "utility/singleton.h"
 
 namespace Sanitizer {
@@ -34,6 +35,7 @@ public:
     friend class Singleton<DeviceManager>;
 
     using DeviceId = uint32_t;
+    using SharedMemorySpans = Spans<uint64_t>;
 
     /**
      * @brief 记录设备信息
@@ -63,6 +65,8 @@ public:
      */
     std::vector<DeviceId> GetDeviceList() const;
 
+    SharedMemorySpans &GetSharedMemorySpans(DeviceId deviceId);
+
 #if defined(__BUILD_TESTS__)
     void Clear()
     {
@@ -72,6 +76,7 @@ public:
 
 private:
     std::unordered_map<DeviceId, DeviceInfoSummary> deviceMap_;
+    std::unordered_map<DeviceId, SharedMemorySpans> sharedMemSpans_;
     mutable std::mutex mtx_;
 };
 

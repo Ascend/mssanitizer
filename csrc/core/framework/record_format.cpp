@@ -165,6 +165,7 @@ static const std::map<RecordType, std::string> RECORD_TYPE_MAP = {
     {RecordType::SCALAR_ATOM,                 "SCALAR_ATOM"},
     {RecordType::LDVA,                        "LDVA"},
     {RecordType::FINISH,                      "FINISH"},
+    {RecordType::KERNEL_FINISH,               "KERNEL_FINISH"},
     {RecordType::BLOCK_FINISH,                "BLOCK_FINISH"},
     {RecordType::SET_L1_2D,                   "SET_L1_2D"},
     {RecordType::MOV_L1_TO_UB,                "MOV_L1_TO_UB"},
@@ -199,6 +200,9 @@ std::ostream &operator<<(std::ostream &os, InterfaceType interfaceType)
         {InterfaceType::MSTX_CROSS_CORE_BARRIER,   "CROSS_CORE_BARRIER"},
         {InterfaceType::MSTX_CROSS_CORE_SET_FLAG,  "CROSS_CORE_SET_FLAG"},
         {InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG, "CROSS_CORE_WAIT_FLAG"},
+        {InterfaceType::MSTX_SIGNAL_SET,           "SIGNAL_SET"},
+        {InterfaceType::MSTX_SIGNAL_WAIT,          "SIGNAL_WAIT"},
+        {InterfaceType::MSTX_CROSS_NPU_BARRIER,    "CROSS_NPU_BARRIER"},
         {InterfaceType::MSTX_VEC_UNARY_OP,         "VEC_UNARY"},
         {InterfaceType::MSTX_VEC_BINARY_OP,        "VEC_BINARY"},
         {InterfaceType::MSTX_DATA_COPY,            "DATA_COPY"},
@@ -390,6 +394,20 @@ std::ostream &operator<<(std::ostream &os, MaskMode maskMode)
     return FormatEnum(os, MASK_MODE_MAP, maskMode, "MaskMode");
 }
 
+std::ostream &operator<<(std::ostream &os, CompareOp cmpOp)
+{
+    static const std::map<CompareOp, std::string> CMP_OP_MAP = {
+        {CompareOp::EQ, "EQ"},
+        {CompareOp::NE, "NE"},
+        {CompareOp::GT, "GT"},
+        {CompareOp::GE, "GE"},
+        {CompareOp::LT, "LT"},
+        {CompareOp::LE, "LE"},
+    };
+
+    return FormatEnum(os, CMP_OP_MAP, cmpOp, "CompareOp");
+}
+
 std::ostream &operator<<(std::ostream &os, DeviceInfoSummary const &summary)
 {
     return os << "[summary] device:" << static_cast<uint32_t>(summary.device);
@@ -486,6 +504,28 @@ std::ostream &operator<<(std::ostream &os, MstxCrossCoreWaitFlag const &record)
               << ", " << "pipeBarrierAll:" << std::boolalpha << record.pipeBarrierAll;
 }
 
+std::ostream &operator<<(std::ostream &os, MstxSignalSet const &record)
+{
+    return os << ", " << "addr:0x" << std::hex << record.addr << std::dec
+              << ", " << "value:" << record.value;
+}
+
+std::ostream &operator<<(std::ostream &os, MstxSignalWait const &record)
+{
+    return os << ", " << "addr:0x" << std::hex << record.addr << std::dec
+              << ", " << "cmpValue:" << record.cmpValue
+              << ", " << "cmpOp:" << record.cmpOp;
+}
+
+std::ostream &operator<<(std::ostream &os, MstxCrossNpuBarrier const &record)
+{
+    return os << ", " << "usedDeviceNum:" << record.usedDeviceNum
+              << ", " << "usedDeviceId:" << record.usedDeviceId
+              << ", " << "usedCoreNum:" << record.usedCoreNum
+              << ", " << "usedCoreId:" << record.usedCoreId
+              << ", " << "isAIVOnly:" << std::boolalpha << record.isAIVOnly;
+}
+
 std::ostream &operator<<(std::ostream &os, MstxTensorDesc const &tensor)
 {
   return os << "(addr:0x" << std::hex << tensor.addr << std::dec
@@ -580,6 +620,12 @@ std::ostream &operator<<(std::ostream &os, MstxRecord const &record)
             [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxCrossCoreSetFlag; }},
         {InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG,
             [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxCrossCoreWaitFlag; }},
+        {InterfaceType::MSTX_SIGNAL_SET,
+            [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxSignalSet; }},
+        {InterfaceType::MSTX_SIGNAL_WAIT,
+            [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxSignalWait; }},
+        {InterfaceType::MSTX_CROSS_NPU_BARRIER,
+            [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxCrossNpuBarrier; }},
         {InterfaceType::MSTX_VEC_UNARY_OP,
             [](std::ostream &os, MstxRecord const &r) { os << r.interface.mstxVecUnaryDesc; }},
         {InterfaceType::MSTX_VEC_BINARY_OP,

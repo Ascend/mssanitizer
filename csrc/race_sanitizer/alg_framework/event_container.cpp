@@ -165,6 +165,10 @@ void EventContainer::SwitchToNextBlock()
     // 遍历完一轮 block 后，检查当前 device 是否阻塞
     if (blockIndex_ == 0U) {
         isDeviceStuck_ = devicePopCount_ == 0U;
+        // 当前 device 有处理过事件认为未阻塞，阻塞 device 数量重新计数
+        if (!isDeviceStuck_) {
+            stuckDeviceNum_ = 0;
+        }
         devicePopCount_ = 0U;
     }
 }

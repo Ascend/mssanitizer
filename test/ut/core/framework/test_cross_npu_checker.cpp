@@ -64,7 +64,7 @@ TEST_F(TestCrossNpuChecker, record_array_push_record_expect_success)
 {
     SanitizerRecord record{};
     record.version = RecordVersion::KERNEL_RECORD;
-    record.payload.kernelRecord.recordType = RecordType::FINISH;
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
 
     CrossNpuChecker::RecordArray recordArray;
     recordArray.CreateNewKernel();
@@ -81,7 +81,7 @@ TEST_F(TestCrossNpuChecker, get_record_array_expect_get_correct_record_array)
 {
     SanitizerRecord record{};
     record.version = RecordVersion::KERNEL_RECORD;
-    record.payload.kernelRecord.recordType = RecordType::FINISH;
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
 
     Config config{};
     CrossNpuChecker checker(config);
@@ -142,6 +142,9 @@ TEST_F(TestCrossNpuChecker, check_records_on_different_device_expect_report_corr
     storeRecord.space = AddressSpace::GM;
     storeRecord.addr = 0x00;
     storeRecord.size = 8;
+
+    DeviceManager::Instance().GetSharedMemorySpans(0).Union({storeRecord.addr, storeRecord.addr + storeRecord.size});
+    DeviceManager::Instance().GetSharedMemorySpans(1).Union({storeRecord.addr, storeRecord.addr + storeRecord.size});
 
     checker.GetRecordArray(0).CreateNewKernel();
     checker.GetRecordArray(0).Push(record);

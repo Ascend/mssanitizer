@@ -282,7 +282,7 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     if (runtimeContext.currentBlockIdx_ == kernelBlock->GetTotalBlockDim()) {
         KernelRecordResponse resp{runtimeContext.currentBlockIdx_, ResponseStatus::SUCCESS};
         msgRspFunc(Serialize(PacketType::KERNEL_RECORD_RESPONSE, resp));
-        sanitizerRecord.payload.kernelRecord.recordType = RecordType::FINISH;
+        sanitizerRecord.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
         sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
         checker.Do(sanitizerRecord);
         recordArray.Push(sanitizerRecord);
@@ -325,6 +325,17 @@ inline void HandleLogString(Packet::BinaryPayload const &payload)
     std::string str(payload.buf, payload.buf + payload.len);
     std::string strLog = Utility::ReplaceInvalidChar(str);
     SAN_INFO_LOG("HOOK: %s", strLog.c_str());
+}
+
+inline void HandleMemRegionPermission(MemRegionPermissionDesc const &permission)
+{
+    SAN_INFO_LOG("MEM_REGION_PERMISSION, addr: 0x%lx, size: %lu, deviceId: %u, flags: %u",
+                 permission.addr, permission.size, permission.deviceId, permission.flags);
+    // handle shared memory regions
+    if (permission.flags & MSTX_MEM_PERMISSIONS_REGION_FLAGS_SHARED) {
+        auto &spans = DeviceManager::Instance().GetSharedMemorySpans(permission.deviceId);
+        spans.Union({permission.addr, permission.addr + permission.size});
+    }
 }
 
 } // namespace [Dummy]
@@ -395,6 +406,9 @@ void Command::Exec(const ParamList &execParams)
                     break;
                 case PacketType::IPC_RECORD:
                     HandleIpcMemRecord(checker, packet.GetPayload().ipcMemRecord, threadManager, msgRspFunc);
+                    break;
+                case PacketType::MEM_REGION_PERMISSION:
+                    HandleMemRegionPermission(packet.GetPayload().memPermission);
                     break;
                 case PacketType::SANITIZER_RECORD:
                     checker.Do(packet.GetPayload().sanitizerRecord);

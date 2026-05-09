@@ -51,7 +51,8 @@ TEST(CrossCoreRaceAlgImpl, race_alg_can_detect_race_events_expect_success)
     event.pipe = PipeType::PIPE_MTE1;
     event.eventInfo.memInfo.opType = AccessType::READ;
     alg.Do(event);
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 3U);
 }
@@ -84,7 +85,8 @@ TEST(CrossCoreRaceAlgImpl, race_alg_can_detect_atomic_race_events_expect_success
     event.pipe = PipeType::PIPE_MTE1;
     event.eventInfo.memInfo.opType = AccessType::READ;
     alg.Do(event);
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 2U);
 }
@@ -119,7 +121,8 @@ TEST(CrossCoreRaceAlgImpl, race_alg_detect_diverse_coarse_overlapping_mem_race_e
     alg.Do(event);
     fillSanEvent(3, addr + 5 * unitMemLen, 5U, unitMemLen * 3, 4U, 1U, 1U, PipeType::PIPE_MTE2);
     alg.Do(event);
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 3U);
 }
@@ -154,7 +157,8 @@ TEST(CrossCoreRaceAlgImpl, race_alg_detect_zero_length_overlapping_mem_race_even
     alg.Do(event);
     fillSanEvent(3, addr, 4U, unitMemLen * 5, 4U, 0U, 1U, PipeType::PIPE_MTE1);
     alg.Do(event);
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
@@ -187,7 +191,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_can_detect_sync_race_events_expec
     event.pipe = PipeType::PIPE_MTE1;
     event.eventInfo.memInfo.opType = AccessType::WRITE;
     alg.Do(event);
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
@@ -252,7 +257,8 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_no_sync_race_events_expect_s
     event.type = EventType::MEM_EVENT;
     alg.Do(event);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
@@ -288,7 +294,8 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_with_set_pipe_s_no_sync_race
     event.type = EventType::MEM_EVENT;
     alg.Do(event);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
@@ -326,7 +333,8 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_with_set_error_pipe_can_dete
     event.type = EventType::MEM_EVENT;
     alg.Do(event);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
@@ -364,7 +372,8 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_with_wait_error_pipe_can_det
     event.eventInfo.memInfo.opType = AccessType::READ;
     alg.Do(event);
 
-    event.isEndFrame = true;
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
@@ -404,7 +413,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_can_det
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
@@ -445,7 +455,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_can_det
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
@@ -488,7 +499,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_can_det
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
@@ -532,7 +544,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_1_can_det
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
@@ -575,7 +588,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode0_can_detect_aic_ai
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
@@ -621,7 +635,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode0_can_detect_aiv_ai
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
@@ -672,7 +687,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode1_can_detect_aic_ai
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         event.eventInfo.memInfo.opType = AccessType::READ;
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
@@ -715,7 +731,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_aiv_set
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
@@ -757,7 +774,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_aic_set
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
@@ -800,7 +818,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_1_expect_
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
@@ -840,7 +859,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode0_expect_success)
         event.eventInfo.memInfo.opType = static_cast<AccessType>(RandUint(static_cast<uint64_t>(AccessType::READ),
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
@@ -884,7 +904,8 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode1_expect_success)
             static_cast<uint64_t>(AccessType::MEMCPY_BLOCKS)));
         event.eventInfo.memInfo.opType = AccessType::READ;
         alg.Do(event);
-        event.isEndFrame = true;
+        event.type = EventType::SANITIZER_CONTROL_EVENT;
+        event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }

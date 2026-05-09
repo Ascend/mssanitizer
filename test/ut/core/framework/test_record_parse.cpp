@@ -26,6 +26,7 @@
 #include "address_sanitizer/align_checker.h"
 #include "core/framework/record_parse.h"
 #undef private
+#include "sanitizer_report.h"
 
 namespace Sanitizer {
 inline bool operator==(MemOpInfo const &lhs, MemOpInfo const &rhs)
@@ -2827,6 +2828,64 @@ TEST_F(TestRecordParse, parse_mstx_cross_error_record_expect_success)
 
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 0);
+}
+
+TEST_F(TestRecordParse, parse_mstx_signal_set_record_expect_get_correct_events)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    MstxSignalSet mstxSignalSet{};
+    mstxSignalSet.addr = 0x1234;
+    mstxSignalSet.value = 100;
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_SIGNAL_SET;
+    record.payload.mstxRecord.bufferLens = sizeof(mstxSignalSet);
+    record.payload.mstxRecord.interface.mstxSignalSet = mstxSignalSet;
+    record.payload.mstxRecord.location.blockId = 7;
+    record.payload.mstxRecord.error = false;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 1);
+    ASSERT_EQ(events[0].type, EventType::MSTX_SIGNAL_SET_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[0].eventInfo.mstxSignalSet.addr, mstxSignalSet.addr);
+    ASSERT_EQ(events[0].eventInfo.mstxSignalSet.value, mstxSignalSet.value);
+}
+
+TEST_F(TestRecordParse, parse_mstx_signal_wait_record_expect_get_correct_events)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    MstxSignalWait mstxSignalWait{};
+    mstxSignalWait.addr = 0x1234;
+    mstxSignalWait.cmpValue = 100;
+    mstxSignalWait.cmpOp = CompareOp::EQ;
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_SIGNAL_WAIT;
+    record.payload.mstxRecord.bufferLens = sizeof(mstxSignalWait);
+    record.payload.mstxRecord.interface.mstxSignalWait = mstxSignalWait;
+    record.payload.mstxRecord.location.blockId = 7;
+    record.payload.mstxRecord.error = false;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 1);
+    ASSERT_EQ(events[0].type, EventType::MSTX_SIGNAL_WAIT_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[0].eventInfo.mstxSignalWait.addr, mstxSignalWait.addr);
+    ASSERT_EQ(events[0].eventInfo.mstxSignalWait.cmpOp, mstxSignalWait.cmpOp);
+    ASSERT_EQ(events[0].eventInfo.mstxSignalWait.cmpValue, mstxSignalWait.cmpValue);
 }
 
 TEST_F(TestRecordParse, parse_wait_flag_and_hwait_flag_end_to_end_in_pipe_record_expect_success)

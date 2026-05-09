@@ -209,7 +209,7 @@ void RecordPreProcess::ProcessMstxCrossWaitRecord(const SanitizerRecord &record)
                 waitMergeInfo_.firstPreRecord.coreID = curMstxRecord.location.blockId;
                 waitMergeInfo_.throughFirstWait = true;
             }
-        } else if (type == RecordType::BLOCK_FINISH || type == RecordType::FINISH) {
+        } else if (type == RecordType::BLOCK_FINISH || type == RecordType::KERNEL_FINISH) {
             /// 重置waitMergeInfo_信息；
             ResetWaitMergeInfo();
         }

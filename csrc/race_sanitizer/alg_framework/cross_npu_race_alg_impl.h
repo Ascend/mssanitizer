@@ -19,14 +19,16 @@
 
 #include <vector>
 
+#include "barrier_database.hpp"
 #include "core/framework/config.h"
 #include "core/framework/event_def.h"
+#include "core/framework/utility/numeric.h"
 #include "cross_core_sync_info_container.h"
 #include "event_container.h"
 #include "mem_event_checker.h"
 #include "pipe_line.h"
+#include "signal_database.h"
 #include "sync_event_data_base.h"
-#include "vector_clock.h"
 
 namespace Sanitizer {
 
@@ -42,6 +44,7 @@ public:
     bool IsFinished() const;
 
 private:
+    ReturnType ProcessSanitizerControlEvent(const SanEvent& event);
     ReturnType ProcessEvent(const SanEvent& event);
     ReturnType ProcessMemEvent(const SanEvent& event);
     ReturnType ProcessSyncEvent(const SanEvent& event);
@@ -49,22 +52,37 @@ private:
     ReturnType ProcessBlockSoftSyncEvent(const SanEvent& event);
     ReturnType ProcessBlockSyncEvent(const SanEvent& event);
     ReturnType ProcessMstxCrossSyncEvent(const SanEvent& event);
+    ReturnType ProcessMstxSignalSetEvent(const SanEvent &event);
+    ReturnType ProcessMstxSignalWaitEvent(const SanEvent &event);
+    ReturnType ProcessMstxCrossCoreBarrier(const SanEvent &event);
+    ReturnType ProcessMstxCrossNpuBarrier(const SanEvent& event);
     void CacheMstxCrossSet(const SanEvent& event);
+    void CreateKernelBarrier(SanEvent event);
 
 private:
     using MstxSetCrossMap = std::map<std::pair<uint64_t, uint64_t>, uint64_t>;
+    using CrossNpuBarrierWorker = std::pair<uint32_t, uint32_t>;
+    using CrossCoreBarrierWorker = uint32_t;
+    using KernelBarrierWorker = std::pair<uint32_t, PipeType>;
+    using CrossNpuBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, CrossNpuBarrierWorker>;
+    using CrossCoreBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, CrossCoreBarrierWorker>;
+    using KernelBarrierEvent = BarrierEvent<KernelBarrierWorker>;
 
     bool isFinished_{};
     uint32_t totalBlockNum_{};
 
     EventContainer eventContainer_;
     MemEventChecker memChecker_;
+    SignalDatabase signalDatabase_;
+    CrossNpuBarrierDatabase crossNpuBarrier_;
     // 按最大的 blockDim 数初始化 vc 和 syncDB 数组
     std::vector<VectorTime> vc_;
     std::vector<SyncEventDataBase> syncDB_;
     // 为每张卡上的每个 kernel 创建一份核间检测实例
     std::vector<std::vector<MstxSetCrossMap>> mstxSetCrossMap_;
     std::vector<std::vector<CrossCoreSyncInfoContainer>> crossCoreSyncInfoContainer_;
+    std::vector<std::vector<CrossCoreBarrierDatabase>> crossCoreBarrier_{};
+    std::vector<std::vector<KernelBarrierEvent>> kernelBarrier_{};
 };
 
 } // namespace Sanitizer

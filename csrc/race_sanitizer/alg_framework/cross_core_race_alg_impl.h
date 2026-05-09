@@ -21,6 +21,7 @@
 #include <functional>
 #include <map>
 
+#include "barrier_database.hpp"
 #include "race_alg_base.h"
 #include "sync_event_data_base.h"
 
@@ -44,8 +45,15 @@ private:
     ReturnType ProcessSyncEvent(const SanEvent& event);
     ReturnType ProcessTimeEvent(const SanEvent& event);
     ReturnType ProcessBlockSoftSyncEvent(const SanEvent& event);
+    ReturnType ProcessMstxCrossCoreBarrier(const SanEvent& event);
+    ReturnType ProcessMstxCrossNpuBarrier(const SanEvent& event);
+
 private:
+    using CrossCoreBarrierWorker = uint32_t;
+    using CrossCoreBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, CrossCoreBarrierWorker>;
+
     std::vector<SyncEventDataBase> syncDB_;
+    CrossCoreBarrierDatabase crossCoreBarrier_;
 };
 }
 

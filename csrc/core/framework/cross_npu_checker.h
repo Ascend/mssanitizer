@@ -84,6 +84,7 @@ public:
 private:
     inline void DisplaySanitizerBegin(Config const &config) const;
     inline void DisplaySanitizerEnd() const;
+    bool CheckFilter(DeviceInfoSummary const &deviceInfo, KernelSummary const &kernelSummary) const;
 
 private:
     mutable std::mutex mtx_;
