@@ -25,6 +25,7 @@
 
 #include "bounds_check.h"
 #include "mem_error_def.h"
+#include "sanitizer_report.h"
 #include "securec.h"
 #include "shadow_memory.h"
 #include "align_checker.h"
@@ -491,8 +492,22 @@ size_t AddressSanitizer::GetRecordsNum(const std::vector<SanEvent> &events) cons
     return numRecords;
 }
 
+void AddressSanitizer::SetPermission(MemRegionPermissionDesc const &desc)
+{
+    if (boundsCheckScope_ == BoundsCheckScope::RUNTIME || boundsCheckScope_ == BoundsCheckScope::BYPASS) {
+        boundsCheckRuntime_.SetPermission(AddressSpace::GM, desc.addr, desc.size, desc.flags);
+    }
+    if (boundsCheckScope_ == BoundsCheckScope::DFX || boundsCheckScope_ == BoundsCheckScope::BYPASS) {
+        boundsCheckDfx_.SetPermission(AddressSpace::GM, desc.addr, desc.size, desc.flags);
+    }
+}
+
 void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events)
 {
+    if (record.version == RecordVersion::REGION_PERMISSION) {
+        return SetPermission(record.payload.permissionDesc);
+    }
+
     size_t numRecords = GetRecordsNum(events);
     std::vector<MemOpRecord> records;
     // important, can speed much
@@ -521,7 +536,8 @@ inline void AddLocalTensorBound(BoundsCheck &boundsCheck, MstxTensorDesc const &
     if (tensor.space == AddressSpace::GM) {
         return;
     }
-    boundsCheck.Add(tensor.space, tensor.addr, tensor.size * tensor.dataBits / BITS_EACH_BYTE);
+    boundsCheck.Add(tensor.space, tensor.addr, tensor.size * tensor.dataBits / BITS_EACH_BYTE,
+                    Bounds::DEFAULT_PERMISSION);
 }
 
 void AddressSanitizer::DoWithLocalTensor(const MstxRecord &record, const std::vector<MemOpRecord> &records)

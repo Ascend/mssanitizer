@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <iostream>
 
+#include "core/framework/record_defs.h"
 #include "core/framework/utility/cpp_future.h"
 #include "core/framework/utility/log.h"
 #include "core/framework/format_converter.h"
@@ -37,11 +38,26 @@ inline uint64_t OverlapSize(Bounds::Range const &a, Bounds::Range const &b)
     return r > l ? r - l : 0UL;
 }
 
+inline bool HasPermission(uint32_t permission, AccessType accessType)
+{
+    if (accessType == AccessType::READ) {
+        return (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ) != 0;
+    } else if (accessType == AccessType::WRITE) {
+        return (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE) != 0;
+    } else {
+        return
+            (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ) != 0 &&
+            (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE) != 0;
+    }
+}
+
 } // namespace [Dummy]
 
 namespace Sanitizer {
 
-ErrorMsg DiscreteBounds::Add(uint64_t addr, uint64_t size)
+constexpr uint32_t Bounds::DEFAULT_PERMISSION;
+
+ErrorMsg DiscreteBounds::Add(uint64_t addr, uint64_t size, uint32_t permission)
 {
     ErrorMsg msg = CheckOverflow(addr, size);
     if (msg.isError) {
@@ -53,10 +69,15 @@ ErrorMsg DiscreteBounds::Add(uint64_t addr, uint64_t size)
     // 检查前一个范围是否能和当前范围融合，可以的话将前一个范围扩展到当前范围的
     // 右边界，否则把当前范围插入数组
     if (it != ranges_.cbegin() && std::prev(it)->addrR >= addr) {
-        it = std::prev(it);
-        it->addrR = std::max(it->addrR, addr + size);
+        if (std::prev(it)->permission == permission) {
+            it = std::prev(it);
+            it->addrR = std::max(it->addrR, addr + size);
+        } else {
+            std::prev(it)->addrR = addr;
+            it = ranges_.insert(it, Range{addr, addr + size, permission});
+        }
     } else {
-        it = ranges_.insert(it, Range{addr, addr + size});
+        it = ranges_.insert(it, Range{addr, addr + size, permission});
     }
 
     // 遍历右边的范围，如果与当前范围重叠，那么将当前范围扩展到右边界；否则由于
@@ -64,6 +85,10 @@ ErrorMsg DiscreteBounds::Add(uint64_t addr, uint64_t size)
     auto next = std::next(it);
     for (; next < ranges_.cend(); ++next) {
         if (next->addrL > it->addrR) {
+            break;
+        }
+        if (next->addrR > it->addrR && next->permission != permission) {
+            next->addrL = it->addrR;
             break;
         }
         it->addrR = std::max(it->addrR, next->addrR);
@@ -84,7 +109,7 @@ ErrorMsg DiscreteBounds::Remove(uint64_t addr, uint64_t size)
     auto it = std::upper_bound(ranges_.begin(), ranges_.end(), addr, pred);
     // 删除范围时一个范围可能被分割成两半。如果有左侧一半需要将这个范围插入
     if (it != ranges_.cend() && addr > it->addrL) {
-        it = std::next(ranges_.insert(it, Range{it->addrL, addr}));
+        it = std::next(ranges_.insert(it, Range{it->addrL, addr, it->permission}));
     }
 
     // 遍历右边的范围，如果与要删除的范围完成不重叠那么跳出循环；如果部分重叠需要
@@ -105,7 +130,37 @@ ErrorMsg DiscreteBounds::Remove(uint64_t addr, uint64_t size)
     return ErrorMsg();
 }
 
-ErrorMsg DiscreteBounds::Check(uint64_t addr, uint64_t size) const
+ErrorMsg DiscreteBounds::SetPermission(uint64_t addr, uint64_t size, uint32_t permission)
+{
+    ErrorMsg msg = CheckOverflow(addr, size);
+    if (msg.isError) {
+        return msg;
+    }
+
+    auto pred = [](uint64_t a, Range const &b) { return a < b.addrR; };
+    auto it = std::upper_bound(ranges_.begin(), ranges_.end(), addr, pred);
+    // 如果当前区间有一半在范围内，并且权限属性与设置不相同，则将区间切分为两半
+    if (it != ranges_.cend() && addr > it->addrL && permission != it->permission) {
+        it = std::next(ranges_.insert(it, Range{it->addrL, addr, it->permission}));
+        it->addrL = addr;
+    }
+
+    uint64_t addrR = addr + size;
+    for (; it != ranges_.cend(); ++it) {
+        if (it->addrL >= addrR) {
+            break;
+        }
+        if (it->addrR > addrR) {
+            it = std::next(ranges_.insert(it, Range{it->addrL, addrR, permission}));
+            it->addrL = addrR;
+            break;
+        }
+        it->permission = permission;
+    }
+    return ErrorMsg();
+}
+
+ErrorMsg DiscreteBounds::Check(uint64_t addr, uint64_t size, AccessType accessType) const
 {
     // 当要检查的范围 size 为 0 时，只检查 addr 地址是否在范围内，并且
     // 异常报告中的越界大小显示为 1 以保持格式兼容
@@ -120,6 +175,9 @@ ErrorMsg DiscreteBounds::Check(uint64_t addr, uint64_t size) const
     for (; it < ranges_.cend(); ++it) {
         if (it->addrL >= target.addrR) {
             break;
+        }
+        if (!HasPermission(it->permission, accessType)) {
+            continue;
         }
         badBytes -= OverlapSize(target, *it);
     }
@@ -170,13 +228,16 @@ ErrorMsg DiscreteBounds::CheckOverflow(uint64_t addr, uint64_t size) const
     return msg;
 }
 
-ErrorMsg UnionBounds::Check(uint64_t addr, uint64_t size) const
+ErrorMsg UnionBounds::Check(uint64_t addr, uint64_t size, AccessType accessType) const
 {
     if (size == 0) {
         return CheckAddrOnly(addr);
     }
 
     uint64_t overlap = OverlapSize(range_, Range{addr, addr + size});
+    if (!HasPermission(range_.permission, accessType)) {
+        overlap = 0;
+    }
     if (overlap < size) {
         ErrorMsg msg;
         msg.isError = true;
@@ -225,14 +286,14 @@ void BoundsCheck::Init(ChipInfo const &chipInfo)
     bounds_[AddressSpace::PRIVATE] = MakeUnique<UnionBounds>(0, chipInfo.privateSize);
 }
 
-ErrorMsg BoundsCheck::Add(AddressSpace space, uint64_t addr, uint64_t size)
+ErrorMsg BoundsCheck::Add(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission)
 {
     auto it = bounds_.find(space);
     if (it == bounds_.cend()) {
         SAN_INFO_LOG("Get bounds instance by space %s failed", FormatAddressSpace(space).c_str());
         return ErrorMsg();
     }
-    return it->second->Add(addr, size);
+    return it->second->Add(addr, size, permission);
 }
 
 ErrorMsg BoundsCheck::Remove(AddressSpace space, uint64_t addr, uint64_t size)
@@ -245,14 +306,24 @@ ErrorMsg BoundsCheck::Remove(AddressSpace space, uint64_t addr, uint64_t size)
     return it->second->Remove(addr, size);
 }
 
-ErrorMsg BoundsCheck::Check(AddressSpace space, uint64_t addr, uint64_t size) const
+ErrorMsg BoundsCheck::SetPermission(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission)
 {
     auto it = bounds_.find(space);
     if (it == bounds_.cend()) {
         SAN_INFO_LOG("Get bounds instance by space %s failed", FormatAddressSpace(space).c_str());
         return ErrorMsg();
     }
-    return it->second->Check(addr, size);
+    return it->second->SetPermission(addr, size, permission);
+}
+
+ErrorMsg BoundsCheck::Check(AddressSpace space, uint64_t addr, uint64_t size, AccessType accessType) const
+{
+    auto it = bounds_.find(space);
+    if (it == bounds_.cend()) {
+        SAN_INFO_LOG("Get bounds instance by space %s failed", FormatAddressSpace(space).c_str());
+        return ErrorMsg();
+    }
+    return it->second->Check(addr, size, accessType);
 }
 
 } // namespace Sanitizer

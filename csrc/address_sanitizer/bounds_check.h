@@ -28,21 +28,28 @@ namespace Sanitizer {
 
 class Bounds {
 public:
+    constexpr static uint32_t DEFAULT_PERMISSION =
+        MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ |
+        MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE;
+
     struct Range {
         uint64_t addrL;
         uint64_t addrR;
+        uint32_t permission;
     };
 
-    virtual ErrorMsg Add(uint64_t addr, uint64_t size) = 0;
+    virtual ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission = DEFAULT_PERMISSION) = 0;
     virtual ErrorMsg Remove(uint64_t addr, uint64_t size) = 0;
-    virtual ErrorMsg Check(uint64_t addr, uint64_t size) const = 0;
+    virtual ErrorMsg SetPermission(uint64_t addr, uint64_t size, uint32_t permission) = 0;
+    virtual ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const = 0;
 };
 
 class DiscreteBounds : public Bounds {
 public:
-    ErrorMsg Add(uint64_t addr, uint64_t size) override;
+    ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission = DEFAULT_PERMISSION) override;
     ErrorMsg Remove(uint64_t addr, uint64_t size) override;
-    ErrorMsg Check(uint64_t addr, uint64_t size) const override;
+    ErrorMsg SetPermission(uint64_t addr, uint64_t size, uint32_t permission) override;
+    ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const override;
 
 #if defined(__BUILD_TESTS__)
     // interface for ut
@@ -59,10 +66,11 @@ private:
 
 class UnionBounds : public Bounds {
 public:
-    UnionBounds(uint64_t addr, uint64_t size) : range_{addr, addr + size} { }
-    ErrorMsg Add(uint64_t addr, uint64_t size) override { return {}; }
+    UnionBounds(uint64_t addr, uint64_t size) : range_{addr, addr + size, DEFAULT_PERMISSION} { }
+    ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission = DEFAULT_PERMISSION) override { return {}; }
     ErrorMsg Remove(uint64_t addr, uint64_t size) override { return {}; };
-    ErrorMsg Check(uint64_t addr, uint64_t size) const override;
+    ErrorMsg SetPermission(uint64_t addr, uint64_t size, uint32_t permission) { return {}; }
+    ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const override;
 
 private:
     ErrorMsg CheckAddrOnly(uint64_t addr) const;
@@ -75,9 +83,10 @@ class BoundsCheck {
 public:
     BoundsCheck(bool localMemoryNeedAlloc = false);
     void Init(ChipInfo const &chipInfo);
-    ErrorMsg Add(AddressSpace space, uint64_t addr, uint64_t size);
+    ErrorMsg Add(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission = Bounds::DEFAULT_PERMISSION);
     ErrorMsg Remove(AddressSpace space, uint64_t addr, uint64_t size);
-    ErrorMsg Check(AddressSpace space, uint64_t addr, uint64_t size) const;
+    ErrorMsg SetPermission(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission);
+    ErrorMsg Check(AddressSpace space, uint64_t addr, uint64_t size, AccessType accessType) const;
 
 private:
     bool localMemoryNeedAlloc_;

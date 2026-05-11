@@ -2122,7 +2122,8 @@ struct MemRegionPermissionDesc {
 enum class RecordVersion {
     MEMORY_RECORD = 0,
     KERNEL_RECORD,
-    IPC_RECORD
+    IPC_RECORD,
+    REGION_PERMISSION,
 };
 
 enum class IPCOperationType : uint32_t {
@@ -2173,6 +2174,7 @@ struct SanitizerRecord {
         MemOpRecord memoryRecord;
         KernelRecord kernelRecord;
         IPCMemRecord ipcRecord;
+        MemRegionPermissionDesc permissionDesc;
     } payload;
 };
 

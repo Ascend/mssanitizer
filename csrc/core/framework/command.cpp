@@ -363,7 +363,7 @@ inline void HandleLogString(Packet::BinaryPayload const &payload)
     SAN_INFO_LOG("HOOK: %s", strLog.c_str());
 }
 
-inline void HandleMemRegionPermission(MemRegionPermissionDesc const &permission)
+inline void HandleMemRegionPermission(Checker &checker, MemRegionPermissionDesc const &permission)
 {
     SAN_INFO_LOG("MEM_REGION_PERMISSION, addr: 0x%lx, size: %lu, deviceId: %u, flags: %u",
                  permission.addr, permission.size, permission.deviceId, permission.flags);
@@ -372,6 +372,10 @@ inline void HandleMemRegionPermission(MemRegionPermissionDesc const &permission)
         auto &spans = DeviceManager::Instance().GetSharedMemorySpans(permission.deviceId);
         spans.Union({permission.addr, permission.addr + permission.size});
     }
+    SanitizerRecord record{};
+    record.version = RecordVersion::REGION_PERMISSION;
+    record.payload.permissionDesc = permission;
+    checker.Do(record);
 }
 
 } // namespace [Dummy]
@@ -444,7 +448,7 @@ void Command::Exec(const ParamList &execParams)
                     HandleIpcMemRecord(checker, packet.GetPayload().ipcMemRecord, threadManager, msgRspFunc);
                     break;
                 case PacketType::MEM_REGION_PERMISSION:
-                    HandleMemRegionPermission(packet.GetPayload().memPermission);
+                    HandleMemRegionPermission(checker, packet.GetPayload().memPermission);
                     break;
                 case PacketType::SANITIZER_RECORD:
                     checker.Do(packet.GetPayload().sanitizerRecord);

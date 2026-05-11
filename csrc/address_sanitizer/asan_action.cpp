@@ -16,6 +16,7 @@
 
 
 #include "asan_action.h"
+#include "core/framework/record_defs.h"
 #include "core/framework/runtime_context.h"
 #include "mem_error_def.h"
 
@@ -75,7 +76,7 @@ ErrorMsgList AsanMalloc::doAction(ShadowMemory& shadowMemory, BoundsCheck &bound
     // heap register之后的内存变为不可访问对于boundsCheck来说，是Remove的行为
     ErrorMsg errorMsg = record_.infoSrc == MemInfoSrc::MSTX_HEAP ?
         boundsCheck.Remove(record_.dstSpace, record_.dstAddr, record_.memSize) :
-        boundsCheck.Add(record_.dstSpace, record_.dstAddr, record_.memSize);
+        boundsCheck.Add(record_.dstSpace, record_.dstAddr, record_.memSize, Bounds::DEFAULT_PERMISSION);
     if (errorMsg.isError) {
         return {errorMsg};
     }
@@ -105,7 +106,7 @@ ErrorMsgList AsanFree::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
     }
     // heap unregister之后的内存变为可访问，对于boundsCheck来说，是Add的行为
     msg = record_.infoSrc == MemInfoSrc::MSTX_HEAP ?
-        boundsCheck.Add(record_.dstSpace, record_.dstAddr, size) :
+        boundsCheck.Add(record_.dstSpace, record_.dstAddr, size, Bounds::DEFAULT_PERMISSION) :
         boundsCheck.Remove(record_.dstSpace, record_.dstAddr, size);
     if (msg.isError) {
         errorMsgs.emplace_back(msg);
@@ -149,7 +150,7 @@ ErrorMsgList AsanLoad::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
 {
     ErrorMsgList errorMsgs;
     if (config.memCheck && !record_.ignoreIllegalCheck) {
-        ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize);
+        ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize, AccessType::READ);
         if (msg.isError) {
             msg.SetType(MemErrorType::ILLEGAL_ADDR_READ, record_.dstSpace, msg.auxData.badAddr.addr);
             FillErrorLocInfo(record_, msg);
@@ -175,7 +176,7 @@ ErrorMsgList AsanStore::doAction(ShadowMemory& shadowMemory, BoundsCheck &bounds
 {
     ErrorMsgList errorMsgs;
     if (config.memCheck && !record_.ignoreIllegalCheck) {
-        ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize);
+        ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize, AccessType::WRITE);
         if (msg.isError) {
             msg.SetType(MemErrorType::ILLEGAL_ADDR_WRITE, record_.dstSpace, msg.auxData.badAddr.addr);
             FillErrorLocInfo(record_, msg);
