@@ -1,0 +1,86 @@
+#!/bin/env bash
+
+function _mssanitizer_complete_arguments() {
+    local tool_arguments=("memcheck" "racecheck" "initcheck" "synccheck")
+    local log_level_arguments=("info" "warn" "error")
+    local switch_arguments=("yes" "no")
+    local demangle_arguments=("full" "simple" "no")
+
+    local option=$1
+    local argument=$2
+
+    case "${option}" in
+        -t | --tool)
+            COMPREPLY=($(compgen -W "${tool_arguments[*]}" -- "${argument}"))
+            ;;
+        --log-file)
+            _filedir
+            ;;
+        --log-level)
+            COMPREPLY=($(compgen -W "${log_level_arguments[*]}" -- "${argument}"))
+            ;;
+        --max-debuglog-size | --kernel-name | --block-id | --cache-size)
+            COMPREPLY=()
+            ;;
+        --leak-check | --check-unused-memory | --check-device-heap | --check-cann-heap | --check-cross-npu-races | \
+            --full-backtrace)
+            COMPREPLY=($(compgen -W "${switch_arguments[*]}" -- "${argument}"))
+            ;;
+        --demangle)
+            COMPREPLY=($(compgen -W "${demangle_arguments[*]}" -- "${argument}"))
+            ;;
+        *)
+            _command
+            _filedir
+            ;;
+    esac
+}
+
+_mssanitizer() {
+    local cur prev words cword
+    local short_options long_options
+    # Initialize the reply array
+    _init_completion || return
+
+    # Define your script's options and arguments
+    short_options=("-h" "-v" "-t")
+    long_options=("--help"
+                  "--version"
+                  "--tool"
+                  "--log-file"
+                  "--log-level"
+                  "--max-debuglog-size"
+                  "--kernel-name"
+                  "--leak-check"
+                  "--check-unused-memory"
+                  "--check-device-heap"
+                  "--check-cann-heap"
+                  "--check-cross-npu-races"
+                  "--block-id"
+                  "--cache-size"
+                  "--full-backtrace"
+                  "--demangle"
+                  )
+
+    # Complete based on the current word
+    if [[ ${cur} == "=" ]]; then
+        _mssanitizer_complete_arguments ${prev} ""
+    elif [[ ${cur} == --* ]]; then
+        COMPREPLY=($(compgen -W "${long_options[*]}" -- "${cur}"))
+    elif [[ ${cur} == -* ]]; then
+        COMPREPLY=($(compgen -W "${short_options[*]} ${long_options[*]}" -- "${cur}"))
+    else
+        if [[ ${prev} == "=" ]]; then
+            prev_prev="${COMP_WORDS[$COMP_CWORD-2]}"  # 上上个参数
+            _mssanitizer_complete_arguments ${prev_prev} ${cur}
+        else
+            _mssanitizer_complete_arguments ${prev} ${cur}
+        fi
+    fi
+}
+
+if [ "$(type -t _init_completion)" == function ]; then
+    complete -F _mssanitizer mssanitizer
+else
+    echo "Registeration of msSanitizer bash completion failed. Please install bash-completion package first."
+fi

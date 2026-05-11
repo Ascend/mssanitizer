@@ -65,7 +65,3 @@ install(DIRECTORY ${HOOK_INC_DIR}/api/acl
 install(FILES ${HOOK_INC_DIR}/api/sanitizer.h
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include
 )
-install(FILES ${CSRC_INC_DIR}/scripts/mssanitizer
-        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-

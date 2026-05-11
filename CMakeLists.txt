@@ -35,6 +35,7 @@ option(BUILD_TESTS "build unit tests" OFF)
 include(cmake/options.cmake)
 include(cmake/module/securec.cmake)
 add_subdirectory(csrc)
+add_subdirectory(bin)
 
 if (BUILD_TESTS)
   message(STATUS "Enable UT test build")

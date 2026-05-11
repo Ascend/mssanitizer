@@ -596,7 +596,36 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
     mssanitizer -t memcheck ./application
     ```
 
-### 7.4 输出文件说明
+### 7.4 命令行参数自动补全
+
+异常检测工具提供了命令行参数自动补全功能，使用前请先确保系统上已安装 `bash-completion` 软件包，以支持 bash 下的自动补全功能。
+
+执行以下命令在本次 shell 会话中激活自动补全功能：
+
+```shell
+source ${ASCEND_HOME_PATH}/tools/mssanitizer/bin/mssanitizer-bash-completion
+```
+
+将自动补全脚本拷贝到用户级的 bash 补全目录，登陆 shell 会话时自动补全功能会自动激活：
+
+```shell
+# 保证 bash 补全目录已创建
+mkdir -p ~/.local/share/bash-completion/completions
+# 拷贝 mssanitizer 自动补全脚本
+cp ${ASCEND_HOME_PATH}/tools/mssanitizer/bin/mssanitizer-bash-completion ~/.local/share/bash-completion/completions/mssanitizer
+```
+
+激活后，可通过单击 `<TAB>` 键完成唯一候选项的补全，或双击 `<TAB>` 键列出所有候选：
+
+```shell
+$ mssanitizer --
+--block-id             --check-cann-heap      --check-unused-memory  --full-backtrace       --kernel-name          --log-file             --max-debuglog-size    --version
+--cache-size           --check-device-heap    --demangle             --help                 --leak-check           --log-level            --tool
+$ mssanitizer --log-level
+error  info   warn
+```
+
+### 7.5 输出文件说明
 
 | 结果件名称 | 说明 |
 | --- | --- |

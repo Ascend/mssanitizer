@@ -1,5 +1,5 @@
 #!/bin/bash
-  
+
 REAL_PATH=$(realpath "$0")
 BIN_PATH=$(dirname ${REAL_PATH})
 TOOL_PATH=$(realpath ${BIN_PATH}/../)

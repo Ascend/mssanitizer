@@ -33,6 +33,7 @@
     <file_info value="mssanitizer/bin" copy_type="source" src_path="${OUTPUT}/bin" dst_path="mindstudio-sanitizer/tools/mssanitizer/bin" install_path="tools/mssanitizer/bin" install_mod="550">
         <file value="mssanitizer" install_softlink="${TARGET_ENV}/bin/mssanitizer"/>
         <file value="mssanitizer.bin" />
+        <file value="mssanitizer-bash-completion" />
         <file value="kernel-launcher" />
         <file value="llvm-symbolizer" />
     </file_info>
