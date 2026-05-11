@@ -3424,7 +3424,10 @@ static void ParseRecordMstxVecUnary(const KernelRecord &record, std::vector<SanE
     memInfo.opType = AccessType::WRITE;
     memInfo.dataBits = mstxVecUnary.dst.dataBits;
     memInfo.addr = mstxVecUnary.dst.addr;
+    memInfo.blockNum = mstxVecUnary.blockNum;
+    memInfo.blockSize = 32;
     memInfo.blockStride = mstxVecUnary.dstBlockStride;
+    memInfo.repeatTimes = mstxVecUnary.repeatTimes;
     memInfo.repeatStride = mstxVecUnary.dstRepeatStride;
     MaskModeProcess(events, event, RecordType::UNARY_OP);
 }
@@ -3455,14 +3458,20 @@ static void ParseRecordMstxVecBinary(const KernelRecord &record, std::vector<San
     memInfo.opType = AccessType::READ;
     memInfo.dataBits = mstxVecBinary.src1.dataBits;
     memInfo.addr = mstxVecBinary.src1.addr;
+    memInfo.blockNum = mstxVecBinary.blockNum;
+    memInfo.blockSize = 32;
     memInfo.blockStride = mstxVecBinary.src1BlockStride;
+    memInfo.repeatTimes = mstxVecBinary.repeatTimes;
     memInfo.repeatStride = mstxVecBinary.src1RepeatStride;
     MaskModeProcess(events, event, RecordType::BINARY_OP);
 
     memInfo.opType = AccessType::WRITE;
     memInfo.dataBits = mstxVecBinary.dst.dataBits;
     memInfo.addr = mstxVecBinary.dst.addr;
+    memInfo.blockNum = mstxVecBinary.blockNum;
+    memInfo.blockSize = 32;
     memInfo.blockStride = mstxVecBinary.dstBlockStride;
+    memInfo.repeatTimes = mstxVecBinary.repeatTimes;
     memInfo.repeatStride = mstxVecBinary.dstRepeatStride;
     MaskModeProcess(events, event, RecordType::BINARY_OP);
 }
