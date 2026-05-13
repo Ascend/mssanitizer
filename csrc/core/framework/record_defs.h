@@ -716,8 +716,8 @@ struct SimtInfo {
 };
 
 struct OffsetInfo {
-    uint32_t offset{};
-    uint32_t size{};
+    uint64_t offset{};
+    uint64_t size{};
 };
 
 // 统一管理所有的协议的长度和偏移信息，偏移指的均是相较于blockHead的偏移
