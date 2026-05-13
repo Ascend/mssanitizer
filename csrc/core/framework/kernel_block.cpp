@@ -541,6 +541,13 @@ std::unique_ptr<KernelBlock> KernelBlock::CreateKernelBlock(uint8_t const *memIn
         return nullptr;
     }
 
+    constexpr uint64_t HEAD_SIZE = sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    if (memSize < HEAD_SIZE) {
+        SAN_ERROR_LOG("MemSize %lu is less than the required record protocol head size %lu in block %u",
+                      memSize, HEAD_SIZE, blockIdx);
+        return nullptr;
+    }
+
     auto recordGlobalHead = static_cast<RecordGlobalHead const *>(static_cast<void const *>(memInfo));
     auto simdRecordHead = static_cast<RecordBlockHead const *>(static_cast<void const *>(recordGlobalHead + 1));
     // only check security value at blockIdx 0
@@ -563,17 +570,44 @@ std::unique_ptr<KernelBlock> KernelBlock::CreateKernelBlock(uint8_t const *memIn
     kernelBlock->recordGlobalHead_ = *recordGlobalHead;
     kernelBlock->simdRecordHead_ = *simdRecordHead;
     kernelBlock->simdRecords_ = memInfo + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+
+    // 安全检查：验证 writeOffset 本身是否合理（防止过大值导致指针运算溢出）
+    if (simdRecordHead->writeOffset > memSize) {
+        SAN_ERROR_LOG("writeOffset %lu exceeds memSize %lu in block %u",
+                      simdRecordHead->writeOffset, memSize, blockIdx);
+        return nullptr;
+    }
+    // 安全检查：验证 simdRecords_ + writeOffset 是否在 memSize 范围内
+    uint64_t simdRecordsStart = sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    if (simdRecordsStart + simdRecordHead->writeOffset > memSize) {
+        SAN_ERROR_LOG("writeOffset %lu exceeds limits %lu in block %u",
+                      simdRecordHead->writeOffset, memSize - simdRecordsStart, blockIdx);
+        return nullptr;
+    }
+
     kernelBlock->simtRecordHead_ = reinterpret_cast<SimtRecordBlockHead const*>(
         kernelBlock->simdRecords_ + simdRecordHead->writeOffset);
-    if (sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) + simdRecordHead->writeOffset +
-        GetAllThreadSize(*recordGlobalHead) < memSize) {
+
+    // 安全检查：验证 shadow memory 区域是否在 memSize 范围内
+    uint64_t shadowMemoryStart = simdRecordsStart + simdRecordHead->writeOffset + GetAllThreadSize(*recordGlobalHead);
+    if (memSize >= sizeof(ShadowMemoryRecordHead) && memSize - sizeof(ShadowMemoryRecordHead) >= shadowMemoryStart) {
         kernelBlock->shadowMemoryHead_ = reinterpret_cast<ShadowMemoryRecordHead const*>(
             kernelBlock->simdRecords_ + simdRecordHead->writeOffset + GetAllThreadSize(*recordGlobalHead));
     }
+
+    // 安全检查：验证 simtEntry 区域是否在 memSize 范围内
     if (kernelBlock->shadowMemoryHead_ != nullptr) {
-        kernelBlock->simtEntryHead_ = reinterpret_cast<SimtEntryBlockHead *>(
-            reinterpret_cast<uint8_t *>(const_cast<ShadowMemoryRecordHead *>(kernelBlock->shadowMemoryHead_+ 1)) +
-            kernelBlock->shadowMemoryHead_->recordCount * sizeof(ShadowMemoryRecord));
+        uint64_t simtEntryStart = shadowMemoryStart + sizeof(ShadowMemoryRecordHead);
+        uint64_t simtEntrySize = kernelBlock->shadowMemoryHead_->recordCount * sizeof(ShadowMemoryRecord);
+        if (memSize >= simtEntrySize && memSize - simtEntrySize >= simtEntryStart) {
+            kernelBlock->simtEntryHead_ = reinterpret_cast<SimtEntryBlockHead *>(
+                reinterpret_cast<uint8_t *>(const_cast<ShadowMemoryRecordHead *>(kernelBlock->shadowMemoryHead_ + 1)) +
+                simtEntrySize);
+        } else {
+            SAN_ERROR_LOG("simtEntry data exceeds memSize, start=%lu, size=%lu, memSize=%lu in block %u",
+                         simtEntryStart, simtEntrySize, memSize, blockIdx);
+            return nullptr;
+        }
     }
     kernelBlock->blockIdx_ = blockIdx;
     if (blockIdx == 0) {
