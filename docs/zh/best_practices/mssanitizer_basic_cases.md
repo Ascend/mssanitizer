@@ -63,7 +63,7 @@
     > 在样例工程的`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp`目录下，修改在op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能
     >
     > ```cmake
-    > add_ops_compile_options(ALL OPTIONS -sanitizer)
+    > npu_op_kernel_options(ascendc_kernels ALL OPTIONS -sanitizer)
     > ```
     >
 
@@ -104,7 +104,7 @@
 - 单击[AddCustom示例代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AddCustom)获取样例工程，为进行算子检测做准备。
   > [!NOTE] 
   >
-  > - 此样例工程仅支持Python3.9，若要在其他Python版本上运行，需要修改\$\{git_clone_path\}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation目录下run_op_plugin.sh文件中的Python版本。
+  > - 此样例工程仅支持Python3.9，若要在其他Python版本上运行，需要修改`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation`目录下`run_op_plugin.sh`文件中的Python版本。
   > - 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
   > - 下载代码样例时，需执行以下命令指定分支版本。
   >
@@ -128,7 +128,7 @@
     > 编辑样例工程目录`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp/op_kernel`下的CMakeLists.txt文件，增加编译选项-sanitizer。
     >
     > ```cmake
-    > add_ops_compile_options(ALL OPTIONS -sanitizer)
+    > npu_op_kernel_options(ascendc_kernels ALL OPTIONS -sanitizer)
     > ```
     >
 3. 进入[PyTorch接入工程](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation)，使用PyTorch调用方式调用AddCustom算子工程，并按照指导完成编译。
@@ -295,7 +295,7 @@ flowchart TB
 
 1. 使能Device系列接口进行泄漏检测，判断内存泄漏是否发生在Host侧。若没有，则定界到Device侧的应用出现泄漏；若有，则通过下一个步骤判断AscendCL接口调用是否发生泄漏；
 2. 使能AscendCL系列接口进行泄漏检测，判断用户代码调用AscendCL接口是否存在泄漏。若没有，则定界为非AscendCL接口调用问题；如果出现泄漏，则通过下一步定位到具体代码行；
-3. 使用msSanitizer检测工具中提供的新接口，对头文件重新编译，再用检测工具拉起检测程序，可定位到未释放内存的分配函数所对应的文件名与代码行号。新接口的详细说明请参见《mssanitizer_api》。
+3. 使用msSanitizer检测工具中提供的新接口，对头文件重新编译，再用检测工具拉起检测程序，可定位到未释放内存的分配函数所对应的文件名与代码行号。新接口的详细说明请参见《[MindStudio Sanitizer 对外接口使用说明](../api_reference/mssanitizer_api_reference.md)》。
 
 ### 5.2 排查步骤
 
@@ -340,113 +340,3 @@ flowchart TB
 
          ====== SUMMARY: 32768 byte(s) leaked in 1 allocation(s)
          ```
-
-4. 若存在泄漏，可通过msSanitizer工具中提供的msSanitizer API头文件“acl.h”和对应的动态库文件定位发生泄漏的代码文件和代码行。
-  定位发生泄漏的代码文件和代码行时，需要将用户代码中原有的“acl/acl.h”头文件替换为工具中提供的msSanitizer API头文件“acl.h”，并将动态库libascend_acl_hook.so文件链接至用户的应用工程中，并重新编译应用工程，具体操作步骤请参见[导入API头文件和链接动态库](#53-导入api头文件和链接动态库)。
-
-5. 使用msSanitizer工具重新拉起程序，命令示例如下：
-
-     ```text
-       mssanitizer --check-cann-heap=yes --leak-check=yes ./add_npu
-     ```
-
-    以下输出结果表明在调用应用程序main.cpp的第55行存在一次内存分配但未释放，至此可定位到内存泄漏的原因。
-
-    ```text
-    ====== ERROR: LeakCheck: detected memory leaks  
-
-    ======    Direct leak of 32768 byte(s) 
-    ======     at 0x124080024000 on GM allocated in main.cpp:55 (serialNo:0)
-
-    ====== SUMMARY: 32768 byte(s) leaked in 1 allocation(s)
-    ```
-
-### 5.3 导入API头文件和链接动态库
-
-本示例以Atlas A2 训练系列产品/Atlas A2 推理系列产品的内核调用符场景为例，说明导入msSanitizer API头文件“acl.h”和链接相对应的动态库文件的具体操作步骤，其他类型的自定义工程需根据用户实际构建的脚本进行调整。
-
-1. 单击[AddKernelInvocationNeo样例代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo)，获取验证代码的样例工程。
-
-    > [!NOTE] 
-    > 
-    > 下载代码样例时，需执行以下命令指定分支版本。
-    >
-    > ```shell
-    > git clone https://gitee.com/ascend/samples.git -b master
-    > ```
-    >
-2. 在`${git_clone_path}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo`目录中，将main.cpp文件引入的“acl/acl.h”头文件替换为msSanitizer工具提供的头文件“acl.h”。
-
-    > [!NOTE] 
-    > 在模板库场景下，需将Ascend C模板库**/examples/common/helper.hpp**路径下的**#include <acl/acl.h>**替换为**#include "acl.h"**，具体操作步骤如下。
-    >
-    > - 1.执行以下命令，下载[catlass代码仓](https://gitcode.com/cann/catlass/tree/catlass-v1-stable)中的Ascend C模板库。
-    >
-    > ```shell
-    > git clone https://gitcode.com/cann/catlass.git -b catlass-v1-stable
-    > ```
-    >
-    > - 2.进入**/examples/common/helper.hpp**代码目录。
-    >
-    > ```shell
-    > cd catlass/examples/common/helper.hpp
-    > ```
-    >
-    > - 3.将`#include <acl/acl.h>`替换为`#include "acl.h"`。
-    >
-
-    ```cpp
-    #include "data_utils.h"
-    #ifndef ASCENDC_CPU_DEBUG
-    // #include "acl/acl.h"
-    // acl/acl.h 替换为 acl.h
-    #include "acl.h"
-    extern void add_custom_do(uint32_t blockDim, void *stream, uint8_t *x, uint8_t *y, uint8_t *z);
-    #else
-    ```
-
-3. 在`${git_clone_path}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo`目录下编辑CMakeLists.txt文件，导入API头文件路径`${INSTALL_DIR}/tools/mssanitizer/include/acl`和动态库路径`${INSTALL_DIR}/tools/mssanitizer/lib64/libascend_acl_hook.so`。
-
-    > [!NOTE] 
-    >
-    > - 模板库场景仅适用于Atlas A2 训练系列产品/Atlas A2 推理系列产品。
-    > - 模板库场景时，可通过以下方式增加检测编译选项。
-    >
-    > ```cmake
-    > -I$ENV{ASCEND_HOME_PATH}/tools/mssanitizer/include/acl 
-    > -L$ENV{ASCEND_HOME_PATH}/tools/mssanitizer/lib64 
-    > -lascend_acl_hook 
-    > ```
-    >
-    ```text
-    add_executable(ascendc_kernels_bbit ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-
-    target_compile_options(ascendc_kernels_bbit PRIVATE
-        $<BUILD_INTERFACE:$<$<STREQUAL:${RUN_MODE},cpu>:-g>>
-        -O2 -std=c++17 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -Werror
-    )
-    # 算子可执行文件编译时，引入API头文件路径
-    target_include_directories(ascendc_kernels_bbit PUBLIC
-        $ENV{ASCEND_HOME_PATH}/tools/mssanitizer/include/acl)
-    # 算子可执行文件链接时，引入libascend_acl_hook.so动态库路径
-    target_link_directories(ascendc_kernels_bbit PRIVATE
-        $ENV{ASCEND_HOME_PATH}/tools/mssanitizer/lib64)
-
-    target_link_libraries(ascendc_kernels_bbit PRIVATE
-        $<BUILD_INTERFACE:$<$<OR:$<STREQUAL:${RUN_MODE},npu>,$<STREQUAL:${RUN_MODE},sim>>:host_intf_pub>>
-        $<BUILD_INTERFACE:$<$<STREQUAL:${RUN_MODE},cpu>:ascendcl>>
-        ascendc_kernels_${RUN_MODE}
-        # 将算子可执行文件链接至libascend_acl_hook.so动态库
-        ascend_acl_hook
-    )
-    ```
-
-4. 导入环境变量，并重新编译算子。
-
-    > [!NOTE]   
-    > 在安装昇腾AI处理器的服务器执行**npu-smi info**命令进行查询，获取**Chip Name**信息。实际配置值为AscendChip Name，例如**Chip Name**取值为xxxyy，实际配置值为Ascendxxxyy。
-
-    ```sh
-    export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/tools/mssanitizer/lib64:$LD_LIBRARY_PATH
-    mssanitizer --check-cann-heap=yes --leak-check=yes -- bash run.sh -r npu -v Ascendxxxyy
-    ```
