@@ -3241,6 +3241,13 @@ static void ParseRecordMstxHCCL(const KernelRecord &record, std::vector<SanEvent
     if (mstxRecord.interfaceType == InterfaceType::MSTX_HCCL) {
         event.type = EventType::MEM_EVENT;
         auto &hcclCoreRecord = mstxRecord.interface.mstxHcclRecord;
+        static constexpr uint32_t HCCL_MAX_RANK_NUM = 32U;
+        int32_t rankDim = hcclCoreRecord.rankDim;
+        if (rankDim < 0 || static_cast<uint32_t>(rankDim) > HCCL_MAX_RANK_NUM) {
+            rankDim = HCCL_MAX_RANK_NUM;
+            SAN_WARN_LOG("Rank dim is out of valid range [0, %u]. It's truncated to %u",
+                         HCCL_MAX_RANK_NUM, HCCL_MAX_RANK_NUM);
+        }
         // hccl接口为不对称接口，读事件和写事件的个数不一致
         if (static_cast<HcclFlagId>(hcclCoreRecord.flagId) == HcclFlagId::ALLREDUCE) {
             // 此时解析的接口是AllReduce
@@ -3255,14 +3262,14 @@ static void ParseRecordMstxHCCL(const KernelRecord &record, std::vector<SanEvent
             eventMemInfo.addr = hcclCoreRecord.src;
             AsignRecordHcclRead(eventMemInfo, hcclCoreRecord);
             events.emplace_back(event);
-            for (uint32_t i = 0; i < static_cast<uint32_t>(hcclCoreRecord.rankDim); i++) {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(rankDim); i++) {
                 eventMemInfo.addr = hcclCoreRecord.dst + i * hcclCoreRecord.dstStride * hcclCoreRecord.dstDataTypeSize;
                 AsignRecordHcclWrite(eventMemInfo, hcclCoreRecord);
                 events.emplace_back(event);
             }
         } else if (static_cast<HcclFlagId>(hcclCoreRecord.flagId) == HcclFlagId::REDUCESCATTER) {
             // 此时解析的接口是reduceScatter,读事件rankDim个写事件1个
-            for (uint32_t i = 0; i < static_cast<uint32_t>(hcclCoreRecord.rankDim); i++) {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(rankDim); i++) {
                 eventMemInfo.addr = hcclCoreRecord.src + i * hcclCoreRecord.srcStride * hcclCoreRecord.srcDataTypeSize;
                 AsignRecordHcclRead(eventMemInfo, hcclCoreRecord);
                 events.emplace_back(event);
@@ -3272,12 +3279,12 @@ static void ParseRecordMstxHCCL(const KernelRecord &record, std::vector<SanEvent
             events.emplace_back(event);
         } else if (static_cast<HcclFlagId>(hcclCoreRecord.flagId) == HcclFlagId::ALLTOALL) {
             // 此时解析的接口是AlltoAll,读事件rankDim个写事件rankDim个
-            for (uint32_t i = 0; i < static_cast<uint32_t>(hcclCoreRecord.rankDim); i++) {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(rankDim); i++) {
                 eventMemInfo.addr = hcclCoreRecord.src + i * hcclCoreRecord.srcStride * hcclCoreRecord.srcDataTypeSize;
                 AsignRecordHcclRead(eventMemInfo, hcclCoreRecord);
                 events.emplace_back(event);
             }
-            for (uint32_t i = 0; i < static_cast<uint32_t>(hcclCoreRecord.rankDim); i++) {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(rankDim); i++) {
                 eventMemInfo.addr = hcclCoreRecord.dst + i * hcclCoreRecord.dstStride * hcclCoreRecord.dstDataTypeSize;
                 AsignRecordHcclWrite(eventMemInfo, hcclCoreRecord);
                 events.emplace_back(event);
