@@ -49,7 +49,7 @@ void SetPreloadEnv(Config const &config)
     } else if (config.checkCannHeap) {
         hookLibNames = {"libascend_acl_hook.so"};
     } else {
-        hookLibNames = {"libmssanitizer_injection.so", "libascend_san_stub.so"};
+        hookLibNames = {"libmssanitizer_injection.so"};
     }
 
     for (string &hookLib : hookLibNames) {

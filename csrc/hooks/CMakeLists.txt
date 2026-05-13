@@ -6,4 +6,3 @@ target_include_directories(ascend_hal PUBLIC
 
 add_subdirectory(hal_hooks)
 add_subdirectory(acl_hooks)
-add_subdirectory(ascendc_hooks)
