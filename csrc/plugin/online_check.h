@@ -17,6 +17,7 @@
 #ifndef PLUGIN_ONLINE_CHECK_H
 #define PLUGIN_ONLINE_CHECK_H
 
+#include "core/framework/record_defs.h"
 #include "kernel_pub_func.h"
 #include "record_type_map.h"
 #include "parse_record.h"
@@ -325,6 +326,16 @@ AICORE_FUNC_HEAD void OnlineCheck::ShadowMemoryCheck(AddrInfo const &addrInfo, S
 }
 #endif
 
+AICORE_FUNC_HEAD bool HasPermission(AccessType accessType, uint32_t permission) {
+    if (accessType == AccessType::READ) {
+        return (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ) != 0;
+    } else if (accessType == AccessType::WRITE) {
+        return (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE) != 0;
+    } else {
+        return false;
+    }
+}
+
 AICORE_FUNC_HEAD bool OnlineCheck::GmReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const
 {
     if (addrInfo.space != AddressSpace::GM) {
@@ -336,9 +347,12 @@ AICORE_FUNC_HEAD bool OnlineCheck::GmReadWriteCheck(AddrInfo const &addrInfo, ui
     uint64_t size = addrInfo.size;
     /// 计算当前addrInfo和所有malloc地址的交集
     for (size_t memIdx = 0; memIdx < simdBlockHead_->hostMemoryNum; ++memIdx) {
-        uint64_t mallocAddr = simdBlockHead_->hostMemoryInfoPtr[memIdx].addr;
-        uint64_t mallocSize = simdBlockHead_->hostMemoryInfoPtr[memIdx].size;
-        intersectionSize += CalIntersectionSize(addr, size, mallocAddr, mallocSize);
+        __gm__ HostMemoryInfo const &mallocInfo = simdBlockHead_->hostMemoryInfoPtr[memIdx];
+        // 内存无对应权限则跳过
+        if (!HasPermission(addrInfo.opType, mallocInfo.permission)) {
+            continue;
+        }
+        intersectionSize += CalIntersectionSize(addr, size, mallocInfo.addr, mallocInfo.size);
     }
 
     /// 当前指令的长度减去和所有malloc 地址的交集长度，即为越界长度；

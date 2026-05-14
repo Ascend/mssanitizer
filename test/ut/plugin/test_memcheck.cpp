@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include "ccec_defs.h"
+#include "core/framework/record_defs.h"
 #include "plugin/online_check.h"
 
 using namespace Sanitizer;
@@ -30,8 +31,8 @@ TEST(OnlineCheck, check_illegal_simt_record_expect_one_error)
     RecordGlobalHead head{};
     RecordBlockHead blockHead{};
     std::vector<HostMemoryInfo> hostmems;
-    hostmems.push_back({0x100, 100});
-    hostmems.push_back({0x300, 50});
+    hostmems.push_back({0x100, 100, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT});
+    hostmems.push_back({0x300, 50, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT});
     blockHead.hostMemoryInfoPtr = reinterpret_cast<HostMemoryInfo *>(hostmems.data());
     blockHead.hostMemoryNum = hostmems.size();
     head.offsetInfo.simtErrorInfo.size = 500;
@@ -53,7 +54,7 @@ TEST(OnlineCheck, check_illegal_simt_record_expect_one_error)
         .space = AddressSpace::GM,
     };
     checker.Process<RecordType::SIMT_LDG>(record);
-    
+
     auto recordTypePtr = reinterpret_cast<RecordType const*>(memInfo.data() + allHeadSize +
         sizeof(SimtRecordBlockHead));
     ASSERT_EQ(*recordTypePtr, RecordType::ONLINE_ERROR);
@@ -90,8 +91,8 @@ TEST(OnlineCheck, check_normal_simt_record_expect_success)
     head.checkParms.defaultcheck = true;
     RecordBlockHead blockHead{};
     std::vector<HostMemoryInfo> hostmems;
-    hostmems.push_back({0x100, 100});
-    hostmems.push_back({0x200, 50});
+    hostmems.push_back({0x100, 100, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT});
+    hostmems.push_back({0x200, 50, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT});
     blockHead.hostMemoryInfoPtr = reinterpret_cast<HostMemoryInfo *>(hostmems.data());
     blockHead.hostMemoryNum = hostmems.size();
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
@@ -280,8 +281,8 @@ TEST(OnlineCheck, check_unaligned_simt_record_expect_one_error)
     RecordGlobalHead head{};
     RecordBlockHead blockHead{};
     std::vector<HostMemoryInfo> hostmems;
-    hostmems.push_back({0x100, 100});
-    hostmems.push_back({0x300, 50});
+    hostmems.push_back({0x100, 100, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT});
+    hostmems.push_back({0x300, 50, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT});
     blockHead.hostMemoryInfoPtr = reinterpret_cast<HostMemoryInfo *>(hostmems.data());
     blockHead.hostMemoryNum = hostmems.size();
     head.offsetInfo.simtErrorInfo.size = 500;

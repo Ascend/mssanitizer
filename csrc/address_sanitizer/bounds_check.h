@@ -28,9 +28,7 @@ namespace Sanitizer {
 
 class Bounds {
 public:
-    constexpr static uint32_t DEFAULT_PERMISSION =
-        MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ |
-        MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE;
+    constexpr static uint32_t DEFAULT_PERMISSION = MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT;
 
     struct Range {
         uint64_t addrL;

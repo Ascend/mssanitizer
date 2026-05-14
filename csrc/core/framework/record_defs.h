@@ -703,6 +703,7 @@ struct CheckParmsInfo {
 struct HostMemoryInfo {
     uint64_t addr;
     uint64_t size;
+    uint32_t permission;
     bool operator<(const HostMemoryInfo& other) const
     {
         if (addr != other.addr) {
@@ -1318,7 +1319,7 @@ struct FftsSyncRecord {
     uint8_t flagID;
     uint8_t vecSubBlockDim;
 };
- 
+
 struct WaitFlagDevRecord {
     Location location;
     uint8_t flagID;
@@ -2111,6 +2112,8 @@ static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_NONE = 0x00;
 static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ = 0x01;
 static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE = 0x02;
 static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_SHARED = 0x04;
+static constexpr uint32_t MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT =
+    MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ | MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE;
 
 struct MemRegionPermissionDesc {
     uint64_t addr;
