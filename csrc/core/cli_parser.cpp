@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <dlfcn.h>
+#include <csignal>
 
 #include "core/framework/config.h"
 #include "core/framework/utility/file_system.h"
@@ -699,9 +700,19 @@ void DoUserCommand(const UserCommand &userCommand)
 }
 }
 
+void SigIntHandler(int signo)
+{
+    (void)signo;
+    // 恢复默认处理，确保第二次ctrlc可以直接退出
+    signal(SIGINT, SIG_DFL);
+}
+
 namespace Sanitizer {
 void CliParser::Interpretor(int32_t argc, char **argv) const
 {
+    // 主进程忽略 SIGINT 信号，确保第一次 ctrlc 后不立即退出以完成当前算子的检测
+    signal(SIGINT, SigIntHandler);
+
     auto userCommand = Parse(argc, argv);
     DoUserCommand(userCommand);
 }
