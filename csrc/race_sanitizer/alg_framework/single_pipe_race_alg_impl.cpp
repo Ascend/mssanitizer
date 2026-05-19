@@ -52,7 +52,7 @@ bool SinglePipeRaceAlgImpl::IsFinished() const
 
 std::shared_ptr<std::vector<RaceDispInfo>> SinglePipeRaceAlgImpl::GetResult() const
 {
-    return std::move(memChecker_.GetResult());
+    return memChecker_.GetResult();
 }
 
 uint32_t SinglePipeRaceAlgImpl::GetRaceCount() const
