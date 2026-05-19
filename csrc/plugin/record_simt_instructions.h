@@ -117,6 +117,7 @@ AICORE_FUNC_HEAD void SimtRecordSyncEvent(EXTRA_PARAMS_DEC)
     Recorder recorder(memInfo, blockIdx);
     // 保留recordType和record的目的是为了指令落盘，便于后续定位问题
     recorder.UpdateSyncThreadCount<recordType>(record);
+    recorder.Check<recordType>(record);
 }
 
 template<RecordType recordType>
@@ -144,6 +145,7 @@ AICORE_FUNC_HEAD void SimtRecordEmptyEvent(EXTRA_PARAMS_DEC)
 
     Recorder recorder(memInfo, blockIdx);
     recorder.CopyShadowMemoryToMemInfo<recordType>(record);
+    recorder.Check<recordType>(record);
 }
 
 }

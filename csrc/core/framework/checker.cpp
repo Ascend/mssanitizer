@@ -377,6 +377,11 @@ void Checker::ParseOnlineError(const SanitizerRecord &record)
         sanitizerArr_[raceCheckIdx]->ParseOnlineError(kernelRecord.payload.kernelErrorRecord,
             kernelRecord.blockType, kernelRecord.serialNo);
     }
+    uint8_t syncCheckIdx = static_cast<uint8_t>(ToolType::SYNCCHECK);
+    if (sanitizerArr_[syncCheckIdx] != nullptr) {
+        sanitizerArr_[syncCheckIdx]->ParseOnlineError(kernelRecord.payload.kernelErrorRecord,
+            kernelRecord.blockType, kernelRecord.serialNo);
+    }
 
     std::stringstream ss;
     ss << record << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();

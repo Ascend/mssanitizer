@@ -27,9 +27,9 @@ repos:
       - id: codespell
         args: [
             "-L",
-            "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,tbe,copyin,alog",
+            "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,nd,tbe,copyin,alog",
             "--skip",
-            "*.py,*.cpp,*.hpp,*.c,*.h",
+            "*.py,*.cpp,*.hpp,*.c,*.h,pre-commit/typos.toml",
           ]
 
   # typos

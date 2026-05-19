@@ -16,11 +16,11 @@
 
 #ifndef PLUGIN_PARSE_RECORD_H
 #define PLUGIN_PARSE_RECORD_H
- 
+
 #include "kernel_pub_func.h"
- 
+
 namespace Sanitizer {
- 
+
 struct AddrInfo {
     Location location;
     SimtThreadLocation threadLoc;
@@ -31,7 +31,7 @@ struct AddrInfo {
     uint32_t alignSize;
     SimtAtomMode option;
 };
- 
+
 template<RecordType recordType>
 AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record)
 {
@@ -74,8 +74,16 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtAtomRecord const &record)
     addrInfo.alignSize = GetAlignSizeByDataType(record.detailedDataType);
     return addrInfo;
 }
- 
+
+template<RecordType recordType>
+AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtEmptyRecord const &record)
+{
+    AddrInfo addrInfo{};
+    addrInfo.location = record.location;
+    addrInfo.threadLoc = record.threadLoc;
+    return addrInfo;
+}
+
 }  // namespace Sanitizer
- 
-#endif  // PLUGIN_PARSE_RECORD_H
- 
+
+#endif // PLUGIN_PARSE_RECORD_H

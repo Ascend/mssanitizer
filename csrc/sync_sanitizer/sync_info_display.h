@@ -62,10 +62,12 @@ inline std::ostream &operator<<(std::ostream &os, SyncFormatKernelName const &fo
 
 inline std::ostream &operator << (std::ostream &os, SyncDispInfo const &info)
 {
-    std::string checkTypeStr(info.checkType == SyncCheckType::MATCH_CHECK ? "Unpaired" : 
-        info.checkType == SyncCheckType::REDUMTAMCY_CHECK ? "Redundant" : "UNKNOWN_ERRTYPE");
-    std::string instrStr(info.checkType == SyncCheckType::MATCH_CHECK ? "set_flag" : 
-        info.opType == SyncType::SET_FLAG ? "set_flag" : "wait_flag");
+    std::string checkTypeStr(info.checkType == SyncCheckType::MATCH_CHECK ? "Unpaired"
+            : info.checkType == SyncCheckType::REDUMTAMCY_CHECK           ? "Redundant"
+                                                                          : "UNKNOWN_ERRTYPE");
+    std::string instrStr(info.checkType == SyncCheckType::MATCH_CHECK ? "set_flag"
+            : info.opType == SyncType::SET_FLAG                       ? "set_flag"
+                                                                      : "wait_flag");
 
     os << "====== " << "WARNING" << ": "<< checkTypeStr << " " << instrStr << " instructions detected" << std::endl
        << "======    from " << static_cast<PipeType>(info.srcPipe) << " to "
@@ -73,6 +75,16 @@ inline std::ostream &operator << (std::ostream &os, SyncDispInfo const &info)
        << "======    in block " << info.baseEvent.blockType << "(" << info.baseEvent.coreId << ")"
        << " on device "<< RuntimeContext::Instance().GetDeviceId() << std::endl;
     PrintLocationInfo(os, info.baseEvent);
+    return os;
+}
+
+inline std::ostream &operator << (std::ostream &os, ErrorEvent const &info)
+{
+    os << "====== ERROR: Sync error detected. Divergent thread(s)" << SyncFormatKernelName{} << std::endl
+       << "======    by thread(" << info.threadLoc.idX << "," << info.threadLoc.idY << "," << info.threadLoc.idZ << ")"
+       << " in block " << info.blockType << "(" << info.coreId << ")"
+       << " on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
+    PrintLocationInfo(os, info);
     return os;
 }
 }

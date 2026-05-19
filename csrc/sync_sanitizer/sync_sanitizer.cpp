@@ -104,7 +104,7 @@ void SyncSanitizer::DoMatchCheck(SanEvent const &event)
 SyncDispInfo getSyncDispInfoFromEvent(SanEvent const &event)
 {
     SyncDispInfo info = SyncDispInfo {};
-    
+
     info.baseEvent.Init(MemEvent(event));
     info.srcPipe = event.eventInfo.syncInfo.srcPipe;
     info.dstPipe = event.eventInfo.syncInfo.dstPipe;
@@ -126,7 +126,7 @@ PipeType getPipeTypeFromSanEvent(SanEvent const &event)
             switch (event.eventInfo.syncInfo.opType) {
                 case SyncType::RLS_BUF:     // 冗余检测只涉及A2/A3，A5相关特性直接返回
                     return PipeType::SIZE;
-                case SyncType::WAIT_FLAG:   // wait_falg使用srcPipe
+                case SyncType::WAIT_FLAG:   // wait_flag使用srcPipe
                     return event.eventInfo.syncInfo.dstPipe;
                 default:                    // set_flag和其它sync事件使用srcPipe
                     return event.eventInfo.syncInfo.srcPipe;
@@ -142,7 +142,7 @@ PipeType getPipeTypeFromSanEvent(SanEvent const &event)
     }
 }
 
-// set_flag/wait_falg冗余检测
+// set_flag/wait_flag冗余检测
 void SyncSanitizer::DoRedundancyCheck(SanEvent const &event)
 {
     PipeType pipe = getPipeTypeFromSanEvent(event);
@@ -216,14 +216,45 @@ void SyncSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent
         if (!redundancyInfo_.empty()) {
             ReportRedundancyInfo();
         }
+        if (!syncThreadsInfo_.empty()) {
+            ReportSyncThreadsInfo();
+        }
     }
 }
 
 void SyncSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType blockType, uint64_t serialNo)
 {
-    (void)record;
-    (void)blockType;
-    (void)serialNo;
+    if (record.kernelErrorDesc == nullptr) {
+        SAN_ERROR_LOG("kernelErrorDesc is nullptr");
+        return;
+    }
+
+    for (size_t errorIdx = 0; errorIdx < record.errorNum; ++errorIdx) {
+        const KernelErrorDesc &kernelErrorDesc = record.kernelErrorDesc[errorIdx];
+        if (kernelErrorDesc.errorType >= KernelErrorType::MAX) {
+            SAN_ERROR_LOG("Unknown kernel error type: %u", static_cast<uint32_t>(kernelErrorDesc.errorType));
+            continue;
+        }
+        static bool hasWarnedSyncIndexOutOfBounds = false;
+        if (!hasWarnedSyncIndexOutOfBounds && kernelErrorDesc.errorType == KernelErrorType::SYNC_THREADS_RECORD_LOSS) {
+            hasWarnedSyncIndexOutOfBounds = true;
+            std::cout << "[mssanitizer] WARNING: the number of '__syncthreads()' instructions exceeds "
+                      << SIMT_THREAD_MAX_PC_NUM
+                      << ". Some records were discarded, the detection result maybe unreliable!" << std::endl;
+        }
+        if (kernelErrorDesc.errorType == KernelErrorType::THREADS_ASYNC_IN_BLOCK) {
+            ErrorEvent event{};
+            event.serialNo = serialNo;
+            event.deviceId = RuntimeContext::Instance().GetDeviceId();
+            event.kernelIdx = RuntimeContext::Instance().kernelIdx_ - 1;
+            event.coreId = kernelErrorDesc.location.blockId;
+            event.pc = kernelErrorDesc.payload.syncDesc.syncLocation.pc;
+            event.blockType = blockType;
+            event.isSimt = true;
+            event.threadLoc = kernelErrorDesc.payload.syncDesc.syncThreadLoc;
+            syncThreadsInfo_.emplace_back(event);
+        }
+    }
 }
 
 void SyncSanitizer::ReportUnpairedInfo()
@@ -264,6 +295,24 @@ void SyncSanitizer::ReportRedundancyInfo() const
     CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
     for (SyncDispInfo const &it : redundancyInfo_) {
         msgFunc_(LogLv::WARN, [&it](void) {
+            std::stringstream ss;
+            ss << it << std::endl;
+            return DetectionInfo{ToolType::SYNCCHECK, ss.str()};
+        });
+    }
+}
+
+
+void SyncSanitizer::ReportSyncThreadsInfo() const
+{
+    std::set<uint64_t> pcOffsets;
+    for (ErrorEvent const &info : syncThreadsInfo_) {
+        pcOffsets.insert(info.pc);
+    }
+
+    CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
+    for (ErrorEvent const &it : syncThreadsInfo_) {
+        msgFunc_(LogLv::ERROR, [&it](void) {
             std::stringstream ss;
             ss << it << std::endl;
             return DetectionInfo{ToolType::SYNCCHECK, ss.str()};

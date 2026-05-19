@@ -1419,6 +1419,12 @@ std::ostream &operator<<(std::ostream &os, KernelErrorRecord const &errorRecord)
               << ";" << "addr:0x" << std::hex << record.addr << std::dec
               << ";" << "size:" << record.size
               << ";" << "option:" << record.option;
+        } else if (errorRecord.recordType == RecordType::SIMT_END) {
+            auto record = *reinterpret_cast<const SimtEmptyRecord *>(errorRecord.record);
+            os << record.location.blockId
+               << ", " << "0x" << std::hex << record.location.pc << std::dec
+               << ", " << record.threadLoc
+               << ", " << "type:" << errorRecord.recordType;
         }
     }
     return os;
@@ -1694,7 +1700,7 @@ std::ostream &operator<<(std::ostream &os, MemOpRecord const &record)
     os <<  ", " << "dstAddr:";
 
     os << "0x" << std::hex << record.dstAddr << std::dec;
- 
+
     if (record.infoSrc == MemInfoSrc::BYPASS || record.infoSrc == MemInfoSrc::EXTRA) {
         os << ", " << "memInfoDesc:" << record.infoDesc;
         if (record.infoDesc == MemInfoDesc::INPUT || record.infoDesc == MemInfoDesc::DOUBLE_PTR) {

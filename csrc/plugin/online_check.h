@@ -161,6 +161,11 @@ private:
 #if (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)) || defined(__BUILD_TESTS__)
     AICORE_FUNC_HEAD void ShadowMemoryCheck(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo);
     ShadowMemoryOnline shadowMemory_; // 用于在线踩踏检测
+
+    AICORE_FUNC_HEAD bool UpdateSyncThreadPcNum(uint64_t pc);
+    AICORE_FUNC_HEAD bool SortSyncThreadPcNumInPlace(
+        __gm__ SimtRecordBlockHead *simtBlockHead0, uint16_t &validPcNum, uint32_t *tmpCounts);
+    AICORE_FUNC_HEAD void GetMaxSyncThreadPcNum(uint16_t &validPcNum, uint32_t *tmpCounts);
 #endif
 };
 
@@ -305,6 +310,62 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
             DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
         }
     }
+
+    /// 4.同步检测，syncthreads是否正确使用
+    if (DoSyncCheck(memInfo_)) {
+        if (recordType == RecordType::THREAD_BLOCK_BARRIER) {
+            if (!UpdateSyncThreadPcNum(addrInfo.location.pc)) {
+                errorDesc.errorType = KernelErrorType::SYNC_THREADS_RECORD_LOSS;
+                DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
+            }
+        }
+
+        if (recordType == RecordType::SIMT_END) {
+            auto &blockInfo = simdBlockHead_->blockInfo;
+            uint64_t ret = AtomicAdd(&blockInfo.simtEndLastThread, 1);
+            if (ret == (blockInfo.threadXDim * blockInfo.threadYDim * blockInfo.threadZDim - 1)) {
+                uint16_t validPcNum{0};
+                uint32_t tmpCounts[SIMT_THREAD_MAX_PC_NUM] = {0};
+                uint64_t threadOffset0 = globalHead_->offsetInfo.simtErrorInfo.offset;
+                __gm__ uint8_t *simtBlock0 = memInfoSimd_ + threadOffset0;
+                __gm__ SimtRecordBlockHead *simtBlockHead0 = reinterpret_cast<__gm__ SimtRecordBlockHead *>(simtBlock0);
+                if (!SortSyncThreadPcNumInPlace(simtBlockHead0, validPcNum, tmpCounts)) {
+                    errorDesc.errorType = KernelErrorType::SYNC_THREADS_RECORD_LOSS;
+                    DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
+                }
+                GetMaxSyncThreadPcNum(validPcNum, tmpCounts);
+
+                // 检查当前pc是否存在异常：是否小于tmpCounts对应pc上的num
+                //                 pc-0   pc-1   pc-2   ...
+                // tmpCounts   :     1      1      2
+                // thread-0    ：    1      1      1
+                // thread-0    ：    1      0      2
+                //    ...                  ...
+                // thread-2047 ：    1      1      1
+                // correct     ：    Y      N      N
+                errorDesc.errorType = KernelErrorType::THREADS_ASYNC_IN_BLOCK;
+                auto &syncDesc = errorDesc.payload.syncDesc;
+                Location loc;
+                SimtThreadLocation threadLoc{};
+                for (size_t pcIdx = 0; pcIdx < validPcNum; ++pcIdx) {
+                    for (size_t threadIdx = 0; threadIdx < blockInfo.simtEndLastThread; ++threadIdx) {
+                        uint64_t threadOffset = globalHead_->offsetInfo.simtErrorInfo.offset +
+                            threadIdx * (globalHead_->offsetInfo.simtErrorInfo.size + sizeof(SimtRecordBlockHead));
+                        __gm__ uint8_t *simtBlock = memInfoSimd_ + threadOffset;
+                        __gm__ SimtRecordBlockHead *simtBlockHead = reinterpret_cast<__gm__ SimtRecordBlockHead *>(simtBlock);
+
+                        if (simtBlockHead->syncThreadNum[pcIdx] < tmpCounts[pcIdx]) {
+                            loc.pc = simtBlockHead0->syncThreadPC[pcIdx];
+                            syncDesc.syncLocation = loc;
+                            DecomposeThreadId(threadIdx, threadLoc.idX, threadLoc.idY, threadLoc.idZ);
+                            syncDesc.syncThreadLoc = threadLoc;
+                            DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
+                        }
+                    }
+                }
+            }
+        }
+    }
 #endif
 }
 
@@ -324,6 +385,100 @@ AICORE_FUNC_HEAD void OnlineCheck::ShadowMemoryCheck(AddrInfo const &addrInfo, S
         shadowMemory_.StoreNBytes(addrInfo, auxInfo);
     }
 }
+
+AICORE_FUNC_HEAD bool OnlineCheck::UpdateSyncThreadPcNum(uint64_t pc)
+{
+    for (size_t i = 0; i < SIMT_THREAD_MAX_PC_NUM; ++i) {
+        if (simtBlockHead_->syncThreadPC[i] == 0) {
+            // 出现0说明数组没找到当前pc，将pc加入数组，num++
+            simtBlockHead_->syncThreadPC[i] = pc;
+            ++simtBlockHead_->syncThreadNum[i];
+            return true;
+        } else if (simtBlockHead_->syncThreadPC[i] == pc) {
+            // 相等说明数组已经存在当前pc，直接num++
+            ++simtBlockHead_->syncThreadNum[i];
+            return true;
+        }
+    }
+    // for循环正常结束说明预留数组空间不够
+    return false;
+}
+
+AICORE_FUNC_HEAD bool OnlineCheck::SortSyncThreadPcNumInPlace(
+    __gm__ SimtRecordBlockHead *simtBlockHead0, uint16_t &validPcNum, uint32_t *tmpCounts) {
+    bool isSortedAll{true};
+    // 线程间循环：遍历simt threads；线程内循环：遍历pc和num
+    // thread-0:[pc0,pc1,...,0,0][num0,num1,...,0,0],thread-1:[pc0,pc1,...,0,0][num0,num1,...,0,0]...
+    //    |_________________线程间循环__________________|       |__线程内循环__|   |__线程内循环__|
+    // 遍历所有线程，将所有pc以追加的形式不重复地记录到thread-0的pc数组位置，
+    // 同时按照thread-0的pc顺序重新整理每个线程的num，记录在临时数组tmpCounts中，并刷回num数组（原地更新）
+    // thread-0只更新validPcNum，不做其他处理
+    for (size_t numIdx = 0; numIdx < SIMT_THREAD_MAX_PC_NUM; ++numIdx) {
+        if (simtBlockHead0->syncThreadPC[numIdx] == 0) {
+            break; // 出现空的地址，说明有效地址已经遍历完，结束循环
+        }
+        ++validPcNum;
+    }
+    if (simdBlockHead_->blockInfo.simtEndLastThread <= 1) {
+        return true;
+    }
+    for (size_t threadIdx = 1; threadIdx < simdBlockHead_->blockInfo.simtEndLastThread; ++threadIdx) { // 线程间循环
+        uint64_t threadOffset = globalHead_->offsetInfo.simtErrorInfo.offset +
+            threadIdx * (globalHead_->offsetInfo.simtErrorInfo.size + sizeof(SimtRecordBlockHead));
+        __gm__ uint8_t *simtBlock = memInfoSimd_ + threadOffset;
+        __gm__ SimtRecordBlockHead *simtBlockHead = reinterpret_cast<__gm__ SimtRecordBlockHead *>(simtBlock);
+
+        for (size_t numIdx = 0; numIdx < SIMT_THREAD_MAX_PC_NUM; ++numIdx) {  // 线程内循环
+            uint32_t pc = simtBlockHead->syncThreadPC[numIdx];
+            if (pc == 0) {
+                break; // 出现空的地址，说明有效地址已经遍历完，结束循环
+            }
+            uint32_t count = simtBlockHead->syncThreadNum[numIdx];
+
+            bool found = false;
+            for (uint16_t j = 0; j < validPcNum; ++j) {
+                if (simtBlockHead0->syncThreadPC[j] == pc) {
+                    tmpCounts[j] = count;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                if (validPcNum < SIMT_THREAD_MAX_PC_NUM) {
+                    simtBlockHead0->syncThreadPC[validPcNum] = pc;
+                    tmpCounts[validPcNum] = count;
+                    ++validPcNum;
+                } else {
+                    isSortedAll = false;
+                    break;
+                }
+            }
+        }
+        // 把tmpCounts写回simtBlockHead->syncThreadNum，并重置tmpCounts
+        for (size_t each = 0; each < validPcNum; ++each) {
+            simtBlockHead->syncThreadNum[each] = tmpCounts[each];
+            tmpCounts[each] = 0;
+        }
+    }
+    return isSortedAll;
+}
+
+AICORE_FUNC_HEAD void OnlineCheck::GetMaxSyncThreadPcNum(uint16_t &validPcNum, uint32_t *tmpCounts) {
+    for (size_t pcIdx = 0; pcIdx < validPcNum; ++pcIdx) {
+        uint32_t maxNum = 0;
+        for (size_t threadIdx = 0; threadIdx < simdBlockHead_->blockInfo.simtEndLastThread; ++threadIdx) {
+            uint64_t threadOffset = globalHead_->offsetInfo.simtErrorInfo.offset +
+                threadIdx * (globalHead_->offsetInfo.simtErrorInfo.size + sizeof(SimtRecordBlockHead));
+            __gm__ uint8_t *simtBlock = memInfoSimd_ + threadOffset;
+            __gm__ SimtRecordBlockHead *simtBlockHead = reinterpret_cast<__gm__ SimtRecordBlockHead *>(simtBlock);
+            if (simtBlockHead->syncThreadNum[pcIdx] > maxNum) {
+                maxNum = simtBlockHead->syncThreadNum[pcIdx];
+            }
+        }
+        tmpCounts[pcIdx] = maxNum;
+    }
+}
+
 #endif
 
 AICORE_FUNC_HEAD bool HasPermission(AccessType accessType, uint32_t permission) {

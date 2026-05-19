@@ -44,12 +44,14 @@ private:
     void DoRedundancyCheck(SanEvent const &event);
     void ReportUnpairedInfo();
     void ReportRedundancyInfo() const;
+    void ReportSyncThreadsInfo() const;
 
     int16_t checkBlockId_ = CHECK_ALL_BLOCK;
     MSG_FUNC msgFunc_;
     std::map<uint64_t, std::vector<SyncDispInfo>> syncEvents_;
     std::map<PipeType, SyncDispInfo> pipeRedundancyEvents_;  // 指令遍历过程中保存上一条指令
     std::vector<SyncDispInfo> redundancyInfo_;  // 保存重复的指令信息
+    std::vector<ErrorEvent> syncThreadsInfo_;   // sync_threads使用错误的online_error信息
     bool isFinished_{false};
 };
 }
