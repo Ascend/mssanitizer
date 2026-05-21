@@ -37,10 +37,18 @@ AICORE_FUNC_HEAD bool IsTargetBlock(__gm__ uint8_t *memInfo, int16_t blockIdx)
 template<RecordType recordType, typename Record>
 AICORE_FUNC_HEAD bool IsTargetIntrinsic(__gm__ uint8_t *memInfo, int16_t blockIdx, Record const *record)
 {
-    /// ffts所有核上的相关记录只有c220分离架构才会记录；
+    /// ffts所有核上的相关记录只有c220/c310分离架构才会记录；
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
-    if constexpr (recordType == RecordType::FFTS_SYNC || recordType == RecordType::WAIT_FLAG_DEV) {
-#if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__)
+    if constexpr (recordType == RecordType::FFTS_SYNC || recordType == RecordType::WAIT_FLAG_DEV ||
+            recordType == RecordType::FFTS_SYNC_V || recordType == RecordType::WAIT_FLAG_DEV_PIPE ||
+            recordType == RecordType::WAIT_FLAG_DEVI_PIPE || recordType == RecordType::WAIT_FLAG_DEV_PIPE ||
+            recordType == RecordType::WAIT_FLAG_DEV_PIPE_V || recordType == RecordType::WAIT_FLAG_DEVI_PIPE_V ||
+            recordType == RecordType::SET_INTRA_BLOCK || recordType == RecordType::SET_INTRA_BLOCKI ||
+            recordType == RecordType::SET_INTRA_BLOCK_V || recordType == RecordType::SET_INTRA_BLOCKI_V ||
+            recordType == RecordType::WAIT_INTRA_BLOCK || recordType == RecordType::WAIT_INTRA_BLOCKI ||
+            recordType == RecordType::WAIT_INTRA_BLOCK_V || recordType == RecordType::WAIT_INTRA_BLOCKI_V) {
+#if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__) || \
+    (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510))
         return true;
 #endif
     }

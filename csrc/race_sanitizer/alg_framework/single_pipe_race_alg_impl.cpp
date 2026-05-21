@@ -73,6 +73,9 @@ ReturnType SinglePipeRaceAlgImpl::ProcessEvent(const SanEvent& event)
                     return ReturnType::PROCESS_OK;
                 }
             }
+            if (event.pipe == PipeType::PIPE_S || event.pipe == PipeType::PIPE_S_CAL) {
+                return ReturnType::PROCESS_OK;
+            }
             return ProcessMemEvent(event);
         default:
             break;

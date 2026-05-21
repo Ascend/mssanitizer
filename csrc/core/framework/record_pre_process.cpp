@@ -98,49 +98,6 @@ bool CrossWaitRecordIsEqual(const MstxCrossWaitRecordInfo &lhs, const MstxCrossR
     return lhs.record == rhs && lhs.coreID == coreID;
 }
 
-bool IsGetBuf(RecordType recordType)
-{
-    return recordType == RecordType::GET_BUF || recordType == RecordType::GET_BUFI ||
-        recordType == RecordType::GET_BUF_V || recordType == RecordType::GET_BUFI_V;
-}
-
-bool IsRlsBuf(RecordType recordType)
-{
-    return recordType == RecordType::RLS_BUF || recordType == RecordType::RLS_BUFI ||
-        recordType == RecordType::RLS_BUF_V || recordType == RecordType::RLS_BUFI_V;
-}
-
-template<RecordType recordType>
-SanitizerRecord CreateSetWaitSyncSanRecord(PipeType srcPipe, PipeType dstPipe, const KernelRecord &kernelRecord)
-{
-    SanitizerRecord sanRecord{};
-    constexpr uint32_t bufStartEventId = 200;
-    sanRecord.version = RecordVersion::KERNEL_RECORD;
-    KernelRecord record{};
-    record.recordType = recordType;
-    record.blockType = kernelRecord.blockType;
-    record.serialNo = kernelRecord.serialNo;
-    SyncRecord syncRecord{};
-    syncRecord.location = kernelRecord.payload.bufRecord.location;
-    syncRecord.src = srcPipe;
-    syncRecord.dst = dstPipe;
-    syncRecord.eventID = bufStartEventId + kernelRecord.payload.bufRecord.bufId;
-    syncRecord.isGenerated = true;
-    record.payload.syncRecord = syncRecord;
-    sanRecord.payload.kernelRecord = record;
-    return sanRecord;
-}
-
-bool ExistRlsBuf(const std::unordered_map<uint8_t, KernelRecord> &getRlsBufMap)
-{
-    for (const auto &pair : getRlsBufMap) {
-        if (IsRlsBuf(pair.second.recordType)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 RecordPreProcess &RecordPreProcess::GetInstance()
 {
     thread_local static RecordPreProcess inst;
@@ -216,68 +173,6 @@ void RecordPreProcess::ProcessMstxCrossWaitRecord(const SanitizerRecord &record)
     }
 }
 
-void RecordPreProcess::CacheGetRlsBufRecord(const KernelRecord &dstRecord)
-{
-    if (IsGetBuf(dstRecord.recordType)) {
-        getRlsBufCacheFlag_ = true;
-        auto &dstBufRecord = dstRecord.payload.bufRecord;
-        auto it = getRlsBufMap_.find(dstBufRecord.bufId);
-        // 如果get_buf前面没有匹配的rls_buf，则map缓存后直接退出
-        if (it == getRlsBufMap_.cend()) {
-            getRlsBufMap_[dstBufRecord.bufId] = dstRecord;
-            return;
-        }
-        // get_buf前置序列为get_buf，则当前get_buf非法，此时用户算子会卡死
-        if (IsGetBuf(it->second.recordType)) {
-            getRlsBufMap_.erase(it);
-            SAN_ERROR_LOG("Invalid get_buf serialNo: %lu", dstRecord.serialNo);
-            return;
-        }
-        // 如果get_buf前置事件序列有对应的rls_buf并且当前get_buf模式为模式0，则需要遍历历史事件集合，
-        // 在匹配的rls_buf后插入set_flag，在当前事件序列后方插入wait_flag
-        if (dstBufRecord.mode == BufMode::BLOCK_MODE) {
-            for (size_t idx = 0; idx < recordBuffer_.size(); ++idx) {
-                auto &srcRecord = recordBuffer_[idx].payload.kernelRecord;
-                if (IsRlsBuf(srcRecord.recordType) && srcRecord.payload.bufRecord.bufId == dstBufRecord.bufId &&
-                    !srcRecord.payload.bufRecord.isPreprocessed) {
-                    srcRecord.payload.bufRecord.isPreprocessed = true;
-                    PipeType srcPipe = srcRecord.payload.bufRecord.pipe;
-                    PipeType dstPipe = dstBufRecord.pipe;
-                    if (srcPipe != dstPipe) {
-                        auto srcSanRecord = CreateSetWaitSyncSanRecord<RecordType::SET_FLAG>(srcPipe, dstPipe, srcRecord);
-                        recordBuffer_.insert(recordBuffer_.begin() + idx + 1, srcSanRecord);
-                        auto dstSanRecord = CreateSetWaitSyncSanRecord<RecordType::WAIT_FLAG>(srcPipe, dstPipe, dstRecord);
-                        recordBuffer_.push_back(dstSanRecord);
-                    }
-                    break;
-                }
-            }
-        }
-        it->second = dstRecord;
-    } else if (IsRlsBuf(dstRecord.recordType)) {
-        getRlsBufCacheFlag_ = true;
-        auto &dstBufRecord = dstRecord.payload.bufRecord;
-        auto it = getRlsBufMap_.find(dstBufRecord.bufId);
-        // 如果rls_buf之前无get_buf，则为非法的rls_buf
-        if (it == getRlsBufMap_.cend()) {
-            SAN_ERROR_LOG("Invalid rls_buf serialNo: %lu, the previous command does not contain get_buf.",
-                dstRecord.serialNo);
-            return;
-        }
-        // 如果rls_buf之前有相同的rls_buf，则为非法的rls_buf
-        if (!IsGetBuf(it->second.recordType)) {
-            getRlsBufMap_.erase(it);
-            SAN_ERROR_LOG("Invalid rls_buf serialNo: %lu, the previous command exist same rls_buf.",
-                dstRecord.serialNo);
-            return;
-        }
-        it->second = dstRecord;
-    } else if (dstRecord.recordType == RecordType::BLOCK_FINISH || dstRecord.recordType == RecordType::FINISH) {
-        getRlsBufCacheFlag_ = false;
-        getRlsBufMap_.clear();
-    }
-}
-
 void RecordPreProcess::Process(const SanitizerRecord &record, std::vector<SanEvent> &events)
 {
     if (record.version == RecordVersion::MEMORY_RECORD) {
@@ -294,15 +189,6 @@ void RecordPreProcess::Process(const SanitizerRecord &record, std::vector<SanEve
 
     ProcessMstxCrossWaitRecord(record);
     if (!waitMergeInfo_.endTag) {
-        return;
-    }
-
-    CacheGetRlsBufRecord(kernelRecord);
-    if (!ExistRlsBuf(getRlsBufMap_)) {
-        getRlsBufCacheFlag_ = false;
-    }
-    if (getRlsBufCacheFlag_) {
-        recordBuffer_.push_back(record);
         return;
     }
 

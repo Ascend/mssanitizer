@@ -90,5 +90,34 @@ ReturnType RaceAlgBase::ProcessMstxCrossSyncEvent(const SanEvent& event)
     return ReturnType::PROCESS_STALLED;
 }
 
+ReturnType RaceAlgBase::ProcessGetRlsBufSyncEvent(const SanEvent& event, RaceCheckType checkType)
+{
+    uint32_t blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, checkType);
+    uint32_t curPipe = eventContainer_.GetQueIndex();
+    const auto &bufSync = event.eventInfo.bufSyncInfo;
+    GetBufKey bufKey = {blockIndex, bufSync.bufId};
+    if (bufSync.opType == SyncType::GET_BUF && bufSync.mode == BufMode::BLOCK_MODE) {
+        auto it = getRlsBufMap_.find(bufKey);
+        if (bufSync.rlsCount == 0U) {
+            // 每个buf_id的第一个get_buf，不具备阻塞作用
+            return ReturnType::PROCESS_OK;
+        }
+        if (it == getRlsBufMap_.cend() || it->second.size() < bufSync.rlsCount) {
+            return ReturnType::PROCESS_STALLED;
+        } else if (it->second.size() == bufSync.rlsCount) {
+            // 每个buf_id对应的rls_buf全部执行完，统一更新向量时间
+            for (const auto &vt : it->second) {
+                VectorClock::UpdateVectorTime(vt, vc_[curPipe]);
+            }
+        } else {
+            SAN_ERROR_LOG("The number of caches is incorrect, serialNo:%lu, rls cache count:%lu, rls count:%lu",
+                event.serialNo, it->second.size(), bufSync.rlsCount);
+        }
+    } else if (bufSync.opType == SyncType::RLS_BUF) {
+        getRlsBufMap_[bufKey].push_back(vc_[curPipe]);
+    }
+    return ReturnType::PROCESS_OK;
+}
+
 }
 

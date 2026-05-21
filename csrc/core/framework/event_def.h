@@ -42,6 +42,7 @@ enum class EventType : uint8_t {
     MSTX_CROSS_SYNC_EVENT,
     REGISTER_EVENT,
     H_SYNC_EVENT,
+    BUF_SYNC_EVENT,
     MSTX_SIGNAL_SET_EVENT,
     MSTX_SIGNAL_WAIT_EVENT,
     MSTX_CROSS_CORE_BARRIER,
@@ -149,7 +150,8 @@ struct BufSyncInfo {
     SyncType opType;
     PipeType pipe;
     uint64_t bufId;
-    uint8_t mode;
+    uint64_t rlsCount;  // get_buf需要等待的rls_buf数量
+    BufMode mode;
 };
 
 struct SoftSyncInfo {

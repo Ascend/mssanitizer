@@ -95,6 +95,8 @@ ReturnType CrossCoreRaceAlgImpl::ProcessEvent(const SanEvent &event)
             return ProcessMstxCrossCoreBarrier(event);
         case EventType::MSTX_CROSS_NPU_BARRIER:
             return ProcessMstxCrossNpuBarrier(event);
+        case EventType::BUF_SYNC_EVENT:
+            return ProcessGetRlsBufSyncEvent(event, RaceCheckType::CROSS_BLOCK_CHECK);
         default:
             break;
     }

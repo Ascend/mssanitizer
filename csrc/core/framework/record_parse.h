@@ -80,6 +80,8 @@ public:
     using DstSrcGraph = std::unordered_map<PipeType, std::unordered_set<PipeType>>;
     thread_local static DstSrcGraph dstSrcGraph_;
     thread_local static std::map<HsetRecordKey, HsetRecordState> hsetSyncMap_;
+    // key：bufId，val：表示当前bufId的get_buf需要等待多少个rls_buf事件
+    thread_local static std::unordered_map<uint64_t, uint64_t> getRlsBufMap_;
 private:
     static void UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEvent> &events);
     /// 递归函数，查找和targetPipe直接或间接相连的src pipe

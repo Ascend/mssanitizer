@@ -95,6 +95,8 @@ ReturnType RaceAlgImpl::ProcessEvent(const SanEvent& event)
             return ProcessBlockSyncEvent(event, RaceCheckType::SINGLE_BLOCK_CHECK);
         case EventType::MSTX_CROSS_SYNC_EVENT:
             return ProcessMstxCrossSyncEvent(event);
+        case EventType::BUF_SYNC_EVENT:
+            return ProcessGetRlsBufSyncEvent(event, RaceCheckType::SINGLE_BLOCK_CHECK);
         default:
             break;
     }
