@@ -28,7 +28,7 @@ constexpr uint64_t MAX_MEMORY_RECORD_HEIGHT = 60ULL * 1024 * 1024 * 1024;
 
 /// 此枚举定义与编译器内置类型 pipe_t 保持一致，编译器内存类型为uint32_t，不会变动
 enum class PipeType : uint32_t {
-    PIPE_S = 0,      // Scalar Pipe
+    PIPE_S = 0,      // Scalar Pipe，此处指代发射流水，并非load/store标量的执行流水
     PIPE_V,          // Vector Pipe, including{VectorOP write UB,  L0C->UB write}
     PIPE_M,          // Matrix Pipe, including{}
     PIPE_MTE1,       // L1->L0{A,B}
@@ -39,6 +39,7 @@ enum class PipeType : uint32_t {
     PIPE_MTE5 = 8,   // MOV_OUT_TO_UB
     PIPE_V2 = 9,     // Lower priority vector pipe,
     PIPE_FIX = 10,   // {L0C} ->{L1,UB,L1UB}
+    PIPE_S_CAL,      // 主要负责pipe_s上的load/store标量指令计算流水
     SIZE,
 };
 

@@ -150,7 +150,7 @@ static void ParseScalarOpRecord(const KernelRecord &record, std::vector<SanEvent
     auto& loadStoreRecord = record.payload.loadStoreRecord;
     SetLocationInfo(event, loadStoreRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
-    event.pipe = PipeType::PIPE_S;
+    event.pipe = PipeType::PIPE_S_CAL;
     memInfo.memType = FormatConverter::AddrSpaceToMemType(loadStoreRecord.space);
 
     if (record.recordType == RecordType::LOAD || record.recordType == RecordType::LD || record.recordType == RecordType::LD_IO ||
@@ -1748,7 +1748,7 @@ static void ParseRecordDcPreload(const KernelRecord &record, std::vector<SanEven
     auto& dcPreloadRecord = record.payload.dcPreloadRecord;
     SetLocationInfo(event, dcPreloadRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
-    event.pipe = PipeType::PIPE_S;
+    event.pipe = PipeType::PIPE_S_CAL;
     memInfo.memType = MemType::GM;
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = { static_cast<uint64_t>(-1), static_cast<uint64_t>(-1) };
@@ -3002,7 +3002,7 @@ static void ParseRecordGetBuf(const KernelRecord &record, std::vector<SanEvent> 
     SanEvent event;
     SetLocationInfo(event, record.payload.bufRecord, record.blockType, record.serialNo);
     event.type = EventType::SYNC_EVENT;
-    event.pipe = record.payload.syncRecord.src;
+    event.pipe = PipeType::PIPE_S;
     event.eventInfo.bufSyncInfo.opType = SyncType::GET_BUF;
     event.eventInfo.bufSyncInfo.pipe = record.payload.bufRecord.pipe;
     event.eventInfo.bufSyncInfo.bufId = record.payload.bufRecord.bufId;
@@ -3017,7 +3017,7 @@ static void ParseRecordRlsBuf(const KernelRecord &record, std::vector<SanEvent> 
     SanEvent event;
     SetLocationInfo(event, record.payload.bufRecord, record.blockType, record.serialNo);
     event.type = EventType::SYNC_EVENT;
-    event.pipe = record.payload.syncRecord.src;
+    event.pipe = PipeType::PIPE_S;
     event.eventInfo.bufSyncInfo.opType = SyncType::RLS_BUF;
     event.eventInfo.bufSyncInfo.pipe = record.payload.bufRecord.pipe;
     event.eventInfo.bufSyncInfo.bufId = record.payload.bufRecord.bufId;
@@ -4246,6 +4246,60 @@ void RecordParse::ProcessHsetWaitSync(std::vector<SanEvent> &events)
     }
 }
 
+void ReplacePipeScalar(SanEvent &event)
+{
+    switch (event.type) {
+        case EventType::SYNC_EVENT: {
+            if (event.eventInfo.syncInfo.opType == SyncType::SET_FLAG) {
+                if (event.eventInfo.syncInfo.srcPipe == PipeType::PIPE_S) {
+                    event.pipe = PipeType::PIPE_S_CAL;
+                    event.eventInfo.syncInfo.srcPipe = PipeType::PIPE_S_CAL;
+                }
+            } else if (event.eventInfo.syncInfo.opType == SyncType::WAIT_FLAG) {
+                if (event.eventInfo.syncInfo.srcPipe == PipeType::PIPE_S) {
+                    event.eventInfo.syncInfo.srcPipe = PipeType::PIPE_S_CAL;
+                }
+            }
+            return;
+        }
+        case EventType::CROSS_CORE_SYNC_EVENT: {
+            if (event.eventInfo.fftsSyncInfo.opType == SyncType::FFTS_SYNC) {
+                if (event.eventInfo.fftsSyncInfo.dstPipe == PipeType::PIPE_S) {
+                    event.pipe = PipeType::PIPE_S_CAL;
+                    event.eventInfo.fftsSyncInfo.dstPipe = PipeType::PIPE_S_CAL;
+                }
+            }
+            return;
+        }
+        case EventType::CROSS_CORE_SOFT_SYNC_EVENT: {
+            if (event.eventInfo.softSyncInfo.opType == SyncType::IB_SET) {
+                if (event.pipe == PipeType::PIPE_S) {
+                    event.pipe = PipeType::PIPE_S_CAL;
+                }
+            }
+            return;
+        }
+        case EventType::MSTX_CROSS_SYNC_EVENT: {
+            if (event.eventInfo.mstxCrossInfo.opType == SyncType::MSTX_SET_CROSS) {
+                if (event.eventInfo.mstxCrossInfo.pipe == PipeType::PIPE_S) {
+                    event.pipe = PipeType::PIPE_S_CAL;
+                    event.eventInfo.mstxCrossInfo.pipe = PipeType::PIPE_S_CAL;
+                }
+            }
+            return;
+        }
+        default:
+            return;
+    }
+}
+
+void RecordParse::ReplaceSetSyncPipeScalar(std::vector<SanEvent> &events)
+{
+    for (auto &event : events) {
+        ReplacePipeScalar(event);
+    }
+}
+
 void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &events)
 {
     KernelRecord const& kernelRecord = record.payload.kernelRecord;
@@ -4261,5 +4315,6 @@ void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &ev
     if (events.size() == 0) { return; }
     ProcessHsetWaitSync(events);
     UpdateSyncInPipe(kernelRecord, events);
+    ReplaceSetSyncPipeScalar(events);
 }
 }

@@ -85,6 +85,8 @@ private:
     /// 递归函数，查找和targetPipe直接或间接相连的src pipe
     static void DfsSrcGraph(PipeType targetPipe, std::unordered_set<PipeType> &visited);
     static void ProcessHsetWaitSync(std::vector<SanEvent> &events);
+    // 函数功能为：将同步语句中set事件的pipe-s替换为pipe-s-cal，避免pipe-s和其他pipe间竞争检测误报和漏报
+    static void ReplaceSetSyncPipeScalar(std::vector<SanEvent> &events);
 };
 }
 #endif

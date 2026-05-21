@@ -293,6 +293,7 @@ std::ostream &operator<<(std::ostream &os, PipeType pipeType)
         {PipeType::PIPE_MTE5, "PIPE_MTE5"},
         {PipeType::PIPE_V2,   "PIPE_V2"},
         {PipeType::PIPE_FIX,  "PIPE_FIX"},
+        {PipeType::PIPE_S_CAL, "PIPE_S"},
     };
 
     return FormatEnum(os, PIPE_TYPE_MAP, pipeType, "PipeType");
