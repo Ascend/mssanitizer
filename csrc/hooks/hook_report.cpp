@@ -138,6 +138,7 @@ bool HookReport::InitClient(void)
     checkParms_.initcheck = config.initCheck;
     checkParms_.synccheck = config.syncCheck;
     checkParms_.registerCheck = config.registerCheck;
+    checkParms_.gmBufferGuardSize = config.gmBufferGuardSize;
     return true;
 }
 

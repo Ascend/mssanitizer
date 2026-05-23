@@ -245,6 +245,24 @@ bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
     return false;
 }
 
+void AddressSanitizer::AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord)
+{
+    ErrorMsg errorMsg; // 当前host侧无获取pc和调用栈能力，暂时不填充LocInfo
+
+    errorMsg.type = MemErrorType::GM_ADDR_OUT_OF_BOUND;
+    errorMsg.auxData.badAddr.addr = memoryRecord.gmAddrOutOfBoundsRecord.outAddr;
+    errorMsg.auxData.nBadBytes = memoryRecord.gmAddrOutOfBoundsRecord.outSize;
+    errorMsg.auxData.baseAddr.addr = memoryRecord.gmAddrOutOfBoundsRecord.userAddr;
+    errorMsg.auxData.baseSize = memoryRecord.gmAddrOutOfBoundsRecord.userSize;
+    errorMsg.auxData.serialNo = memoryRecord.serialNo;
+
+    msgFunc_(LogLv::ERROR, [&errorMsg](void) {
+        std::stringstream ss;
+        ss << ReducedErrorMsg{errorMsg, {}, {}, {}} << std::endl;
+        return DetectionInfo{ToolType::MEMCHECK, ss.str()};
+    });
+}
+
 bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
 {
     if (shadowMemory_ == nullptr || !shadowMemory_->IsReady()) {
@@ -253,6 +271,11 @@ bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
     }
 
     if (record.version == RecordVersion::MEMORY_RECORD) {
+        if (record.payload.memoryRecord.type == MemOpType::GM_ADDR_OUT_OF_BOUND) {
+            AlertGMAddrOutOfBoundError(record.payload.memoryRecord);
+            return false;
+        }
+
         this->BeforeScopeSwitch(record.payload.memoryRecord);
         this->DoMemOpRecord(record.payload.memoryRecord, false);
         this->AfterScopeSwitch(record.payload.memoryRecord);

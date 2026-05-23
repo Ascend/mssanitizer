@@ -166,7 +166,7 @@ Packet MemCheckProtocol::GetPayLoad(PacketHead head)
             return GetTriviallyCopyable<DeviceInfoSummary>();
         case PacketType::KERNEL_SUMMARY:
             return GetTriviallyCopyable<KernelSummary>();
-        case PacketType::HOST_RECORD:
+        case PacketType::MEMORY_RECORD:
             return GetTriviallyCopyable<HostMemRecord>();
         case PacketType::KERNEL_RECORD:
             return GetBinaryDataPacket<Packet::KernelRecord>();
@@ -180,6 +180,8 @@ Packet MemCheckProtocol::GetPayLoad(PacketHead head)
             return GetBinaryDataPacket<Packet::KernelBinary>();
         case PacketType::LOG_STRING:
             return GetBinaryDataPacket<Packet::LogString>();
+        case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:
+            return GetTriviallyCopyable<GMAddrOutOfBoundRecord>();
         case PacketType::INVALID:
         default:
             return Packet{};

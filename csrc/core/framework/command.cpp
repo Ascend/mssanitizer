@@ -140,6 +140,28 @@ void HandleHostMemRecord(Checker &checker, HostMemRecord const &record)
     checker.Do(MemoryRecordToSanitizerRecord(record));
 }
 
+void HandleGMAddrOutOfBoundRecord(Checker &checker, GMAddrOutOfBoundRecord const &record)
+{
+    RuntimeContext &ctx = RuntimeContext::Instance();
+    MemOpRecord memOpRecord{};
+    memOpRecord.type = MemOpType::GM_ADDR_OUT_OF_BOUND;
+    memOpRecord.serialNo = ctx.serialNo_++;
+    memOpRecord.coreId = -1;
+    memOpRecord.moduleId = -1;
+    memOpRecord.srcSpace = AddressSpace::GM;
+    memOpRecord.dstSpace = AddressSpace::GM;
+    memOpRecord.lineNo = 0;
+    memOpRecord.dstAddr = record.outAddr;
+    memOpRecord.memSize = record.outSize;
+    memOpRecord.gmAddrOutOfBoundsRecord = record;
+
+    SanitizerRecord sanitizerRecord {};
+    sanitizerRecord.version = RecordVersion::MEMORY_RECORD;
+    sanitizerRecord.payload.memoryRecord = memOpRecord;
+
+    checker.Do(sanitizerRecord);
+}
+
 std::string ProcessIPCSetEvent(IPCMemRecord const &record, std::mutex &mux)
 {
     std::string setInfoNameLog = Utility::ReplaceInvalidChar(std::string(record.setInfo.name));
@@ -398,7 +420,7 @@ void Command::Exec(const ParamList &execParams)
                 case PacketType::KERNEL_SUMMARY:
                     HandleKernelInfo(checker, crossNpuChecker, packet.GetPayload().kernelSummary, config_);
                     break;
-                case PacketType::HOST_RECORD:
+                case PacketType::MEMORY_RECORD:
                     HandleHostMemRecord(checker, packet.GetPayload().hostMemRecord);
                     break;
                 case PacketType::KERNEL_RECORD:
@@ -412,6 +434,9 @@ void Command::Exec(const ParamList &execParams)
                     break;
                 case PacketType::SANITIZER_RECORD:
                     checker.Do(packet.GetPayload().sanitizerRecord);
+                    break;
+                case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:
+                    HandleGMAddrOutOfBoundRecord(checker, packet.GetPayload().gmAddrOutOfBoundRecord);
                     break;
                 case PacketType::KERNEL_BINARY:
                     HandleKernelBinary(packet.GetPayload().binary);

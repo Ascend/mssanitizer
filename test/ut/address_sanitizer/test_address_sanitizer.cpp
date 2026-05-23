@@ -3613,4 +3613,43 @@ TEST(AddressSanitizer, malloc_rt_bypass_extra_bypass_memory_expect_get_error)
     ASSERT_TRUE(msg.find("illegal read") != std::string::npos);
 }
 
+TEST(AddressSanitizer, get_gm_buffer_out_of_bound_record_and_print_excep)
+{
+    Config config {
+        .defaultCheck = true,
+        .memCheck = true,
+    };
+    DeviceInfoSummary deviceInfoSummary {};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    auto asan = SanitizerFactory::GetInstance().Create(ToolType::MEMCHECK);
+    ASSERT_TRUE(asan->SetDeviceInfo(deviceInfoSummary, config));
+
+    SanitizerRecord record;
+    record.version = RecordVersion::MEMORY_RECORD;
+    MemOpRecord memoryRecord{};
+    memoryRecord.serialNo = 0;
+    memoryRecord.type = MemOpType::GM_ADDR_OUT_OF_BOUND;
+    memoryRecord.gmAddrOutOfBoundsRecord.userAddr = 0x12c0c0016020;
+    memoryRecord.gmAddrOutOfBoundsRecord.userSize = 1024;
+    memoryRecord.gmAddrOutOfBoundsRecord.outAddr = 0x12c0c0016423;
+    memoryRecord.gmAddrOutOfBoundsRecord.outSize = 5;
+    memoryRecord.serialNo = 10;
+    record.payload.memoryRecord = memoryRecord;
+    
+    // 示例：
+    // ====== ERROR: illegal write of size 5 bytes
+    // ======    Access to 0x12c0c0016423 on GM is 3 bytes after the nearest allocation at 0x12c0c0016020 of size 1024 bytes
+    // ======    in _Z13MyAicpuKernelN10KernelInfo10KernelArgsE_interface on device 0
+
+    // 右侧越界32字节
+    std::string msg;
+    asan->RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
+    ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
+    std::cout << "msg:" << std::endl << msg;
+    ASSERT_TRUE(msg.find("====== ERROR: illegal write of size 5 byte(s)") != std::string::npos);
+    ASSERT_TRUE(msg.find("======    Access to 0x12c0c0016423 on GM is 3 byte(s) after the nearest allocation at 0x12c0c0016020 of size 1024 byte(s)") != std::string::npos);
+    ASSERT_TRUE(msg.find("======    in  on device 0") != std::string::npos);
+    msg = "";
+}
+
 }

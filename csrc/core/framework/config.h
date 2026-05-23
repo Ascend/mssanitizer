@@ -72,6 +72,7 @@ struct Config {
     char pluginPath[PLUGIN_PATH_MAX];
     char kernelName[KERNEL_NAME_MAX];
     char dumpPath[DUMP_PATH_MAX];
+    uint32_t gmBufferGuardSize = GM_BUFFER_GUARD_DFT_SIZE;
 };
 
 /// 用户命令结构体，用于承载用户命令行参数的解析结果
