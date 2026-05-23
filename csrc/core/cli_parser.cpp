@@ -515,9 +515,10 @@ void ShowHelpInfo()
         "                         enable cann heap check [no]" << std::endl <<
         "    --block-id=<block-id>" << std::endl <<
         "                         set check block id, default check all block" << std::endl <<
-        "    --cache-size=<size>" << std::endl <<
-        "                         set single block records size to <size> (MB), default:100, max: " <<
+        "    --cache-size=<size>  set single block records size to <size> (MB), default:100, max:" <<
         MAX_RECORD_BUF_SIZE_EACH_BLOCK << std::endl <<
+        "    --padding=<size>     set the safe zone <size> in bytes for out of bounds detection at GM. " <<
+        "Valid range:32-1024, default:32" << std::endl <<
         std::endl <<
         "  user options for racecheck:" << std::endl <<
         "    --check-cross-npu-races=no|yes" << std::endl <<
