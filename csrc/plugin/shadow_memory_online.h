@@ -390,9 +390,9 @@ public:
     using ByteStatus_t = uint64_t;
     using MBSP = MemoryByteStatusParser<ByteStatus_t>;
     struct AuxErrorInfo {
-         /*** 线程间踩踏和线程间竞争使用 ***/ 
+        // 线程间踩踏和线程间竞争使用
         SimtThreadLocation conflictedThreadLoc{};                  // 记录被当前线程所踩踏的线程坐标
-        uint64_t nBadBytes{};                                      // 多核踩踏字节数，竞争不会用 
+        uint64_t nBadBytes{}; // 多核踩踏字节数，竞争不会用
         uint32_t pc{};                                             // 记录被当前线程所踩踏的pc
         KernelErrorType errorType = KernelErrorType::INVALID;      // 错误类型
     };
@@ -669,7 +669,7 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::LoadNBytes(AddrInfo const &addrInfo, S
                     AssignErrorInfo<KernelErrorType::THREAD_WR_RACE>(oldValue, threadId, auxInfo);
                 }
             } else if (oldStatus == MemoryByteStatus::RACE) {
-                if (ExistRace(oldValue, memType)) {
+                if (oldThreadId != threadId && ExistRace(oldValue, memType)) {
                     newValue = ExtractSamePcStatus(MemoryByteStatus::RACE, oldValue, threadId, addrInfo);
                     AssignErrorInfo<KernelErrorType::THREAD_WR_RACE>(oldValue, threadId, auxInfo);
                 } else {
@@ -734,7 +734,7 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::StoreNBytes(AddrInfo const &addrInfo, 
                     newValue = MBSP::Construct(MemoryByteStatus::WRITE, threadId, addrInfo.location.pc, memType);
                 }
             } else if (oldStatus == MemoryByteStatus::RACE) {
-                if (ExistRace(oldValue, memType)) {
+                if (oldThreadId != threadId && ExistRace(oldValue, memType)) {
                     newValue = ExtractSamePcStatus(MemoryByteStatus::RACE, oldValue, threadId, addrInfo);
                     AssignErrorInfo<KernelErrorType::THREAD_WW_RACE>(oldValue, threadId, auxInfo);
                     if (!overlapIsWrite && oldThreadId != threadId) {

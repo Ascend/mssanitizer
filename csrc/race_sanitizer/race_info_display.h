@@ -38,7 +38,8 @@ inline std::ostream &PrintClassicLocation(std::ostream &os, uint64_t fileNo, uin
                  " (serialNo:" << serialNo << ")" << std::endl;
 }
 
-inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event, uint64_t serialNo)
+inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event, uint64_t serialNo,
+    bool isOnlineError = false)
 {
     if (event.pc == 0UL) {
         return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo);
@@ -53,7 +54,9 @@ inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event
         return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo);
     }
 
-    os << "at pc current 0x" << std::hex << event.pc << std::dec << " (serialNo:" << serialNo << ")" << std::endl;
+    os << "at pc current 0x" << std::hex << event.pc << std::dec;
+    if (!isOnlineError) os << " (serialNo:" << serialNo << ")";
+    os << std::endl;
     return CallStack::Instance().FormatCallStack(os, stack);
 }
 
@@ -79,7 +82,7 @@ inline std::ostream &operator<<(std::ostream &os, SimtThreadLocation const &thre
 }
 
 inline void FormatEvent(std::ostream &os, const ErrorEvent &event, std::string const &accessType,
-    std::string const &errType)
+    std::string const &errType, bool isOnlineError = false)
 {
     os << "======    ";
     if (!event.isSimt) {
@@ -91,7 +94,7 @@ inline void FormatEvent(std::ostream &os, const ErrorEvent &event, std::string c
     }
     os << " at " << errType << "()+0x" << std::hex << event.addr << std::dec << " in block " << event.coreId
        << " (" << event.blockType << ")" << " on device " << event.deviceId << " ";
-    PrintLocationInfo(os, event, event.serialNo);
+    PrintLocationInfo(os, event, event.serialNo, isOnlineError);
 }
 
 inline std::ostream &operator << (std::ostream &os, RaceDispInfo const &raceInfo)
@@ -115,8 +118,8 @@ inline std::ostream &operator << (std::ostream &os, RaceDispInfo const &raceInfo
     std::string errType = accessType2.substr(1, 1) + "A" + accessType1.substr(1, 1);  // 有空格，取"W"和"R"
     os << "====== ERROR: Potential " << errType << " hazard detected at " << static_cast<MemType>(raceEvent1.memType)
        << RaceFormatKernelName{raceEvent1.deviceId, raceEvent1.kernelIdx} << ":" << std::endl;
-    FormatEvent(os, raceEvent1, accessType1, errType);
-    FormatEvent(os, raceEvent2, accessType2, errType);
+    FormatEvent(os, raceEvent1, accessType1, errType, raceInfo.isOnlineError);
+    FormatEvent(os, raceEvent2, accessType2, errType, raceInfo.isOnlineError);
     return os;
 }
 

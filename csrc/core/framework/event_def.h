@@ -355,6 +355,7 @@ struct ErrorEvent {
 // 竞争检测信息展示单元
 struct RaceDispInfo {
     ErrorEvent p1, p2;
+    bool isOnlineError{false};
 
     bool IsSameSimt(const RaceDispInfo &other) const {
         return (p1.IsSameSimt(other.p1) && p2.IsSameSimt(other.p2)) ||

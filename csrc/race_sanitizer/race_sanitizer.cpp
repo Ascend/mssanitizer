@@ -256,6 +256,7 @@ void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
             kernelErrorDesc.errorType == KernelErrorType::THREAD_WR_RACE ||
             kernelErrorDesc.errorType == KernelErrorType::THREAD_WW_RACE) {
             RaceDispInfo error{};
+            error.isOnlineError = true;
             ErrorEvent event{};
             auto &errorDesc = kernelErrorDesc.payload.raceDesc;
             event.deviceId = RuntimeContext::Instance().GetDeviceId();
@@ -271,7 +272,7 @@ void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
             event.memType = static_cast<uint8_t>(AddrSpaceToMemType(kernelErrorDesc.space));
             event.threadLoc = kernelErrorDesc.threadLoc;
             error.p1 = event;
-            
+
             event.accessType = ThreadRaceToAccessType(kernelErrorDesc.errorType, true);
             event.pc = errorDesc.conflictedLocation.pc;
             event.fileNo = errorDesc.conflictedLocation.fileNo;
