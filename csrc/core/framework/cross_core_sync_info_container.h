@@ -15,11 +15,12 @@
  * ------------------------------------------------------------------------- */
 
 
-#ifndef RACE_SANITIZER_ALG_FRAMEWORK_CROSS_CORE_SYNC_INFO_CONTAINER_H
-#define RACE_SANITIZER_ALG_FRAMEWORK_CROSS_CORE_SYNC_INFO_CONTAINER_H
+#ifndef CORE_FRAMEWORK_CROSS_CORE_SYNC_INFO_CONTAINER_H
+#define CORE_FRAMEWORK_CROSS_CORE_SYNC_INFO_CONTAINER_H
 #include <queue>
 #include <map>
 #include "core/framework/event_def.h"
+
 namespace Sanitizer {
 
 class SemCores {

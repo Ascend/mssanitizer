@@ -15,13 +15,13 @@
  * ------------------------------------------------------------------------- */
 
 
-#ifndef RACE_SANITIZER_ALG_FRAMEWORK_SYNC_EVENT_DATA_BASE_H
-#define RACE_SANITIZER_ALG_FRAMEWORK_SYNC_EVENT_DATA_BASE_H
+#ifndef CORE_FRAMEWORK_SYNC_EVENT_DATA_BASE_H
+#define CORE_FRAMEWORK_SYNC_EVENT_DATA_BASE_H
 
 #include <queue>
 #include <unordered_map>
 #include <cstddef>
-#include "vector_clock.h"
+#include "core/framework/vector_clock.h"
 
 namespace Sanitizer {
 

@@ -15,8 +15,9 @@
  * ------------------------------------------------------------------------- */
 
 #include "cross_core_sync_info_container.h"
-#include "vector_clock.h"
+#include "core/framework/vector_clock.h"
 #include "core/framework/utility/log.h"
+
 namespace Sanitizer {
 void CrossCoreSyncInfoContainer::Init(uint32_t blockNum, KernelType kernelType)
 {

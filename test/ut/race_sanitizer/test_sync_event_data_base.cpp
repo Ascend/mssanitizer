@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "alg_framework/sync_event_data_base.h"
+#include "core/framework/sync_event_data_base.h"
 
 using namespace Sanitizer;
 
@@ -32,7 +32,7 @@ TEST(SyncEventDataBase, set_and_wait_same_event_expect_success)
     e1.info.eventId = 3;
     e1.info.memType = 4;
     db.Set(e1, vt1);
-    
+
     ASSERT_TRUE(db.Get(e1, vt1));
 }
 
@@ -59,13 +59,13 @@ TEST(SyncEventDataBase, set_and_wait_different_event_expect_fail)
 TEST(SyncEventDataBase, set_and_wait_expect_get_the_correct_vector_time)
 {
     SyncEventDataBase db;
-    
+
     SyncEvent e1;
     VectorTime vt1;
     vt1.resize(static_cast<uint8_t>(PipeType::SIZE), 2);
     VectorClock::UpdateLogicTime(vt1, static_cast<uint8_t>(PipeType::PIPE_V));
     VectorClock::UpdateLogicTime(vt1, static_cast<uint8_t>(PipeType::PIPE_V));
-    
+
     e1.info.srcPipe = 1;
     e1.info.dstPipe = 2;
     e1.info.eventId = 3;
@@ -80,7 +80,7 @@ TEST(SyncEventDataBase, set_and_wait_expect_get_the_correct_vector_time)
 TEST(SyncEventDataBase, set_many_times_then_wait_expect_get_the_correct_vector_time)
 {
     SyncEventDataBase db;
-    
+
     SyncEvent e1;
     e1.info.srcPipe = 1;
     e1.info.dstPipe = 2;
@@ -101,11 +101,11 @@ TEST(SyncEventDataBase, set_many_times_then_wait_expect_get_the_correct_vector_t
     vt2.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     db.Get(e1, vt1);
     ASSERT_TRUE(VectorClock::IsEqual(vt1, vt2));
-    
+
     VectorClock::UpdateLogicTime(vt2, static_cast<uint8_t>(PipeType::PIPE_V));
     db.Get(e1, vt1);
     ASSERT_TRUE(VectorClock::IsEqual(vt1, vt2));
-    
+
     VectorClock::UpdateLogicTime(vt2, static_cast<uint8_t>(PipeType::PIPE_V));
     db.Get(e1, vt1);
     ASSERT_TRUE(VectorClock::IsEqual(vt1, vt2));

@@ -26,7 +26,8 @@
 #include "core/framework/event_def.h"
 #include "core/framework/platform_config.h"
 #include "core/framework/record_defs.h"
-#include "vector_clock.h"
+#include "core/framework/vector_clock.h"
+#include "core/framework/pipeline_replayer.h"
 
 namespace Sanitizer {
 
@@ -38,31 +39,6 @@ inline RaceDispInfo FillRaceDispInfo(const MemEvent &event1, const MemEvent &eve
     info.p1.Init(event1, event1DynamicErrIdx);
     info.p2.Init(event2, event2DynamicErrIdx);
     return info;
-}
-
-inline bool NeedExpandBlockDim(KernelType kernelType, DeviceType deviceType)
-{
-    return kernelType == KernelType::MIX && HasSubBlocks(deviceType);
-}
-
-inline uint32_t GetEventExpandBlockIndex(const SanEvent &event)
-{
-    uint32_t aicoreIndex =
-        event.loc.blockType == BlockType::AIVEC ? event.loc.coreId / C220_VEC_SUB_BLOCKDIM : event.loc.coreId;
-    uint32_t subBlockIndex =
-        event.loc.blockType == BlockType::AIVEC ? event.loc.coreId % C220_VEC_SUB_BLOCKDIM : C220_VEC_SUB_BLOCKDIM;
-    return aicoreIndex * C220_MIX_SUB_BLOCKDIM + subBlockIndex;
-}
-
-inline uint32_t GetEventBlockIndex(const SanEvent &event, KernelType kernelType, DeviceType deviceType, RaceCheckType checkType)
-{
-    if (!NeedExpandBlockDim(kernelType, deviceType)) {
-        if (checkType == RaceCheckType::SINGLE_BLOCK_CHECK) {
-            return 0U;
-        }
-        return event.loc.coreId;
-    }
-    return GetEventExpandBlockIndex(event);
 }
 
 template <RaceCheckType checkType>
@@ -136,4 +112,3 @@ private:
 
 }
 #endif
-

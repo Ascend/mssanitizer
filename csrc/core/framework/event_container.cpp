@@ -145,6 +145,17 @@ void EventContainer::PrintStuckSerialNo() const
     }
 }
 
+void EventContainer::ForEachFrontEvent(const std::function<void(const SanEvent &)> &func) const {
+    if (!func) {
+        return;
+    }
+    for (const auto &q : ques_) {
+        if (!q.empty()) {
+            func(q.front());
+        }
+    }
+}
+
 void EventContainer::SwitchToNextDevice()
 {
     deviceIndex_ = (deviceIndex_ + 1U) % deviceNum_;

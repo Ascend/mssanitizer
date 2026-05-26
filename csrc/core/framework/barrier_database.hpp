@@ -17,9 +17,8 @@
 #ifndef RACE_SANITIZER_ALG_FRAMEWORK_BARRIER_DATABASE_HPP
 #define RACE_SANITIZER_ALG_FRAMEWORK_BARRIER_DATABASE_HPP
 
-#include "vector_clock.h"
-
-#include "barrier_database.h"
+#include "core/framework/vector_clock.h"
+#include "core/framework/barrier_database.h"
 
 namespace Sanitizer {
 

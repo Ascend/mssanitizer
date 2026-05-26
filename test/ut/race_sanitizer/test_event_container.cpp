@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "alg_framework/event_container.h"
+#include "core/framework/event_container.h"
 
 using namespace Sanitizer;
 
@@ -83,7 +83,7 @@ TEST(EventContainer, pop_some_events_and_expect_the_size_is_right)
         ASSERT_EQ(e.pipe, PipeType::PIPE_M);
         container.Pop();
     }
-    
+
     container.SetQueIndex(PipeType::PIPE_V);
     for (uint32_t i = 0; i < 100U; i++) {
         if (container.IsCurQueEmpty()) {

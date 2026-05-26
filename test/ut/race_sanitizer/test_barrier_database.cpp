@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include "race_sanitizer/alg_framework/barrier_database.hpp"
+#include "core/framework/barrier_database.hpp"
 
 using namespace Sanitizer;
 

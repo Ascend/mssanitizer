@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include "alg_framework/cross_core_sync_info_container.h"
+#include "core/framework/cross_core_sync_info_container.h"
 
 using namespace Sanitizer;
 

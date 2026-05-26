@@ -19,16 +19,16 @@
 
 #include <vector>
 
-#include "barrier_database.hpp"
+#include "core/framework/barrier_database.hpp"
 #include "core/framework/config.h"
 #include "core/framework/event_def.h"
+#include "core/framework/pipe_line.h"
+#include "core/framework/event_container.h"
 #include "core/framework/utility/numeric.h"
-#include "cross_core_sync_info_container.h"
-#include "event_container.h"
+#include "core/framework/cross_core_sync_info_container.h"
+#include "core/framework/sync_event_data_base.h"
 #include "mem_event_checker.h"
-#include "pipe_line.h"
 #include "signal_database.h"
-#include "sync_event_data_base.h"
 
 namespace Sanitizer {
 

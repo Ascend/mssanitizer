@@ -15,8 +15,8 @@
  * ------------------------------------------------------------------------- */
 
 
-#ifndef RACE_SANITIZER_ALG_FRAMEWORK_VECTOR_CLOCK_H
-#define RACE_SANITIZER_ALG_FRAMEWORK_VECTOR_CLOCK_H
+#ifndef CORE_FRAMEWORK_VECTOR_CLOCK_H
+#define CORE_FRAMEWORK_VECTOR_CLOCK_H
 
 #include <array>
 #include "core/framework/event_def.h"

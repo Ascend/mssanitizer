@@ -20,7 +20,7 @@
 
 #include <functional>
 #include "race_alg_base.h"
-#include "sync_event_data_base.h"
+#include "core/framework/sync_event_data_base.h"
 
 namespace Sanitizer {
 

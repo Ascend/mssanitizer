@@ -15,8 +15,8 @@
  * ------------------------------------------------------------------------- */
 
 
-#ifndef RACE_SANITIZER_ALG_FRAMEWORK_PIPE_LINE_H
-#define RACE_SANITIZER_ALG_FRAMEWORK_PIPE_LINE_H
+#ifndef CORE_FRAMEWORK_PIPE_LINE_H
+#define CORE_FRAMEWORK_PIPE_LINE_H
 
 #include <functional>
 #include "event_container.h"

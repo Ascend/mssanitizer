@@ -21,10 +21,10 @@
 #include <vector>
 #include <memory>
 #include "core/framework/event_def.h"
-#include "event_container.h"
-#include "cross_core_sync_info_container.h"
-#include "pipe_line.h"
-#include "vector_clock.h"
+#include "core/framework/pipe_line.h"
+#include "core/framework/event_container.h"
+#include "core/framework/cross_core_sync_info_container.h"
+#include "core/framework/vector_clock.h"
 #include "mem_event_checker.h"
 
 namespace Sanitizer {
@@ -36,8 +36,9 @@ public:
         uint32_t blockIdx;    // 当前get_buf发生的blockIdx
         uint64_t bufId;       // 当前get_buf对应的bufId
         bool operator<(const GetBufKey& other) const {
-            if (blockIdx != other.blockIdx) 
+            if (blockIdx != other.blockIdx) {
                 return blockIdx < other.blockIdx;
+            }
             return bufId < other.bufId;
         }
     };

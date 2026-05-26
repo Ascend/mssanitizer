@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "alg_framework/vector_clock.h"
+#include "core/framework/vector_clock.h"
 
 using namespace Sanitizer;
 
@@ -65,4 +65,3 @@ TEST(VectorClock, check_is_happens_before_expect_success)
     ASSERT_TRUE(VectorClock::IsNotHappensBefore(vt1, vt2, static_cast<uint8_t>(PipeType::PIPE_M),
         static_cast<uint8_t>(PipeType::PIPE_V)));
 }
-

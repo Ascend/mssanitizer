@@ -21,7 +21,7 @@
 #include <unordered_map>
 
 #include "sanitizer_report.h"
-#include "vector_clock.h"
+#include "core/framework/vector_clock.h"
 
 namespace Sanitizer {
 

@@ -19,13 +19,12 @@
 #include "core/framework/kernel_manager.h"
 #include "core/framework/record_defs.h"
 #include "core/framework/utility/spans.h"
-#include "race_sanitizer/alg_framework/cross_core_sync_info_container.h"
-#include "race_sanitizer/alg_framework/event_container.h"
-#include "race_sanitizer/alg_framework/mem_event_checker.h"
-#include "race_sanitizer/alg_framework/pipe_line.h"
-#include "race_sanitizer/alg_framework/vector_clock.h"
+#include "core/framework/pipe_line.h"
+#include "core/framework/event_container.h"
+#include "core/framework/cross_core_sync_info_container.h"
+#include "core/framework/vector_clock.h"
+#include "mem_event_checker.h"
 #include "sanitizer_report.h"
-
 #include "cross_npu_race_alg_impl.h"
 
 namespace Sanitizer {

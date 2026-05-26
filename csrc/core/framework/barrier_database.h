@@ -14,8 +14,8 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-#ifndef RACE_SANITIZER_ALG_FRAMEWORK_BARRIER_DATABASE_H
-#define RACE_SANITIZER_ALG_FRAMEWORK_BARRIER_DATABASE_H
+#ifndef CORE_FRAMEWORK_BARRIER_DATABASE_H
+#define CORE_FRAMEWORK_BARRIER_DATABASE_H
 
 #include <unordered_map>
 #include <unordered_set>

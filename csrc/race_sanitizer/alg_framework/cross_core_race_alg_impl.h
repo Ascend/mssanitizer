@@ -21,9 +21,9 @@
 #include <functional>
 #include <map>
 
-#include "barrier_database.hpp"
 #include "race_alg_base.h"
-#include "sync_event_data_base.h"
+#include "core/framework/sync_event_data_base.h"
+#include "core/framework/barrier_database.hpp"
 
 namespace Sanitizer {
 

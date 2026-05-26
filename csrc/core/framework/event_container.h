@@ -15,11 +15,12 @@
  * ------------------------------------------------------------------------- */
 
 
-#ifndef RACE_SANITIZER_ALG_FRAMEWORK_EVENT_CONTAINER_H
-#define RACE_SANITIZER_ALG_FRAMEWORK_EVENT_CONTAINER_H
+#ifndef CORE_FRAMEWORK_EVENT_CONTAINER_H
+#define CORE_FRAMEWORK_EVENT_CONTAINER_H
 
 #include <queue>
 #include <memory>
+#include <functional>
 #include "core/framework/event_def.h"
 
 namespace Sanitizer {
@@ -49,6 +50,8 @@ public:
     bool IsAllDeviceStuck() const;
     // 打印卡住的事件serialNo
     void PrintStuckSerialNo() const;
+    // 遍历所有非空队列的首个事件，供外部回调使用
+    void ForEachFrontEvent(const std::function<void(const SanEvent &)> &func) const;
     // 切换到下一个 device
     void SwitchToNextDevice();
     // 切换到下一个block的PIPES队列
