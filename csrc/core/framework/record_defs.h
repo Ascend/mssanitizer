@@ -169,8 +169,9 @@ enum class RecordType : uint32_t {
     STI_ATOMIC,
     ST_DEV,
     LD_DEV,
+    DCCI,
 
-     /// data_move
+    /// data_move
     DMA_MOV = 100,
     MOV_ALIGN,
     MOV_ALIGN_V2,
@@ -497,6 +498,18 @@ enum class AccessType: uint8_t {
     READ = 0U,
     WRITE,
     MEMCPY_BLOCKS,
+};
+
+enum class DcciEntireType : uint8_t {
+    SINGLE_CACHE_LINE = 0,
+    ENTIRE_DATA_CACHE,
+};
+
+enum class DcciDstType : uint8_t {
+    CACHE_LINE_ALL = 0,
+    CACHE_LINE_UB,
+    CACHE_LINE_OUT,
+    CACHE_LINE_ATOMIC,
 };
 
 /// 设备信息
@@ -870,6 +883,14 @@ struct RedRecord {
     Location location;
     uint8_t isAtom;
     DetailedDataType detailedDataType;
+};
+
+struct DcciRecord {
+    Location location;
+    uint64_t addr;
+    AddressSpace space;
+    DcciEntireType entire;
+    DcciDstType type;
 };
 
 struct DmaMovRecord {
@@ -1279,7 +1300,7 @@ struct FftsSyncRecord {
     uint8_t flagID;
     uint8_t vecSubBlockDim;
 };
- 
+
 struct WaitFlagDevRecord {
     Location location;
     uint8_t flagID;
@@ -1970,6 +1991,7 @@ struct KernelRecord {
         ShadowMemoryRecord shadowMemoryRecord;
         RegisterSetRecord registerSetRecord;
         SimtSyncRecord simtSyncRecord;
+        DcciRecord dcciRecord;
     } payload;
 };
 

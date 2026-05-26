@@ -79,420 +79,562 @@ inline bool ParseMemErrorType(uint8_t const *ptr, KernelErrorRecord &errorRecord
 }
 
 const std::map<RecordType, std::function<bool(uint8_t const *, KernelRecord &, uint64_t &)>> RECORD_TYPE_FUNC_MAP = {
-    {RecordType::LOAD, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::STORE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::LD, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::LD_IO, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::ST, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::ST_IO, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::STP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::STI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::STI_IO, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::LDP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::ST_ATOMIC, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::STI_ATOMIC, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::ST_DEV, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::LD_DEV, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::DMA_MOV, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.dmaMovRecord, offset);
-    }},
-    {RecordType::DMA_MOV_CONV_RELU, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.dmaMovConvReluRecord, offset);
-    }},
-    {RecordType::DMA_MOV_DEPTH_WISE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.dmaMovConvReluRecord, offset);
-    }},
-    {RecordType::DMA_MOV_ND2NZ, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.dmaMovNd2nzRecord, offset);
-    }},
-    {RecordType::DMA_MOV_ND2NZ_D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.dmaMovNd2nzDavRecord, offset);
-    }},
-    {RecordType::DMA_MOV_DN2NZ_D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.dmaMovNd2nzDavRecord, offset);
-    }},
-    {RecordType::MOV_ALIGN, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movAlignRecord, offset);
-    }},
-    {RecordType::MOV_ALIGN_V2, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movAlignRecordV2, offset);
-    }},
-    {RecordType::ND_DMA_OUT_TO_UB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.ndDMAOut2UbRecord, offset);
-    }},
-    {RecordType::MOV_BT, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movBtRecord, offset);
-    }},
-    {RecordType::MOV_FP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movFpRecord, offset);
-    }},
-    {RecordType::FIX_L0C_TO_L1, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movFpRecord, offset);
-    }},
-    {RecordType::FIX_L0C_TO_UB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movFpRecord, offset);
-    }},
-    {RecordType::MOV_L1_TO_UB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movL1UbRecord, offset);
-    }},
-    {RecordType::VEC_DUP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.vecDupRecord, offset);
-    }},
-    {RecordType::LOAD_2D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.load2DRecord, offset);
-    }},
-    {RecordType::LOAD_L1_2D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadL12DRecord, offset);
-    }},
-    {RecordType::LOAD_L1_MX_2D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadL1Mx2DRecord, offset);
-    }},
-    {RecordType::LOAD_L1_2D_TRANSPOSE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.load2DTransposeRecord, offset);
-    }},
-    {RecordType::LOAD_2D_SPARSE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.load2DSparseRecord, offset);
-    }},
-    {RecordType::LOAD_2D_TRANSPOSE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.load2DTransposeRecord, offset);
-    }},
-    {RecordType::DECOMPRESS_HEADER, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.decompressHeaderRecord, offset);
-    }},
-    {RecordType::LOAD_3D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.load3DRecord, offset);
-    }},
-    {RecordType::LOAD_3D_V2, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.load3DV2Record, offset);
-    }},
-    {RecordType::LOAD_IMAGE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadImageRecord, offset);
-    }},
-    {RecordType::LOAD_SMASK, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadSmaskRecord, offset);
-    }},
-    {RecordType::BROADCAST, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.broadcastRecord, offset);
-    }},
-    {RecordType::DC_PRELOAD, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.dcPreloadRecord, offset);
-    }},
-    {RecordType::SCATTERVNCHWCONV, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.scatterVnchwconvRecord, offset);
-    }},
-    {RecordType::SCATTERVNCHWCONV_A5, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.scatterVnchwconvRecord, offset);
-    }},
-    {RecordType::VBS32_A5, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.vbs32Record, offset);
-    }},
-    {RecordType::SET_2D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.set2DRecord, offset);
-    }},
-    {RecordType::LOAD_B2, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadB2Record, offset);
-    }},
-    {RecordType::LOAD_A_WINOGRAD, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadAWinogradRecord, offset);
-    }},
-    {RecordType::LOAD_B_WINOGRAD, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadBWinogradRecord, offset);
-    }},
-    {RecordType::UNARY_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
-    }},
-    {RecordType::VGATHER, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.vgatherRecord, offset);
-    }},
-    {RecordType::ELEMENT, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.elementRecord, offset);
-    }},
-    {RecordType::VCONV_DST_S4_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
-    }},
-    {RecordType::VCONV_SRC_S4_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
-    }},
-    {RecordType::VCOPY_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
-    }},
-    {RecordType::VREDUCEV2_UNARY, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
-    }},
-    {RecordType::VREDUCEV2_BINARY, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
-    }},
-    {RecordType::VREDUCEV2, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.reduceV2Record, offset);
-    }},
-    {RecordType::VMRGSORT4_OP_C220, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
-    }},
-    {RecordType::VMRGSORT4_OP_M200, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
-    }},
-    {RecordType::VMRGSORT4_OP_C310, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.vms4V2RecordA5, offset);
-    }},
-    {RecordType::BINARY_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
-    }},
-    {RecordType::VSEL_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
-    }},
-    {RecordType::TERNARY_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
-    }},
-    {RecordType::MATRIX_MUL_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.matrixMulOpRecord, offset);
-    }},
-    {RecordType::MMAD_A5, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.mmadA5Record, offset);
-    }},
-    {RecordType::VEC_REGPROPCOOR_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.vecRegPropCoordOpRecord, offset);
-    }},
-    {RecordType::MSTX_STUB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.mstxRecord, offset);
-    }},
-    {RecordType::REDUCE_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.reduceOpRecord, offset);
-    }},
-    {RecordType::CMPMASK_OP, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.cmpMaskRecord, offset);
-    }},
-    {RecordType::SET_FLAG, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::SET_FLAGI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::WAIT_FLAG, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::WAIT_FLAGI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::GET_BUF, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::GET_BUFI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::RLS_BUF, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::RLS_BUFI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::GET_BUF_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::GET_BUFI_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::RLS_BUF_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::RLS_BUFI_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
-    }},
-    {RecordType::FFTS_SYNC, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.fftsSyncRecord, offset);
-    }},
-    {RecordType::WAIT_FLAG_DEV, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.waitFlagDevRecord, offset);
-    }},
-    {RecordType::WAIT_FLAG_DEV_PIPE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
-    }},
-    {RecordType::WAIT_FLAG_DEVI_PIPE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
-    }},
-    {RecordType::SET_INTRA_BLOCK, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::WAIT_INTRA_BLOCK, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::SET_INTRA_BLOCKI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::WAIT_INTRA_BLOCKI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::FFTS_SYNC_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.fftsSyncRecord, offset);
-    }},
-    {RecordType::WAIT_FLAG_DEV_PIPE_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
-    }},
-    {RecordType::WAIT_FLAG_DEVI_PIPE_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
-    }},
-    {RecordType::SET_INTRA_BLOCK_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::SET_INTRA_BLOCKI_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::WAIT_INTRA_BLOCK_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::WAIT_INTRA_BLOCKI_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
-    }},
-    {RecordType::SET_FLAG_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::SET_FLAGI_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::WAIT_FLAG_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::WAIT_FLAGI_V, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
-    }},
-    {RecordType::HSET_FLAG, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
-    }},
-    {RecordType::HSET_FLAGI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
-    }},
-    {RecordType::HWAIT_FLAG, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
-    }},
-    {RecordType::HWAIT_FLAGI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
-    }},
-    {RecordType::PIPE_BARRIER, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.pipeBarrierRecord, offset);
-    }},
-    {RecordType::SET_ATOMIC, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.atomicModeRecord, offset);
-    }},
-    {RecordType::IB_SET_STUB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.softSyncRecord, offset);
-    }},
-    {RecordType::IB_WAIT_STUB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.softSyncRecord, offset);
-    }},
-    {RecordType::SYNC_ALL_STUB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.softSyncRecord, offset);
-    }},
-    {RecordType::SIMT_LDG, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_STG, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_LDS, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_STS, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_LDK, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_STK, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_LD, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_ST, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::SIMT_ATOM, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtAtomRecord, offset);
-    }},
-    {RecordType::SIMT_RED, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
-    }},
-    {RecordType::ONLINE_ERROR, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseMemErrorType(record, kernelRecord.payload.kernelErrorRecord, offset);
-    }},
-    {RecordType::SCALAR_RED, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::SCALAR_ATOM, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::LDVA, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
-    }},
-    {RecordType::SET_L1_2D, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.setL12DRecord, offset);
-    }},
-    {RecordType::MOV_UB_TO_L1, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movL1UbRecord, offset);
-    }},
-    {RecordType::MOV_UB_TO_UB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movL1UbRecord, offset);
-    }},
-    {RecordType::MOV_CBUF_TO_BT, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movL1BtRecord, offset);
-    }},
-    {RecordType::MOV_CBUF_TO_FB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.movL1FbRecord, offset);
-    }},
-    {RecordType::SET_VECTOR_MASK_0, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::SET_VECTOR_MASK_1, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::SET_CTRL, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::SET_FFTS_BASE_ADDR, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::SET_FPC, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::SET_QUANT_PRE, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::SET_QUANT_POST, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::SET_LRELU_ALPHA, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
-    }},
-    {RecordType::THREAD_BLOCK_BARRIER, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtSyncRecord, offset);
-    }}
+    {RecordType::LOAD,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::STORE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::LD,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::LD_IO,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::ST,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::ST_IO,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::STP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::STI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::STI_IO,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::LDP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::ST_ATOMIC,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::STI_ATOMIC,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::ST_DEV,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::LD_DEV,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::DMA_MOV,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dmaMovRecord, offset);
+        }},
+    {RecordType::DMA_MOV_CONV_RELU,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dmaMovConvReluRecord, offset);
+        }},
+    {RecordType::DMA_MOV_DEPTH_WISE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dmaMovConvReluRecord, offset);
+        }},
+    {RecordType::DMA_MOV_ND2NZ,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dmaMovNd2nzRecord, offset);
+        }},
+    {RecordType::DMA_MOV_ND2NZ_D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dmaMovNd2nzDavRecord, offset);
+        }},
+    {RecordType::DMA_MOV_DN2NZ_D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dmaMovNd2nzDavRecord, offset);
+        }},
+    {RecordType::MOV_ALIGN,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movAlignRecord, offset);
+        }},
+    {RecordType::MOV_ALIGN_V2,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movAlignRecordV2, offset);
+        }},
+    {RecordType::ND_DMA_OUT_TO_UB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.ndDMAOut2UbRecord, offset);
+        }},
+    {RecordType::MOV_BT,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movBtRecord, offset);
+        }},
+    {RecordType::MOV_FP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movFpRecord, offset);
+        }},
+    {RecordType::FIX_L0C_TO_L1,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movFpRecord, offset);
+        }},
+    {RecordType::FIX_L0C_TO_UB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movFpRecord, offset);
+        }},
+    {RecordType::MOV_L1_TO_UB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movL1UbRecord, offset);
+        }},
+    {RecordType::VEC_DUP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.vecDupRecord, offset);
+        }},
+    {RecordType::LOAD_2D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.load2DRecord, offset);
+        }},
+    {RecordType::LOAD_L1_2D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadL12DRecord, offset);
+        }},
+    {RecordType::LOAD_L1_MX_2D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadL1Mx2DRecord, offset);
+        }},
+    {RecordType::LOAD_L1_2D_TRANSPOSE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.load2DTransposeRecord, offset);
+        }},
+    {RecordType::LOAD_2D_SPARSE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.load2DSparseRecord, offset);
+        }},
+    {RecordType::LOAD_2D_TRANSPOSE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.load2DTransposeRecord, offset);
+        }},
+    {RecordType::DECOMPRESS_HEADER,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.decompressHeaderRecord, offset);
+        }},
+    {RecordType::LOAD_3D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.load3DRecord, offset);
+        }},
+    {RecordType::LOAD_3D_V2,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.load3DV2Record, offset);
+        }},
+    {RecordType::LOAD_IMAGE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadImageRecord, offset);
+        }},
+    {RecordType::LOAD_SMASK,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadSmaskRecord, offset);
+        }},
+    {RecordType::BROADCAST,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.broadcastRecord, offset);
+        }},
+    {RecordType::DC_PRELOAD,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dcPreloadRecord, offset);
+        }},
+    {RecordType::SCATTERVNCHWCONV,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.scatterVnchwconvRecord, offset);
+        }},
+    {RecordType::SCATTERVNCHWCONV_A5,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.scatterVnchwconvRecord, offset);
+        }},
+    {RecordType::VBS32_A5,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.vbs32Record, offset);
+        }},
+    {RecordType::SET_2D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.set2DRecord, offset);
+        }},
+    {RecordType::LOAD_B2,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadB2Record, offset);
+        }},
+    {RecordType::LOAD_A_WINOGRAD,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadAWinogradRecord, offset);
+        }},
+    {RecordType::LOAD_B_WINOGRAD,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadBWinogradRecord, offset);
+        }},
+    {RecordType::UNARY_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
+        }},
+    {RecordType::VGATHER,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.vgatherRecord, offset);
+        }},
+    {RecordType::ELEMENT,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.elementRecord, offset);
+        }},
+    {RecordType::VCONV_DST_S4_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
+        }},
+    {RecordType::VCONV_SRC_S4_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
+        }},
+    {RecordType::VCOPY_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
+        }},
+    {RecordType::VREDUCEV2_UNARY,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
+        }},
+    {RecordType::VREDUCEV2_BINARY,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
+        }},
+    {RecordType::VREDUCEV2,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.reduceV2Record, offset);
+        }},
+    {RecordType::VMRGSORT4_OP_C220,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
+        }},
+    {RecordType::VMRGSORT4_OP_M200,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.unaryOpRecord, offset);
+        }},
+    {RecordType::VMRGSORT4_OP_C310,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.vms4V2RecordA5, offset);
+        }},
+    {RecordType::BINARY_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
+        }},
+    {RecordType::VSEL_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
+        }},
+    {RecordType::TERNARY_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.binaryOpRecord, offset);
+        }},
+    {RecordType::MATRIX_MUL_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.matrixMulOpRecord, offset);
+        }},
+    {RecordType::MMAD_A5,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.mmadA5Record, offset);
+        }},
+    {RecordType::VEC_REGPROPCOOR_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.vecRegPropCoordOpRecord, offset);
+        }},
+    {RecordType::MSTX_STUB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.mstxRecord, offset);
+        }},
+    {RecordType::REDUCE_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.reduceOpRecord, offset);
+        }},
+    {RecordType::CMPMASK_OP,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.cmpMaskRecord, offset);
+        }},
+    {RecordType::SET_FLAG,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::SET_FLAGI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::WAIT_FLAG,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::WAIT_FLAGI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::GET_BUF,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::GET_BUFI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::RLS_BUF,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::RLS_BUFI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::GET_BUF_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::GET_BUFI_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::RLS_BUF_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::RLS_BUFI_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.bufRecord, offset);
+        }},
+    {RecordType::FFTS_SYNC,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.fftsSyncRecord, offset);
+        }},
+    {RecordType::WAIT_FLAG_DEV,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.waitFlagDevRecord, offset);
+        }},
+    {RecordType::WAIT_FLAG_DEV_PIPE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
+        }},
+    {RecordType::WAIT_FLAG_DEVI_PIPE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
+        }},
+    {RecordType::SET_INTRA_BLOCK,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::WAIT_INTRA_BLOCK,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::SET_INTRA_BLOCKI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::WAIT_INTRA_BLOCKI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::FFTS_SYNC_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.fftsSyncRecord, offset);
+        }},
+    {RecordType::WAIT_FLAG_DEV_PIPE_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
+        }},
+    {RecordType::WAIT_FLAG_DEVI_PIPE_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.waitFlagDevPipeRecord, offset);
+        }},
+    {RecordType::SET_INTRA_BLOCK_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::SET_INTRA_BLOCKI_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::WAIT_INTRA_BLOCK_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::WAIT_INTRA_BLOCKI_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.intraBlockSyncRecord, offset);
+        }},
+    {RecordType::SET_FLAG_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::SET_FLAGI_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::WAIT_FLAG_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::WAIT_FLAGI_V,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.syncRecord, offset);
+        }},
+    {RecordType::HSET_FLAG,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
+        }},
+    {RecordType::HSET_FLAGI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
+        }},
+    {RecordType::HWAIT_FLAG,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
+        }},
+    {RecordType::HWAIT_FLAGI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.hardSyncRecord, offset);
+        }},
+    {RecordType::PIPE_BARRIER,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.pipeBarrierRecord, offset);
+        }},
+    {RecordType::SET_ATOMIC,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.atomicModeRecord, offset);
+        }},
+    {RecordType::IB_SET_STUB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.softSyncRecord, offset);
+        }},
+    {RecordType::IB_WAIT_STUB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.softSyncRecord, offset);
+        }},
+    {RecordType::SYNC_ALL_STUB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.softSyncRecord, offset);
+        }},
+    {RecordType::SIMT_LDG,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_STG,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_LDS,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_STS,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_LDK,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_STK,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_LD,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_ST,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::SIMT_ATOM,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtAtomRecord, offset);
+        }},
+    {RecordType::SIMT_RED,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        }},
+    {RecordType::ONLINE_ERROR,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseMemErrorType(record, kernelRecord.payload.kernelErrorRecord, offset);
+        }},
+    {RecordType::SCALAR_RED,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::SCALAR_ATOM,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::LDVA,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        }},
+    {RecordType::SET_L1_2D,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.setL12DRecord, offset);
+        }},
+    {RecordType::MOV_UB_TO_L1,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movL1UbRecord, offset);
+        }},
+    {RecordType::MOV_UB_TO_UB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movL1UbRecord, offset);
+        }},
+    {RecordType::MOV_CBUF_TO_BT,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movL1BtRecord, offset);
+        }},
+    {RecordType::MOV_CBUF_TO_FB,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.movL1FbRecord, offset);
+        }},
+    {RecordType::SET_VECTOR_MASK_0,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::SET_VECTOR_MASK_1,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::SET_CTRL,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::SET_FFTS_BASE_ADDR,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::SET_FPC,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::SET_QUANT_PRE,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::SET_QUANT_POST,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::SET_LRELU_ALPHA,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.registerSetRecord, offset);
+        }},
+    {RecordType::THREAD_BLOCK_BARRIER,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.simtSyncRecord, offset);
+        }},
+    {RecordType::DCCI,
+        [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+            return ParseRecordByType(record, kernelRecord.payload.dcciRecord, offset);
+        }},
 };
 
 bool ParseRecord(RecordType recordType, uint8_t const *record, KernelRecord &kernelRecord, uint64_t &recordSize)

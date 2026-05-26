@@ -102,6 +102,8 @@ std::ostream &operator<<(std::ostream &os, AccessType accessType);
 std::ostream &operator<<(std::ostream &os, MaskMode maskMode);
 std::ostream &operator<<(std::ostream &os, MemInfoSrc memInfoSrc);
 std::ostream &operator<<(std::ostream &os, CompareOp cmpOp);
+std::ostream &operator<<(std::ostream &os, DcciEntireType dcciEntireType);
+std::ostream &operator<<(std::ostream &os, DcciDstType dcciDstType);
 std::ostream &operator<<(std::ostream &os, DeviceInfoSummary const &summary);
 std::ostream &operator<<(std::ostream &os, Location const &location);
 std::ostream &operator<<(std::ostream &os, VectorMask const &vectorMask);
@@ -188,6 +190,7 @@ std::ostream &operator<<(std::ostream &os, MovL1FbRecord const &record);
 std::ostream &operator<<(std::ostream &os, ShadowMemoryRecord const &record);
 std::ostream &operator<<(std::ostream &os, RegisterSetRecord const &record);
 std::ostream &operator<<(std::ostream &os, SimtSyncRecord const &record);
+std::ostream &operator<<(std::ostream &os, DcciRecord const &record);
 }  // namespace Sanitizer
 
 #endif  // CORE_FRAMEWORK_RECORD_FORMAT_H
