@@ -665,7 +665,7 @@ AICORE_FUNC_HEAD void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src
     if (InvalidMemInfo(memInfo)) {
         return;
     }
- 
+
     uint64_t blockIdx = GetBlockIdx();
     auto record = DecompressHeaderRecord{};
     record.src = GmAddrSubOffset(memInfo, srcMemType, src);
@@ -676,13 +676,13 @@ AICORE_FUNC_HEAD void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src
     record.location.lineNo = lineNo;
 #endif
     record.location.pc = static_cast<uint64_t>(pc);
- 
+
     record.srcMemType = srcMemType;
- 
+
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<RecordType::DECOMPRESS_HEADER>(record);
 }
- 
+
 template<MemType srcMemType>
 AICORE_FUNC_HEAD void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src, uint64_t config)
 {
@@ -965,7 +965,7 @@ AICORE_FUNC_HEAD void RecordLoad3DEvent(EXTRA_PARAMS_DEC,
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.dataType = dataType;
- 
+
     uint64_t fmatrixConfig = 0, rpt = 0;
     record.matrixMode = (config1 >> 47U) & 0x1;
     if (record.matrixMode == 0) {
@@ -1036,7 +1036,7 @@ AICORE_FUNC_HEAD void RecordLoad3DV2Event(EXTRA_PARAMS_DEC,
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.dataType = dataType;
- 
+
     uint64_t fmatrixConfig = 0, rpt = 0;
     record.matrixMode = (config1 >> 47U) & 0x1;
     if (record.matrixMode == 0) {
@@ -1537,7 +1537,8 @@ AICORE_FUNC_HEAD void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_
     record.srcStride = xt & 0xFFFF; // in unit of C0 SIZE
     uint8_t unitFlag = (xt >> 32) & 0x3;
     record.enUnitFlag = (unitFlag > 1); // Mode2/Mode3表示使能unit-flag机制
-
+    record.dualDstMode = (xt >> 16) & 0x3; // dual destination mode: 0=single, 1=split M, 2=split N
+    record.subVecBlockId = (xt >> 18) & 0x1;
     // 判断属于哪种模式
     uint64_t bit29 = (xt >> 29) & 0x1;
     uint64_t bits34_38 = (xt >> 34) & 0x1F;
@@ -1587,14 +1588,14 @@ AICORE_FUNC_HEAD void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_
 {
     RecordMovFpV2Event<RecordType::MOV_FP>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
 }
- 
+
 AICORE_FUNC_HEAD void RecordFixL0CToL1Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                              uint64_t xm, uint64_t xt, bool isDstF32)
 {
     RecordMovFpV2Event<RecordType::FIX_L0C_TO_L1>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
     UpdateLreluAlpha(EXTRA_PARAMS, isDstF32);
 }
- 
+
 AICORE_FUNC_HEAD void RecordFixL0CToUBEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                              uint64_t xm, uint64_t xt, bool isDstF32)
 {
@@ -1668,7 +1669,7 @@ AICORE_FUNC_HEAD void RecordDmaMovL1OrUbEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     if (InvalidMemInfo(memInfo)) {
         return;
     }
- 
+
     uint64_t blockIdx = GetBlockIdx();
     auto record = MovL1UBRecord{};
     record.dst = dst;
@@ -1685,11 +1686,11 @@ AICORE_FUNC_HEAD void RecordDmaMovL1OrUbEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     record.location.lineNo = lineNo;
 #endif
     record.location.pc = static_cast<uint64_t>(pc);
- 
+
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<recordType>(record);
 }
- 
+
 template<MemType srcMemType, MemType dstMemType>
 AICORE_FUNC_HEAD void RecordDmaMovL2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config)
@@ -1699,7 +1700,7 @@ AICORE_FUNC_HEAD void RecordDmaMovL2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     uint16_t lenBurst = (config >> 16) & 0xFFFF;
     uint16_t srcGap = (config >> 32) & 0xFFFF;
     uint16_t dstGap = (config >> 48) & 0xFFFF;
- 
+
     RecordDmaMovL1OrUbEvent<srcMemType, dstMemType, RecordType::MOV_L1_TO_UB>(EXTRA_PARAMS, dst, src, nBurst, lenBurst, srcGap,
                                               dstGap);
 }
@@ -1712,11 +1713,11 @@ AICORE_FUNC_HEAD void RecordDmaMovUB2L1Event(EXTRA_PARAMS_DEC, uint64_t dst,
     uint16_t lenBurst = (config >> 16) & 0xFFFF;
     uint16_t srcGap = (config >> 32) & 0xFFFF;
     uint16_t dstGap = (config >> 48) & 0xFFFF;
- 
+
     RecordDmaMovL1OrUbEvent<srcMemType, dstMemType, RecordType::MOV_UB_TO_L1>(EXTRA_PARAMS, dst, src, nBurst, lenBurst, srcGap,
                                               dstGap);
 }
- 
+
 template<MemType srcMemType, MemType dstMemType>
 AICORE_FUNC_HEAD void RecordDmaMovUB2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
                                          uint64_t src, uint64_t config)
@@ -1725,7 +1726,7 @@ AICORE_FUNC_HEAD void RecordDmaMovUB2UBEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     uint16_t lenBurst = (config >> 16) & 0xFFFF;
     uint16_t srcGap = (config >> 32) & 0xFFFF;
     uint16_t dstGap = (config >> 48) & 0xFFFF;
- 
+
     RecordDmaMovL1OrUbEvent<srcMemType, dstMemType, RecordType::MOV_UB_TO_UB>(EXTRA_PARAMS, dst, src, nBurst, lenBurst, srcGap,
                                               dstGap);
 }

@@ -28,6 +28,7 @@ ReturnType RaceAlgBase::ProcessBlockSyncEvent(const SanEvent &event, RaceCheckTy
     uint32_t curPipe = eventContainer_.GetQueIndex();
     if (event.eventInfo.fftsSyncInfo.opType == SyncType::FFTS_SYNC) {
         VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
+        memChecker_.SetVecSubBlockDim(event.eventInfo.fftsSyncInfo.vecSubBlockDim);
         crossCoreSyncInfoContainer_.SetBlockSyncInfo(event.eventInfo.fftsSyncInfo.flagId,
             static_cast<FftsSyncMode>(event.eventInfo.fftsSyncInfo.mode), blockIndex,
             vc_[curPipe], event.eventInfo.fftsSyncInfo.vecSubBlockDim);
@@ -120,4 +121,3 @@ ReturnType RaceAlgBase::ProcessGetRlsBufSyncEvent(const SanEvent& event, RaceChe
 }
 
 }
-

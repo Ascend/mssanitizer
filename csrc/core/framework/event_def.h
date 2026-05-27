@@ -118,6 +118,9 @@ struct MemOpInfo {
     // 对齐大小，由内存检测引入
     uint16_t alignSize;
     bool ignoreIllegalCheck;
+    // FIX_L0C_TO_UB/FIX_L0C_TO_L1 跨核写入时，标注目标核信息，跨核检测时替代 loc.coreId/blockType
+    uint32_t dstCoreId = 0;
+    BlockType dstBlockType = BlockType::AIVEC;
 };
 
 struct SyncOpInfo {

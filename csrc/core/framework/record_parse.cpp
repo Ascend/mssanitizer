@@ -553,9 +553,8 @@ static bool SetNdNzDevPubElement(const DmaMovNd2nzDavRecord &record, SanEvent &e
     return true;
 }
 
-static void DmaMovNdorDn2nzDavSmallC0(bool srcIsNd, const DmaMovNd2nzDavRecord &dmaMovRecord, SanEvent &event,
-                                      std::vector<SanEvent> &events)
-{
+static void DmaMovNdorDn2nzDavSmallC0(
+    bool srcIsTheNd, const DmaMovNd2nzDavRecord &dmaMovRecord, SanEvent &event, std::vector<SanEvent> &events) {
     auto& memInfo = event.eventInfo.memInfo;
     uint64_t dTypeByteSize = FormatConverter::GetDataSizeByType(dmaMovRecord.dataType);
 
@@ -564,14 +563,14 @@ static void DmaMovNdorDn2nzDavSmallC0(bool srcIsNd, const DmaMovNd2nzDavRecord &
     memInfo.memType = dmaMovRecord.srcMemType;
     memInfo.opType = AccessType::READ;
     memInfo.blockNum = 1;
-    memInfo.blockSize = srcIsNd ? dmaMovRecord.dValue * dTypeByteSize : dmaMovRecord.nValue * dTypeByteSize;
+    memInfo.blockSize = srcIsTheNd ? dmaMovRecord.dValue * dTypeByteSize : dmaMovRecord.nValue * dTypeByteSize;
     memInfo.repeatTimes = 1;
-    if (srcIsNd) {
+    if (srcIsTheNd) {
         AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV_ND2NZ_D);
     } else {
         AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV_DN2NZ_D);
     }
-    uint64_t rowNum = srcIsNd ? dmaMovRecord.nValue : dmaMovRecord.dValue;
+    uint64_t rowNum = srcIsTheNd ? dmaMovRecord.nValue : dmaMovRecord.dValue;
     for (uint64_t h = 0; h < dmaMovRecord.ndNum; ++h) {
         uint64_t ndAddr = dmaMovRecord.src + h * dmaMovRecord.loop4SrcStride;
         for (uint64_t i = 0; i < rowNum; ++i) {
@@ -588,7 +587,7 @@ static void DmaMovNdorDn2nzDavSmallC0(bool srcIsNd, const DmaMovNd2nzDavRecord &
     memInfo.opType = AccessType::WRITE;
     memInfo.blockSize = C0_D_VALUE_NUM * dTypeByteSize;
     memInfo.repeatTimes = 1;
-    if (srcIsNd) {
+    if (srcIsTheNd) {
         AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV_ND2NZ_D);
     } else {
         AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV_DN2NZ_D);
@@ -603,9 +602,8 @@ static void DmaMovNdorDn2nzDavSmallC0(bool srcIsNd, const DmaMovNd2nzDavRecord &
     }
 }
 
-static void DmaMovNdorDn2nzDavDefault(bool srcIsNd, const DmaMovNd2nzDavRecord &dmaMovRecord, SanEvent &event,
-                                      std::vector<SanEvent> &events)
-{
+static void DmaMovNdorDn2nzDavDefault(
+    bool srcIsTheNd, const DmaMovNd2nzDavRecord &dmaMovRecord, SanEvent &event, std::vector<SanEvent> &events) {
     auto& memInfo = event.eventInfo.memInfo;
     uint64_t dTypeByteSize = FormatConverter::GetDataSizeByType(dmaMovRecord.dataType);
 
@@ -614,10 +612,10 @@ static void DmaMovNdorDn2nzDavDefault(bool srcIsNd, const DmaMovNd2nzDavRecord &
     memInfo.memType = dmaMovRecord.srcMemType;
     memInfo.opType = AccessType::READ;
     memInfo.blockNum = 1;
-    memInfo.blockSize = srcIsNd ? dmaMovRecord.dValue * dTypeByteSize : dmaMovRecord.nValue * dTypeByteSize;
+    memInfo.blockSize = srcIsTheNd ? dmaMovRecord.dValue * dTypeByteSize : dmaMovRecord.nValue * dTypeByteSize;
     memInfo.repeatTimes = 1;
     AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV_ND2NZ_D);
-    uint64_t rowNum = srcIsNd ? dmaMovRecord.nValue : dmaMovRecord.dValue;
+    uint64_t rowNum = srcIsTheNd ? dmaMovRecord.nValue : dmaMovRecord.dValue;
     for (uint64_t h = 0; h < dmaMovRecord.ndNum; ++h) {
         uint64_t ndAddr = dmaMovRecord.src + h * dmaMovRecord.loop4SrcStride;
         for (uint64_t i = 0; i < rowNum; ++i) {
@@ -1117,6 +1115,30 @@ void FixPipeReadFromL0CA5(const MovFpRecord &record, std::vector<SanEvent> &even
     }
 }
 
+// dualDstMode: 0=single, 1=dual split M, 2=dual split N
+// Applies to all four modes: channelSplit, int4ChannelMerge, int8ChannelMerge, Normal
+// blockNumIsM: true if blockNum maps to M dimension and repeatTimes to N dimension;
+//              false if the mapping is swapped (blockNum→N, repeatTimes→M).
+static void ApplyDualDstMode(const MovFpRecord &record, SanEvent &event, MemOpInfo &memInfo, bool blockNumIsM) {
+    if (record.dualDstMode == 0) {
+        return; // single sub-block, no data halving; dstCoreId set by caller
+    } else if (record.dualDstMode == 1) {
+        // split in M dimension, each sub-block gets half rows
+        if (blockNumIsM) {
+            memInfo.blockNum /= 2;
+        } else {
+            memInfo.repeatTimes /= 2;
+        }
+    } else if (record.dualDstMode == 2) {
+        // split in N dimension, each sub-block gets half columns
+        if (blockNumIsM) {
+            memInfo.repeatTimes /= 2;
+        } else {
+            memInfo.blockNum /= 2;
+        }
+    }
+}
+
 void ParseFixPipeWriteByMultiMode(const MovFpRecord &record, std::vector<SanEvent> &events,
     SanEvent &event)
 {
@@ -1125,6 +1147,7 @@ void ParseFixPipeWriteByMultiMode(const MovFpRecord &record, std::vector<SanEven
     if (record.channelSplit) {
         memInfo.blockNum = record.isC310 ? record.mSize * 8 : record.mSize;
         memInfo.repeatTimes = (record.nSize + 7U) / 8U; // 除以8向上取整
+        ApplyDualDstMode(record, event, memInfo, true);
         events.emplace_back(event);
     } else if (record.int4ChannelMerge) {
         if (record.isC310) {
@@ -1135,10 +1158,12 @@ void ParseFixPipeWriteByMultiMode(const MovFpRecord &record, std::vector<SanEven
             memInfo.blockNum = record.mSize;
             memInfo.repeatTimes = nColumn / 4; // 从16x16转换为16x64，N维列数除以4
         }
+        ApplyDualDstMode(record, event, memInfo, true);
         events.emplace_back(event);
     } else if (record.int8ChannelMerge) {
         memInfo.blockNum = record.isC310 ? record.mSize * 32 : record.mSize;
         memInfo.repeatTimes = nColumn / 2; // 从16x16转换为16x32，N维列数除以2
+        ApplyDualDstMode(record, event, memInfo, true);
         events.emplace_back(event);
         // 如果N维不是16的偶数倍（被2整除），剩下数据直接搬出
         if ((nColumn % 2) != 0) {
@@ -1149,11 +1174,13 @@ void ParseFixPipeWriteByMultiMode(const MovFpRecord &record, std::vector<SanEven
             memInfo.blockNum = record.isC310 ? record.mSize * 16 : record.mSize;
             memInfo.repeatTimes = 1U;
             memInfo.repeatStride = record.dstStride * 2;  // 单位是blockSize，需要乘以2
+            ApplyDualDstMode(record, event, memInfo, true);
             events.emplace_back(event);
         }
     } else { // Normal
         memInfo.blockNum = record.isC310 ? record.mSize * 16 : (record.mSize * record.quantPreBits / BITS_EACH_BYTE / 2);
         memInfo.repeatTimes = nColumn;
+        ApplyDualDstMode(record, event, memInfo, true);
         events.emplace_back(event);
     }
 }
@@ -1205,6 +1232,11 @@ void FixPipeWriteToL1OrUB(const MovFpRecord &record, std::vector<SanEvent> &even
         memInfo.repeatTimes = record.enNZ2DN ? record.nSize : record.mSize;
         // 4bits时dstStride是2的倍数
         memInfo.repeatStride = record.quantPreBits == 4 ? (record.dstStride / 2) : record.dstStride;
+        // dualDstMode only enable in NZ2ND or normal DMA
+        // dualDstMode: 0=single, 1=dual split M, 2=dual split N
+        if (record.enNZ2ND) {
+            ApplyDualDstMode(record, event, memInfo, false);
+        }
         for (uint16_t nd = 0; nd < record.ndNum; ++nd) {
             memInfo.addr = record.dst + record.dstNdStride * nd * record.quantPreBits / BITS_EACH_BYTE;
             events.emplace_back(event);
@@ -1315,7 +1347,30 @@ static void ParseRecordFixL0CToUB(const KernelRecord &record, std::vector<SanEve
     event.eventInfo.memInfo.dataBits = BITS_EACH_BYTE;
 
     FixPipeReadFromL0CA5(movFpRecord, events, event);
-    FixPipeWriteToL1OrUB(movFpRecord, events, event, MemType::UB);
+    if (movFpRecord.dualDstMode == 1 || movFpRecord.dualDstMode == 2) {
+        auto event0 = event;
+        size_t before = events.size();
+        FixPipeWriteToL1OrUB(movFpRecord, events, event0, MemType::UB);
+        for (size_t i = before; i < events.size(); ++i) {
+            events[i].eventInfo.memInfo.dstCoreId = event.loc.coreId * C220_VEC_SUB_BLOCKDIM;
+            events[i].eventInfo.memInfo.dstBlockType = BlockType::AIVEC;
+        }
+        auto event1 = event;
+        before = events.size();
+        FixPipeWriteToL1OrUB(movFpRecord, events, event1, MemType::UB);
+        for (size_t i = before; i < events.size(); ++i) {
+            events[i].eventInfo.memInfo.dstCoreId = event.loc.coreId * C220_VEC_SUB_BLOCKDIM + 1;
+            events[i].eventInfo.memInfo.dstBlockType = BlockType::AIVEC;
+        }
+    } else {
+        size_t before = events.size();
+        FixPipeWriteToL1OrUB(movFpRecord, events, event, MemType::UB);
+        for (size_t i = before; i < events.size(); ++i) {
+            events[i].eventInfo.memInfo.dstCoreId =
+                event.loc.coreId * C220_VEC_SUB_BLOCKDIM + movFpRecord.subVecBlockId;
+            events[i].eventInfo.memInfo.dstBlockType = BlockType::AIVEC;
+        }
+    }
 
     // 指令使能enUnitFlag，需要插入set_flag/wait_flag模拟同步行为
     if (movFpRecord.enUnitFlag) {
@@ -1675,20 +1730,20 @@ static void ParseRecordDecompressHeader(const KernelRecord &record, std::vector<
     memInfo.vectorMask = { static_cast<uint64_t>(-1), static_cast<uint64_t>(-1) };
     memInfo.maskMode = MaskMode::MASK_NORM;
     memInfo.dataBits = BITS_EACH_BYTE;
- 
+
     if (decompressHeaderRecord.nBlock == 0) {
         SAN_ERROR_LOG("Parse DecompressHeader failed, invalid nBlock");
         return;
     }
-    
+
     memInfo.blockNum = 1U;
     memInfo.blockSize = headerSize * decompressHeaderRecord.nBlock;
     memInfo.blockStride = 1U;
     memInfo.repeatTimes = 1U;
     memInfo.repeatStride = 1U;
- 
+
     memInfo.addr = decompressHeaderRecord.src;
-   
+
     AlignChecker::Instance().CheckAlign(event, record.recordType);
     events.emplace_back(event);
 }
@@ -2661,7 +2716,7 @@ static void ParseRecordVsel(const KernelRecord &record, std::vector<SanEvent> &e
     SetLocationInfo(event, binaryOpRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
     event.pipe = PipeType::PIPE_V;
- 
+
     memInfo.memType = MemType::UB;
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = binaryOpRecord.vectorMask;
@@ -2675,7 +2730,7 @@ static void ParseRecordVsel(const KernelRecord &record, std::vector<SanEvent> &e
     memInfo.repeatStride = binaryOpRecord.src0RepeatStride;
     AlignChecker::Instance().CheckAlign(event, record.recordType);
     MaskModeProcess(events, event);
- 
+
     memInfo.dataBits = binaryOpRecord.src1DataBits;
     memInfo.addr = binaryOpRecord.src1;
     memInfo.blockNum = binaryOpRecord.src1BlockNum;
@@ -2689,7 +2744,7 @@ static void ParseRecordVsel(const KernelRecord &record, std::vector<SanEvent> &e
     } else {
         MaskModeProcess(events, event);
     }
- 
+
     memInfo.opType = AccessType::WRITE;
     memInfo.dataBits = binaryOpRecord.dstDataBits;
     memInfo.addr = binaryOpRecord.dst;
@@ -3646,7 +3701,7 @@ static void ParseRecordSetL12D(const KernelRecord &record, std::vector<SanEvent>
     memInfo.dataBits = BITS_EACH_BYTE;
     memInfo.addr = setL12DRecord.dst;
     AlignChecker::Instance().CheckAlign(event, 32U);
-    
+
     memInfo.blockSize = 32U;
     memInfo.blockNum = setL12DRecord.dstBlockNum;
     memInfo.blockStride = 1;
@@ -3682,7 +3737,7 @@ static void AddMemEventForMovL1Ub(std::vector<SanEvent> &events, const KernelRec
     memInfo.repeatStride = movL1UbRecord.lenBurst + movL1UbRecord.srcGap;
     AlignChecker::Instance().CheckAlign(event, recordMemType);
     events.emplace_back(event);
- 
+
     memInfo.memType = movL1UbRecord.dstMemType;
     memInfo.opType = AccessType::WRITE;
     memInfo.addr = movL1UbRecord.dst;
@@ -3906,7 +3961,7 @@ static void ParseRecordRegister(const KernelRecord &record, std::vector<SanEvent
     event.type = EventType::REGISTER_EVENT;
     event.eventInfo.regInfo.regType = regType;
     event.eventInfo.regInfo.regPayLoad = record.payload.registerSetRecord.regPayLoad;
-    
+
     events.emplace_back(event);
 }
 

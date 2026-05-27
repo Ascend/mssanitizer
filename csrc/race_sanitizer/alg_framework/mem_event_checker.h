@@ -83,6 +83,7 @@ public:
     void PushEvent(const MemEvent& event);
     void Init(KernelType kernelType, DeviceType deviceType, RaceCheckType checkType);
     void Init(uint32_t blockNum);
+    void SetVecSubBlockDim(uint8_t vecSubBlockDim) { vecSubBlockDim_ = vecSubBlockDim; }
     std::shared_ptr<std::vector<RaceDispInfo>> GetResult() const;
     // 测试接口
     uint32_t GetRaceCount() const;
@@ -93,6 +94,7 @@ private:
     KernelType kernelType_{};
     DeviceType deviceType_{};
     RaceCheckType checkType_{};
+    uint8_t vecSubBlockDim_ = C220_VEC_SUB_BLOCKDIM; // 当前算子的 vec:cube 配比 (1 或 2)，默认 2
     // 缓存检测结果
     std::shared_ptr<std::vector<RaceDispInfo>> result_;
     std::unordered_set<RaceDispInfo, ErrorEventHash, ErrorEventEqual> raceSet_;
@@ -103,6 +105,8 @@ private:
     bool IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsCrossCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsCrossNpuRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
+    /// 判断两个事件是否需要进行核间竞争检测（过滤同block、不同物理UB等情况）
+    bool NeedCrossCoreCheck(const MemEvent &event1, const MemEvent &event2) const;
 
     using CheckTypeFunc = bool (MemEventChecker::*)(EventIdxInfo&, EventIdxInfo&) const;
     void CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx, CheckTypeFunc checkTypeFunc,

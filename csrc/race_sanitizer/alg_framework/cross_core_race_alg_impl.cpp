@@ -132,8 +132,9 @@ ReturnType CrossCoreRaceAlgImpl::ProcessBlockSoftSyncEvent(const SanEvent& event
 ReturnType CrossCoreRaceAlgImpl::ProcessMemEvent(const SanEvent &event)
 {
     if (event.eventInfo.memInfo.memType != MemType::GM) {
-        // 非GM内存事件不检测
-        return ReturnType::PROCESS_OK;
+        if (!IsAscend95(this->deviceType_) || (event.eventInfo.memInfo.memType != MemType::UB)) {
+            return ReturnType::PROCESS_OK;
+        }
     }
     auto e = MemEvent(event);
     e.isAtomicMode = event.isAtomicMode;
@@ -148,8 +149,9 @@ ReturnType CrossCoreRaceAlgImpl::ProcessMemEvent(const SanEvent &event)
 ReturnType CrossCoreRaceAlgImpl::ProcessDynamicMemEvent(const SanEvent& event)
 {
     if (event.eventInfo.dynamicOpInfo.memType != MemType::GM) {
-        // 非GM内存事件不检测
-        return ReturnType::PROCESS_OK;
+        if (!IsAscend95(this->deviceType_) || (event.eventInfo.dynamicOpInfo.memType != MemType::UB)) {
+            return ReturnType::PROCESS_OK;
+        }
     }
     uint32_t curPipe = eventContainer_.GetQueIndex();
     VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);

@@ -1072,6 +1072,8 @@ struct MovFpRecord {
     uint16_t srcStride;
     uint16_t nSize;
     uint16_t mSize;
+    uint16_t dualDstMode;
+    uint16_t subVecBlockId;
     uint16_t ndNum;
     uint16_t srcNdStride;
     uint16_t srcNzC0Stride;

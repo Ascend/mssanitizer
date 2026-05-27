@@ -237,6 +237,46 @@ inline bool CompareEvent(const SortMetaData &lhs, const SortMetaData &rhs)
     return lhs.addr < rhs.addr;   // 按地址升序排序
 }
 
+bool MemEventChecker::NeedCrossCoreCheck(const MemEvent &event1, const MemEvent &event2) const {
+    // 同一个block的无需比较
+    if (event1.loc.coreId == event2.loc.coreId && event1.loc.blockType == event2.loc.blockType) {
+        return false;
+    }
+
+    // 非950系列芯片无需检查UB物理差异
+    if (!IsAscend95(this->deviceType_)) {
+        return true;
+    }
+
+    // 非UB内存类型无需检查UB物理差异，直接进入后续检测
+    auto mt1 = event1.isDynamic ? event1.dynamicMemInfo.memType : event1.memInfo.memType;
+    auto mt2 = event2.isDynamic ? event2.dynamicMemInfo.memType : event2.memInfo.memType;
+    if (mt1 != MemType::UB || mt2 != MemType::UB) {
+        return true;
+    }
+
+    // 同 blockType 的 UB 事件位于不同物理 UB，无需检测
+    // （前面的相同core同block已返回false，此处覆盖不同core同block）
+    if (event1.loc.blockType == event2.loc.blockType) {
+        return false;
+    }
+
+    // AIVEC与AICUBE跨类型：判断是否属于同一物理组
+    if ((event1.loc.blockType == BlockType::AIVEC && event2.loc.blockType == BlockType::AICUBE)) {
+        if (event1.loc.coreId != event2.memInfo.dstCoreId) {
+            return false;
+        }
+    }
+
+    if ((event1.loc.blockType == BlockType::AICUBE && event2.loc.blockType == BlockType::AIVEC)) {
+        if (event1.memInfo.dstCoreId != event2.loc.coreId) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /// 扫描线算法已经保证了存在地址交叉，由于核内竞争是统一对GM和片上内存进行排序，故核内竞争判断条件需要判断
 /// 存在地址交叉的两个事件是否memType相同
 bool MemEventChecker::IsInnerCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const
@@ -269,6 +309,7 @@ bool MemEventChecker::IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo
 {
     auto &event1 = this->events_.at(idxInfo1.eventIdx);
     auto &event2 = this->events_.at(idxInfo2.eventIdx);
+
     // 内存地址类型不相同，则直接返回
     if (event1.memInfo.memType != event2.memInfo.memType) {
         return false;
@@ -311,8 +352,8 @@ bool MemEventChecker::IsCrossCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo 
 {
     auto &event1 = this->events_.at(idxInfo1.eventIdx);
     auto &event2 = this->events_.at(idxInfo2.eventIdx);
-    // 同一个block的无需比较
-    if (event1.loc.coreId == event2.loc.coreId && event1.loc.blockType == event2.loc.blockType) {
+
+    if (!NeedCrossCoreCheck(event1, event2)) {
         return false;
     }
 
