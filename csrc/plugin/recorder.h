@@ -262,14 +262,14 @@ public:
      */
     template<RecordType recordType, typename Record, typename Check = record_type_check<true>>
     AICORE_FUNC_HEAD void DumpRecord(Record const &record);
-    
+
     /* @param  type      fmatrix fmatrixB l3dRpt
      * @param  value     寄存器值
      * @brief 将需要的寄存器的值写入header
      */
     template<typename T>
     AICORE_FUNC_HEAD void SetRegister(T Register::*reg, T value) const;
- 
+
     /* @param  type      fmatrix fmatrixB l3dRpt
      * @param  value     寄存器值
      * @brief 获取需要的寄存器的值
@@ -304,7 +304,7 @@ public:
      */
     template<RecordType recordType, typename Record>
     AICORE_FUNC_HEAD void CopyShadowMemoryToMemInfo(Record const &record);
-    
+
     AICORE_FUNC_HEAD void SetParaBaseAddr(uint64_t size);
 
 private:
@@ -325,8 +325,8 @@ private:
 template<RecordType recordType, typename Record, typename Check>
 AICORE_FUNC_HEAD void Recorder::DumpRecord(Record const &record)
 {
-// 目前大概确认8.1-8.4, 9.1-9.4，11.1-11.4版本有问题，因此这些版本暂时去除检查
-#if defined(__GNUC__) && (__GNUC__ == 8 || __GNUC__ == 9 || __GNUC__ == 11) && (__GNUC_MINOR__ <= 4)
+// 目前大概确认8.1-8.4, 9.1-9.4，10.3,11.1-11.4版本有问题，因此这些版本暂时去除检查
+#if defined(__GNUC__) && (__GNUC__ == 8 || __GNUC__ == 9 || __GNUC__ == 10 || __GNUC__ == 11) && (__GNUC_MINOR__ <= 4)
 #else
     // 在DumpRecord的开始添加编译期检查
     // 相比于放到模板参数里，放在这里可以实现更好的编译错误提示。
@@ -466,8 +466,8 @@ AICORE_FUNC_HEAD void Recorder::SetMstxFuseScope(bool inMstxFuseScope) const
 template<RecordType recordType, typename Record, typename Check>
 AICORE_FUNC_HEAD void Recorder::Check(Record const &record)
 {
-    // 目前大概确认8.1-8.4, 9.1-9.4，11.1-11.4版本有问题，因此这些版本暂时去除检查
-#if defined(__GNUC__) && (__GNUC__ == 8 || __GNUC__ == 9|| __GNUC__ == 11) && (__GNUC_MINOR__ <= 4)
+    // 目前大概确认8.1-8.4, 9.1-9.4，10.3, 11.1-11.4版本有问题，因此这些版本暂时去除检查
+#if defined(__GNUC__) && (__GNUC__ == 8 || __GNUC__ == 9 || __GNUC__ == 10 || __GNUC__ == 11) && (__GNUC_MINOR__ <= 4)
 #else
     // 在MemCheck的开始添加编译期检查
     // 相比于放到模板参数里，放在这里可以实现更好的编译错误提示。

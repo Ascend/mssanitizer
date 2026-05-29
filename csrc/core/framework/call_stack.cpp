@@ -160,7 +160,7 @@ CallStack::Stack CallStack::Query(std::string const &kernelName, uint64_t pcOffs
 {
     {
         std::lock_guard<std::mutex> guard{this->mtx_};
-        auto kernelIt = as_const(pcStackMap_).find(kernelName);
+        auto kernelIt = Sanitizer::as_const(pcStackMap_).find(kernelName);
         if (kernelIt != this->pcStackMap_.cend()) {
             auto stackIt = kernelIt->second.find(pcOffset);
             if (stackIt != kernelIt->second.cend()) {
@@ -193,7 +193,7 @@ void CallStack::CachePcOffsets(std::string const &kernelName, std::set<uint64_t>
         stacks = pcStackMap_[kernelName];
     }
     for (auto it = pcOffsets.begin(); it != pcOffsets.cend();) {
-        if (as_const(stacks).find(*it) != stacks.cend()) {
+        if (Sanitizer::as_const(stacks).find(*it) != stacks.cend()) {
             it = pcOffsets.erase(it);
         } else {
             ++it;

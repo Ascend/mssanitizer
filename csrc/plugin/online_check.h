@@ -487,7 +487,8 @@ AICORE_FUNC_HEAD bool HasPermission(AccessType accessType, uint32_t permission) 
     } else if (accessType == AccessType::WRITE) {
         return (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE) != 0;
     } else {
-        return false;
+        return (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ) != 0 &&
+            (permission & MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE) != 0;
     }
 }
 
