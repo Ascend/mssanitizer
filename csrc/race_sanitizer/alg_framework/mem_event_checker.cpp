@@ -17,12 +17,15 @@
 
 #include "mem_event_checker.h"
 
+#include "core/framework/arch_def.h"
+#include "core/framework/config_manager.h"
 #include "core/framework/constant.h"
 #include "core/framework/event_def.h"
 #include "core/framework/kernel_manager.h"
 #include "core/framework/record_defs.h"
 #include "mem_series.h"
 #include "core/framework/utility/log.h"
+#include "race_sanitizer/alg_framework/vector_clock.h"
 
 namespace Sanitizer {
 
@@ -230,6 +233,53 @@ bool MemEventChecker::IsCrossNpuRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2
     return true;
 }
 
+bool MemEventChecker::IsMissDcciEvent(uint64_t eventIdx1, uint64_t eventIdx2) {
+    auto &event1 = this->events_.at(eventIdx1);
+    auto &event2 = this->events_.at(eventIdx2);
+
+    // 同一个block的无需比较
+    if (event1.loc.coreId == event2.loc.coreId && event1.loc.blockType == event2.loc.blockType) {
+        return false;
+    }
+
+    // 两个事件至少要有一个是标量读写
+    if (event1.pipe != PipeType::PIPE_S_CAL && event2.pipe != PipeType::PIPE_S_CAL) {
+        return false;
+    }
+
+    // 两个事件应该是一读一写，并且把写事件设定为 event1
+    if (event1.memInfo.opType == AccessType::READ && event2.memInfo.opType == AccessType::WRITE) {
+        std::swap(event1, event2);
+    } else if (event1.memInfo.opType == AccessType::WRITE && event2.memInfo.opType == AccessType::READ) {
+    } else {
+        return false;
+    }
+
+    uint32_t pipeIdx1 =
+        GetPipeIdxByMemEvent<RaceCheckType::CROSS_BLOCK_CHECK>(event1, this->kernelType_, this->deviceType_);
+    uint32_t pipeIdx2 =
+        GetPipeIdxByMemEvent<RaceCheckType::CROSS_BLOCK_CHECK>(event2, this->kernelType_, this->deviceType_);
+    // 读发生在写之前则不在本检测场景之内
+    if (VectorClock::IsHappensBefore(event2.vt, event1.vt, pipeIdx2, pipeIdx1)) {
+        return false;
+    }
+
+    // 检查是否所有标量读写都有满足条件的 dcci
+    static constexpr uint32_t DCCI_WINDOW_THRESHOLD = 1;
+    if ((event1.pipe != PipeType::PIPE_S_CAL ||
+            (event1.memInfo.dcciDistance > 0 && event1.memInfo.dcciDistance <= DCCI_WINDOW_THRESHOLD)) &&
+        (event2.pipe != PipeType::PIPE_S_CAL ||
+            (event2.memInfo.dcciDistance > 0 && event2.memInfo.dcciDistance <= DCCI_WINDOW_THRESHOLD))) {
+        return false;
+    }
+
+    // 比较内存空间是否存在重叠
+    if (!IsMemSpaceOverlap(event1.memInfo, event2.memInfo)) {
+        return false;
+    }
+    return true;
+}
+
 void MemEventChecker::CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx,
     CheckTypeFunc checkTypeFunc, uint64_t curEventIdx, RaceMemEventsIdx &raceMemEventsIdx)
 {
@@ -240,8 +290,7 @@ void MemEventChecker::CheckExistRaceEvents(const std::unordered_set<uint64_t> &h
     }
 }
 
-void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx)
-{
+void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) {
     std::vector<SortMetaData> eventsMetaData;
     uint8_t multiSize = 2;
     eventsMetaData.reserve(this->events_.size() * multiSize);
@@ -278,10 +327,18 @@ void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx)
             // 检查与历史写事件的冲突
             CheckExistRaceEvents(historyWriteEventsIdxMap[memType],
                                  checkFuncIter->second, curEventIdx, raceMemEventsIdx);
+            if (ConfigManager::Instance().Get().checkDcci) {
+                CheckExistRaceEvents(historyWriteEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent, curEventIdx,
+                    missDcciMemEventsIdx);
+            }
             if (opType == AccessType::WRITE) {
                 // 检查与历史读事件的冲突
                 CheckExistRaceEvents(historyReadEventsIdxMap[memType],
                                      checkFuncIter->second, curEventIdx, raceMemEventsIdx);
+                if (ConfigManager::Instance().Get().checkDcci) {
+                    CheckExistRaceEvents(historyReadEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent,
+                        curEventIdx, missDcciMemEventsIdx);
+                }
                 historyWriteEventsIdxMap[memType].insert(curEventIdx);
             } else {
                 historyReadEventsIdxMap[memType].insert(curEventIdx);
@@ -297,11 +354,22 @@ void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx)
 void MemEventChecker::RunAlgorithm()
 {
     MemEventChecker::RaceMemEventsIdx raceMemEventsIdx;
+    MemEventChecker::RaceMemEventsIdx missDcciMemEventsIdx;
     // 当前发生的GM内存事件和已经发生的GM内存事件做一一比较，返回存在竞争的事件列表
-    ScanlineAlgorithm(raceMemEventsIdx);
+    ScanlineAlgorithm(raceMemEventsIdx, missDcciMemEventsIdx);
     for (const auto &eventsIdx : raceMemEventsIdx) {
-        auto info = FillRaceDispInfo(events_.at(eventsIdx.first),
-                                     events_.at(eventsIdx.second));
+        auto info = FillRaceDispInfo(false, events_.at(eventsIdx.first), events_.at(eventsIdx.second));
+        auto ret = raceSet_.emplace(info);
+        if (ret.second) {
+            raceCnt_++;
+            result_->emplace_back(info);
+        }
+    }
+
+    for (const auto &eventsIdx : missDcciMemEventsIdx) {
+        auto e1 = events_.at(eventsIdx.first);
+        auto e2 = events_.at(eventsIdx.second);
+        auto info = FillRaceDispInfo(true, events_.at(eventsIdx.first), events_.at(eventsIdx.second));
         auto ret = raceSet_.emplace(info);
         if (ret.second) {
             raceCnt_++;

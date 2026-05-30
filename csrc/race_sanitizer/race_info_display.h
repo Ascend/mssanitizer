@@ -100,8 +100,7 @@ inline void FormatEvent(std::ostream &os, const BaseEvent &event, std::string co
     PrintLocationInfo(os, event, event.serialNo);
 }
 
-inline std::ostream &operator << (std::ostream &os, RaceDispInfo const &raceInfo)
-{
+inline std::ostream &FormatRaceInfo(std::ostream &os, RaceDispInfo const &raceInfo) {
     BaseEvent raceEvent1{};
     BaseEvent raceEvent2{};
     if (raceInfo.p1.isSimt && raceInfo.p2.isSimt) {
@@ -126,6 +125,35 @@ inline std::ostream &operator << (std::ostream &os, RaceDispInfo const &raceInfo
     return os;
 }
 
+inline void FormatEvent(std::ostream &os, const BaseEvent &event) {
+    std::string const &accessType = event.accessType == static_cast<uint8_t>(AccessType::WRITE) ? "Write" : "Read";
+    os << "======    " << static_cast<PipeType>(event.pipeType) << " " << accessType << " at 0x" << std::hex
+       << event.addr << std::dec << " in block " << event.coreId << " (" << event.blockType << ")" << " on device "
+       << event.deviceId << " ";
+    PrintLocationInfo(os, event, event.serialNo);
+}
+
+inline std::ostream &FormatMissDcciInfo(std::ostream &os, RaceDispInfo raceInfo) {
+    // always show write event first
+    if (raceInfo.p1.accessType == static_cast<uint8_t>(AccessType::READ)) {
+        std::swap(raceInfo.p1, raceInfo.p2);
+    }
+
+    os << "====== ERROR: Missing DCCI instructions detected on cross core data dependency at "
+       << static_cast<MemType>(raceInfo.p1.memType) << RaceFormatKernelName{raceInfo.p1.deviceId, raceInfo.p1.kernelIdx}
+       << ":" << std::endl;
+    FormatEvent(os, raceInfo.p1);
+    FormatEvent(os, raceInfo.p2);
+    return os;
+}
+
+inline std::ostream &operator<<(std::ostream &os, RaceDispInfo const &raceInfo) {
+    if (raceInfo.isMissDcci) {
+        return FormatMissDcciInfo(os, raceInfo);
+    } else {
+        return FormatRaceInfo(os, raceInfo);
+    }
+}
 }
 
 #endif

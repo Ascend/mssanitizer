@@ -30,10 +30,9 @@
 
 namespace Sanitizer {
 
-
-inline RaceDispInfo FillRaceDispInfo(const MemEvent &event1, const MemEvent &event2)
-{
+inline RaceDispInfo FillRaceDispInfo(bool isMissDcci, const MemEvent &event1, const MemEvent &event2) {
     auto info = RaceDispInfo{};
+    info.isMissDcci = isMissDcci;
     info.p1.Init(event1);
     info.p2.Init(event2);
     return info;
@@ -91,7 +90,7 @@ public:
     using RaceMemEventsIdx = std::vector<std::pair<uint64_t, uint64_t>>;
     void RunAlgorithm();
     // 扫描线算法，事件拆分为开始和结束，按地址排序，再进行检测
-    void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx);
+    void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx);
     void PushEvent(const MemEvent& event);
     void Init(KernelType kernelType, DeviceType deviceType, RaceCheckType checkType);
     void Init(uint32_t blockNum);
@@ -116,6 +115,7 @@ private:
     bool IsSinglePipeRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
     bool IsCrossCoreRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
     bool IsCrossNpuRaceEvent(uint64_t eventIdx1, uint64_t eventIdx2);
+    bool IsMissDcciEvent(uint64_t eventIdx1, uint64_t eventIdx2);
 
     using CheckTypeFunc = bool (MemEventChecker::*)(uint64_t, uint64_t);
     void CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx, CheckTypeFunc checkTypeFunc,
@@ -125,4 +125,3 @@ private:
 
 }
 #endif
-

@@ -40,6 +40,10 @@ bool VectorClock::IsNotHappensBefore(const VectorTime &t1, const VectorTime &t2,
     return (t1[t1Pipe] < t2[t1Pipe] && t1[t2Pipe] > t2[t2Pipe]) || (t1[t2Pipe] < t2[t2Pipe] && t1[t1Pipe] > t2[t1Pipe]);
 }
 
+bool VectorClock::IsHappensBefore(const VectorTime &t1, const VectorTime &t2, uint32_t t1Pipe, uint32_t t2Pipe) {
+    return t1[t1Pipe] <= t2[t1Pipe] && t1[t2Pipe] <= t2[t2Pipe];
+}
+
 uint32_t VectorClock::GetLogicTime(const VectorTime &t, uint32_t pipe)
 {
     return t[pipe];

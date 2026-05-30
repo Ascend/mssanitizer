@@ -17,6 +17,8 @@
 
 #include "race_sanitizer.h"
 #include <sstream>
+#include "core/framework/config_manager.h"
+#include "core/framework/platform_config.h"
 #include "core/framework/runtime_context.h"
 #include "core/framework/utility/log.h"
 #include "alg_framework/race_alg_factory.h"
@@ -208,7 +210,7 @@ bool RaceSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
     return false;
 }
 
-void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events)
+void RaceSanitizer::DoImpl(const SanitizerRecord &record, const std::vector<SanEvent> &events)
 {
     if (IsMstxRecordWithTensor(record)) {
         return;
@@ -237,6 +239,120 @@ void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent
         RaceSanitizerRecord(simtErrors_);
         simtErrors_->clear();
     }
+}
+
+void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events)
+{
+    if (record.version == RecordVersion::MEMORY_RECORD) {
+        return;
+    }
+
+    // if checkDcci disabled, skip record window caching
+    if (!ConfigManager::Instance().Get().checkDcci) {
+        return DoImpl(record, events);
+    }
+
+    KernelRecord const &kernelRecord = record.payload.kernelRecord;
+    recordWindow_.push({record, events});
+
+    static std::deque<KernelRecord> aheadDccis;
+    static std::deque<KernelRecord> afterDccis;
+
+    // clear queue
+    if (kernelRecord.recordType == RecordType::BLOCK_FINISH || kernelRecord.recordType == RecordType::KERNEL_FINISH ||
+        kernelRecord.recordType == RecordType::FINISH) {
+        while (!recordWindow_.empty()) {
+            PopWindowRecord(aheadDccis, afterDccis);
+        }
+        aheadDccis.clear();
+        afterDccis.clear();
+        return;
+    }
+
+    if (kernelRecord.recordType == RecordType::DCCI) {
+        afterDccis.push_back(kernelRecord);
+    }
+
+    if (recordWindow_.size() > MAX_WINDOW_SIZE) {
+        PopWindowRecord(aheadDccis, afterDccis);
+    }
+}
+
+void RaceSanitizer::PopWindowRecord(std::deque<KernelRecord> &aheadDccis, std::deque<KernelRecord> &afterDccis) {
+    auto &front = recordWindow_.front();
+    if (front.first.payload.kernelRecord.recordType == RecordType::DCCI) {
+        aheadDccis.push_back(front.first.payload.kernelRecord);
+    } else {
+        // update DCCI distance in events
+        for (auto &event : front.second) {
+            if (event.type != EventType::MEM_EVENT) {
+                continue;
+            }
+            if (event.pipe != PipeType::PIPE_S && event.pipe != PipeType::PIPE_S_CAL) {
+                continue;
+            }
+            event.eventInfo.memInfo.dcciDistance =
+                NearestDcciDistance(front.first.payload.kernelRecord, event, aheadDccis, afterDccis);
+        }
+    }
+
+    DoImpl(front.first, front.second);
+
+    if (!aheadDccis.empty() &&
+        aheadDccis.front().serialNo + MAX_WINDOW_SIZE < front.first.payload.kernelRecord.serialNo) {
+        aheadDccis.pop_front();
+    }
+    if (!afterDccis.empty() && afterDccis.front().serialNo == front.first.payload.kernelRecord.serialNo) {
+        afterDccis.pop_front();
+    }
+    recordWindow_.pop();
+}
+
+uint32_t RaceSanitizer::NearestDcciDistance(KernelRecord const &kernelRecord, SanEvent const &event,
+    std::deque<KernelRecord> &aheadDccis, std::deque<KernelRecord> &afterDccis) const {
+    if (event.eventInfo.memInfo.opType != AccessType::READ && event.eventInfo.memInfo.opType != AccessType::WRITE) {
+        return 0;
+    }
+
+    if (event.eventInfo.memInfo.opType == AccessType::READ) {
+        for (auto it = aheadDccis.crbegin(); it != aheadDccis.crend(); ++it) {
+            if (DoesDcciHaveEffect(event, it->payload.dcciRecord)) {
+                return kernelRecord.serialNo - it->serialNo;
+            }
+        }
+    } else {
+        for (auto it = afterDccis.cbegin(); it != afterDccis.cend(); ++it) {
+            if (DoesDcciHaveEffect(event, it->payload.dcciRecord)) {
+                return it->serialNo - kernelRecord.serialNo;
+            }
+        }
+    }
+
+    return 0;
+}
+
+bool RaceSanitizer::DoesDcciHaveEffect(SanEvent const &event, DcciRecord const &dcciRecord) const {
+    // only check dcci on GM
+    if (dcciRecord.type == DcciDstType::CACHE_LINE_UB || dcciRecord.space != AddressSpace::GM) {
+        return false;
+    }
+    if (event.eventInfo.memInfo.memType != MemType::GM) {
+        return false;
+    }
+
+    // dcci on entire cache line always takes effect
+    if (dcciRecord.entire == DcciEntireType::ENTIRE_DATA_CACHE) {
+        return true;
+    }
+
+    auto it = CACHE_LINE_SPEC_MAP.find(deviceType_);
+    if (it == CACHE_LINE_SPEC_MAP.cend()) {
+        SAN_WARN_LOG("Device type %u not in cache line spec map", static_cast<uint32_t>(deviceType_));
+        return false;
+    }
+    auto cacheLineSize = it->second.cacheLineSize;
+    // check if on same cache line
+    return event.eventInfo.memInfo.addr / cacheLineSize == dcciRecord.addr / cacheLineSize;
 }
 
 void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType blockType, uint64_t serialNo)
@@ -272,7 +388,7 @@ void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
             event.memType = static_cast<uint8_t>(FormatConverter::AddrSpaceToMemType(kernelErrorDesc.space));
             event.threadLoc = kernelErrorDesc.threadLoc;
             error.p1 = event;
-            
+
             event.accessType = ThreadRaceToAccessType(kernelErrorDesc.errorType, true);
             event.pc = errorDesc.conflictedLocation.pc;
             event.fileNo = errorDesc.conflictedLocation.fileNo;

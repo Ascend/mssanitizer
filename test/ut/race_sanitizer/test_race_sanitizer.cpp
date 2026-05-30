@@ -18,10 +18,13 @@
 #include <gtest/gtest.h>
 #include <any>
 #include <mutex>
+#include "core/framework/config_manager.h"
+#include "core/framework/event_def.h"
 #include "record_pre_process.h"
 #include "alg_framework/race_alg_impl.h"
 #include "alg_framework/single_pipe_race_alg_impl.h"
 #include "rand_data.h"
+#include "sanitizer_report.h"
 #define private public
 #include "race_sanitizer.h"
 #undef private
@@ -352,4 +355,75 @@ TEST(RaceSanitizer, race_sanitizer_with_single_block_check_cant_detect_target_ev
     }
 }
 
+TEST(RaceSanitizer, race_sanitizer_detect_load_store_missing_dcci_expect_get_miss_dcci_error) {
+    ConfigManager::Instance().Get().checkDcci = true;
+
+    DeviceInfoSummary deviceInfoSummary{};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    KernelSummary kernelSummary{};
+    kernelSummary.blockDim = 2;
+    kernelSummary.kernelType = KernelType::AIVEC;
+    RaceSanitizer alg;
+    alg.SetDeviceInfo(deviceInfoSummary, Config{});
+    alg.SetKernelInfo(kernelSummary);
+    std::string msg;
+    alg.RegisterNotifyFunc([&msg](LogLv const &, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
+    SanitizerRecord record{};
+    record.version = RecordVersion::KERNEL_RECORD;
+    auto &kernelRecord = record.payload.kernelRecord;
+
+    kernelRecord.recordType = RecordType::LOAD;
+    kernelRecord.blockType = BlockType::AIVEC;
+    kernelRecord.payload.loadStoreRecord.location.blockId = 0;
+    kernelRecord.payload.loadStoreRecord.addr = 0x1234;
+    kernelRecord.payload.loadStoreRecord.size = 4;
+    kernelRecord.payload.loadStoreRecord.space = AddressSpace::GM;
+    kernelRecord.serialNo++;
+    std::vector<SanEvent> events = {};
+    RecordPreProcess::GetInstance().Process(record, events);
+    alg.Do(record, events);
+    events.clear();
+
+    kernelRecord.recordType = RecordType::BLOCK_FINISH;
+    kernelRecord.serialNo++;
+    RecordPreProcess::GetInstance().Process(record, events);
+    alg.Do(record, events);
+    events.clear();
+
+    kernelRecord.recordType = RecordType::STORE;
+    kernelRecord.blockType = BlockType::AIVEC;
+    kernelRecord.payload.loadStoreRecord.location.blockId = 1;
+    kernelRecord.payload.loadStoreRecord.addr = 0x1234;
+    kernelRecord.payload.loadStoreRecord.size = 4;
+    kernelRecord.payload.loadStoreRecord.space = AddressSpace::GM;
+    kernelRecord.serialNo++;
+    RecordPreProcess::GetInstance().Process(record, events);
+    alg.Do(record, events);
+    events.clear();
+
+    kernelRecord.recordType = RecordType::BLOCK_FINISH;
+    kernelRecord.serialNo++;
+    RecordPreProcess::GetInstance().Process(record, events);
+    alg.Do(record, events);
+    events.clear();
+
+    kernelRecord.recordType = RecordType::KERNEL_FINISH;
+    kernelRecord.serialNo++;
+    RecordPreProcess::GetInstance().Process(record, events);
+    alg.Do(record, events);
+    events.clear();
+
+    std::vector<RaceDispInfo> const &results = *alg.raceAlgs_[4]->GetResult();
+    ASSERT_EQ(results.size(), 2);
+    // race report
+    ASSERT_FALSE(results[0].isMissDcci);
+    ASSERT_EQ(results[0].p1.addr, 0x1234);
+    ASSERT_EQ(results[0].p2.addr, 0x1234);
+    // miss dcci report
+    ASSERT_TRUE(results[1].isMissDcci);
+    ASSERT_EQ(results[1].p1.addr, 0x1234);
+    ASSERT_EQ(results[1].p2.addr, 0x1234);
+
+    ConfigManager::Instance().Get().checkDcci = false;
+}
 }

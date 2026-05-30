@@ -31,23 +31,24 @@ void RunAllRaceAlgExpectNoRace(const std::vector<MemEvent> &events)
         checker.PushEvent(event);
     }
     MemEventChecker::RaceMemEventsIdx raceMemEventsIdx;
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::AICUBE, DeviceType::ASCEND_910B1, RaceCheckType::SINGLE_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::MIX, DeviceType::ASCEND_910B1, RaceCheckType::SINGLE_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, RaceCheckType::SINGLE_PIPE_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::AICUBE, DeviceType::ASCEND_910B1, RaceCheckType::SINGLE_PIPE_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::MIX, DeviceType::ASCEND_910B1, RaceCheckType::SINGLE_PIPE_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, RaceCheckType::CROSS_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::AICUBE, DeviceType::ASCEND_910B1, RaceCheckType::CROSS_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     checker.Init(KernelType::MIX, DeviceType::ASCEND_910B1, RaceCheckType::CROSS_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 0);
 }
 
@@ -59,21 +60,22 @@ void RunAllRaceAlgExpectInnerCoreRace(const std::vector<MemEvent> &events)
         checker.PushEvent(event);
     }
     MemEventChecker::RaceMemEventsIdx raceMemEventsIdx;
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::AICUBE, DeviceType::ASCEND_910B2, RaceCheckType::SINGLE_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::MIX, DeviceType::ASCEND_910B2, RaceCheckType::SINGLE_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::AIVEC, DeviceType::ASCEND_910B3, RaceCheckType::CROSS_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 0);
 }
 
@@ -85,19 +87,20 @@ void RunAllRaceAlgExpectInnerPipeRace(const std::vector<MemEvent> &events)
         checker.PushEvent(event);
     }
     MemEventChecker::RaceMemEventsIdx raceMemEventsIdx;
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::AICUBE, DeviceType::ASCEND_910B4, RaceCheckType::SINGLE_PIPE_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::MIX, DeviceType::ASCEND_910B4, RaceCheckType::SINGLE_PIPE_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::AIVEC, DeviceType::ASCEND_910B4, RaceCheckType::CROSS_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 0);
 }
 
@@ -109,19 +112,20 @@ void RunAllRaceAlgExpectCrossCoreRace(const std::vector<MemEvent> &events)
         checker.PushEvent(event);
     }
     MemEventChecker::RaceMemEventsIdx raceMemEventsIdx;
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::AICUBE, DeviceType::ASCEND_910B4, RaceCheckType::CROSS_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::MIX, DeviceType::ASCEND_910B4, RaceCheckType::CROSS_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 1);
     raceMemEventsIdx.clear();
     checker.Init(KernelType::AIVEC, DeviceType::ASCEND_910B4, RaceCheckType::SINGLE_BLOCK_CHECK);
-    checker.ScanlineAlgorithm(raceMemEventsIdx);
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
     ASSERT_EQ(raceMemEventsIdx.size(), 0);
 }
 
@@ -517,7 +521,8 @@ TEST(MemEventChecker, write_after_write_expect_no_race)
     checker.PushEvent(e1);
     checker.PushEvent(e2);
     MemEventChecker::RaceMemEventsIdx raceMemEvents;
-    checker.ScanlineAlgorithm(raceMemEvents);
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEvents, missDcciEventsIdx);
     ASSERT_EQ(raceMemEvents.size(), 0);
 }
 
@@ -561,7 +566,8 @@ TEST(MemEventChecker, write_after_write_expect_race)
     checker.PushEvent(e1);
     checker.PushEvent(e2);
     MemEventChecker::RaceMemEventsIdx raceMemEvents;
-    checker.ScanlineAlgorithm(raceMemEvents);
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEvents, missDcciEventsIdx);
     ASSERT_EQ(raceMemEvents.size(), 1);
 }
 
@@ -597,7 +603,8 @@ TEST(MemEventChecker, write_after_write_expect_no_race_moe_mov_align_case)
     checker.PushEvent(e1);
     checker.PushEvent(e2);
     MemEventChecker::RaceMemEventsIdx raceMemEvents;
-    checker.ScanlineAlgorithm(raceMemEvents);
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEvents, missDcciEventsIdx);
     ASSERT_EQ(raceMemEvents.size(), 0);
 }
 

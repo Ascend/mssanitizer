@@ -22,6 +22,7 @@
 #include <sstream>
 #include <experimental/filesystem>
 
+#include "core/framework/config_manager.h"
 #include "core/framework/device_manager.h"
 #include "core/framework/kernel_binary_manager.h"
 #include "core/framework/kernel_manager.h"
@@ -323,7 +324,7 @@ inline void HandleKernelBinary(Packet::BinaryPayload const &payload)
         SAN_INFO_LOG("Binary section load FAILED");
         return;
     }
- 
+
     Sanitizer::Elf elf = loader.Load();
     std::vector<char> fileMapping = elf.ReadRawData(".init_array_sanitizer_file_mapping");
     if (fileMapping.empty()) {
@@ -394,6 +395,11 @@ void HandleIpcMemRecord(Sanitizer::Checker &checker, Sanitizer::IPCMemRecord con
     std::stringstream ss;
     ss << record <<", deviceId:"<<RuntimeContext::Instance().GetDeviceId();
     SAN_INFO_LOG("%s", ss.str().c_str());
+}
+
+Command::Command(Config const &config, const LogLv &lv, const std::string &logFile)
+    : config_{config}, loglv_(lv), logFile_(logFile) {
+    ConfigManager::Instance().Set(config);
 }
 
 void Command::Exec(const ParamList &execParams)

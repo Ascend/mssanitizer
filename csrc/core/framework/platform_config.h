@@ -199,6 +199,18 @@ const std::unordered_map<std::string, uint16_t> ALIGN_MAP = {
     {"L1_NORMAL_ALIGN_SIZE", 32U},
     {"VMRGSORET4_ALIGN_SIZE", 8U},
 };
+
+struct CacheLineSpec {
+    std::size_t cacheLineSize;
+};
+
+const std::unordered_map<DeviceType, CacheLineSpec> CACHE_LINE_SPEC_MAP = {
+    {DeviceType::ASCEND_910B1, {256}},
+    {DeviceType::ASCEND_910B2, {256}},
+    {DeviceType::ASCEND_910B3, {256}},
+    {DeviceType::ASCEND_910B4, {256}},
+};
+
 } // namespace Sanitizer
 
 #endif
