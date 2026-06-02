@@ -55,6 +55,7 @@ enum class OptVal : int32_t {
     DEMANGLE_MODE,
     CHECK_CROSS_NPU_RACES,
     GM_BUFFER_GUARD_SIZE,
+    CHECK_DCCI,
 };
 
 std::vector<option> GetLongOptArray()
@@ -77,6 +78,7 @@ std::vector<option> GetLongOptArray()
         {"demangle", required_argument, nullptr, static_cast<int32_t>(OptVal::DEMANGLE_MODE)},
         {"check-cross-npu-races", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES)},
         {"padding", required_argument, nullptr, static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE)},
+        {"check-dcci", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_DCCI)},
         {nullptr, 0, nullptr, 0},
     };
     return longOpts;
@@ -440,6 +442,17 @@ void ParseGMBufferGuardSize(const std::string &param, UserCommand &userCommand)
     userCommand.config.gmBufferGuardSize = userSize;
 }
 
+void ParseCheckDcci(const std::string &param, UserCommand &userCommand) {
+    if (param == "yes") {
+        userCommand.config.checkDcci = true;
+    } else if (param == "no") {
+    } else {
+        std::cout << "[mssanitizer] ERROR: --check-dcci param is invalid" << std::endl;
+        userCommand.printHelpInfo = true;
+        return;
+    }
+}
+
 using ParseHandler = std::function<void(const std::string &, UserCommand &)>;
 std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
 {
@@ -462,6 +475,7 @@ std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
         {static_cast<int32_t>(OptVal::DEMANGLE_MODE), ParseDemangleMode},
         {static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES), ParseCheckCrossNpuRaces},
         {static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE), ParseGMBufferGuardSize},
+        {static_cast<int32_t>(OptVal::CHECK_DCCI), ParseCheckDcci},
     };
 
     return handlers;
@@ -523,6 +537,7 @@ void ShowHelpInfo()
         "  user options for racecheck:" << std::endl <<
         "    --check-cross-npu-races=no|yes" << std::endl <<
         "                         check races for kernel on different NPUs [no]" << std::endl <<
+        "    --check-dcci=no|yes  check for missing DCCIs leading to unexpected value read from another block [no]" <<
         std::endl;
 }
 

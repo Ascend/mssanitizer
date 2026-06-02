@@ -750,19 +750,19 @@ TEST(CliParser, no_set_full_backtrace_parameter_expect_get_full_backtrace_false)
     std::vector<const char*> argv = {
         "asan"
     };
- 
+
     CliParser cliParser;
     UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
     ASSERT_FALSE(cmd.config.isPrintFullStack);
 }
- 
+
 TEST(CliParser, set_full_backtrace_parameter_expect_get_full_backtrace_true)
 {
     std::vector<const char*> argv = {
         "asan",
         "--full-backtrace=yes"
     };
- 
+
     CliParser cliParser;
     UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
     ASSERT_TRUE(cmd.config.isPrintFullStack);
@@ -778,7 +778,7 @@ TEST(CliParser, do_not_set_demangle_mode_expect_get_default_demangle_mode_is_ful
     UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
     ASSERT_EQ(cmd.config.demangleMode, DemangleMode::FULL_DEMANGLED_NAME);
 }
- 
+
 TEST(CliParser, set_demangle_mode_parameter_expect_get_correct_demangle_mode)
 {
     std::vector<const char*> argv = {
@@ -899,4 +899,19 @@ TEST(CliParser, set_check_cross_npu_races_no_expect_get_check_cross_npu_races_fa
     ASSERT_FALSE(cmd.config.checkCrossNpuRaces);
 }
 
+TEST(CliParser, set_check_dcci_yes_expect_get_check_dcci_true) {
+    std::vector<const char *> argv = {"mssanitizer", "--check-dcci=yes"};
+
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_TRUE(cmd.config.checkDcci);
+}
+
+TEST(CliParser, set_check_dcci_no_expect_get_check_dcci_false) {
+    std::vector<const char *> argv = {"mssanitizer", "--check-dcci=no"};
+
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_FALSE(cmd.config.checkDcci);
+}
 }
