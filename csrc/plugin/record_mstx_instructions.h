@@ -153,8 +153,10 @@ AICORE_FUNC_HEAD void RecordMstxEvent(EXTRA_PARAMS_DEC, uint32_t interfaceId, ui
 
     if (interfaceId == static_cast<uint32_t>(InterfaceType::MSTX_SET_CROSS_SYNC) ||
         interfaceId == static_cast<uint32_t>(InterfaceType::MSTX_WAIT_CROSS_SYNC)) {
-        /// 该情况下为同步指令，只有开启竞争检测时，才会记录；
-        if (!DoRaceCheck(memInfo)) { return; }
+        /// 该情况下为同步指令，只有开启竞争检测或同步检测时，才会记录；
+        if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo)) {
+            return;
+        }
         RecordMstxCrossRecord(recorder, mstxRecord, bufferLens, buffer);
     } else if (interfaceId == static_cast<uint32_t>(InterfaceType::MSTX_HCCL)) {
         RecordMstxHcclRecord(recorder, mstxRecord, bufferLens, buffer);

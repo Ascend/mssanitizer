@@ -669,4 +669,79 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_eventid_diff_instruction_expec
     syncSanitizerTestClear(events, syncSan, msg);
 }
 
+void InitSyncSanForStuckTest(SyncSanitizer &syncSan, std::string &msg) {
+    syncSan.deviceType_ = DeviceType::ASCEND_910B1;
+    KernelSummary ks{};
+    ks.kernelType = KernelType::AIVEC;
+    ks.blockDim = 1;
+    syncSan.Init(ks);
+    syncSan.RegisterNotifyFunc([&msg](LogLv const &, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
 }
+
+void PushKernelFinish(std::vector<SanEvent> &events) {
+    SanEvent e{};
+    e.type = EventType::SANITIZER_CONTROL_EVENT;
+    e.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+    events.emplace_back(e);
+}
+
+TEST(SyncSanitizer, stuck_set_wait_pairing_expect_no_stuck_err) {
+    SyncSanitizer syncSan{};
+    std::string msg{};
+    InitSyncSanForStuckTest(syncSan, msg);
+
+    SanitizerRecord record{};
+    std::vector<SanEvent> events;
+    g_fillSyncRecord(record, 0U, RecordType::SET_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE1, EventID::EVENT_ID0);
+    RecordPreProcess::GetInstance().Process(record, events);
+    g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE1, EventID::EVENT_ID0);
+    RecordPreProcess::GetInstance().Process(record, events);
+    PushKernelFinish(events);
+
+    syncSan.Do(record, events);
+
+    ASSERT_TRUE(syncSan.stuckEvents_.empty());
+    ASSERT_TRUE(msg.find("kernel locked up") == std::string::npos);
+}
+
+TEST(SyncSanitizer, stuck_wait_flag_without_set_flag_expect_stuck_err) {
+    SyncSanitizer syncSan{};
+    std::string msg{};
+    InitSyncSanForStuckTest(syncSan, msg);
+
+    SanitizerRecord record{};
+    std::vector<SanEvent> events;
+    g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE1, EventID::EVENT_ID0);
+    RecordPreProcess::GetInstance().Process(record, events);
+    PushKernelFinish(events);
+
+    syncSan.Do(record, events);
+
+    ASSERT_FALSE(syncSan.stuckEvents_.empty());
+    ASSERT_TRUE(msg.find("kernel locked up") != std::string::npos);
+}
+
+TEST(SyncSanitizer, stuck_multiple_wait_flags_some_unpaired_expect_stuck_err) {
+    SyncSanitizer syncSan{};
+    std::string msg{};
+    InitSyncSanForStuckTest(syncSan, msg);
+
+    SanitizerRecord record{};
+    std::vector<SanEvent> events;
+    // SET + WAIT 配对成功
+    g_fillSyncRecord(record, 0U, RecordType::SET_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE1, EventID::EVENT_ID0);
+    RecordPreProcess::GetInstance().Process(record, events);
+    g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_V, PipeType::PIPE_MTE1, EventID::EVENT_ID0);
+    RecordPreProcess::GetInstance().Process(record, events);
+    // 无配对 SET 的 WAIT → 卡死
+    g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_MTE2, PipeType::PIPE_MTE3, EventID::EVENT_ID1);
+    RecordPreProcess::GetInstance().Process(record, events);
+    PushKernelFinish(events);
+
+    syncSan.Do(record, events);
+
+    ASSERT_FALSE(syncSan.stuckEvents_.empty());
+    ASSERT_TRUE(msg.find("kernel locked up") != std::string::npos);
+}
+
+} // namespace

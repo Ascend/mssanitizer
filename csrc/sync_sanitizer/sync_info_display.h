@@ -87,6 +87,24 @@ inline std::ostream &operator << (std::ostream &os, ErrorEvent const &info)
     PrintLocationInfo(os, info);
     return os;
 }
+
+inline std::ostream &operator<<(std::ostream &os, SyncStuckDspInfo const &dspInfo) {
+    // 算子卡死事件打印
+    os << "====== ERROR: Sync error detected. kernel locked up at" << std::endl;
+
+    for (const auto &event : dspInfo.stuckEventList) {
+        os << "======    " << std::endl
+           << "======    " << event.instructName << " in " << RuntimeContext::Instance().kernelNameDisplay << std::endl
+           << "======    by " << static_cast<PipeType>(event.pipeType) << " in block " << event.blockType << "("
+           << event.coreId << ") " << "on device " << event.deviceId << std::endl;
+
+        PrintLocationInfo(os, event);
+    }
+
+    os << "======    " << std::endl
+       << "====== SUMMARY: " << dspInfo.stuckEventList.size() << " pipe(s) locked up." << std::endl;
+    return os;
+}
 }
 
 #endif  // SYNC_SANITIZER_SYNC_INFO_DISPLAY_H

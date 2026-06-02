@@ -70,9 +70,10 @@ private:
     RecordPreProcess() {};
 
 private:
-    std::vector<SanitizerRecord> recordBuffer_;               // 缓存记录，主要用于处理有些记录需要依赖后续的记录才能决定当前记录是否保留；
-    MstxCrossWaitMergeInfo waitMergeInfo_;                    // 缓存记录对应的标志信息
-    bool mstxMergeTag_{};                                     // mstx记录合并标志位，为true时合并记录
+    std::vector<SanitizerRecord> recordBuffer_; // 缓存记录，主要用于处理有些记录需要依赖后续的记录才能决定当前记录是否保留；
+    MstxCrossWaitMergeInfo waitMergeInfo_;      // 缓存记录对应的标志信息
+    bool mstxMergeTag_{};       // mstx记录合并标志位，为true时合并记录
+    bool isFirstSyncAllStub_{}; // sync_all_stub指令对标志位，标识当前是否处于sync_all合并区间内，为true时丢弃非真实的指令
 };
 
 }  // namespace Sanitizer

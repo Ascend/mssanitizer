@@ -21,6 +21,7 @@
 #include <map>
 #include <vector>
 #include "core/framework/sanitizer_base.h"
+#include "core/framework/pipeline_replayer.h"
 
 namespace Sanitizer {
 
@@ -36,22 +37,28 @@ public:
     void Exit() override;
 
 private:
-    void Init();
+    void Init(KernelSummary const &kernelInfo);
     inline bool IsTargetBlockId(uint32_t blockId);
     uint64_t CalcSetFlagSyncID(SanEvent const &event);
     uint64_t CalcWaitFlagSyncID(SanEvent const &event);
     void DoMatchCheck(SanEvent const &event);
     void DoRedundancyCheck(SanEvent const &event);
+    void DoStuckCheck(SanEvent const &event);
     void ReportUnpairedInfo();
     void ReportRedundancyInfo() const;
     void ReportSyncThreadsInfo() const;
+    void ReportSyncStuckInfo(SyncStuckDspInfo &stuckDspInfo);
 
+    KernelType kernelType_{};
+    DeviceType deviceType_ = DeviceType::INVALID;
+    PipelineReplayer pipelineReplayer_;
     int16_t checkBlockId_ = CHECK_ALL_BLOCK;
     MSG_FUNC msgFunc_;
     std::map<uint64_t, std::vector<SyncDispInfo>> syncEvents_;
     std::map<PipeType, SyncDispInfo> pipeRedundancyEvents_;  // 指令遍历过程中保存上一条指令
     std::vector<SyncDispInfo> redundancyInfo_;  // 保存重复的指令信息
     std::vector<ErrorEvent> syncThreadsInfo_;   // sync_threads使用错误的online_error信息
+    std::vector<ErrorEvent> stuckEvents_; // PipelineReplayer 回调收集的卡死事件
     bool isFinished_{false};
 };
 }

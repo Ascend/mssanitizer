@@ -19,18 +19,84 @@
 #include "sync_info_display.h"
 #include "core/framework/event_def.h"
 #include "core/framework/utility/log.h"
+#include <cstring>
 
 namespace Sanitizer {
+
+// 将 SyncType 枚举值转为字符串（利用 # 宏字符串化）
+static const char *SyncTypeToStr(SyncType t) {
+    switch (t) {
+#define CASE_SYNC_TYPE(v) \
+    case SyncType::v: \
+        return #v
+        CASE_SYNC_TYPE(SET_FLAG);
+        CASE_SYNC_TYPE(WAIT_FLAG);
+        CASE_SYNC_TYPE(PIPE_BARRIER);
+        CASE_SYNC_TYPE(FFTS_SYNC);
+        CASE_SYNC_TYPE(WAIT_FLAG_DEV);
+        CASE_SYNC_TYPE(IB_SET);
+        CASE_SYNC_TYPE(IB_WAIT);
+        CASE_SYNC_TYPE(SYNC_ALL);
+        CASE_SYNC_TYPE(MSTX_SET_CROSS);
+        CASE_SYNC_TYPE(MSTX_WAIT_CROSS);
+        CASE_SYNC_TYPE(GET_BUF);
+        CASE_SYNC_TYPE(RLS_BUF);
+        CASE_SYNC_TYPE(WAIT_INTRA_BLOCK);
+        CASE_SYNC_TYPE(HSET_FLAG);
+        CASE_SYNC_TYPE(HWAIT_FLAG);
+#undef CASE_SYNC_TYPE
+    default:
+        return "UNKNOWN_SYNC_TYPE";
+    }
+}
+
+// 根据 SanEvent 类型提取对应的指令名，填入 ErrorEvent.instructName
+static void FillStuckInstructName(ErrorEvent &errEvent, const SanEvent &event) {
+    const char *name = "";
+    switch (event.type) {
+    case EventType::SYNC_EVENT:
+        name = SyncTypeToStr(event.eventInfo.syncInfo.opType);
+        break;
+    case EventType::CROSS_CORE_SYNC_EVENT:
+        name = SyncTypeToStr(event.eventInfo.fftsSyncInfo.opType);
+        break;
+    case EventType::CROSS_CORE_SOFT_SYNC_EVENT:
+        name = SyncTypeToStr(event.eventInfo.softSyncInfo.opType);
+        break;
+    case EventType::MSTX_CROSS_SYNC_EVENT:
+        name = SyncTypeToStr(event.eventInfo.mstxCrossInfo.opType);
+        break;
+    case EventType::BUF_SYNC_EVENT:
+        name = SyncTypeToStr(event.eventInfo.bufSyncInfo.opType);
+        break;
+    case EventType::H_SYNC_EVENT:
+        name = SyncTypeToStr(event.eventInfo.hsyncInfo.opType);
+        break;
+    case EventType::MSTX_CROSS_CORE_BARRIER: // mstx事件没有opType，直接用事件名，下同
+        name = "MSTX_CROSS_CORE_BARRIER";
+        break;
+    case EventType::MSTX_CROSS_NPU_BARRIER:
+        name = "MSTX_CROSS_NPU_BARRIER";
+        break;
+    default:
+        name = "UNKNOWN";
+        break;
+    }
+
+    std::strncpy(errEvent.instructName, name, ERROR_EVENT_INSTRUCT_NAME_MAX_LEN - 1);
+}
 
 bool SyncSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config)
 {
     checkBlockId_ = config.checkBlockId;
+    deviceType_ = deviceInfo.device;
     return false;
 }
 
 bool SyncSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
 {
-    Init();
+    kernelType_ = kernelInfo.kernelType;
+    Init(kernelInfo);
     if (kernelInfo.kernelType == KernelType::AICPU) {
         return false;
     }
@@ -40,12 +106,31 @@ bool SyncSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
     return true;
 }
 
-void SyncSanitizer::Init()
+void SyncSanitizer::Init(KernelSummary const &kernelInfo)
 {
     syncEvents_.clear();
     pipeRedundancyEvents_.clear();
     redundancyInfo_.clear();
+    stuckEvents_.clear();
     isFinished_ = false;
+
+    pipelineReplayer_.Init(kernelInfo.kernelType, deviceType_, kernelInfo.blockDim);
+
+    // 注册卡死回调：当所有 pipe 均阻塞时，收集各队列首个未处理事件
+    pipelineReplayer_.RegisterCallback([this](ReplayerCallbackType type, const SanEvent &event) {
+        if (type == ReplayerCallbackType::ALL_DEVICE_STUCK) {
+            // 工具预处理时插入的同步事件不做判断
+            if (event.type == EventType::SYNC_EVENT && event.eventInfo.syncInfo.isGenerated) {
+                return;
+            }
+
+            ErrorEvent errEvent;
+            errEvent.Init(MemEvent(event));
+            FillStuckInstructName(errEvent, event);
+
+            stuckEvents_.push_back(errEvent);
+        }
+    });
 }
 
 bool SyncSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
@@ -98,6 +183,19 @@ void SyncSanitizer::DoMatchCheck(SanEvent const &event)
         selfSyncInfo.opType = event.eventInfo.syncInfo.opType;
         selfSyncInfo.checkType = SyncCheckType::MATCH_CHECK;
         syncEvents_[selfSyncID].push_back(selfSyncInfo);
+    }
+}
+
+// 算子卡死检测
+void SyncSanitizer::DoStuckCheck(SanEvent const &event) {
+    pipelineReplayer_.Do(event);
+
+    if (pipelineReplayer_.IsFinished()) {
+        if (!stuckEvents_.empty()) {
+            SyncStuckDspInfo stuckInfo;
+            stuckInfo.stuckEventList = stuckEvents_;
+            ReportSyncStuckInfo(stuckInfo);
+        }
     }
 }
 
@@ -185,8 +283,7 @@ void SyncSanitizer::DoRedundancyCheck(SanEvent const &event)
     pipeRedundancyEvents_[pipe] = selfSyncInfo;
 }
 
-void SyncSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events)
-{
+void SyncSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
     if (IsMstxRecordWithTensor(record)) {
         return;
     }
@@ -196,6 +293,9 @@ void SyncSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent
     }
 
     for (auto& event : events) {
+        // 卡死检测需要所有 block 的事件，放在过滤之前
+        DoStuckCheck(event);
+
         if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
             event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
             isFinished_ = true;
@@ -318,6 +418,22 @@ void SyncSanitizer::ReportSyncThreadsInfo() const
             return DetectionInfo{ToolType::SYNCCHECK, ss.str()};
         });
     }
+}
+
+void SyncSanitizer::ReportSyncStuckInfo(SyncStuckDspInfo &stuckDspInfo) {
+    // build pc stack map cache
+    std::set<uint64_t> pcOffsets;
+    for (ErrorEvent const &stuckEvent : stuckDspInfo.stuckEventList) {
+        pcOffsets.insert(stuckEvent.pc);
+    }
+
+    CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
+
+    msgFunc_(LogLv::ERROR, [&stuckDspInfo](void) {
+        std::stringstream ss;
+        ss << stuckDspInfo << std::endl;
+        return DetectionInfo{ToolType::SYNCCHECK, ss.str()};
+    });
 }
 
 uint64_t SyncSanitizer::CalcSetFlagSyncID(SanEvent const &event)

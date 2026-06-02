@@ -441,6 +441,26 @@ TEST_F(TestPipelineReplayer, buf_sync_get_rls_variants) {
     replayer_.Do(MakeKernelFinishEvent());
     ASSERT_TRUE(replayer_.IsFinished());
     AssertStuck("GET_BUF with insufficient RLS_BUF should stall");
+
+    // 连续两条 GET_BUF 耗尽隐含 buffer → 第二条卡死（同 pipe 死锁）
+    ResetReplayer();
+    RegisterCollectingCallback();
+    replayer_.Do(MakeBufEvent(PipeType::PIPE_S, 400, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE, 0));
+    replayer_.Do(MakeBufEvent(PipeType::PIPE_S, 400, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE, 0));
+    replayer_.Do(MakeKernelFinishEvent());
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertStuck("Consecutive GET_BUF exhausts implicit buffer → stall");
+
+    // 嵌套：get→get→rls→rls，第二条 GET 先卡死，RLS 被挡在队尾
+    ResetReplayer();
+    RegisterCollectingCallback();
+    replayer_.Do(MakeBufEvent(PipeType::PIPE_S, 500, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE, 0));
+    replayer_.Do(MakeBufEvent(PipeType::PIPE_S, 500, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE, 0));
+    replayer_.Do(MakeBufEvent(PipeType::PIPE_S, 500, SyncType::RLS_BUF, 0, BufMode::BLOCK_MODE, 0));
+    replayer_.Do(MakeBufEvent(PipeType::PIPE_S, 500, SyncType::RLS_BUF, 0, BufMode::BLOCK_MODE, 0));
+    replayer_.Do(MakeKernelFinishEvent());
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertStuck("Nested GET→GET→RLS→RLS: second GET stalls, RLS behind it unreachable");
 }
 
 // case 11. 综合多事件序列 + 卡死回调准确性验证

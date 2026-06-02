@@ -74,6 +74,7 @@ template <typename Conf, typename Worker>
 class BarrierDatabase {
 public:
     BarrierEvent<Worker> &operator[](Conf conf);
+    void clear() { barrierEvents_.clear(); }
 
 private:
     std::unordered_map<Conf, BarrierEvent<Worker>, Hash<Conf>> barrierEvents_;

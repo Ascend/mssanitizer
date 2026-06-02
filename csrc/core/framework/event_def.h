@@ -279,6 +279,8 @@ struct MemEvent {
     }
 };
 
+constexpr size_t ERROR_EVENT_INSTRUCT_NAME_MAX_LEN = 40;
+
 struct ErrorEvent {
     uint64_t serialNo;
     uint32_t deviceId;
@@ -294,6 +296,7 @@ struct ErrorEvent {
     BlockType blockType;
     SimtThreadLocation threadLoc;
     bool isSimt;
+    char instructName[ERROR_EVENT_INSTRUCT_NAME_MAX_LEN] = {0};
 
     void Init(const MemEvent &memEvent, uint64_t dynamicErrIdx = 0)
     {
@@ -381,6 +384,11 @@ struct RaceDispInfo {
             SAN_ERROR_LOG("simt locations size error, size = %lu", simtLocs.size());
         }
     }
+};
+
+// 同步检测算子卡死信息展示单元
+struct SyncStuckDspInfo {
+    std::vector<ErrorEvent> stuckEventList;
 };
 
 // 同步检测信息展示单元

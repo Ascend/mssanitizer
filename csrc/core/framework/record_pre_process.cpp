@@ -180,11 +180,26 @@ void RecordPreProcess::Process(const SanitizerRecord &record, std::vector<SanEve
     }
     // 根据不同的RecordType选取不同的函数处理
     KernelRecord const &kernelRecord = record.payload.kernelRecord;
+
+    // 每个SYNC_ALL_STUB指令对的第一个指令翻转为true
+    if (kernelRecord.recordType == RecordType::SYNC_ALL_STUB) {
+        isFirstSyncAllStub_ = !isFirstSyncAllStub_;
+    }
+
     UpdateMergeInfo(kernelRecord);
 
-    if (mstxMergeTag_ && !IsRealSyncType(kernelRecord.recordType)) {
-        // 如果记录可以被合并、并且不是真实的硬件支持的同步指令，则忽略该条记录；
+    // 处于syncall合并区间时，仅保留真实的硬件同步指令；
+    // 例外：第一条SYNC_ALL_STUB（边界标记）、KERNEL_FINISH/BLOCK_FINISH（标识结束，需恢复状态）不可丢弃
+    if (mstxMergeTag_ && !IsRealSyncType(kernelRecord.recordType) &&
+        !(kernelRecord.recordType == RecordType::SYNC_ALL_STUB && isFirstSyncAllStub_) &&
+        kernelRecord.recordType != RecordType::KERNEL_FINISH && kernelRecord.recordType != RecordType::BLOCK_FINISH) {
         return;
+    }
+
+    // 算子finish/block结束时恢复标记位状态，避免死循环状态残留
+    if (kernelRecord.recordType == RecordType::KERNEL_FINISH || kernelRecord.recordType == RecordType::BLOCK_FINISH) {
+        mstxMergeTag_ = false;
+        isFirstSyncAllStub_ = false;
     }
 
     ProcessMstxCrossWaitRecord(record);

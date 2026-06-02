@@ -29,6 +29,12 @@ void PipelineReplayer::Init(KernelType kernelType, DeviceType deviceType, uint32
     eventContainer_.Init(totalBlockNum);
     syncDB_.resize(totalBlockNum);
     crossCoreSyncInfoContainer_.Init(totalBlockNum, kernelType);
+
+    getRlsBufMap_.clear();
+    getBufCount_.clear();
+    mstxSetCrossMap_.clear();
+    crossCoreBarrier_.clear();
+    isFinished_ = false;
 }
 
 void PipelineReplayer::Do(const SanEvent& event)
@@ -146,7 +152,7 @@ ReturnType PipelineReplayer::ProcessSyncEvent(const SanEvent& event)
             return ReturnType::PROCESS_OK;
         } else {
             return ReturnType::PROCESS_STALLED;
-	}
+        }
     }
 
     return ReturnType::PROCESS_OK;
@@ -266,6 +272,7 @@ ReturnType PipelineReplayer::ProcessMstxCrossNpuBarrier(const SanEvent& event)
 }
 
 // BUF 同步 (GET_BUF / RLS_BUF)，复用 getRlsBufMap_ 的 .size() 计数能力
+// 使用 getBufCount_ 追踪 get 消费次数来判断卡死
 ReturnType PipelineReplayer::ProcessGetRlsBufSyncEvent(const SanEvent& event)
 {
     uint32_t blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_);
@@ -274,14 +281,23 @@ ReturnType PipelineReplayer::ProcessGetRlsBufSyncEvent(const SanEvent& event)
 
     if (bufSync.opType == SyncType::GET_BUF && bufSync.mode == BufMode::BLOCK_MODE) {
         auto it = getRlsBufMap_.find(bufKey);
+        uint64_t consumed = getBufCount_[bufKey];
+        uint64_t available = (it == getRlsBufMap_.cend() ? 0 : it->second.size()) + 1;
+
         if (bufSync.rlsCount == 0U) {
+            if (consumed + 1 > available) {
+                return ReturnType::PROCESS_STALLED;
+            }
+            ++getBufCount_[bufKey];
+
             // 每个buf_id的第一个get_buf，不具备阻塞作用
             return ReturnType::PROCESS_OK;
         }
-        if (it == getRlsBufMap_.cend() || it->second.size() < bufSync.rlsCount) {
+        if (it == getRlsBufMap_.cend() || it->second.size() < bufSync.rlsCount ||
+            consumed + bufSync.rlsCount > available) {
             return ReturnType::PROCESS_STALLED;
         }
-        // TODO:这里少了行日志，后续评估补充
+        getBufCount_[bufKey] += bufSync.rlsCount;
         return ReturnType::PROCESS_OK;
     } else if (bufSync.opType == SyncType::RLS_BUF) {
         VectorTime vt{};

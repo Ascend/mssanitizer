@@ -90,6 +90,8 @@ private:
     // key: (blockIdx, bufId), value: rls_buf 事件附带的向量时间列表
     //       仅通过 .size() 判断 rls_buf 数量是否满足 get_buf 的 rlsCount
     std::map<std::pair<uint32_t, uint64_t>, std::vector<VectorTime>> getRlsBufMap_;
+    // 辅助：各 bufId 累计已消费的 get_buf 次数，与队列 size 比对判断卡死
+    std::map<std::pair<uint32_t, uint64_t>, uint64_t> getBufCount_;
 
     // 回放控制
     KernelType kernelType_;

@@ -141,7 +141,7 @@ void ConvertSingleRecordRepeats(const SanEvent &event, MemOpRecord &record, std:
         ProcessAndStoreMemOp(record, records);
         return;
     }
-    
+
     if (repeatStrideSize <= record.memSize) {
         // repeatStride小于合并后的单条repeat记录长度，则全部合为1条记录
         record.memSize = repeatStrideSize * (memInfo.repeatTimes - 1) + record.memSize;
@@ -225,7 +225,7 @@ TEST(AddressSanitizer, free_twice_expect_return_double_free)
     record.payload.memoryRecord = CreateMemOpRecord(MemOpType::FREE);
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
     ASSERT_TRUE(msg.find("FREE") != std::string::npos);
-    
+
     /// Double Free
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
     ASSERT_TRUE(msg.find("illegal free") != std::string::npos);
@@ -1816,15 +1816,15 @@ static BroadcastRecord CreateBroadcastRecordStruct(void)
     record.dstGap = dstGapNum;
     record.location.fileNo = fileNo;
     record.location.lineNo = lineNo;
- 
+
     record.srcDataType = DataType::DATA_B16;
     record.dstDataType = DataType::DATA_B16;
     record.srcMemType = MemType::UB;
     record.dstMemType = MemType::L0C;
- 
+
     return record;
 }
- 
+
 TEST(AddressSanitizer, parse_broadcast_records)
 {
     uint64_t broadcastTransBytes = 512ULL;
@@ -1834,7 +1834,7 @@ TEST(AddressSanitizer, parse_broadcast_records)
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = kernelRecord;
- 
+
     std::vector<MemOpRecord> records;
     std::vector<SanEvent> events;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
@@ -2549,7 +2549,7 @@ TEST(AddressSanitizer, parse_mstx_wait_cross_records_with_two_times_expect_get_c
         RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
         sanitizerRecord.payload.kernelRecord.recordType = RecordType::MSTX_STUB;
     }
-    
+
     sanitizerRecord.payload.kernelRecord.payload.mstxRecord.interface.mstxCrossRecord.addr = 0x400;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
     sanitizerRecord.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
@@ -2738,14 +2738,17 @@ TEST(AddressSanitizer, parse_sync_all_records_with_two_times_expect_get_correct_
     sanitizerRecord.payload.kernelRecord.recordType = RecordType::LOAD;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
 
-    /// 事件序列为：load -> SYNC_ALL_STUB -> load -> ...... -> load -> SYNC_ALL_STUB -> load
-    /// 合并之后的记录为： load-> SYNC_ALL_STUB -> load
-    ASSERT_EQ(events.size(), 5);
+    /// 事件序列为：load -> SYNC_ALL_STUB -> load -> ... -> load -> pipe_barrier -> SYNC_ALL_STUB -> load
+    /// 合并后：中间LOAD被丢弃，两条SYNC_ALL_STUB均保留作为同步边界标记
+    /// 预期：load(MEM) -> SYNC_ALL(CROSS_CORE×2) -> pipe_barrier(SYNC) -> SYNC_ALL(CROSS_CORE×2) -> load(MEM)
+    ASSERT_EQ(events.size(), 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
-    ASSERT_EQ(events[1].type, EventType::SYNC_EVENT);
+    ASSERT_EQ(events[1].type, EventType::CROSS_CORE_SYNC_EVENT);
     ASSERT_EQ(events[2].type, EventType::CROSS_CORE_SYNC_EVENT);
-    ASSERT_EQ(events[3].type, EventType::CROSS_CORE_SYNC_EVENT);
-    ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
+    ASSERT_EQ(events[3].type, EventType::SYNC_EVENT);
+    ASSERT_EQ(events[4].type, EventType::CROSS_CORE_SYNC_EVENT);
+    ASSERT_EQ(events[5].type, EventType::CROSS_CORE_SYNC_EVENT);
+    ASSERT_EQ(events[6].type, EventType::MEM_EVENT);
 }
 
 TEST(AddressSanitizer, parse_blockstride_equal_0_record_expect_get_correct_memory_records)
@@ -3525,7 +3528,7 @@ static ScatterVnchwconvRecord CreateScatterVnchwconvRecordStruct()
     record.src1.l64 = 0x13;
     record.src1.h64 = 0x13;
     record.repeat = repeat;
- 
+
     record.dstHighHalf = false;
     record.srcHighHalf = false;
     record.location.fileNo = fileNo;
@@ -3533,10 +3536,10 @@ static ScatterVnchwconvRecord CreateScatterVnchwconvRecordStruct()
     record.dataType = DataType::DATA_B16;
     record.srcStride = srcStride;
     record.dstStride = dstStride;
- 
+
     return record;
 }
- 
+
 TEST(AddressSanitizer, parse_scattervnchwconv_records)
 {
     KernelRecord kernelRecord;
@@ -3545,7 +3548,7 @@ TEST(AddressSanitizer, parse_scattervnchwconv_records)
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = kernelRecord;
- 
+
     std::vector<MemOpRecord> records;
     std::vector<SanEvent> events;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
@@ -3635,7 +3638,7 @@ TEST(AddressSanitizer, parse_dynamic_shadow_memory_records_expect_success)
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = kernelRecord;
- 
+
     std::vector<MemOpRecord> records;
     std::vector<SanEvent> events;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
@@ -3689,7 +3692,7 @@ TEST(AddressSanitizer, get_gm_buffer_out_of_bound_record_and_print_excep)
     memoryRecord.gmAddrOutOfBoundsRecord.outSize = 5;
     memoryRecord.serialNo = 10;
     record.payload.memoryRecord = memoryRecord;
-    
+
     // 示例：
     // ====== ERROR: illegal write of size 5 bytes
     // ======    Access to 0x12c0c0016423 on GM is 3 bytes after the nearest allocation at 0x12c0c0016020 of size 1024 bytes
