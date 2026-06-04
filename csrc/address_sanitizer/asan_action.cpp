@@ -158,11 +158,9 @@ ErrorMsgList AsanLoad::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
         }
     }
 
-    // 开启初始化检测后，不处理动态插桩算子的 load 事件
-    bool isKernelWithDBI = RuntimeContext::Instance().kernelSummary_.isKernelWithDBI;
-    if (config.initCheck && !ignoreShadowMemory && (record_.side == MemOpSide::HOST || !isKernelWithDBI)) {
-        MemOpRecordForShadow memOpRevordForShadow(record_);
-        ErrorMsgList loadErrors = shadowMemory.LoadNBytes(memOpRevordForShadow, config.initCheck);
+    if (config.initCheck && !ignoreShadowMemory) {
+        MemOpRecordForShadow memOpRecordForShadow(record_);
+        ErrorMsgList loadErrors = shadowMemory.LoadNBytes(memOpRecordForShadow, config.initCheck);
         for (auto &msg : loadErrors) {
             FillErrorLocInfo(record_, msg);
         }
@@ -186,8 +184,8 @@ ErrorMsgList AsanStore::doAction(ShadowMemory& shadowMemory, BoundsCheck &bounds
 
     // 写事件有两个条件需要进入 shadowmemory，一个是初始化检测，一个是多核踩踏
     if ((config.initCheck || (config.memCheck && record_.dstSpace == AddressSpace::GM)) && !ignoreShadowMemory) {
-        MemOpRecordForShadow memOpRevordForShadow(record_);
-        ErrorMsgList storeErrors = shadowMemory.StoreNBytes(memOpRevordForShadow, config.memCheck);
+        MemOpRecordForShadow memOpRecordForShadow(record_);
+        ErrorMsgList storeErrors = shadowMemory.StoreNBytes(memOpRecordForShadow, config.memCheck);
         for (auto &msg : storeErrors) {
             FillErrorLocInfo(record_, msg);
         }

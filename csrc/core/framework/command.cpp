@@ -282,13 +282,24 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
                     kernelBlock->GetRecordBlockHead().blockInfo.simtEndCount,
                     kernelBlock->GetRecordBlockHead().blockInfo.simtCallCount, RuntimeContext::Instance().serialNo_);
             } else {
-                if (kernelBlock->ParseSimtEntryRecord(sanitizerRecord.payload.kernelRecord)) {
+                std::vector<KernelRecord> kernelRecords;
+                kernelBlock->ParseSimtErrorRecord(kernelRecords);
+                for (const auto &record : kernelRecords) {
+                    sanitizerRecord.payload.kernelRecord = record;
                     checker.Do(sanitizerRecord);
+                }
+                std::vector<KernelRecord> smRecords;
+                if (kernelBlock->ParseSimtEntryRecord(smRecords)) {
+                    for (const auto &record : smRecords) {
+                        sanitizerRecord.payload.kernelRecord = record;
+                        checker.Do(sanitizerRecord);
+                    }
                 }
             }
         }
     }
 
+    // TODO: SIMT_CALL桩生效后，这一段代码逻辑需要删除
     /// 当device支持simt并且是目标核的情况下才解析simt指令，否则会内存越界
     if (checker.SupportSimt() && checker.IsTargetBlock(runtimeContext.currentBlockIdx_)) {
         std::vector<KernelRecord> kernelRecords;
@@ -337,7 +348,7 @@ inline void HandleKernelBinary(Packet::BinaryPayload const &payload)
         SAN_INFO_LOG("Binary section load FAILED");
         return;
     }
- 
+
     Sanitizer::Elf elf = loader.Load();
     std::vector<char> fileMapping = elf.ReadRawData(".init_array_sanitizer_file_mapping");
     if (fileMapping.empty()) {

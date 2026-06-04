@@ -32,16 +32,16 @@ AICORE_FUNC_HEAD uint64_t GetBlockIdx()
 #elif defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) // c310
     #if defined(__DAV_VEC__) && defined(SIMT_MODE) // c310-simt
         return __cce_simt_get_BLOCKID();
-    #else                                         
-        int64_t coreId = get_coreid();
-        if ((coreId >= C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_START_IDS &&
+#else
+    int64_t coreId = get_coreid();
+    if ((coreId >= C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_START_IDS &&
             coreId <= C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_END_IDS) ||
-            coreId >= C310_A5_DEVICE_VEC_PHYS_GREAT_BOUND_CORE_START_IDS) {    // c310-vec
-            return get_block_idx() * get_subblockdim() + get_subblockid();
-        } else {                                                               // c310-cube
-            return get_block_idx();
-        }
-    #endif // SIMT_MODE
+        coreId >= C310_A5_DEVICE_VEC_PHYS_GREAT_BOUND_CORE_START_IDS) { // c310-vec
+        return get_block_idx() * get_subblockdim() + get_subblockid();
+    } else { // c310-cube
+        return get_block_idx();
+    }
+#endif // SIMT_MODE
 #else // NOT C220 C310
     return get_block_idx();
 #endif // __DAV
@@ -359,7 +359,12 @@ AICORE_FUNC_HEAD bool DoSyncCheck(__gm__ uint8_t *memInfo)
 AICORE_FUNC_HEAD bool DoMemCheck(__gm__ uint8_t *memInfo)
 {
     auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
-    return head->checkParms.defaultcheck;
+    return head->checkParms.memcheck;
+}
+
+AICORE_FUNC_HEAD bool DoInitCheck(__gm__ uint8_t *memInfo) {
+    auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
+    return head->checkParms.initcheck;
 }
 
 /// 同步检测当前需要判断冗余，需要其他类型的pipe指令

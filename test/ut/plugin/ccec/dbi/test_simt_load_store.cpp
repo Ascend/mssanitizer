@@ -35,6 +35,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     head.supportSimt = true;
     head.offsetInfo.simtErrorInfo.offset = 1024;
     head.offsetInfo.simtErrorInfo.size = 1024 * 10;
@@ -102,6 +103,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     head.supportSimt = true;
     head.offsetInfo.simtErrorInfo.offset = 1024;
     head.offsetInfo.simtErrorInfo.size = 1024 * 10;
@@ -136,12 +138,13 @@ TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)
     ASSERT_EQ(blockHead->recordWriteCount, 12);
     ASSERT_EQ(blockHead->recordCount, 12);
 }
- 
+
 TEST(SimtLoadStoreInstructions, dump_simt_atom_with_initcheck_expect_get_success)
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     head.supportSimt = true;
     head.offsetInfo.simtErrorInfo.offset = 1024;
     head.offsetInfo.simtErrorInfo.size = 1024 * 10;

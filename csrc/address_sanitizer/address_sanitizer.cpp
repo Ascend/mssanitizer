@@ -86,8 +86,7 @@ void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
     record.side = MemOpSide::KERNEL;
 }
 
-void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event)
-{
+void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event, MemType memType) {
     MemOpRecord record{};
     record.ignoreIllegalCheck = true;
     record.serialNo = event.serialNo;
@@ -95,7 +94,7 @@ void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event)
     record.blockType = event.loc.blockType;
     record.moduleId = -1;
     record.side = MemOpSide::KERNEL;
-    record.dstSpace = AddressSpace::GM;
+    record.dstSpace = memType == MemType::GM ? AddressSpace::GM : AddressSpace::UB;
     const auto &varInfo = event.eventInfo.dynamicOpInfo;
     const auto smRecords = reinterpret_cast<const ShadowMemoryRecord *>(varInfo.buffer);
     FillFileNameByNo(record, event.loc.fileNo);
@@ -128,7 +127,7 @@ void ConvertSingleRecordRepeats(const SanEvent &event, MemOpRecord &record, std:
         ProcessAndStoreMemOp(record, records);
         return;
     }
-    
+
     if (repeatStrideSize <= record.memSize) {
         // repeatStride小于合并后的单条repeat记录长度，则全部合为1条记录
         record.memSize = repeatStrideSize * (memInfo.repeatTimes - 1) + record.memSize;
@@ -221,8 +220,8 @@ void AddressSanitizer::ConvertMemEvent(const SanEvent &event, std::vector<MemOpR
 void AddressSanitizer::ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
 {
     auto& dynamicMemInfo = event.eventInfo.dynamicOpInfo;
-    if (dynamicMemInfo.dynamicType == RecordType::SIMT_ENTRY && dynamicMemInfo.memType == MemType::GM) {
-        SimtEntryToSingle(records, event);
+    if (dynamicMemInfo.dynamicType == RecordType::SIMT_ENTRY) {
+        SimtEntryToSingle(records, event, dynamicMemInfo.memType);
     }
 }
 
@@ -643,6 +642,36 @@ void AddressSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockTy
             error.auxData.nBadBytes = errorDesc.overLapSize;
             error.auxData.conflictedThreadLoc = errorDesc.conflictedThreadLoc;
             this->errorBuffer_.Add(error);
+        } else if (kernelErrorDesc.errorType == KernelErrorType::UNINITIALIZED_READ) {
+            MemOpRecord memOpRecord;
+            memOpRecord.dstAddr = kernelErrorDesc.payload.unitializedDesc.addr;
+            memOpRecord.dstSpace = kernelErrorDesc.space;
+            memOpRecord.memSize = kernelErrorDesc.payload.unitializedDesc.errorSize;
+            memOpRecord.coreId = kernelErrorDesc.location.blockId;
+            memOpRecord.serialNo = serialNo;
+            MemOpRecordForShadow memOpRecordForShadow(memOpRecord);
+            ErrorMsgList loadErrors = shadowMemory_->LoadNBytes(memOpRecordForShadow, config_.initCheck);
+            for (auto &msg : loadErrors) {
+                error.type = MemErrorType::UNINITIALIZED_READ;
+                error.auxData.badAddr.addr = msg.auxData.badAddr.addr;
+                error.auxData.nBadBytes = msg.auxData.nBadBytes;
+                error.auxData.pc = kernelErrorDesc.payload.unitializedDesc.pc;
+                error.auxData.threadLoc = kernelErrorDesc.payload.unitializedDesc.threadLoc;
+                this->errorBuffer_.Add(error);
+            }
+        } else if (kernelErrorDesc.errorType == KernelErrorType::WRITE_LOSS) {
+            MemOpRecord memOpRecord;
+            memOpRecord.dstAddr = kernelErrorDesc.payload.writeLossDesc.addr;
+            memOpRecord.dstSpace = kernelErrorDesc.space;
+            memOpRecord.memSize = kernelErrorDesc.payload.writeLossDesc.memSize;
+            memOpRecord.coreId = kernelErrorDesc.location.blockId;
+            memOpRecord.serialNo = serialNo;
+            MemOpRecordForShadow memOpRecordForShadow(memOpRecord);
+            ErrorMsgList storeErrors = shadowMemory_->StoreNBytes(memOpRecordForShadow, config_.initCheck);
+            for (auto &msg : storeErrors) {
+                msg.auxData.pc = kernelErrorDesc.payload.writeLossDesc.pc;
+                this->errorBuffer_.Add(msg);
+            }
         }
     }
 }

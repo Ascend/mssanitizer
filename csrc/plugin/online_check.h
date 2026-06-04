@@ -282,7 +282,8 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
 
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
     /// 3. 线程间内存踩踏检测和竞争检测，设计前提：SIMT每个线程访问的GM空间相互隔离无交叉，原子类操作的地址除外
-    if ((recordType != RecordType::SIMT_ATOM) && (recordType != RecordType::SIMT_RED)) {
+    /// 4. SIMD和SIMT间未初始化检测，与踩踏和竞争同时开启时，复用原逻辑；单独开启时，仅记录第一条读/写
+    if (DoMemCheck(memInfo_) || DoRaceCheck(memInfo_) || DoInitCheck(memInfo_)) {
         ShadowMemoryOnline::AuxInfo auxInfo{};
         ShadowMemoryCheck(addrInfo, auxInfo);
         errorDesc.l1StartAddr = auxInfo.l1StartAddr;
@@ -309,9 +310,30 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
             raceDesc.conflictedLocation.pc = raceError.pc;
             DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
         }
+
+        auto &initError = auxInfo.errorInfo[ShadowMemoryOnline::initErrorIdx];
+        if (initError.errorType == KernelErrorType::UNINITIALIZED_READ) {
+            errorDesc.errorType = initError.errorType;
+            auto &unitializedDesc = errorDesc.payload.unitializedDesc;
+            unitializedDesc.addr = addrInfo.addr;
+            unitializedDesc.errorSize = initError.nBadBytes;
+            unitializedDesc.threadLoc = initError.conflictedThreadLoc;
+            unitializedDesc.pc = initError.pc;
+            DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
+        }
+
+        auto &writeLoss = auxInfo.errorInfo[ShadowMemoryOnline::writeLossIdx];
+        if (writeLoss.errorType == KernelErrorType::WRITE_LOSS) {
+            errorDesc.errorType = writeLoss.errorType;
+            auto &writeLossDesc = errorDesc.payload.writeLossDesc;
+            writeLossDesc.addr = addrInfo.addr;
+            writeLossDesc.memSize = writeLoss.nBadBytes;
+            writeLossDesc.pc = writeLoss.pc;
+            DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
+        }
     }
 
-    /// 4.同步检测，syncthreads是否正确使用
+    /// 5.同步检测，syncthreads是否正确使用
     if (DoSyncCheck(memInfo_)) {
         if (recordType == RecordType::THREAD_BLOCK_BARRIER) {
             if (!UpdateSyncThreadPcNum(addrInfo.location.pc)) {
@@ -370,9 +392,14 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
 }
 
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
-AICORE_FUNC_HEAD void OnlineCheck::ShadowMemoryCheck(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo)
-{
+AICORE_FUNC_HEAD void OnlineCheck::ShadowMemoryCheck(AddrInfo const &addrInfo, ShadowMemoryOnline::AuxInfo &auxInfo) {
     if (addrInfo.space != AddressSpace::GM && addrInfo.space != AddressSpace::UB) {
+        return;
+    }
+    if (!shadowMemory_.IsReady() || memInfo_ == nullptr) {
+        return;
+    }
+    if (shadowMemory_.InvalidRange(addrInfo)) {
         return;
     }
 

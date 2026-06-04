@@ -275,180 +275,192 @@ SANITIZER_REPORT(atom_max_s_s32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::MAX);
 }
- 
+
 SANITIZER_REPORT(atom_min_s_s32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::MIN);
 }
- 
+
 SANITIZER_REPORT(atom_add_s_s32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(atom_add_s_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(atom_exch_s_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::EXCH);
 }
- 
+
 SANITIZER_REPORT(atom_min_s_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::MIN);
 }
- 
+
 SANITIZER_REPORT(atom_cas_s_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::CAS);
 }
- 
+
 SANITIZER_REPORT(atom_max_s_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::MAX);
 }
- 
+
 SANITIZER_REPORT(atom_exch_g_u64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::EXCH);
 }
- 
+
 SANITIZER_REPORT(atom_min_g_u64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MIN);
 }
- 
+
 SANITIZER_REPORT(atom_add_g_u64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(atom_cas_g_u64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::CAS);
 }
- 
+
 SANITIZER_REPORT(atom_max_g_u64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MAX);
 }
- 
+
 SANITIZER_REPORT(atom_add_g_s64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(atom_min_g_s64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MIN);
 }
- 
+
 SANITIZER_REPORT(atom_max_g_s64, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S64>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MAX);
 }
- 
+
 SANITIZER_REPORT(atom_exch_g_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::EXCH);
 }
- 
+
 SANITIZER_REPORT(atom_min_g_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MIN);
 }
- 
+
 SANITIZER_REPORT(atom_cas_g_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::CAS);
 }
- 
+
 SANITIZER_REPORT(atom_max_g_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MAX);
 }
- 
+
 SANITIZER_REPORT(atom_add_g_u32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(atom_add_g_s32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(atom_min_g_s32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MIN);
 }
- 
+
 SANITIZER_REPORT(atom_max_g_s32, uint64_t addr)
 {
     SimtRecordAtomEvent<RecordType::SIMT_ATOM, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::MAX);
 }
- 
+
 SANITIZER_REPORT(red_g_u32, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::GM, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::U32>(
+        EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_g_s32, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::GM, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::S32>(
+        EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_g_fp16, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::F16>(EXTRA_PARAMS, AddressSpace::GM, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::F16>(
+        EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_g_fp32, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::FLOAT>(EXTRA_PARAMS, AddressSpace::GM, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::FLOAT>(
+        EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_g_f16x2, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::F16X2>(EXTRA_PARAMS, AddressSpace::GM, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::F16X2>(
+        EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_g_bf16, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::BF16>(EXTRA_PARAMS, AddressSpace::GM, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::BF16>(
+        EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_g_bf16x2, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::BF16X2>(EXTRA_PARAMS, AddressSpace::GM, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::BF16X2>(
+        EXTRA_PARAMS, AddressSpace::GM, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_s_u32, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::U32>(EXTRA_PARAMS, AddressSpace::UB, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::U32>(
+        EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_s_s32, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::S32>(EXTRA_PARAMS, AddressSpace::UB, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::S32>(
+        EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_s_fp16, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::F16>(EXTRA_PARAMS, AddressSpace::UB, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::F16>(
+        EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_s_fp32, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::F32>(EXTRA_PARAMS, AddressSpace::UB, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::F32>(
+        EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::ADD);
 }
- 
+
 SANITIZER_REPORT(red_s_bf16, uint64_t addr)
 {
-    SimtRecordLoadStoreEvent<RecordType::SIMT_RED, DetailedDataType::BF16>(EXTRA_PARAMS, AddressSpace::UB, addr, 0);
+    SimtRecordAtomEvent<RecordType::SIMT_RED, DetailedDataType::BF16>(
+        EXTRA_PARAMS, AddressSpace::UB, addr, SimtAtomMode::ADD);
 }
 
 #undef SIMT_MODE
@@ -701,177 +713,177 @@ SANITIZER_REPORT(atom_max_s_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_min_s_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_add_s_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_add_s_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_exch_s_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_min_s_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_cas_s_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_max_s_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_exch_g_u64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_min_g_u64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_add_g_u64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_cas_g_u64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_max_g_u64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_add_g_s64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_min_g_s64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_max_g_s64, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_exch_g_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_min_g_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_cas_g_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_max_g_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_add_g_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_add_g_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_min_g_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(atom_max_g_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_g_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_g_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_g_fp16, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_g_fp32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_g_f16x2, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_g_bf16, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_g_bf16x2, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_s_u32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_s_s32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_s_fp16, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_s_fp32, uint64_t addr)
 {
     (void)addr;
 }
- 
+
 SANITIZER_REPORT(red_s_bf16, uint64_t addr)
 {
     (void)addr;

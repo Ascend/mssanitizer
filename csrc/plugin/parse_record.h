@@ -30,16 +30,16 @@ struct AddrInfo {
     AccessType opType;
     uint32_t alignSize;
     SimtAtomMode option;
+    bool isAtomic{false};
 };
 
 template<RecordType recordType>
 AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record)
 {
-    static_assert(recordType == RecordType::SIMT_LDG || recordType == RecordType::SIMT_STG
-    || recordType == RecordType::SIMT_LDS || recordType == RecordType::SIMT_STS
-    || recordType == RecordType::SIMT_LDK || recordType == RecordType::SIMT_STK
-    || recordType == RecordType::SIMT_LD || recordType == RecordType::SIMT_ST
-    || recordType == RecordType::SIMT_RED,
+    static_assert(recordType == RecordType::SIMT_LDG || recordType == RecordType::SIMT_STG ||
+            recordType == RecordType::SIMT_LDS || recordType == RecordType::SIMT_STS ||
+            recordType == RecordType::SIMT_LDK || recordType == RecordType::SIMT_STK ||
+            recordType == RecordType::SIMT_LD || recordType == RecordType::SIMT_ST,
         "unsupport recordType in Parse SimtLoadStoreRecord");
     AddrInfo addrInfo{};
     addrInfo.location = record.location;
@@ -49,8 +49,6 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record)
     addrInfo.space = record.space;
     if (recordType == RecordType::SIMT_LDG || recordType == RecordType::SIMT_LDS || recordType == RecordType::SIMT_LDK || recordType == RecordType::SIMT_LD) {
         addrInfo.opType = AccessType::READ;
-    } else if (recordType == RecordType::SIMT_RED) {
-        addrInfo.opType = AccessType::MEMCPY_BLOCKS;
     } else {
         addrInfo.opType = AccessType::WRITE;
     }
@@ -61,7 +59,9 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record)
 template<RecordType recordType>
 AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtAtomRecord const &record)
 {
-    static_assert(recordType == RecordType::SIMT_ATOM,
+    // ATOM和RED是原子操作的两种模式，ATOM模式支持原子运算前取回原数值，RED模式不支持取回。
+    // 原子操作不参与线程间内存踩踏检测和竞争检测，但是参与未初始化检测
+    static_assert(recordType == RecordType::SIMT_ATOM || recordType == RecordType::SIMT_RED,
         "unsupport recordType in Parse SimtAtomRecord");
     AddrInfo addrInfo{};
     addrInfo.location = record.location;
@@ -72,6 +72,7 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtAtomRecord const &record)
     addrInfo.opType = AccessType::MEMCPY_BLOCKS;
     addrInfo.option = record.option;
     addrInfo.alignSize = GetAlignSizeByDataType(record.detailedDataType);
+    addrInfo.isAtomic = true;
     return addrInfo;
 }
 

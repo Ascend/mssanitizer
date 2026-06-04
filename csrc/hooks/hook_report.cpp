@@ -134,6 +134,7 @@ bool HookReport::InitClient(void)
     checkParms_.cacheSize = config.cacheSize;
     checkParms_.checkBlockId = config.checkBlockId;
     checkParms_.defaultcheck = config.defaultCheck;
+    checkParms_.memcheck = config.memCheck;
     checkParms_.racecheck = config.raceCheck;
     checkParms_.initcheck = config.initCheck;
     checkParms_.synccheck = config.syncCheck;

@@ -37,6 +37,7 @@ TEST(OnlineCheck, check_illegal_simt_record_expect_one_error)
     blockHead.hostMemoryNum = hostmems.size();
     head.offsetInfo.simtErrorInfo.size = 500;
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
     std::copy_n(reinterpret_cast<uint8_t const*>(&blockHead), sizeof(RecordBlockHead),
         memInfo.begin() + sizeof(RecordGlobalHead));
@@ -89,6 +90,7 @@ TEST(OnlineCheck, check_normal_simt_record_expect_success)
     RecordGlobalHead head{};
     head.simtInfo.ubDynamicSize = 253952UL;
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     RecordBlockHead blockHead{};
     std::vector<HostMemoryInfo> hostmems;
     hostmems.push_back({0x100, 100, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT});
@@ -139,6 +141,7 @@ TEST(OnlineCheck, check_normal_simt_record_with_extra_info_and_all_block_check_e
     RecordGlobalHead head{};
     head.kernelInfo.kernelParamNum = 4;
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     RecordBlockHead blockHead{};
     std::vector<HostMemoryInfo> hostmems;
     hostmems.push_back({0x100, 100});
@@ -189,6 +192,7 @@ TEST(OnlineCheck, check_normal_simt_record_with_extra_info_and_single_check_expe
     head.kernelInfo.kernelParamNum = 4;
     head.checkParms.checkBlockId = 4;
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     RecordBlockHead blockHead{};
     std::vector<HostMemoryInfo> hostmems;
     hostmems.push_back({0x100, 100});
@@ -232,6 +236,7 @@ TEST(OnlineCheck, check_normal_simt_record_with_zero_extra_info_and_all_block_ch
     RecordGlobalHead head{};
     head.kernelInfo.kernelParamNum = 4;
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     RecordBlockHead blockHead{};
     std::vector<HostMemoryInfo> hostmems;
     hostmems.push_back({0x100, 100});
@@ -287,6 +292,7 @@ TEST(OnlineCheck, check_unaligned_simt_record_expect_one_error)
     blockHead.hostMemoryNum = hostmems.size();
     head.offsetInfo.simtErrorInfo.size = 500;
     head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
     std::copy_n(reinterpret_cast<uint8_t const*>(&blockHead), sizeof(RecordBlockHead),
     memInfo.begin() + sizeof(RecordGlobalHead));

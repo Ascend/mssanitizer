@@ -194,6 +194,23 @@ std::ostream &operator<<(std::ostream &os, RecordType recordType)
     return FormatEnum(os, RECORD_TYPE_MAP, recordType, "RecordType");
 }
 
+static const std::map<KernelErrorType, std::string> ERROR_TYPE_MAP = {
+    {KernelErrorType::ILLEGAL_ADDR_WRITE, "ILLEGAL_ADDR_WRITE"},
+    {KernelErrorType::ILLEGAL_ADDR_READ, "ILLEGAL_ADDR_READ"},
+    {KernelErrorType::MISALIGNED_ACCESS, "MISALIGNED_ACCESS"},
+    {KernelErrorType::THREAD_OVERLAP, "THREAD_OVERLAP"},
+    {KernelErrorType::THREAD_RW_RACE, "THREAD_RW_RACE"},
+    {KernelErrorType::THREAD_WR_RACE, "THREAD_WR_RACE"},
+    {KernelErrorType::THREAD_WW_RACE, "THREAD_WW_RACE"},
+    {KernelErrorType::THREADS_ASYNC_IN_BLOCK, "THREADS_ASYNC_IN_BLOCK"},
+    {KernelErrorType::SYNC_THREADS_RECORD_LOSS, "SYNC_THREADS_RECORD_LOSS"},
+    {KernelErrorType::UNINITIALIZED_READ, "UNINITIALIZED_READ"},
+};
+
+std::ostream &operator<<(std::ostream &os, KernelErrorType errorType) {
+    return FormatEnum(os, ERROR_TYPE_MAP, errorType, "KernelErrorType");
+}
+
 std::ostream &operator<<(std::ostream &os, InterfaceType interfaceType)
 {
     static const std::map<InterfaceType, std::string> INTERFACE_TYPE_MAP = {
@@ -1401,16 +1418,13 @@ std::ostream &operator<<(std::ostream &os, KernelErrorRecord const &errorRecord)
         if (errorRecord.recordType == RecordType::SIMT_LDG || errorRecord.recordType == RecordType::SIMT_STG
         || errorRecord.recordType == RecordType::SIMT_LDS || errorRecord.recordType == RecordType::SIMT_STS
         || errorRecord.recordType == RecordType::SIMT_LDK || errorRecord.recordType == RecordType::SIMT_STK
-        || errorRecord.recordType == RecordType::SIMT_LD || errorRecord.recordType == RecordType::SIMT_ST
-        || errorRecord.recordType == RecordType::SIMT_RED) {
+        || errorRecord.recordType == RecordType::SIMT_LD || errorRecord.recordType == RecordType::SIMT_ST) {
             auto record = *reinterpret_cast<const SimtLoadStoreRecord *>(errorRecord.record);
-            os << record.location.blockId
-              << ", " << "type:" << errorRecord.recordType
-              << ", " << record.threadLoc
-              << ";" << "space:" << record.space
-              << ";" << "addr:0x" << std::hex << record.addr << std::dec
-              << ";" << "size:" << record.size;
-        } else if (errorRecord.recordType == RecordType::SIMT_ATOM) {
+            os << record.location.blockId << ", " << "type:" << errorRecord.recordType << ", "
+               << "errType:" << errorRecord.kernelErrorDesc->errorType << ", " << record.threadLoc << ";"
+               << "space:" << record.space << ";" << "addr:0x" << std::hex << record.addr << std::dec << ";"
+               << "size:" << record.size;
+        } else if (errorRecord.recordType == RecordType::SIMT_ATOM || errorRecord.recordType == RecordType::SIMT_RED) {
             auto record = *reinterpret_cast<const SimtAtomRecord *>(errorRecord.record);
             os << record.location.blockId
               << ", " << "type:" << errorRecord.recordType
@@ -1648,7 +1662,7 @@ static const std::map<RecordType, KernelRecordStreamFunc> KERNEL_RECORD_FORMAT_M
     {RecordType::SIMT_LD,       [](std::ostream& os, KernelRecord const& r) { os << r.payload.simtLoadStoreRecord; }},
     {RecordType::SIMT_ST,       [](std::ostream& os, KernelRecord const& r) { os << r.payload.simtLoadStoreRecord; }},
     {RecordType::SIMT_ATOM,     [](std::ostream& os, KernelRecord const& r) { os << r.payload.simtAtomRecord; }},
-    {RecordType::SIMT_RED,      [](std::ostream& os, KernelRecord const& r) { os << r.payload.simtLoadStoreRecord; }},
+    {RecordType::SIMT_RED,      [](std::ostream& os, KernelRecord const& r) { os << r.payload.simtAtomRecord; }},
     {RecordType::ONLINE_ERROR,  [](std::ostream &os, KernelRecord const &r) { os << r.payload.kernelErrorRecord; }},
     {RecordType::SCALAR_RED,    [](std::ostream &os, KernelRecord const &r) { os << r.payload.redRecord; }},
     {RecordType::SCALAR_ATOM,   [](std::ostream &os, KernelRecord const &r) { os << r.payload.redRecord; }},

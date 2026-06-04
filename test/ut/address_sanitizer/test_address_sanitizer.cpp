@@ -3662,12 +3662,18 @@ TEST(AddressSanitizer, parse_dynamic_shadow_memory_records_expect_success)
     record.addr = 0x200;
     record.size = 20;
     record.space = AddressSpace::UB;
+    record.accessType = AccessType::READ;
     shRecords.push_back(record);
+    dynamicRecord.count = 1;
     dynamicRecord.buffer = shRecords.data();
     sanitizerRecord.payload.kernelRecord = kernelRecord;
     RecordPreProcess::GetInstance().Process(sanitizerRecord, events);
     ConvertSanEventsToMemOpRecords(events, records);
-    ASSERT_EQ(records.size(), 0);
+    ASSERT_EQ(records.size(), 1);
+    ASSERT_EQ(records[0].type, MemOpType::LOAD);
+    ASSERT_EQ(records[0].dstAddr, 0x200);
+    ASSERT_EQ(records[0].memSize, 20);
+    ASSERT_EQ(records[0].dstSpace, AddressSpace::UB);
 }
 
 TEST(AddressSanitizer, get_gm_buffer_out_of_bound_record_and_print_excep)

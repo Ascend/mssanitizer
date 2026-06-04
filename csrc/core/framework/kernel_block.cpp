@@ -425,7 +425,7 @@ const std::map<RecordType, std::function<bool(uint8_t const *, KernelRecord &, u
         return ParseRecordByType(record, kernelRecord.payload.simtAtomRecord, offset);
     }},
     {RecordType::SIMT_RED, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.simtLoadStoreRecord, offset);
+        return ParseRecordByType(record, kernelRecord.payload.simtAtomRecord, offset);
     }},
     {RecordType::ONLINE_ERROR, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
         return ParseMemErrorType(record, kernelRecord.payload.kernelErrorRecord, offset);
@@ -778,8 +778,7 @@ void KernelBlock::ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecor
     }
 }
 
-bool KernelBlock::ParseSimtEntryRecord(KernelRecord &kernelRecord)
-{
+bool KernelBlock::ParseSimtEntryRecord(std::vector<KernelRecord> &kernelRecords) {
     if (simtEntryHead_ == nullptr) return false;
     using namespace OnlineShadowMemory;
     auto entryRecord = reinterpret_cast<SimtEntryRecord *>(simtEntryHead_ + 1);
@@ -806,17 +805,20 @@ bool KernelBlock::ParseSimtEntryRecord(KernelRecord &kernelRecord)
         record.location.blockId = simdRecordHead_.blockInfo.blockId;
         records.emplace_back(record);
     }
+    KernelRecord kernelRecord{};
     kernelRecord.blockType = this->simdRecordHead_.blockInfo.blockType;
     kernelRecord.recordType = RecordType::DYNAMIC_OP;
     auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
     dynamicRecord.dynamicType = RecordType::SIMT_ENTRY;
     if (ubRecordCount > 0) {
         CacheDynamicRecord(reinterpret_cast<uint8_t *>(records.data()), ubRecordCount, kernelRecord);
+        kernelRecords.push_back(kernelRecord);
     }
     size_t gmRecordCount = simtEntryHead_->recordWriteCount - ubRecordCount;
     if (gmRecordCount > 0) {
         CacheDynamicRecord(reinterpret_cast<uint8_t *>(records.data()), gmRecordCount, kernelRecord,
             ubRecordCount * sizeof(ShadowMemoryRecord));
+        kernelRecords.push_back(kernelRecord);
     }
     // 缓存记录后处理当前simt_entry的偏移
     uint8_t *nextSimtEntryHead = reinterpret_cast<uint8_t *>(simtEntryHead_) + sizeof(SimtEntryBlockHead) +

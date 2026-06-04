@@ -31,7 +31,7 @@ public:
     bool NextSimd(KernelRecord &kernelRecord);
     void ParseSimtErrorRecord(std::vector<KernelRecord> &kernelRecords);
     void ParseShadowMemoryRecord(std::vector<KernelRecord> &kernelRecords);
-    bool ParseSimtEntryRecord(KernelRecord &kernelRecord);
+    bool ParseSimtEntryRecord(std::vector<KernelRecord> &kernelRecords);
     RecordBlockHead GetRecordBlockHead() const { return simdRecordHead_; }
     uint64_t GetTotalBlockDim() const;
 
