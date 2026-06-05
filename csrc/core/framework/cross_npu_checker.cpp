@@ -79,7 +79,7 @@ bool CrossNpuChecker::Run()
     auto deviceList = DeviceManager::Instance().GetDeviceList();
     for (std::size_t deviceIdx = 0; deviceIdx < deviceList.size(); ++deviceIdx) {
         uint32_t deviceId = deviceList[deviceIdx];
-        auto it = as_const(recordMap_).find(deviceId);
+        auto it = Sanitizer::as_const(recordMap_).find(deviceId);
         if (it == recordMap_.cend()) {
             continue;
         }

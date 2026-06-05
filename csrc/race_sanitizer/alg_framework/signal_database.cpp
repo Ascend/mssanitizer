@@ -29,7 +29,7 @@ void SignalDatabase::Set(MstxSignalSet const &event, VectorTime const &vt)
 
 bool SignalDatabase::Wait(MstxSignalWait const &event, VectorTime &vt)
 {
-    auto it = as_const(database_).find(event.addr);
+    auto it = Sanitizer::as_const(database_).find(event.addr);
     if (it == database_.cend()) {
         return false;
     }
