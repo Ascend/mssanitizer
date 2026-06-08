@@ -551,8 +551,7 @@ AICORE_FUNC_HEAD bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, ui
 
     uint64_t addr = addrInfo.addr;
     uint64_t size = addrInfo.size;
-    constexpr uint32_t systemUbSize = 8 * 1024U;
-    uint32_t ubSize = globalHead_->simtInfo.ubDynamicSize + systemUbSize;
+    uint32_t ubSize = globalHead_->simtInfo.ubDynamicSize;
     if (addr >= ubSize) {
         illegalSize = size;
     } else if (addr + size > ubSize) {
