@@ -413,6 +413,11 @@ TEST(AddressSanitizer, same_record_on_different_blocks_expect_get_reduced_errors
     ASSERT_TRUE(asan->SetDeviceInfo(deviceInfoSummary, config));
     RuntimeContext::Instance().deviceSummary_.device = deviceInfoSummary.device;
 
+    KernelSummary kernelInfo {};
+    kernelInfo.kernelType = KernelType::AIVEC;
+    kernelInfo.blockDim = 2;
+    ASSERT_FALSE(asan->SetKernelInfo(kernelInfo));
+
     KernelRecord kernelRecord;
     kernelRecord.recordType = RecordType::LOAD;
     kernelRecord.blockType = BlockType::AIVEC;
@@ -451,6 +456,11 @@ TEST(AddressSanitizer, record_with_aicore_blocks_expect_get_reduced_errors)
     deviceInfoSummary.device = DeviceType::ASCEND_310P;
     ASSERT_TRUE(asan->SetDeviceInfo(deviceInfoSummary, config));
     RuntimeContext::Instance().deviceSummary_.device = deviceInfoSummary.device;
+
+    KernelSummary kernelInfo {};
+    kernelInfo.kernelType = KernelType::AIVEC;
+    kernelInfo.blockDim = 1;
+    ASSERT_FALSE(asan->SetKernelInfo(kernelInfo));
 
     KernelRecord kernelRecord;
     kernelRecord.recordType = RecordType::BROADCAST;

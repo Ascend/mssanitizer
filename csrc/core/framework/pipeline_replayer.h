@@ -35,7 +35,7 @@ namespace Sanitizer {
 
 // 回放器回调类型枚举
 enum class ReplayerCallbackType : uint8_t {
-    EVENT_PROCESSING, // 正在处理单个事件
+    MEMORY_EVENT, // 内存事件
     ALL_DEVICE_STUCK, // 所有 device 均卡死，返回各队列首个未处理事件
 };
 
@@ -64,6 +64,7 @@ private:
     ReturnType ProcessEvent(const SanEvent& event);
 
     // 各类事件处理函数
+    ReturnType ProcessMemEvent(const SanEvent& event);
     ReturnType ProcessSyncEvent(const SanEvent& event);
     ReturnType ProcessBlockSyncEvent(const SanEvent& event);
     ReturnType ProcessBlockSoftSyncEvent(const SanEvent& event);

@@ -30,7 +30,7 @@ AICORE_FUNC_HEAD uint64_t GetBlockIdx()
 #if (defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__))
     return get_block_idx() * get_subblockdim() + get_subblockid();
 #elif defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) // c310
-    #if defined(__DAV_VEC__) && defined(SIMT_MODE) // c310-simt
+#if defined(__DAV_VEC__) && defined(SIMT_MODE) // c310-simt
         return __cce_simt_get_BLOCKID();
 #else
     int64_t coreId = get_coreid();

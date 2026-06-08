@@ -88,20 +88,7 @@ void PipelineReplayer::CacheMstxCrossSet(const SanEvent& event)
 }
 
 // 事件分发
-ReturnType PipelineReplayer::ProcessEvent(const SanEvent& event)
-{
-    // 通知外部当前正在处理的事件
-    if (callback_) {
-        callback_(ReplayerCallbackType::EVENT_PROCESSING, event);
-    }
-
-    // PIPE_S 发射到目标 PIPE：不需要 TIME_EVENT 和向量时钟，直接推到目标 PIPE
-    if (eventContainer_.GetPipeIndex() != event.pipe) {
-        auto blockIdx = GetEventBlockIndex(event, kernelType_, deviceType_);
-        eventContainer_.Push(event, event.pipe, blockIdx);
-        return ReturnType::PROCESS_OK;
-    }
-
+ReturnType PipelineReplayer::ProcessEvent(const SanEvent &event) {
     switch (event.type) {
         case EventType::SYNC_EVENT:
             return ProcessSyncEvent(event);
@@ -117,13 +104,22 @@ ReturnType PipelineReplayer::ProcessEvent(const SanEvent& event)
             return ProcessMstxCrossNpuBarrier(event);
         case EventType::BUF_SYNC_EVENT:
             return ProcessGetRlsBufSyncEvent(event);
-        // 内存/时间/动态内存事件 —— 不涉及同步，直接通过
-        case EventType::MEM_EVENT:
+        // 时间事件 —— 不涉及同步，直接通过
         case EventType::TIME_EVENT:
-        case EventType::DYNAMIC_MEM_EVENT:
             return ReturnType::PROCESS_OK;
+        case EventType::MEM_EVENT:
+        case EventType::DYNAMIC_MEM_EVENT:
+            return ProcessMemEvent(event);
         default:
             break;
+    }
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType PipelineReplayer::ProcessMemEvent(const SanEvent& event) {
+    // 将内存事件传到外部
+    if (callback_) {
+        callback_(ReplayerCallbackType::MEMORY_EVENT, event);
     }
     return ReturnType::PROCESS_OK;
 }

@@ -55,7 +55,7 @@ TEST(SyncInstructions, dbi_wait_flag_dev_expect_get_correct_records)
     ASSERT_EQ(blockHead.recordWriteCount, 0);
 
     RecordGlobalHead head{};
-    head.checkParms.initcheck = true;
+    head.checkParms.memcheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
     __sanitizer_report_wait_flag_dev_pipe(memInfo.data(), record.location.pc, 0, PipeType::PIPE_MTE2, 2);
     ASSERT_EQ(blockHead.recordWriteCount, 0);
@@ -81,7 +81,7 @@ TEST(SyncInstructions, dbi_wait_flag_devi_expect_get_correct_records)
     ASSERT_EQ(blockHead.recordWriteCount, 0);
 
     RecordGlobalHead head{};
-    head.checkParms.initcheck = true;
+    head.checkParms.memcheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
     __sanitizer_report_wait_flag_devi_pipe(memInfo.data(), record.location.pc, 0, PipeType::PIPE_MTE2, 2);
     ASSERT_EQ(blockHead.recordWriteCount, 0);

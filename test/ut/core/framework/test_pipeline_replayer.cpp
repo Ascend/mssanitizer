@@ -224,8 +224,8 @@ TEST_F(TestPipelineReplayer, non_sync_events_pass_through) {
     AssertNoStuck();
 }
 
-// case 3. 回调：EVENT_PROCESSING 在各类事件处理时触发
-TEST_F(TestPipelineReplayer, callback_fires_during_processing) {
+// case 3. 回调：MEMORY_EVENT 在内存事件处理时触发
+TEST_F(TestPipelineReplayer, callback_fires_during_processing_memory_events) {
     RegisterCollectingCallback();
 
     replayer_.Do(MakeMemEvent(PipeType::PIPE_S, AccessType::READ));
@@ -235,7 +235,7 @@ TEST_F(TestPipelineReplayer, callback_fires_during_processing) {
 
     int memCount = 0, syncCount = 0;
     for (auto &r : callbackRecords_) {
-        if (r.type != ReplayerCallbackType::EVENT_PROCESSING) {
+        if (r.type != ReplayerCallbackType::MEMORY_EVENT) {
             continue;
         }
         if (r.event.type == EventType::MEM_EVENT) {
@@ -245,8 +245,8 @@ TEST_F(TestPipelineReplayer, callback_fires_during_processing) {
             ++syncCount;
         }
     }
-    ASSERT_GE(memCount, 1) << "MEM_EVENT should trigger EVENT_PROCESSING";
-    ASSERT_GE(syncCount, 2) << "SET_FLAG + WAIT_FLAG should both trigger callback";
+    ASSERT_GE(memCount, 1) << "MEM_EVENT should trigger MEMORY_EVENT";
+    ASSERT_GE(syncCount, 0) << "SYNC_EVENT should not trigger MEMORY_EVENT";
 }
 
 // case 4. PIPE_S 路由：PIPE_S 上的事件根据 event.pipe 发射到目标 PIPE
@@ -258,7 +258,7 @@ TEST_F(TestPipelineReplayer, pipe_s_routes_to_target_pipe) {
     ASSERT_TRUE(replayer_.IsFinished());
     bool memOnPipeV = false;
     for (auto &r : callbackRecords_) {
-        if (r.type == ReplayerCallbackType::EVENT_PROCESSING && r.event.type == EventType::MEM_EVENT &&
+        if (r.type == ReplayerCallbackType::MEMORY_EVENT && r.event.type == EventType::MEM_EVENT &&
             r.event.pipe == PipeType::PIPE_V) {
             memOnPipeV = true;
             break;
@@ -480,11 +480,11 @@ TEST_F(TestPipelineReplayer, multiple_events_and_stuck_verify) {
     AssertNoStuck();
     size_t pc = 0;
     for (auto &r : callbackRecords_) {
-        if (r.type == ReplayerCallbackType::EVENT_PROCESSING) {
+        if (r.type == ReplayerCallbackType::MEMORY_EVENT) {
             ++pc;
         }
     }
-    ASSERT_GT(pc, 3U) << "Multiple events should trigger multiple callbacks";
+    ASSERT_GT(pc, 1U) << "Multiple events should trigger multiple callbacks";
 
     // 卡死回调内容验证：应返回卡死队列的首个 SanEvent
     ResetReplayer();

@@ -30,6 +30,7 @@
 #include "core/framework/config.h"
 #include "core/framework/record_defs.h"
 #include "core/framework/sanitizer_base.h"
+#include "core/framework/pipeline_replayer.h"
 
 namespace Sanitizer {
 
@@ -66,6 +67,7 @@ private:
     void DoMemOpRecord(MemOpRecord const &record, bool reduce);
     size_t GetRecordsNum(const std::vector<SanEvent> &events) const;
     void ReportErrorMsg();
+    void ReportAfterKernelFinish();
     bool SwitchToScope(BoundsCheckScope scope);
     void BeforeScopeSwitch(MemOpRecord const &record);
     void AfterScopeSwitch(MemOpRecord const &record);
@@ -76,6 +78,7 @@ private:
     void DoWithLocalTensor(const MstxRecord &record, const std::vector<MemOpRecord> &records);
     void AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord);
     void SetPermission(MemRegionPermissionDesc const &desc);
+    void ConvertEventsToRecords(const std::vector<SanEvent> &events, std::vector<MemOpRecord> &records);
 
     std::unique_ptr<ShadowMemory> shadowMemory_;
     MSG_FUNC msgFunc_;
@@ -86,6 +89,9 @@ private:
     BoundsCheck boundsCheckRuntime_;
     BoundsCheck boundsCheckDfx_;
     std::map<uint64_t, uint64_t> mstxHeapCacheMap_;
+    PipelineReplayer pipelineReplayer_;
+    std::vector<SanEvent> replayedEvents_;
+    DeviceType deviceType_ = DeviceType::INVALID;
 };
 }
 

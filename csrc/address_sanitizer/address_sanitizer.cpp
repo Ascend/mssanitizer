@@ -241,6 +241,9 @@ inline bool IsSameOp(const MemOpRecord &lhs, const MemOpRecord &rhs)
 
 void MergeRecords(std::vector<MemOpRecord> &records)
 {
+    if (records.empty()) {
+        return;
+    }
     size_t last = 0;
     for (size_t i = 1; i < records.size(); i++) {
         if (IsSameOp(records[last], records[i]) && IsContinuousAddr(records[last], records[i])) {
@@ -270,6 +273,7 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
     }
 
     AlignChecker::Instance().SetDeviceType(deviceInfo.device);
+    deviceType_ = deviceInfo.device;
     ChipInfo chipInfo = it->second;
     boundsCheckRuntime_.Init(chipInfo);
     boundsCheckDfx_.Init(chipInfo);
@@ -278,6 +282,13 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
 
 bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
 {
+    replayedEvents_.clear();
+    pipelineReplayer_.Init(kernelInfo.kernelType, deviceType_, kernelInfo.blockDim);
+    pipelineReplayer_.RegisterCallback([this](ReplayerCallbackType type, const SanEvent &event) {
+        if (type == ReplayerCallbackType::MEMORY_EVENT) {
+            replayedEvents_.push_back(event);
+        }
+    });
     return false;
 }
 
@@ -322,12 +333,6 @@ bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
         if (record.payload.kernelRecord.recordType == RecordType::BLOCK_FINISH) {
             shadowMemory_->ResetChipMemory();
             shadowMemory_->ResetPrivateMemory();
-            return true;
-        }
-        if (record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
-            this->ReportErrorMsg();
-            AlignChecker::Instance().Notify();
-            this->errorBuffer_.Clear();
             return true;
         }
         bool atomicEnabled;
@@ -501,32 +506,52 @@ void AddressSanitizer::SetPermission(MemRegionPermissionDesc const &desc)
     }
 }
 
-void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events)
-{
-    if (record.version == RecordVersion::REGION_PERMISSION) {
-        return SetPermission(record.payload.permissionDesc);
-    }
-
+void AddressSanitizer::ConvertEventsToRecords(const std::vector<SanEvent> &events, std::vector<MemOpRecord> &records) {
     size_t numRecords = GetRecordsNum(events);
-    std::vector<MemOpRecord> records;
     // important, can speed much
     records.reserve(numRecords);
     for (auto& event : events) {
         ConvertSanEventToMemOpRecords(event, records);
     }
-    if (records.empty()) {
-        return;
+    MergeRecords(records);
+}
+
+void AddressSanitizer::ReportAfterKernelFinish() {
+    this->ReportErrorMsg();
+    AlignChecker::Instance().Notify();
+    this->errorBuffer_.Clear();
+}
+
+void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
+    if (record.version == RecordVersion::REGION_PERMISSION) {
+        return SetPermission(record.payload.permissionDesc);
     }
 
-    MergeRecords(records);
+    if (events.empty()) {
+        return;
+    }
 
     if (IsMstxRecordWithTensor(record)) {
+        std::vector<MemOpRecord> records;
+        ConvertEventsToRecords(events, records);
         DoWithLocalTensor(record.payload.kernelRecord.payload.mstxRecord, records);
+        if (record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
+            ReportAfterKernelFinish();
+        }
         return;
     }
 
-    for (MemOpRecord const& r : records) {
-        this->DoMemOpRecord(r, true);
+    for (auto &event : events) {
+        pipelineReplayer_.Do(event);
+    }
+
+    if (pipelineReplayer_.IsFinished()) {
+        std::vector<MemOpRecord> records;
+        ConvertEventsToRecords(replayedEvents_, records);
+        for (MemOpRecord const &r : records) {
+            this->DoMemOpRecord(r, true);
+        }
+        ReportAfterKernelFinish();
     }
 }
 

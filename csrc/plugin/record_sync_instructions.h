@@ -30,7 +30,7 @@ AICORE_FUNC_HEAD void RecordSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, pipe_t tpip
         return;
     }
 
-    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo)) {
+    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
 
@@ -57,7 +57,7 @@ AICORE_FUNC_HEAD void RecordBufEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t buf
         return;
     }
 
-    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo)) {
+    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
 
@@ -85,13 +85,13 @@ AICORE_FUNC_HEAD void RecordSoftSyncEvent(EXTRA_PARAMS_DEC, int32_t waitBlockIdx
         return;
     }
 
-    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo)) {
+    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
 
     uint64_t blockIdx = GetBlockIdx();
     auto record = SoftSyncRecord{};
-#if !defined(BUILD_DYNAMIC_PROBE)    
+#if !defined(BUILD_DYNAMIC_PROBE)
     record.location.fileNo = fileNo;
     record.location.lineNo = lineNo;
 #endif
@@ -114,7 +114,7 @@ AICORE_FUNC_HEAD void RecordHardSyncEvent(EXTRA_PARAMS_DEC,
         return;
     }
 
-    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo)) {
+    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
 
@@ -142,7 +142,7 @@ AICORE_FUNC_HEAD void RecordPipeBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe)
         return;
     }
 
-    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo)) {
+    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
 
@@ -167,10 +167,10 @@ AICORE_FUNC_HEAD void RecordFftsSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_
         return;
     }
 
-    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo)) {
+    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
- 
+
     uint64_t blockIdx = GetBlockIdx();
     FftsSyncRecord record;
 #if !defined(BUILD_DYNAMIC_PROBE)
@@ -194,7 +194,7 @@ AICORE_FUNC_HEAD void RecordWaitFlagDevEvent(EXTRA_PARAMS_DEC, int64_t flagID)
         return;
     }
 
-    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo)) {
+    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
 
@@ -219,7 +219,7 @@ AICORE_FUNC_HEAD void RecordWaitFlagDevEventWithPipe(EXTRA_PARAMS_DEC, pipe_t pi
         return;
     }
 
-    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo)) {
+    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
 
@@ -233,7 +233,7 @@ AICORE_FUNC_HEAD void RecordWaitFlagDevEventWithPipe(EXTRA_PARAMS_DEC, pipe_t pi
     record.location.blockId = blockIdx;
     record.flagID = flagID;
     record.pipe = static_cast<PipeType>(pipe);
- 
+
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<recordType>(record);
 }
@@ -245,10 +245,10 @@ AICORE_FUNC_HEAD void RecordIntraBlockSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, u
         return;
     }
 
-    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo)) {
+    if (!(DoRaceCheck(memInfo)) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
         return;
     }
- 
+
     uint64_t blockIdx = GetBlockIdx();
     IntraBlockSyncRecord record;
 #if !defined(BUILD_DYNAMIC_PROBE)
