@@ -164,7 +164,7 @@ graph TB
 ```mermaid
 classDiagram
     class CliParser {
-        +Interpretor(int32_t, char**) void
+        +Interpreter(int32_t, char**) void
         -Parse(int32_t, char**) UserCommand
     }
     class Command {
@@ -1080,7 +1080,7 @@ sequenceDiagram
             runtime->>framework: PacketType::KERNEL_BINARY
             runtime->>framework: char[]
         else 发送 Host 侧内存操作记录
-            runtime->>framework: PacketType::HOST_RECORD
+            runtime->>framework: PacketType::MEMORY_RECORD
             runtime->>framework: HostMemRecord
         else 发送 Kernel 侧内存操作记录
             runtime->>framework: PacketType::KERNEL_RECORD
@@ -1123,7 +1123,7 @@ enum class PacketType : uint32_t {
     KERNEL_SUMMARY,
     KERNEL_BINARY,
     LOG_STRING,
-    HOST_RECORD = 1000,
+    MEMORY_RECORD = 1000,
     KERNEL_RECORD,
     IPC_RECORD,
     SANITIZER_RECORD,

@@ -65,6 +65,19 @@ bash ./build.sh
 MY_OP_PKG=$(find ./build_out -maxdepth 1 -name "custom_opp_*.run" | head -1) && bash $MY_OP_PKG
 ```
 
+> [!NOTE]
+> 如果重新部署时出现如下告警，则说明环境变量 ASCEND_CUSTOM_OPP_PATH 值不正确或包含多个以冒号间隔的路径：
+>
+> ```text
+> [ERROR] environment variable ASCEND_CUSTOM_OPP_PATH=/home/lishuo/gitcode/samples/operator/ascendc/0_introduction/12_matmulleakyrelu_frameworklaunch/CustomOp/build_out/test/vendors/customize: is set and has multiple path in it (colon inside), which will cause the custom op installed incorrectly. Please use the --install-path option to specify an installation path instead.
+> ```
+>
+> 此时需要手动删除此环境变量再重新部署：
+>
+> ``` bash
+> unset ASCEND_CUSTOM_OPP_PATH
+> ```
+
 #### 2.3.4 执行内存检测
 
 ```shell

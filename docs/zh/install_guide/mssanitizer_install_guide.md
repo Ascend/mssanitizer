@@ -62,12 +62,12 @@ chmod +x mindstudio-sanitizer_*.run
 
 若系统中已安装该工具的旧版本，安装过程中会提示是否替换；输入 "y" 可执行覆盖安装。
 
-> [!NOTE] 
-> 
-> 安装路径说明   
-> 
+> [!NOTE]
+>
+> 安装路径说明
+>
 > 若环境中已配置 `ASCEND_HOME_PATH` 环境变量，工具将安装至 `$ASCEND_HOME_PATH` 目录；
-> 否则，默认安装至 `$HOME/Ascend` 目录；  
+> 否则，默认安装至 `$HOME/Ascend` 目录；
 > 如需指定自定义安装路径，请使用 `--install-path` 选项，例如：
 > `./mindstudio-sanitizer_*.run --install-path=./xxx --run`，即可将该运行包安装至 `xxx` 目录。
 
@@ -96,15 +96,38 @@ chmod +x mindstudio-sanitizer_*.run
 
    卸载成功打印如下信息：
 
-   ```ColdFusion
+   ```text
    Successfully uninstalled 1 tool ({tools_name})
    ```
 
 ## 4. 升级
 
-升级即“先卸后装”。直接执行安装命令，工具将自动卸载旧版本，并引导您完成覆盖安装。
+升级即"先卸后装"。直接执行安装命令，工具将自动卸载旧版本，并引导您完成覆盖安装。也可以手动执行卸载后再安装：
 
-## 5. FAQ
+```shell
+# 先卸载旧版本（参考第 3 节）
+# 再按第 2 节中的方式安装新版本
+```
+
+## 5. 验证安装
+
+安装完成后，执行以下命令验证工具是否安装成功：
+
+```shell
+mssanitizer --version
+```
+
+若正常输出类似如下版本信息，则表明安装成功：
+
+```text
+revision:
+  mssanitizer 26.0.0-a6db6e381b19cae6b0ca7d65bee8729e763893bd
+  msopscommon 338ecff46263e9b41106f4d48ab70d1cd4ac168b
+```
+
+若提示命令未找到，请参见第6节FAQ内容检查环境变量配置。
+
+## 6. FAQ
 
 ### 安装完成后，执行命令未调用新编译的工具
 
@@ -127,5 +150,5 @@ bash $HOME/Ascend/cann/share/info/mindstudio-sanitizer/script/uninstall.sh
 对于指定路径安装的场景，请使用对应路径下的卸载脚本：
 
 ```shell
-bash ./xxx/share/info/mindstudio-sanitizer/script/uninstall.sh 
+bash ./xxx/share/info/mindstudio-sanitizer/script/uninstall.sh
 ```
