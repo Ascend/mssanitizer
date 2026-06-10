@@ -184,23 +184,11 @@ mssanitizer --tool=memcheck ./add_npu
 
 运行msSanitizer工具时，默认启用内存检测功能（**memcheck**）。其中application为用户程序。
 
-- 执行如下命令可显式指定内存检测，默认会开启非法读写、多核踩踏、非对齐访问和非法释放的检测功能：
-
-    ```shell
-    mssanitizer --tool=memcheck application
-    ```
-
-- 执行如下命令，可在memcheck检测功能项的基础上，手动启用内存泄漏的检测功能：
-
-    ```shell
-    mssanitizer --tool=memcheck --leak-check=yes application
-    ```
-
-- 执行如下命令，可在memcheck检测功能项的基础上，手动启用分配内存未使用的检测功能：
-
-    ```shell
-    mssanitizer --tool=memcheck --check-unused-memory=yes application
-    ```
+| 功能 | 命令 |
+|----|-----|
+|显式指定内存检测，默认开启非法读写、多核踩踏、非对齐访问和非法释放的检测功能|`mssanitizer --tool=memcheck application`|
+|在memcheck检测功能项的基础上，手动启用内存泄漏的检测功能| `mssanitizer --tool=memcheck --leak-check=yes application` |
+|在memcheck检测功能项的基础上，手动启用分配内存未使用的检测功能|`mssanitizer --tool=memcheck --check-unused-memory=yes application`|
 
 > [!NOTE]
 >
@@ -520,6 +508,7 @@ mssanitizer --tool=initcheck application   # application为用户程序
 | --- | --- | --- |
 | 同步检测 | 算子中存在未配对的SetFlag同步指令时，虽然对当前算子的功能没有直接影响，却会引发计数器状态错误。可能会扰乱后续算子的同步指令配对，进而影响后续算子的计算精度。 | Kernel |
 | 冗余检测 | 当用户编写了两个参数完全相同的set_flag（即pipe和eventId完全一致），且两者之间未对目标pipe执行任何操作时，将导致后续算子同步指令出现全量不配对，进而引发异常问题。 | Kernel |
+| 算子卡死检测 | 算子因错误使用wait_flag/wait_flag_dev等同步指令导致了卡死异常，算子卡死检测将展示卡住流水所在位置的指令以及调用栈。 | Kernel |
 
 #### 6.4.2 启用同步检测
 
@@ -536,17 +525,68 @@ mssanitizer --tool=synccheck application   # application为用户程序
 
 #### 6.4.3 同步异常报告解读
 
+##### 6.4.3.1 同步检测
+
 同步检测异常报告会依次列出每个算子中未配对的SetFlag指令的相关信息，包括源流水和目标流水以及具体位置。
 
+    ```text
+    ====== WARNING: Unpaired set_flag instructions detected  // 提示检出未配对的set_flag指令
+    ======    from PIPE_S to PIPE_MTE3 in kernel  // 标识从PIPE_S到PIPE_MTE3的同步，PIPE_MTE3等待PIPE_S
+    ======    in block aiv(0) on device 1  // 异常代码对应Vector核的block索引和设备号，此处为0核1卡
+    ======    code in pc current 0x2c94 (serialNo:31) // 当前异常发生的pc指针和调用api行为的序列号
+    ======    #0 /home/Ascend/compiler/tikcpp/tikcfw/impl/kernel_event.h:785:13  // 以下为异常发生代码的调用栈，包含文件名、行号和列号
+    ======    #1 /home/Ascend/compiler/tikcpp/tikcfw/interface/kernel_common.h:150:5
+    ======    #2 /home/test/ascendc_test_syncall/kernel.cpp:26:9
+    ```
+
+##### 6.4.3.2 冗余检测
+
+若存在多余的SetFlag指令，引发算子同步指令全量不匹配的问题。
+
 ```text
-====== WARNING: Unpaired set_flag instructions detected  // 提示检出未配对的set_flag指令
-======    from PIPE_S to PIPE_MTE3 in kernel  // 标识从PIPE_S到PIPE_MTE3的同步，PIPE_MTE3等待PIPE_S
-======    in block aiv(0) on device 1  // 异常代码对应Vector核的block索引和设备号，此处为0核1卡
-======    code in pc current 0x2c94 (serialNo:31) // 当前异常发生的pc指针和调用api行为的序列号
-======    #0 /home/Ascend/compiler/tikcpp/tikcfw/impl/kernel_event.h:785:13  // 以下为异常发生代码的调用栈，包含文件名、行号和列号
-======    #1 /home/Ascend/compiler/tikcpp/tikcfw/interface/kernel_common.h:150:5
-======    #2 /home/test/ascendc_test_syncall/kernel.cpp:26:9
+====== WARNING: Redundant set_flag instructions detected
+======    from PIPE_S to PIPE_MTE3 in kernel
+======    in block aiv(0) on device 1
+======    code in pc current 0x1330 (serialNo:15)
+======    #0 /data/XXX/kernel.cpp:20:5
 ```
+
+##### 6.4.3.3 算子卡死检测
+
+- 使用ctrl-c终止算子运行时，提示算子已终止，且可以通过第二次ctrl-c终止工具运行。
+
+    ```text
+    Ctrl-C received. Running kernel will be killed, and you can press Ctrl-C again to force quit.
+    ```
+
+- 收到ctrl-c的算子终止运行时，工具打印算子进程退出信息。
+
+    ```text
+    user program /date/XXX/test_fatbin exited by signal(2)
+    ```
+
+- 算子卡死告警
+
+    ```text
+    ====== ERROR: Sync error detected kernel locked up at
+    ======    
+    ======    WAIT_FLAG in kernel
+    ======    by PIPE_V in block aiv(0) on device 1
+    ======    code in pc current 0xc4 (serialNo:9)
+    ======    #0 /date/XXX/synccheck/single_core_vec_ctrlc/kernel.cpp:9:5
+    ======    
+    ======    WAIT_FLAG in kernel
+    ======    by PIPE_MTE2 in block aiv(0) on device 1
+    ======    code in pc current 0xc4 (serialNo:7)
+    ======    #0 /date/XXX/synccheck/single_core_vec_ctrlc/kernel.cpp:7:5
+    ======    
+    ======    WAIT_FLAG in kernel
+    ======    by PIPE_MTE3 in block aiv(0) on device 1
+    ======    code in pc current 0x88 (serialNo:8)
+    ======    #0 /date/XXX/synccheck/single_core_vec_ctrlc/kernel.cpp:8:5
+    ======    
+    ====== SUMMARY: 3 pipe(s) locked up.
+    ```
 
 ## 7. 命令与参数参考
 

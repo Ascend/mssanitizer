@@ -30,6 +30,7 @@ msSanitizer工具包含sanitizer接口和mstx扩展接口两种类型。sanitize
 |mstxMemHeapUnregister|内存池注销接口。|
 |mstxMemRegionsRegister|内存池二次分配注册接口。|
 |mstxMemRegionsUnregister|内存池二次分配注销接口。|
+|mstxMemPermissionsAssign|内存权限上报接口。|
 
 ## sanitizer接口
 
@@ -501,6 +502,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 |mstxMemRegionsRegister|注册内存池二次分配。用户需保证RegionsRegister的内存位于mstxMemHeapRegister注册的范围内，否则工具会提示越界读写。|
 |mstxMemRegionsUnregister|注销内存池二次分配。|
 |mstxMemHeapUnregister|注销内存池时，与之关联的Regions将一并被注销。|
+|mstxMemPermissionsAssign|通过该接口上报内存读写属性，使用mssanitizer拉起算子程序时，如果算子内进行了与内存属性不符的读写操作，可以检测出非法访问的错误。|
 
 **mstx接口的使用**
 
