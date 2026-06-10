@@ -482,14 +482,14 @@ void sanitizerReportFree(void *ptr);
 
 ## mstx扩展功能
 
-**mstx接口简介**
+### mstx接口简介
 
 mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
 
 > [!NOTE]
 >《[MindStudio Sanitizer工具用户指南](../user_guide/mssanitizer_user_guide.md)》中的“异常检测功能介绍>功能说明>调用场景>Kernel直调算子开发”中的内核调用符场景暂不支持使用mstx接口。
 
-**mstx接口列表**
+### mstx接口列表
 
 msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[mstx_api](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》。
 
@@ -504,7 +504,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 |mstxMemHeapUnregister|注销内存池时，与之关联的Regions将一并被注销。|
 |mstxMemPermissionsAssign|通过该接口上报内存读写属性，使用mssanitizer拉起算子程序时，如果算子内进行了与内存属性不符的读写操作，可以检测出非法访问的错误。|
 
-**mstx接口的使用**
+### mstx接口的使用
 
 - msSanitizer工具默认使能mstx接口，允许用户使用mstx接口自定义算子使用的内存空间地址和大小，可识别并快速界定算子的内存问题。
 - mstx当前提供了两种API的使用方式：库文件和头文件，以[AclNNInvocation中代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation)为例：
@@ -539,7 +539,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
     > [!NOTE]
     > ${INSTALL_DIR}请替换为CANN软件安装后文件存储路径。以root用户安装为例，安装后文件默认存储路径为：/usr/local/Ascend/cann。
 
-**调用示例**
+#### 内存池注册调用示例
 
 ```c++
     mstxMemVirtualRangeDesc_t rangeDesc = {};
@@ -570,4 +570,33 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
     refsDesc.refArray = regionRef;
     mstxMemRegionsUnregister(globalDomain, &refsDesc);                   // 注销二次分配
     mstxMemHeapUnregister(globalDomain, memPool);                        // 注销内存池
+```
+
+#### 内存权限设置调用示例
+
+```c++
+mstxMemRegionsRegisterBatch_t regions{};
+mstxMemVirtualRangeDesc_t ranges[2]; // 准备数组用于保存 2 个虚拟内存区间信息
+mstxMemRegionHandle_t handles[2]; // 准备数组用于接收返回的内存区间句柄
+ranges[0].ptr = gm1; // 内存地址
+ranges[0].size = 100; // 内存长度
+ranges[1].ptr = gm2;
+ranges[1].size = 200;
+regions.regionType = MSTX_MEM_TYPE_VIRTUAL_ADDRESS;
+regions.regionCount = 2;
+regions.regionDescArray = ranges;
+regions.regionHandleArrayOut = handles;
+mstxMemRegionsRegister(globalDomain, &regions); // 注册内存区间信息
+
+mstxMemPermissionsAssignBatch_t assignBatch{};
+mstxMemPermissionsAssignRegionsDesc_t assignRegion[2]; // 准备数组用于保存 2 个内存区间的权限属性
+assignRegion[0].flags = MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ; // 第一个内存区间设置为只读
+assignRegion[0].region.refType = MSTX_MEM_REGION_REF_TYPE_HANDLE;
+assignRegion[0].region.handle = handles[0]; // 通过句柄指定设置第一个内存区间的属性
+assignRegion[1].flags = MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE; // 第二个内存区间设置为只写
+assignRegion[1].region.refType = MSTX_MEM_REGION_REF_TYPE_HANDLE;
+assignRegion[1].region.handle = handles[1]; // 通过句柄指定设置第二个内存区间的属性
+assignBatch.regionCount = 2;
+assignBatch.regionDescArray = assignRegion;
+mstxMemPermissionsAssign(globalDomain, &assignBatch); // 设置内存区间属性
 ```
