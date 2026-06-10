@@ -8,13 +8,7 @@
 
 ## 2. 开发环境准备
 
-基本环境要求如下：
-- 操作系统：本镜像基于 openEuler 22.03 构建。
-- C++ 环境：采用 GCC 11.2 编译器，基于 GLIBC 2.17 运行时编译，确保编译产物完全兼容 GLIBC 2.17 及以上版本。
-- Python 环境：遵循 PyPA manylinux2014 标准构建，原生支持 3.8 ~ 3.13 版本。
-- CANN 环境：集成 CANN 9.1.0-beta.1 版本，已深度裁剪非编译相关组件以优化镜像体积。
-
-详细的依赖安装和环境配置请参见：[《算子工具开发环境安装指导》](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/dev_env_setup.md)。
+请按照以下文档进行环境配置：[《算子工具开发环境安装指导》](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/dev_env_setup.md)。
 
 ## 3. 编译打包
 
