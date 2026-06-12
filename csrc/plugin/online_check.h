@@ -182,12 +182,6 @@ AICORE_FUNC_HEAD void OnlineCheck::Init(__gm__ uint8_t *memInfo, __gm__ uint8_t 
 #if (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)) || defined(__BUILD_TESTS__)
     shadowMemory_.Init((uint64_t)(memInfoSimd + globalHead_->offsetInfo.shadowMemoryInfo.offset),
         globalHead_->offsetInfo.shadowMemoryInfo.size, memInfo, memInfoSimt, memInfoSimd);
-    auto &blockInfo = simdBlockHead_->blockInfo;
-    uint16_t threadXDim{}, threadYDim{}, threadZDim{};
-    GetThreadDim(threadXDim, threadYDim, threadZDim);
-    blockInfo.threadXDim = threadXDim;
-    blockInfo.threadYDim = threadYDim;
-    blockInfo.threadZDim = threadZDim;
 #endif
     simdBlockHead_->blockInfo.blockId = GetBlockIdx();
 }
@@ -344,8 +338,8 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
 
         if (recordType == RecordType::SIMT_END) {
             auto &blockInfo = simdBlockHead_->blockInfo;
-            uint64_t ret = AtomicAdd(&blockInfo.simtEndLastThread, 1);
-            if (ret == (blockInfo.threadXDim * blockInfo.threadYDim * blockInfo.threadZDim - 1)) {
+            uint64_t oldVal = AtomicAdd(&blockInfo.simtEndLastThread, 1);
+            if (IsSimtLastThread(oldVal)) {
                 uint16_t validPcNum{0};
                 uint32_t tmpCounts[SIMT_THREAD_MAX_PC_NUM] = {0};
                 uint64_t threadOffset0 = globalHead_->offsetInfo.simtErrorInfo.offset;

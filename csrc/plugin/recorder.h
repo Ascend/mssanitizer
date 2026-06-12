@@ -297,12 +297,11 @@ public:
     template<RecordType recordType, typename Record>
     AICORE_FUNC_HEAD void UpdateSyncThreadCount(Record const &record);
 
-     /* @tparam recordType 记录类型枚举
-     * @tparam Record     记录结构体类型
+     /* @tparam Record    记录结构体类型
      * @param  record     要写入的记录
      * @brief 将shadowMemory上的所有内存记录拷贝到MemInfo处
      */
-    template<RecordType recordType, typename Record>
+    template<typename Record>
     AICORE_FUNC_HEAD void CopyShadowMemoryToMemInfo(Record const &record);
 
     AICORE_FUNC_HEAD void SetParaBaseAddr(uint64_t size);
@@ -504,8 +503,8 @@ AICORE_FUNC_HEAD void Recorder::UpdateSyncThreadCount(Record const &record)
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
     auto memInfoBlockHead = reinterpret_cast<__gm__ RecordBlockHead *>(memInfoSimdBlock_);
     auto &blockInfo = memInfoBlockHead->blockInfo;
-    AtomicAdd(&blockInfo.simtSyncThreadCount, 1);
-    if (blockInfo.simtSyncThreadCount == blockInfo.threadXDim * blockInfo.threadYDim * blockInfo.threadZDim) {
+    auto oldVal = AtomicAdd(&blockInfo.simtSyncThreadCount, 1);
+    if (IsSimtLastThread(oldVal)) {
         check_.ClearSyncThreadState();
         blockInfo.simtSyncThreadCount = 0;
     }
@@ -513,18 +512,17 @@ AICORE_FUNC_HEAD void Recorder::UpdateSyncThreadCount(Record const &record)
 #endif
 }
 
-template<RecordType recordType, typename Record>
+template<typename Record>
 AICORE_FUNC_HEAD void Recorder::CopyShadowMemoryToMemInfo(Record const &record)
 {
-    (void)recordType;
     (void)record;
     if (memInfo_ == nullptr) { return; }
 
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
     auto memInfoBlockHead = reinterpret_cast<__gm__ RecordBlockHead *>(memInfoSimdBlock_);
     auto &blockInfo = memInfoBlockHead->blockInfo;
-    AtomicAdd(&blockInfo.simtEndThreadCount, 1);
-    if (blockInfo.simtEndThreadCount == blockInfo.threadXDim * blockInfo.threadYDim * blockInfo.threadZDim) {
+    auto oldVal = AtomicAdd(&blockInfo.simtEndThreadCount, 1);
+    if (IsSimtLastThread(oldVal)) {
         check_.CopyShadowMemoryToMemInfo();
         blockInfo.simtEndThreadCount = 0;
     }

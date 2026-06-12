@@ -688,9 +688,6 @@ struct BlockInfo {
     uint32_t simtEndCount{};                        // 当前核上运行了多少次simt_end桩
     uint32_t simtCallCount{};                       // 当前核上运行了多少次simt_call桩
     uint16_t blockId{};
-    uint16_t threadXDim{};
-    uint16_t threadYDim{};
-    uint16_t threadZDim{};
     BlockType blockType{};                            // 当前block的类型，代表当前核记录的信息属于VEC还是CUBE
     uint8_t vecSubBlockDim{};                         // 当前算子一个blockDim使用的vec核心数，保存在每个核的头部
 };
@@ -753,6 +750,9 @@ struct SimtEntryBlockHeadImpl {
     uint64_t recordCount{};                 // 记录数量
     uint64_t recordWriteCount{};            // 已经写入的记录数量
     uint64_t exceedSize{};                  // 溢出了多少size
+    uint16_t threadXDim{};
+    uint16_t threadYDim{};
+    uint16_t threadZDim{};
 };
 
 using SimtEntryBlockHead = StructAlignBy<SimtEntryBlockHeadImpl, 64UL>;

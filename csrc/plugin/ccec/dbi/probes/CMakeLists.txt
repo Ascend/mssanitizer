@@ -19,7 +19,7 @@ set(CCE_AICORE_ARCH_LIST
   "dav-c310-cube"
 )
 
-message(STATUS "Sanitizer dynamic binary insturction probes built for: ${CCE_AICORE_ARCH_LIST}")
+message(STATUS "Sanitizer dynamic binary instruction probes built for: ${CCE_AICORE_ARCH_LIST}")
 
 file(GLOB_RECURSE DYNAMIC_PROBES_FILES *.cpp)
 
@@ -35,7 +35,7 @@ function(compile_cce_object CCE_AICORE_ARCH SANITIZER_STUB_OBJECT SANITIZER_STUB
        )
   else()
     set(SANITIZER_COMPILE_FLAGS
-            "-xcce -std=c++17 -O2 --cce-aicore-only --cce-aicore-arch=${CCE_AICORE_ARCH} \
+            "-xcce -std=c++17 -O2 --cce-aicore-only -fno-jump-tables --cce-aicore-arch=${CCE_AICORE_ARCH} \
             -mllvm -cce-aicore-record-overflow=false \
             -mllvm -cce-aicore-record-stack-size=false \
             -mllvm -cce-aicore-merge-function=false \

@@ -324,7 +324,7 @@ std::vector<BindStub> bindStubs{
     {InstrType::MAD_MX_E5M2_E4M3, "__sanitizer_report_mad_mx_e5m2_e4m3", {0, 1, 2, 3}},
     {InstrType::MAD_MX_E5M2_E5M2, "__sanitizer_report_mad_mx_e5m2_e5m2", {0, 1, 2, 3}},
     /// cube_instructions.cpp end
-    
+
     /// sync_instructions.cpp start
     {InstrType::SET_FLAG, "__sanitizer_report_set_flag", {0, 1, 2}},
     {InstrType::SET_FLAGI, "__sanitizer_report_set_flagi", {0, 1, 2}},
@@ -381,16 +381,12 @@ std::vector<BindStub> bindStubs{
     /// simt_sync_instructions.cpp end
 
     // simt_start_end_instructions.cpp start
-    // BISHENG_SUPPORT_SIMT_CALL_DBI为自定义宏，表示编译器是否支持SIMT_CALL等桩函数，后续等编译器支持后，会删除该宏，让桩逻辑生效
-#if defined(BISHENG_SUPPORT_SIMT_CALL_DBI)
-    {InstrType::SIMT_START, "__sanitizer_report_simt_start", {}},
     {InstrType::SIMT_END, "__sanitizer_report_simt_end", {}},
     // simt_start_end_instructions.cpp end
 
     // main_scalar_empty_instructions.cpp start
     {InstrType::SIMT_CALL, "__sanitizer_report_simt_call", {}},
     // main_scalar_empty_instructions.cpp end
-#endif
 };
 
 void MSBitAtInit()

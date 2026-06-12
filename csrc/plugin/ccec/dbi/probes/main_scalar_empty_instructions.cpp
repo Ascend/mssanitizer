@@ -19,11 +19,7 @@
 
 using namespace Sanitizer;
 
-#if defined(BISHENG_SUPPORT_SIMT_CALL_DBI)
-
 SANITIZER_REPORT(simt_call)
 {
     MainScalarRecordEmptyEvent<RecordType::SIMT_CALL>(EXTRA_PARAMS);
 }
-
-#endif

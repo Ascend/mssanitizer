@@ -123,6 +123,12 @@ AICORE_FUNC_HEAD void SimtRecordSyncEvent(EXTRA_PARAMS_DEC)
 template<RecordType recordType>
 AICORE_FUNC_HEAD void SimtRecordEmptyEvent(EXTRA_PARAMS_DEC)
 {
+    if (MemInfoIsInvalid(memInfo)) return;
+}
+
+template<>
+AICORE_FUNC_HEAD void SimtRecordEmptyEvent<RecordType::SIMT_END>(EXTRA_PARAMS_DEC)
+{
     if (MemInfoIsInvalid(memInfo)) {
         return;
     }
@@ -144,8 +150,8 @@ AICORE_FUNC_HEAD void SimtRecordEmptyEvent(EXTRA_PARAMS_DEC)
     record.location.pc = static_cast<uint64_t>(pc);
 
     Recorder recorder(memInfo, blockIdx);
-    recorder.CopyShadowMemoryToMemInfo<recordType>(record);
-    recorder.Check<recordType>(record);
+    recorder.CopyShadowMemoryToMemInfo(record);
+    recorder.Check<RecordType::SIMT_END>(record);
 }
 
 }

@@ -16,17 +16,10 @@
 
 #include "core/framework/record_defs.h"
 
-#if defined(BISHENG_SUPPORT_SIMT_CALL_DBI)
-
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
 #define SIMT_MODE  // 开启simt模式
 #include "plugin/record_simt_instructions.h"
 using namespace Sanitizer;
-
-SANITIZER_REPORT(simt_start)
-{
-    SimtRecordEmptyEvent<RecordType::SIMT_START>(EXTRA_PARAMS);
-}
 
 SANITIZER_REPORT(simt_end)
 {
@@ -38,10 +31,6 @@ SANITIZER_REPORT(simt_end)
 #include "plugin/utils.h"
 using namespace Sanitizer;
 
-SANITIZER_REPORT(simt_start) {}
-
 SANITIZER_REPORT(simt_end) {}
-
-#endif
 
 #endif

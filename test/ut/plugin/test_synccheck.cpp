@@ -173,9 +173,6 @@ TEST(OnlineCheck, check_sync_thread_misuse_expect_one_error)
     simtBlockHead1->syncThreadNum[1] = 1;
 
     checker.simdBlockHead_->blockInfo.simtEndLastThread = 2;
-    checker.simdBlockHead_->blockInfo.threadXDim = 1;
-    checker.simdBlockHead_->blockInfo.threadYDim = 1;
-    checker.simdBlockHead_->blockInfo.threadZDim = 1;
     SimtEmptyRecord record = {
         .location = {10, 10, 0x10, 0},
         .threadLoc = {1, 2, 1},

@@ -502,9 +502,7 @@ public:
                         entryHead.exceedSize += sizeof(SimtEntryRecord);
                     }
                     // 搬运之后将shadowMemory状态还原为初始状态
-#if defined(BISHENG_SUPPORT_SIMT_CALL_DBI)
                     l2TblPtr[l2Idx] = 0;
-#endif
                 }
             }
         }
@@ -513,6 +511,11 @@ public:
         memInfoSimtEntryHead->exceedSize = entryHead.exceedSize > 0 ?
             entryHead.exceedSize + sizeof(SimtEntryBlockHead) : 0;
         simdBlockHead_->blockInfo.simtEndCount++;
+        uint16_t threadXDim{}, threadYDim{}, threadZDim{};
+        GetThreadDim(threadXDim, threadYDim, threadZDim);
+        memInfoSimtEntryHead->threadXDim = threadXDim;
+        memInfoSimtEntryHead->threadYDim = threadYDim;
+        memInfoSimtEntryHead->threadZDim = threadZDim;
     }
 
     AICORE_FUNC_HEAD bool IsReady() const
@@ -727,7 +730,6 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateLoadStatusForRace(
         oldValue = *reinterpret_cast<__gm__ ByteStatus_t *>(auxInfo.l2MemStatusAddr);
         ByteStatus_t newValue = oldValue;
         MemoryByteStatus oldStatus = MBSP::ExtractMemoryStatus(oldValue);
-        OnlineMemoryType oldSpace = MBSP::ExtractMemoryType(oldValue);
         uint32_t oldPc = MBSP::ExtractPc(oldValue);
         uint16_t oldThreadId = MBSP::ExtractThreadId(oldValue);
         if (oldStatus == MemoryByteStatus::DEFAULT) {
@@ -773,8 +775,6 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateStoreStatusForRace(
         oldValue = *reinterpret_cast<__gm__ ByteStatus_t *>(auxInfo.l2MemStatusAddr);
         ByteStatus_t newValue = oldValue;
         MemoryByteStatus oldStatus = MBSP::ExtractMemoryStatus(oldValue);
-        OnlineMemoryType oldSpace = MBSP::ExtractMemoryType(oldValue);
-        uint32_t oldPc = MBSP::ExtractPc(oldValue);
         uint16_t oldThreadId = MBSP::ExtractThreadId(oldValue);
         if (oldStatus == MemoryByteStatus::DEFAULT) {
             newValue =

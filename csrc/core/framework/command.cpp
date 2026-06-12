@@ -282,12 +282,6 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
                     kernelBlock->GetRecordBlockHead().blockInfo.simtEndCount,
                     kernelBlock->GetRecordBlockHead().blockInfo.simtCallCount, RuntimeContext::Instance().serialNo_);
             } else {
-                std::vector<KernelRecord> kernelRecords;
-                kernelBlock->ParseSimtErrorRecord(kernelRecords);
-                for (const auto &record : kernelRecords) {
-                    sanitizerRecord.payload.kernelRecord = record;
-                    checker.Do(sanitizerRecord);
-                }
                 std::vector<KernelRecord> smRecords;
                 if (kernelBlock->ParseSimtEntryRecord(smRecords)) {
                     for (const auto &record : smRecords) {
@@ -299,18 +293,11 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
         }
     }
 
-    // TODO: SIMT_CALL桩生效后，这一段代码逻辑需要删除
     /// 当device支持simt并且是目标核的情况下才解析simt指令，否则会内存越界
     if (checker.SupportSimt() && checker.IsTargetBlock(runtimeContext.currentBlockIdx_)) {
         std::vector<KernelRecord> kernelRecords;
         kernelBlock->ParseSimtErrorRecord(kernelRecords);
         for (const auto &record : kernelRecords) {
-            sanitizerRecord.payload.kernelRecord = record;
-            checker.Do(sanitizerRecord);
-        }
-        std::vector<KernelRecord> smRecords;
-        kernelBlock->ParseShadowMemoryRecord(smRecords);
-        for (const auto &record : smRecords) {
             sanitizerRecord.payload.kernelRecord = record;
             checker.Do(sanitizerRecord);
         }
