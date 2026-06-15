@@ -33,6 +33,7 @@ public:
     bool ParseSimtEntryRecord(std::vector<KernelRecord> &kernelRecords);
     RecordBlockHead GetRecordBlockHead() const { return simdRecordHead_; }
     uint64_t GetTotalBlockDim() const;
+    uint64_t GetRecordNum() const { return simdRecordHead_.recordWriteCount; }
 
     static void ResetAll()
     {

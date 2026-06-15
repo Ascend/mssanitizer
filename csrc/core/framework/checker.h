@@ -44,6 +44,7 @@ enum class BroadcastEvent : uint8_t {
     KERNEL_SUMMARY_UPDATED,
     KERNEL_NAME_UPDATED,
     SANITIZER_RECORD_ARRIVED,
+    KERNEL_BLOCK_ARRIVED,
     STOP,
 };
 
@@ -54,6 +55,8 @@ struct WorkArgs {
     DeviceInfoSummary deviceInfo;
     KernelSummary kernelSummary;
     std::string kernelNameDisplay;
+    std::vector<SanitizerRecord> records;
+    std::vector<std::vector<SanEvent>> events;
 };
 
 // Checker类主要用于将单条解析信息分发给合适的sanitier工具
@@ -74,11 +77,13 @@ public:
     void ParseOnlineError(const SanitizerRecord &record);
     // do check
     void Do(const SanitizerRecord& record);
+    void Do(const std::vector<SanitizerRecord> &records);
     bool SupportSimt() const;
     bool IsTargetBlock(uint64_t blockIdx) const;
 
 private:
     void ConsumeRecordThread(uint8_t consumeId, const std::thread::id &rootTid);
+    void ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args);
     inline void WaitAfterConsumed(uint8_t consumeId);
     inline bool IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx);
     inline void TryPrintMissDebugLine();
@@ -101,7 +106,7 @@ private:
     std::vector<std::thread> workers_{};
     mutable std::mutex detMutex_{};
     mutable std::mutex doMutex_{};
-  
+
     std::array<std::shared_ptr<Sanitizer::SanitizerBase>, TOOL_NUM> sanitizerArr_{};
     std::array<bool, TOOL_NUM> initWithDeviceInfoDone_{};
     std::array<bool, TOOL_NUM> initWithKernelInfoDone_{};

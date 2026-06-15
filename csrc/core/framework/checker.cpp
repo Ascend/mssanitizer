@@ -191,17 +191,21 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
     while (true) {
         WorkArgs args;
         if (finishProduce_ && !que.empty()) {
-            args = que.front();
+            args = std::move(que.front());
             que.pop();
         } else {
             std::unique_lock<std::mutex> lock(mtx_[consumeId]);
             workerCv_.wait(lock, [&que] () { return !que.empty(); });
-            args = que.front();
+            args = std::move(que.front());
             que.pop();
         }
         switch (args.eventType) {
             case BroadcastEvent::SANITIZER_RECORD_ARRIVED:
                 break;
+            case BroadcastEvent::KERNEL_BLOCK_ARRIVED: {
+                ConsumeKernelBlock(consumeId, args);
+                continue;
+            }
             case BroadcastEvent::DEVICE_INFO_UPDATED: {
                 RuntimeContext::Instance().deviceSummary_ = args.deviceInfo;
                 continue;
@@ -233,6 +237,21 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
             WaitAfterConsumed(consumeId);
         }
     };
+}
+
+void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args) {
+    if (!initWithDeviceInfoDone_[consumeId] && !initWithKernelInfoDone_[consumeId]) {
+        return;
+    }
+
+    for (std::size_t i = 0; i < args.records.size(); ++i) {
+        if (sanitizerArr_[consumeId]->CheckRecordBeforeProcess(args.records[i])) {
+            sanitizerArr_[consumeId]->Do(args.records[i], args.events[i]);
+        }
+    }
+    if (finishProduce_) {
+        WaitAfterConsumed(consumeId);
+    }
 }
 
 void Checker::SetDeviceInfo(const DeviceInfoSummary &deviceInfo)
@@ -439,6 +458,50 @@ void Checker::Do(const SanitizerRecord &record)
     std::stringstream ss;
     ss << record << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
     SAN_LOG("%s", ss.str().c_str());
+}
+
+void Checker::Do(const std::vector<SanitizerRecord> &records) {
+    std::vector<std::vector<SanEvent>> events(records.size());
+    for (std::size_t i = 0; i < records.size(); ++i) {
+        RecordPreProcess::GetInstance().Process(records[i], events[i]);
+    }
+
+    for (uint8_t i = 0; i < TOOL_NUM; ++i) {
+        if (sanitizerArr_[i] != nullptr) {
+            std::lock_guard<std::mutex> lock(mtx_[i]);
+            done_[i] = false;
+            WorkArgs workargs{};
+            workargs.eventType = BroadcastEvent::KERNEL_BLOCK_ARRIVED;
+            workargs.records = records;
+            workargs.events = events;
+            workerArgs_[i].push(std::move(workargs));
+        }
+    }
+
+    if (!records.empty() && records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
+        finishProduce_ = true;
+        workerCv_.notify_all();
+        for (uint8_t i = 0; i < TOOL_NUM; ++i) {
+            if (sanitizerArr_[i] == nullptr) {
+                continue;
+            }
+            std::unique_lock<std::mutex> lock(mtx_[i]);
+            producerCv_.wait(lock, [this, i]() { return done_[i]; });
+        }
+        printMissDebugLine_ = false;
+        auto errorCounts = decltype(errorCounts_){};
+        std::swap(errorCounts, errorCounts_);
+        DisplaySanitizerEnd(errorCounts);
+        KernelBlock::ResetAll();
+    } else {
+        workerCv_.notify_all();
+    }
+
+    for (std::size_t i = 0; i < records.size(); ++i) {
+        std::stringstream ss;
+        ss << records[i] << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
+        SAN_LOG("%s", ss.str().c_str());
+    }
 }
 
 void Checker::Finish()

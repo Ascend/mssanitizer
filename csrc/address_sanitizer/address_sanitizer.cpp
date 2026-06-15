@@ -58,18 +58,6 @@ Sanitizer::LogLv GetNotifyLv(const Sanitizer::MemErrorType &type)
 
 namespace Sanitizer {
 
-inline void FillFileNameByNo(MemOpRecord& record, uint64_t fileNo)
-{
-    /// 编译器 filemapping 中获取的路径可能会超过 record.fileName 的长度导致 strncpy_s 接口
-    /// 拷贝失败。因此此处截取出文件名，并最长拷贝 sizeof(record.fileName) - 1 个字符
-    std::string filePath = FileMapping::Instance().Query(fileNo).fileName;
-    std::string fileName = Utility::ReplaceInvalidChar(Path(filePath).Name());
-
-    std::size_t length = std::min(fileName.length(), sizeof(record.fileName) - 1);
-    fileName.copy(record.fileName, length);
-    record.fileName[length] = '\0';
-}
-
 void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
 {
     record.serialNo = event.serialNo;
@@ -79,7 +67,6 @@ void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
     // 在kernelRecord转换成sanevent的过程中，srcAddr和dstAddr相等且srcSpace和dstSpace相等
     record.srcSpace = record.dstSpace = FormatConverter::MemTypeToAddrSpace(event.eventInfo.memInfo.memType);
     record.lineNo = event.loc.lineNo;
-    FillFileNameByNo(record, event.loc.fileNo);
     record.blockType = event.loc.blockType;
     record.pc = event.loc.pc;
     // 从 SanEvent 转换来的 MemOpRecord 都是 kernel 侧的记录
@@ -97,7 +84,6 @@ void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event,
     record.dstSpace = memType == MemType::GM ? AddressSpace::GM : AddressSpace::UB;
     const auto &varInfo = event.eventInfo.dynamicOpInfo;
     const auto smRecords = reinterpret_cast<const ShadowMemoryRecord *>(varInfo.buffer);
-    FillFileNameByNo(record, event.loc.fileNo);
     for (size_t i = 0; i < varInfo.count; ++i) {
         record.lineNo = smRecords[i].location.lineNo;
         record.pc = smRecords[i].location.pc;

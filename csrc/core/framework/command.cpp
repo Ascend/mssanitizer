@@ -268,10 +268,12 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     }
 
     SanitizerRecord sanitizerRecord;
+    std::vector<SanitizerRecord> records;
+    records.reserve(kernelBlock->GetRecordNum());
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     CrossNpuChecker::RecordArray &recordArray = crossNpuChecker.GetRecordArray(runtimeContext.GetDeviceId());
     while (kernelBlock->NextSimd(sanitizerRecord.payload.kernelRecord)) {
-        checker.Do(sanitizerRecord);
+        records.emplace_back(sanitizerRecord);
         recordArray.Push(sanitizerRecord);
 
         // 如果simd记录为SIMT_CALL，则当前记录后插入simt_entry动态记录，将记录执行序还原为发射序
@@ -306,7 +308,7 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     // report block finish
     sanitizerRecord.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
     sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
-    checker.Do(sanitizerRecord);
+    records.emplace_back(sanitizerRecord);
     recordArray.Push(sanitizerRecord);
 
     // wait for next block
@@ -318,10 +320,12 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
         msgRspFunc(Serialize(PacketType::KERNEL_RECORD_RESPONSE, resp));
         sanitizerRecord.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
         sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
-        checker.Do(sanitizerRecord);
+        records.emplace_back(sanitizerRecord);
         recordArray.Push(sanitizerRecord);
         SAN_INFO_LOG("Finish processing the last kernel block.");
     }
+
+    checker.Do(records);
 }
 
 inline void HandleKernelBinary(Packet::BinaryPayload const &payload)
