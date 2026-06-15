@@ -24,10 +24,12 @@
 #include <string>
 #include <algorithm>
 #include <map>
+
 #include "arch_def.h"
 #include "record_defs.h"
 #include "sanitizer_report.h"
 #include "utility/log.h"
+#include "kernel_manager.h"
 
 namespace Sanitizer {
 
@@ -355,6 +357,13 @@ struct ErrorEvent {
                 pipeType == other.pipeType &&
                 blockType == other.blockType &&
                 isSimt == other.isSimt);
+    }
+
+    void SetDeviceIdKernelIdx() {
+        this->deviceId = RuntimeContext::Instance().GetDeviceId();
+        std::size_t kernelCount{};
+        KernelManager::Instance().GetKernelCount(this->deviceId, kernelCount);
+        if (kernelCount > 0) this->kernelIdx = kernelCount - 1;
     }
 };
 

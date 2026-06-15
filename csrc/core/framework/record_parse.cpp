@@ -3932,6 +3932,7 @@ static void ParseRecordDynamic(const KernelRecord &record, std::vector<SanEvent>
 {
     auto& dynamicRecord = record.payload.dynamicRecord;
     SanEvent event{};
+    SetDeviceIdKernelIdx(event);
     event.serialNo = record.serialNo;
     event.loc.blockType = record.blockType;
     event.type = EventType::DYNAMIC_MEM_EVENT;

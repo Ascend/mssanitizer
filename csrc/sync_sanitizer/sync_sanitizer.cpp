@@ -345,8 +345,7 @@ void SyncSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
         if (kernelErrorDesc.errorType == KernelErrorType::THREADS_ASYNC_IN_BLOCK) {
             ErrorEvent event{};
             event.serialNo = serialNo;
-            event.deviceId = RuntimeContext::Instance().GetDeviceId();
-            event.kernelIdx = RuntimeContext::Instance().kernelIdx_ - 1;
+            event.SetDeviceIdKernelIdx();
             event.coreId = kernelErrorDesc.location.blockId;
             event.pc = kernelErrorDesc.payload.syncDesc.syncLocation.pc;
             event.blockType = blockType;

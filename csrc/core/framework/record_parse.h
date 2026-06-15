@@ -31,18 +31,21 @@ namespace Sanitizer {
 
 std::map<uint16_t, bool>& GetMapAtomicMode();
 
+inline void SetDeviceIdKernelIdx(SanEvent &event)
+{
+    event.loc.deviceId = RuntimeContext::Instance().GetDeviceId();
+    std::size_t kernelCount{};
+    KernelManager::Instance().GetKernelCount(event.loc.deviceId, kernelCount);
+    if (kernelCount > 0) event.loc.kernelIdx = kernelCount - 1;
+}
+
 template <typename Record>
 inline void SetLocationInfo(SanEvent &event, Record const &record, const BlockType &blockType,
                             uint64_t serialNo)
 {
     event.serialNo = serialNo;
     event.loc.blockType = blockType;
-    event.loc.deviceId = RuntimeContext::Instance().GetDeviceId();
-    std::size_t kernelCount{};
-    KernelManager::Instance().GetKernelCount(event.loc.deviceId, kernelCount);
-    if (kernelCount > 0) {
-        event.loc.kernelIdx = kernelCount - 1;
-    }
+    SetDeviceIdKernelIdx(event);
     event.loc.coreId = record.location.blockId;
     event.isAtomicMode = GetMapAtomicMode()[event.loc.coreId];
     event.loc.fileNo = record.location.fileNo;

@@ -21,7 +21,7 @@
 #include <map>
 #include <mutex>
 
-#include "core/framework/runtime_context.h"
+#include "../runtime_context.h"
 
 namespace Sanitizer {
 
