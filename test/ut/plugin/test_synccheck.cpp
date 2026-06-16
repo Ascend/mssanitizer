@@ -111,13 +111,15 @@ TEST(OnlineCheck, test_sort_sync_thread_pc_num_in_place)
 
     uint16_t validPcNum = 0;
     uint32_t tmpCounts[SIMT_THREAD_MAX_PC_NUM] = {0};
+    uint64_t validPCArray[SIMT_THREAD_MAX_PC_NUM] = {0};
     checker.simdBlockHead_->blockInfo.simtEndLastThread = 3;
-    checker.SortSyncThreadPcNumInPlace(simtBlockHead0, validPcNum, tmpCounts);
+    checker.SortSyncThreadPcNumInPlace(
+        validPCArray, validPcNum, tmpCounts, checker.simdBlockHead_->blockInfo.simtEndLastThread - 1);
 
     ASSERT_EQ(validPcNum, 3);
-    ASSERT_EQ(simtBlockHead0->syncThreadPC[0], 0x1000);
-    ASSERT_EQ(simtBlockHead0->syncThreadPC[1], 0x2000);
-    ASSERT_EQ(simtBlockHead0->syncThreadPC[2], 0x3000);
+    ASSERT_EQ(validPCArray[0], 0x1000);
+    ASSERT_EQ(validPCArray[1], 0x2000);
+    ASSERT_EQ(validPCArray[2], 0x3000);
 
     ASSERT_EQ(simtBlockHead0->syncThreadNum[0], 1);
     ASSERT_EQ(simtBlockHead0->syncThreadNum[1], 0);
@@ -132,8 +134,7 @@ TEST(OnlineCheck, test_sort_sync_thread_pc_num_in_place)
     ASSERT_EQ(simtBlockHead2->syncThreadNum[2], 2);
 }
 
-TEST(OnlineCheck, check_sync_thread_misuse_expect_one_error)
-{
+TEST(OnlineCheck, check_sync_thread_process) {
     uint64_t blockDim = 1;
     uint64_t cacheSize = 10 * MB_TO_BYTES;
     std::vector<uint8_t> memInfo(cacheSize * blockDim, 0);
@@ -155,38 +156,20 @@ TEST(OnlineCheck, check_sync_thread_misuse_expect_one_error)
     OnlineCheck checker = OnlineCheck();
     checker.Init(memInfo.data(), memInfo.data() + allHeadSize, memInfo.data() + sizeof(RecordGlobalHead), 0);
 
-    uint64_t threadOffset0 = checker.globalHead_->offsetInfo.simtErrorInfo.offset;
-    __gm__ uint8_t *simtBlock0 = checker.memInfoSimd_ + threadOffset0;
-    __gm__ SimtRecordBlockHead *simtBlockHead0 = reinterpret_cast<__gm__ SimtRecordBlockHead *>(simtBlock0);
-    simtBlockHead0->syncThreadPC[0] = 0x1000;
-    simtBlockHead0->syncThreadPC[1] = 0;
-    simtBlockHead0->syncThreadNum[0] = 1;
-    simtBlockHead0->syncThreadNum[1] = 0;
-
-    uint64_t threadOffset1 = checker.globalHead_->offsetInfo.simtErrorInfo.offset +
-        1 * (checker.globalHead_->offsetInfo.simtErrorInfo.size + sizeof(SimtRecordBlockHead));
-    __gm__ uint8_t *simtBlock1 = checker.memInfoSimd_ + threadOffset1;
-    __gm__ SimtRecordBlockHead *simtBlockHead1 = reinterpret_cast<__gm__ SimtRecordBlockHead *>(simtBlock1);
-    simtBlockHead1->syncThreadPC[0] = 0x2000;
-    simtBlockHead1->syncThreadPC[1] = 0x3000;
-    simtBlockHead1->syncThreadNum[0] = 2;
-    simtBlockHead1->syncThreadNum[1] = 1;
-
-    checker.simdBlockHead_->blockInfo.simtEndLastThread = 2;
     SimtEmptyRecord record = {
         .location = {10, 10, 0x10, 0},
-        .threadLoc = {1, 2, 1},
-    };
-    AddrInfo addrInfo = {
-        .location = record.location,
-        .threadLoc = record.threadLoc,
+        .threadLoc = {0, 0, 0},
     };
 
-    checker.Do<RecordType::SIMT_END>(addrInfo, record);
+    checker.Process<RecordType::THREAD_BLOCK_BARRIER>(record);
 
-    auto recordTypePtr = reinterpret_cast<RecordType const*>(memInfo.data() + allHeadSize +
-                                                             sizeof(SimtRecordBlockHead));
-    ASSERT_EQ(*recordTypePtr, RecordType::ONLINE_ERROR);
+    record = {
+        .location = {10, 10, 0x20, 0},
+        .threadLoc = {1, 0, 0},
+    };
+    checker.Process<RecordType::THREAD_BLOCK_BARRIER>(record);
+
+    ASSERT_EQ(checker.simtBlockHead_->syncThreadPC[0], 0x10);
+    ASSERT_EQ(checker.simtBlockHead_->syncThreadPC[1], 0x20);
 }
-
 }
