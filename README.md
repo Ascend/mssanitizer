@@ -4,7 +4,7 @@
 <p><b><span style="font-size:24px;">昇腾 AI 算子异常检测工具</span></b></p>
 
  [![License](https://badgen.net/badge/快速入门/QuickStart/blue)](./docs/zh/quick_start/mssanitizer_quick_start.md)
- [![License](https://badgen.net/badge/精确搜索/ReadTheDocs/blue)](https://mindstudio-docs-master.readthedocs.io)
+ [![License](https://badgen.net/badge/精确搜索/ReadTheDocs/blue)](https://mindstudio-operator-tools-docs.readthedocs.io/zh-cn/latest/)
  [![License](https://badgen.net/badge/AI问答/DeepWiki/blue)](https://deepwiki.com/mindstudio-docs/master)
  [![License](https://badgen.net/badge/AI问答/ZRead/blue)](https://zread.ai/mindstudio-docs/master)
  [![License](https://badgen.net/badge/昇腾社区/Community/blue)](https://www.hiascend.com/cn/developer/software/mindstudio)
