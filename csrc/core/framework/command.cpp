@@ -284,11 +284,13 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
                     kernelBlock->GetRecordBlockHead().blockInfo.simtEndCount,
                     kernelBlock->GetRecordBlockHead().blockInfo.simtCallCount, RuntimeContext::Instance().serialNo_);
             } else {
-                std::vector<KernelRecord> smRecords;
-                if (kernelBlock->ParseSimtEntryRecord(smRecords)) {
-                    for (const auto &record : smRecords) {
+                std::vector<KernelRecord> simtEntryRecords;
+                if (kernelBlock->ParseSimtEntryRecord(simtEntryRecords)) {
+                    // simtEntry依赖SIMT_CALL前后的simd指令，也需要参与simd指令排序，因此加入records中
+                    records.reserve(records.capacity() + simtEntryRecords.size());
+                    for (const auto &record : simtEntryRecords) {
                         sanitizerRecord.payload.kernelRecord = record;
-                        checker.Do(sanitizerRecord);
+                        records.emplace_back(sanitizerRecord);
                     }
                 }
             }
