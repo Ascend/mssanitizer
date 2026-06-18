@@ -1909,8 +1909,6 @@ enum class KernelErrorType : uint8_t {
     THREAD_WW_RACE,                // 线程间写写竞争
     THREADS_ASYNC_IN_BLOCK,        // block中所有threads未能同步
     SYNC_THREADS_RECORD_LOSS,      // SIMT_THREAD_MAX_PC_NUM长度不够，sync_thread指令存不下
-    UNINITIALIZED_READ,
-    WRITE_LOSS,
 
     MAX,
     INVALID = 0XFF,
@@ -1939,19 +1937,6 @@ struct KernelRaceErrorDesc {
     uint64_t addr;
 };
 
-struct KernelUninitializedErrorDesc {
-    SimtThreadLocation threadLoc;
-    uint64_t addr;
-    uint64_t errorSize;
-    uint64_t pc;
-};
-
-struct KernelWriteLossDesc {
-    uint64_t addr;
-    uint64_t memSize;
-    uint64_t pc;
-};
-
 struct KernelSyncErrorDesc {
     Location syncLocation;
     SimtThreadLocation syncThreadLoc;
@@ -1970,8 +1955,6 @@ struct KernelErrorDesc {
        KernelMisAlignErrorDesc misAlignDesc;
        KernelOverLapErrorDesc overLapDesc;
        KernelRaceErrorDesc raceDesc;
-       KernelUninitializedErrorDesc unitializedDesc;
-       KernelWriteLossDesc writeLossDesc;
        KernelSyncErrorDesc syncDesc;
     } payload;
 };

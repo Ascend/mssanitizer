@@ -304,27 +304,6 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
             raceDesc.conflictedLocation.pc = raceError.pc;
             DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
         }
-
-        auto &initError = auxInfo.errorInfo[ShadowMemoryOnline::initErrorIdx];
-        if (initError.errorType == KernelErrorType::UNINITIALIZED_READ) {
-            errorDesc.errorType = initError.errorType;
-            auto &unitializedDesc = errorDesc.payload.unitializedDesc;
-            unitializedDesc.addr = addrInfo.addr;
-            unitializedDesc.errorSize = initError.nBadBytes;
-            unitializedDesc.threadLoc = initError.conflictedThreadLoc;
-            unitializedDesc.pc = initError.pc;
-            DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
-        }
-
-        auto &writeLoss = auxInfo.errorInfo[ShadowMemoryOnline::writeLossIdx];
-        if (writeLoss.errorType == KernelErrorType::WRITE_LOSS) {
-            errorDesc.errorType = writeLoss.errorType;
-            auto &writeLossDesc = errorDesc.payload.writeLossDesc;
-            writeLossDesc.addr = addrInfo.addr;
-            writeLossDesc.memSize = writeLoss.nBadBytes;
-            writeLossDesc.pc = writeLoss.pc;
-            DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
-        }
     }
 
     /// 5.同步检测，syncthreads是否正确使用

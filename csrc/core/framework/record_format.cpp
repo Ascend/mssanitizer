@@ -204,7 +204,6 @@ static const std::map<KernelErrorType, std::string> ERROR_TYPE_MAP = {
     {KernelErrorType::THREAD_WW_RACE, "THREAD_WW_RACE"},
     {KernelErrorType::THREADS_ASYNC_IN_BLOCK, "THREADS_ASYNC_IN_BLOCK"},
     {KernelErrorType::SYNC_THREADS_RECORD_LOSS, "SYNC_THREADS_RECORD_LOSS"},
-    {KernelErrorType::UNINITIALIZED_READ, "UNINITIALIZED_READ"},
 };
 
 std::ostream &operator<<(std::ostream &os, KernelErrorType errorType) {

@@ -393,11 +393,9 @@ public:
         KernelErrorType errorType = KernelErrorType::INVALID;      // 错误类型
     };
 
-    static constexpr uint8_t maxErrorNum = 4;
+    static constexpr uint8_t maxErrorNum = 2;
     static constexpr uint8_t overLapErrorIdx = 0;
     static constexpr uint8_t raceErrorIdx = 1;
-    static constexpr uint8_t initErrorIdx = 2;
-    static constexpr uint8_t writeLossIdx = 3;
     // 为了建模方便和节省空间，UB和GM采用了统一的ShadowMemory建模，实际场景下，UB和GM的空间也是隔离开的
     // UB和GM的地址界限，小于该值为UB，大于该值为GM
     static constexpr uint32_t ubGmEps = 256 * 1024;
@@ -457,8 +455,7 @@ public:
         }
     }
 
-    AICORE_FUNC_HEAD void CopyShadowMemoryToMemInfo()
-    {
+    AICORE_FUNC_HEAD void CopyShadowMemoryToMemInfo(bool isSimtEnd = true) {
         uint64_t l0TblNum = (ONLINE_GLOBAL_MEM_MASK + ONLINE_LOCAL_MEM_MASK - 1U) / ONLINE_LOCAL_MEM_MASK;
         uint64_t l1TblNum = (ONLINE_LOCAL_MEM_MASK + ONLINE_ONE_SM_STAND_FOR_BYTE - 1U) / ONLINE_ONE_SM_STAND_FOR_BYTE;
         __gm__ uint64_t *l0TblPtr = reinterpret_cast<__gm__ uint64_t *>(heapAddr_ + sizeof(ShadowMemoryHeapHead));
@@ -501,8 +498,10 @@ public:
                     } else {
                         entryHead.exceedSize += sizeof(SimtEntryRecord);
                     }
-                    // 搬运之后将shadowMemory状态还原为初始状态
-                    l2TblPtr[l2Idx] = 0;
+                    if (isSimtEnd) {
+                        // 遇到simt_end，需要在搬运之后将shadowMemory状态还原为初始状态
+                        l2TblPtr[l2Idx] = 0;
+                    } // 否则只输出内存切片状态，不需要重置shadowMemory
                 }
             }
         }
@@ -510,7 +509,9 @@ public:
         memInfoSimtEntryHead->recordWriteCount = entryHead.recordWriteCount;
         memInfoSimtEntryHead->exceedSize = entryHead.exceedSize > 0 ?
             entryHead.exceedSize + sizeof(SimtEntryBlockHead) : 0;
-        simdBlockHead_->blockInfo.simtEndCount++;
+        if (isSimtEnd) {
+            simdBlockHead_->blockInfo.simtEndCount++;
+        }
         uint16_t threadXDim{}, threadYDim{}, threadZDim{};
         GetThreadDim(threadXDim, threadYDim, threadZDim);
         memInfoSimtEntryHead->threadXDim = threadXDim;
@@ -639,33 +640,6 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREA
         raceError.conflictedThreadLoc.idY, raceError.conflictedThreadLoc.idZ);
 }
 
-template <>
-AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::UNINITIALIZED_READ>(
-    ShadowMemoryOnline::ByteStatus_t oldValue, uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo) {
-    if (!DoInitCheck(memInfo_)) {
-        return;
-    }
-    uint16_t oldThreadId = MemoryByteStatusParser<ByteStatus_t>::ExtractThreadId(oldValue);
-    auto &initError = auxInfo.errorInfo[initErrorIdx];
-    initError.errorType = KernelErrorType::UNINITIALIZED_READ;
-    initError.pc = MemoryByteStatusParser<ByteStatus_t>::ExtractPc(oldValue);
-    initError.nBadBytes++;
-    DecomposeThreadId(oldThreadId, initError.conflictedThreadLoc.idX, initError.conflictedThreadLoc.idY,
-        initError.conflictedThreadLoc.idZ);
-}
-
-template <>
-AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::WRITE_LOSS>(
-    ShadowMemoryOnline::ByteStatus_t oldValue, uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo) {
-    if (!DoInitCheck(memInfo_)) {
-        return;
-    }
-    auto &writeLoss = auxInfo.errorInfo[writeLossIdx];
-    writeLoss.errorType = KernelErrorType::WRITE_LOSS;
-    writeLoss.pc = MemoryByteStatusParser<ByteStatus_t>::ExtractPc(oldValue);
-    writeLoss.nBadBytes++;
-}
-
 AICORE_FUNC_HEAD bool ShadowMemoryOnline::InvalidRange(AddrInfo const &addrInfo) const {
     OnlineMemoryType memType = SpaceToOnlineMemory(addrInfo.space);
     // 如下两种异常场景，越界算法会处理，竞争算法直接忽略该异常情况
@@ -755,9 +729,9 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateLoadStatusForRace(
                 newValue = ExtractSamePcStatus(MemoryByteStatus::RACE, oldValue, threadId, addrInfo);
                 AssignErrorInfo<KernelErrorType::THREAD_WR_RACE>(oldValue, threadId, auxInfo);
             } else {
+                CopyShadowMemoryToMemInfo(false);
                 newValue =
                     MBSP::Construct(MemoryByteStatus::READ, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
-                AssignErrorInfo<KernelErrorType::WRITE_LOSS>(oldValue, threadId, auxInfo);
             }
         }
         casRet = AtomicCAS(reinterpret_cast<__gm__ uint64_t *>(auxInfo.l2MemStatusAddr), oldValue, newValue);
@@ -780,6 +754,7 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateStoreStatusForRace(
             newValue =
                 MBSP::Construct(MemoryByteStatus::WRITE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
         } else if (oldStatus == MemoryByteStatus::READ) {
+            CopyShadowMemoryToMemInfo(false);
             if (oldThreadId != threadId && ExistRace(oldValue, memType)) {
                 newValue =
                     MBSP::Construct(MemoryByteStatus::RACE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
@@ -788,8 +763,8 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateStoreStatusForRace(
                 newValue = MBSP::Construct(
                     MemoryByteStatus::WRITE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
             }
-            AssignErrorInfo<KernelErrorType::UNINITIALIZED_READ>(oldValue, threadId, auxInfo);
         } else if (oldStatus == MemoryByteStatus::GLOBAL_READ) {
+            CopyShadowMemoryToMemInfo(false);
             if (ExistRace(oldValue, memType)) {
                 newValue =
                     MBSP::Construct(MemoryByteStatus::RACE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
@@ -798,7 +773,6 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateStoreStatusForRace(
                 newValue = MBSP::Construct(
                     MemoryByteStatus::WRITE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
             }
-            AssignErrorInfo<KernelErrorType::UNINITIALIZED_READ>(oldValue, threadId, auxInfo);
         } else if (oldStatus == MemoryByteStatus::WRITE) {
             if (oldThreadId != threadId && ExistRace(oldValue, memType)) {
                 newValue = ExtractSamePcStatus(MemoryByteStatus::RACE, oldValue, threadId, addrInfo);
@@ -868,11 +842,11 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateStoreStatusForInit(
         oldValue = *reinterpret_cast<__gm__ ByteStatus_t *>(auxInfo.l2MemStatusAddr);
         MemoryByteStatus oldStatus = MBSP::ExtractMemoryStatus(oldValue);
         if (oldStatus == MemoryByteStatus::DEFAULT || oldStatus == MemoryByteStatus::READ) {
-            ByteStatus_t newValue = MBSP::Construct(MemoryByteStatus::WRITE, threadId, addrInfo.location.pc, memType);
-            casRet = AtomicCAS(reinterpret_cast<__gm__ uint64_t*>(auxInfo.l2MemStatusAddr), oldValue, newValue);
             if (oldStatus == MemoryByteStatus::READ) {
-                AssignErrorInfo<KernelErrorType::UNINITIALIZED_READ>(oldValue, threadId, auxInfo);
+                CopyShadowMemoryToMemInfo(false);
             }
+            ByteStatus_t newValue = MBSP::Construct(MemoryByteStatus::WRITE, threadId, addrInfo.location.pc, memType);
+            casRet = AtomicCAS(reinterpret_cast<__gm__ uint64_t *>(auxInfo.l2MemStatusAddr), oldValue, newValue);
         } else {
             break;
         }

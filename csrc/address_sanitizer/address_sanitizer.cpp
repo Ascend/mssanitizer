@@ -653,36 +653,6 @@ void AddressSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockTy
             error.auxData.nBadBytes = errorDesc.overLapSize;
             error.auxData.conflictedThreadLoc = errorDesc.conflictedThreadLoc;
             this->errorBuffer_.Add(error);
-        } else if (kernelErrorDesc.errorType == KernelErrorType::UNINITIALIZED_READ) {
-            MemOpRecord memOpRecord;
-            memOpRecord.dstAddr = kernelErrorDesc.payload.unitializedDesc.addr;
-            memOpRecord.dstSpace = kernelErrorDesc.space;
-            memOpRecord.memSize = kernelErrorDesc.payload.unitializedDesc.errorSize;
-            memOpRecord.coreId = kernelErrorDesc.location.blockId;
-            memOpRecord.serialNo = serialNo;
-            MemOpRecordForShadow memOpRecordForShadow(memOpRecord);
-            ErrorMsgList loadErrors = shadowMemory_->LoadNBytes(memOpRecordForShadow, config_.initCheck);
-            for (auto &msg : loadErrors) {
-                error.type = MemErrorType::UNINITIALIZED_READ;
-                error.auxData.badAddr.addr = msg.auxData.badAddr.addr;
-                error.auxData.nBadBytes = msg.auxData.nBadBytes;
-                error.auxData.pc = kernelErrorDesc.payload.unitializedDesc.pc;
-                error.auxData.threadLoc = kernelErrorDesc.payload.unitializedDesc.threadLoc;
-                this->errorBuffer_.Add(error);
-            }
-        } else if (kernelErrorDesc.errorType == KernelErrorType::WRITE_LOSS) {
-            MemOpRecord memOpRecord;
-            memOpRecord.dstAddr = kernelErrorDesc.payload.writeLossDesc.addr;
-            memOpRecord.dstSpace = kernelErrorDesc.space;
-            memOpRecord.memSize = kernelErrorDesc.payload.writeLossDesc.memSize;
-            memOpRecord.coreId = kernelErrorDesc.location.blockId;
-            memOpRecord.serialNo = serialNo;
-            MemOpRecordForShadow memOpRecordForShadow(memOpRecord);
-            ErrorMsgList storeErrors = shadowMemory_->StoreNBytes(memOpRecordForShadow, config_.initCheck);
-            for (auto &msg : storeErrors) {
-                msg.auxData.pc = kernelErrorDesc.payload.writeLossDesc.pc;
-                this->errorBuffer_.Add(msg);
-            }
         }
     }
 }
