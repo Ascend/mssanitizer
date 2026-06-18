@@ -16,6 +16,7 @@
 
 #include "plugin/utils.h"
 #include "plugin/record_ctrl_instructions.h"
+#include "plugin/record_sync_instructions.h"
 
 using namespace Sanitizer;
 
@@ -29,7 +30,7 @@ SANITIZER_REPORT(set_vector_mask, uint64_t reg_idx, uint64_t reg_value)
 
 SANITIZER_REPORT(set_ctrl, uint64_t config)
 {
-    (void)config;
+    RecordSetAtomicEvent(EXTRA_PARAMS, static_cast<AtomicMode>(GetUintFromConf<8, 6>(config)));
 }
 
 SANITIZER_REPORT(set_ffts_base_addr, uint64_t config)
