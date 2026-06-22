@@ -120,7 +120,7 @@ add_custom_command(
   COMMENT "Link libsanplugin_boundscheck.so"
   DEPENDS msbit dynamic_bind_${LAST_AICORE_ARCH}.o
   COMMAND g++ -shared -fPIC -Wl,-z,relro,-z,now -s  -o libsanplugin_boundscheck.so
-  dynamic_bind_${LAST_AICORE_ARCH}.o -lstdc++ $<TARGET_FILE:msbit>
+  dynamic_bind_${LAST_AICORE_ARCH}.o -static-libstdc++ $<TARGET_FILE:msbit>
 )
 # property ALL is necessary for making libsanplugin_boundscheck.so built
 add_custom_target(sanplugin_boundscheck ALL DEPENDS libsanplugin_boundscheck.so)
