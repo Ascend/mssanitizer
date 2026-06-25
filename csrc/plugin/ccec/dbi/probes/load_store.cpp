@@ -19,6 +19,7 @@
 #include "plugin/record_move_instructions.h"
 #include "plugin/utils.h"
 #include "plugin/addr_process.h"
+#include "plugin/record_mstx_instructions.h"
 
 using namespace Sanitizer;
 
@@ -30,6 +31,11 @@ AICORE_FUNC_HEAD uint64_t UpdateAddrByOffset(uint64_t addr, int64_t offset, uint
 }
 
 } // namespace [Dummy]
+
+SANITIZER_REPORT(__mstx_dfx_report_stub, uint32_t interfaceId, uint32_t bufferLens, void *buffer)
+{
+    RecordMstxEvent(EXTRA_PARAMS, interfaceId, bufferLens, buffer);
+}
 
 SANITIZER_REPORT(st_b64_imm, uint64_t addr, int64_t offset, uint64_t post)
 {

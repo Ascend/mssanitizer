@@ -51,11 +51,15 @@ std::vector<BindStub> bindStubs{
     {InstrType::NDDMA_OUT_TO_UB_B16, "__sanitizer_report_nd_copy_gm_to_ubuf_b16", {0, 1, 2, 3}},
     {InstrType::NDDMA_OUT_TO_UB_B32, "__sanitizer_report_nd_copy_gm_to_ubuf_b32", {0, 1, 2, 3}},
     {InstrType::COPY_GM_TO_CBUF_MULTI_ND2NZ_D_B8, "__sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_d_b8", {0, 1, 2, 3}},
-    {InstrType::COPY_GM_TO_CBUF_MULTI_ND2NZ_D_B16, "__sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_d_b16", {0, 1, 2, 3}},
-    {InstrType::COPY_GM_TO_CBUF_MULTI_ND2NZ_D_B32, "__sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_d_b32", {0, 1, 2, 3}},
+    {InstrType::COPY_GM_TO_CBUF_MULTI_ND2NZ_D_B16, "__sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_d_b16",
+        {0, 1, 2, 3}},
+    {InstrType::COPY_GM_TO_CBUF_MULTI_ND2NZ_D_B32, "__sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_d_b32",
+        {0, 1, 2, 3}},
     {InstrType::COPY_GM_TO_CBUF_MULTI_DN2NZ_D_B8, "__sanitizer_report_copy_gm_to_cbuf_multi_dn2nz_d_b8", {0, 1, 2, 3}},
-    {InstrType::COPY_GM_TO_CBUF_MULTI_DN2NZ_D_B16, "__sanitizer_report_copy_gm_to_cbuf_multi_dn2nz_d_b16", {0, 1, 2, 3}},
-    {InstrType::COPY_GM_TO_CBUF_MULTI_DN2NZ_D_B32, "__sanitizer_report_copy_gm_to_cbuf_multi_dn2nz_d_b32", {0, 1, 2, 3}},
+    {InstrType::COPY_GM_TO_CBUF_MULTI_DN2NZ_D_B16, "__sanitizer_report_copy_gm_to_cbuf_multi_dn2nz_d_b16",
+        {0, 1, 2, 3}},
+    {InstrType::COPY_GM_TO_CBUF_MULTI_DN2NZ_D_B32, "__sanitizer_report_copy_gm_to_cbuf_multi_dn2nz_d_b32",
+        {0, 1, 2, 3}},
     {InstrType::SET_L1_2D_B16, "__sanitizer_report_set_l1_2d_b16", {0, 1}},
     {InstrType::SET_L1_2D_B32, "__sanitizer_report_set_l1_2d_b32", {0, 1}},
     {InstrType::COPY_CBUF_TO_UBUF, "__sanitizer_report_copy_cbuf_to_ubuf", {0, 1, 2}},
@@ -387,6 +391,9 @@ std::vector<BindStub> bindStubs{
     // main_scalar_empty_instructions.cpp start
     {InstrType::SIMT_CALL, "__sanitizer_report_simt_call", {}},
     // main_scalar_empty_instructions.cpp end
+
+    {InstrType::MSTX_STUB, "__sanitizer_report___mstx_dfx_report_stub", {0, 1, 2}},
+    {InstrType::MSTX_STUB2, "__sanitizer_report___mstx_dfx_report_stub", {0, 1, 2}},
 };
 
 void MSBitAtInit()

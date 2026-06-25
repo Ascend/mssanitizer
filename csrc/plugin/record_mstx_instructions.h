@@ -144,8 +144,10 @@ AICORE_FUNC_HEAD void RecordMstxEvent(EXTRA_PARAMS_DEC, uint32_t interfaceId, ui
     }
 
     auto mstxRecord  = MstxRecord{};
+#if !defined(BUILD_DYNAMIC_PROBE)
     mstxRecord.location.fileNo = fileNo;
     mstxRecord.location.lineNo = lineNo;
+#endif
     mstxRecord.location.pc = static_cast<uint64_t>(pc);
     mstxRecord.interfaceType = static_cast<InterfaceType>(interfaceId);
     mstxRecord.location.blockId = blockIdx;
