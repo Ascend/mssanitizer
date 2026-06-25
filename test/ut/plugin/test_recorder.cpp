@@ -158,6 +158,7 @@ TEST(Recorder, dump_two_records_first_normal_and_second_gt_max_sizes_expect_succ
 TEST(Recorder, write_records_with_tail_block_and_expect_success)
 {
     struct TestTailRecord {
+        Location location;
         uint16_t dst;
         uint16_t src;
         uint16_t repeat;
@@ -171,7 +172,7 @@ TEST(Recorder, write_records_with_tail_block_and_expect_success)
     __gm__  RecordBlockHead* recordBlockHead = reinterpret_cast<__gm__ RecordBlockHead *>(handler.memInfoSimdBlock_);
     uint16_t calDst = 2342;
     uint16_t calSrc = 6456;
-    struct TestTailRecord tailOpVal = {calDst, calSrc, 15};
+    struct TestTailRecord tailOpVal = {{}, calDst, calSrc, 15};
     // 单元测试里的特殊情况，这里关闭类型检查
     handler.DumpRecord<RecordType::UNARY_OP, TestTailRecord, record_type_check<false>>(tailOpVal);
     ASSERT_EQ(recordBlockHead->recordCount, 1);

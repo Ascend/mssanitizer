@@ -349,6 +349,8 @@ AICORE_FUNC_HEAD void Recorder::DumpRecord(Record const &record)
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(__DAV_VEC__)
     if (recordType == RecordType::SIMT_CALL) {
         __gm__ RecordBlockHead *simdBlockHead = reinterpret_cast<__gm__ RecordBlockHead*>(memInfoSimdBlock_);
+        auto idx = simdBlockHead->blockInfo.simtCallCount % SIMT_CALL_PC_ARR_SIZE;
+        simdBlockHead->blockInfo.simtCallPcArr[idx] = record.location.pc;
         simdBlockHead->blockInfo.simtCallCount++;
     }
 #endif

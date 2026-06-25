@@ -522,6 +522,7 @@ inline void DecomposeThreadId(uint16_t threadId, SimtEntryBlockHead const &entry
     threadLoc.idX = threadId % threadXDim;
     threadLoc.idY = (threadId % (threadXDim * threadYDim)) / threadXDim;
     threadLoc.idZ = threadId / (threadXDim * threadYDim);
+    threadLoc.mainScalarPc = entryHead.mainScalarPc;
 }
 
 inline bool IsReadStatus(OnlineShadowMemory::MemoryByteStatus memStatus)

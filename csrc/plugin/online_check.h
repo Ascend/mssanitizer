@@ -149,6 +149,11 @@ private:
     */
     AICORE_FUNC_HEAD void MergeMemory();
 
+     /*
+     * @brief 获取当前simt-vf函数对应的main-scalar pc
+    */
+    AICORE_FUNC_HEAD uint64_t GetSimtCallPc() const;
+
 private:
     __gm__ uint8_t *memInfo_;
     __gm__ uint8_t *memInfoSimt_;
@@ -192,8 +197,8 @@ AICORE_FUNC_HEAD void OnlineCheck::Process(Record const &record)
     if (memInfo_ == nullptr) {
         return;
     }
-
-    AddrInfo addrInfo = ParseRecord<recordType>(record);
+    auto mainScalarPc = GetSimtCallPc();
+    AddrInfo addrInfo = ParseRecord<recordType>(record, mainScalarPc);
     Do<recordType>(addrInfo, record);
 }
 
@@ -352,6 +357,7 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
                             loc.pc = validPCArray[pcIdx];
                             syncDesc.syncLocation = loc;
                             DecomposeThreadId(threadIdx, threadLoc.idX, threadLoc.idY, threadLoc.idZ);
+                            threadLoc.mainScalarPc = GetSimtCallPc();
                             syncDesc.syncThreadLoc = threadLoc;
                             DumpErrorInfo<recordType>(errorRecord, errorDesc, record, cacheWriteOffset);
                         }
@@ -695,6 +701,14 @@ AICORE_FUNC_HEAD void OnlineCheck::MergeMemory()
         memoryInfoPtr[i].addr = 0x0;
         memoryInfoPtr[i].size = 0;
     }
+}
+
+AICORE_FUNC_HEAD uint64_t OnlineCheck::GetSimtCallPc() const
+{
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
+    return shadowMemory_.GetSimtCallPc();
+#endif
+    return 0UL;
 }
 
 AICORE_FUNC_HEAD bool OnlineCheck::AlignCheck(const AddrInfo &addrInfo) const

@@ -114,7 +114,8 @@ TEST(MemErrorDef, format_block_info_with_both_aivec_and_aicube_block_idxes_expec
 TEST(MemErrorDef, format_simt_block_info_expect_return_thread_info_blocks)
 {
     ErrorMsg errorMsg{};
-    errorMsg.auxData.isSimtError = true;
+    errorMsg.auxData.isSimt = true;
+    errorMsg.auxData.displayThread = true;
     errorMsg.auxData.threadLoc = {30, 20, 5};
     ReducedErrorMsg msg{errorMsg, {1, 3, 4}, {2, 4, 5}, {}};
     std::stringstream oss;
@@ -125,7 +126,7 @@ TEST(MemErrorDef, format_simt_block_info_expect_return_thread_info_blocks)
 TEST(MemErrorDef, format_simt_block_info_expect_return_no_thread_info_blocks)
 {
     ErrorMsg errorMsg{};
-    errorMsg.auxData.isSimtError = false;
+    errorMsg.auxData.isSimt = false;
     errorMsg.auxData.threadLoc = {30, 20, 5};
     ReducedErrorMsg msg{errorMsg, {1, 3, 4}, {2, 4, 5}, {}};
     std::stringstream oss;

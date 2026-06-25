@@ -507,6 +507,7 @@ public:
         }
         memInfoSimtEntryHead->recordCount = entryHead.recordCount;
         memInfoSimtEntryHead->recordWriteCount = entryHead.recordWriteCount;
+        memInfoSimtEntryHead->mainScalarPc = GetSimtCallPc();
         memInfoSimtEntryHead->exceedSize = entryHead.exceedSize > 0 ?
             entryHead.exceedSize + sizeof(SimtEntryBlockHead) : 0;
         if (isSimtEnd) {
@@ -525,6 +526,15 @@ public:
     }
 
     AICORE_FUNC_HEAD bool InvalidRange(AddrInfo const &addrInfo) const;
+
+    AICORE_FUNC_HEAD uint64_t GetSimtCallPc() const
+    {
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
+        auto idx = simdBlockHead_->blockInfo.simtEndCount % SIMT_CALL_PC_ARR_SIZE;
+        return simdBlockHead_->blockInfo.simtCallPcArr[idx];
+#endif
+        return 0UL;
+    }
 
 private:
     AICORE_FUNC_HEAD void UpdateLoadStatusForRace(
@@ -599,6 +609,7 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREA
     overLapError.nBadBytes++;
     DecomposeThreadId(oldThreadId, overLapError.conflictedThreadLoc.idX,
         overLapError.conflictedThreadLoc.idY, overLapError.conflictedThreadLoc.idZ);
+    overLapError.conflictedThreadLoc.mainScalarPc = GetSimtCallPc();
 }
 
 template<>
@@ -612,6 +623,7 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREA
     raceError.pc = MemoryByteStatusParser<ByteStatus_t>::ExtractPc(oldValue);
     DecomposeThreadId(oldThreadId, raceError.conflictedThreadLoc.idX,
         raceError.conflictedThreadLoc.idY, raceError.conflictedThreadLoc.idZ);
+    raceError.conflictedThreadLoc.mainScalarPc = GetSimtCallPc();
 }
 
 template<>
@@ -625,6 +637,7 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREA
     raceError.pc = MemoryByteStatusParser<ByteStatus_t>::ExtractPc(oldValue);
     DecomposeThreadId(oldThreadId, raceError.conflictedThreadLoc.idX,
         raceError.conflictedThreadLoc.idY, raceError.conflictedThreadLoc.idZ);
+    raceError.conflictedThreadLoc.mainScalarPc = GetSimtCallPc();
 }
 
 template<>
@@ -638,6 +651,7 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREA
     raceError.pc = MemoryByteStatusParser<ByteStatus_t>::ExtractPc(oldValue);
     DecomposeThreadId(oldThreadId, raceError.conflictedThreadLoc.idX,
         raceError.conflictedThreadLoc.idY, raceError.conflictedThreadLoc.idZ);
+    raceError.conflictedThreadLoc.mainScalarPc = GetSimtCallPc();
 }
 
 AICORE_FUNC_HEAD bool ShadowMemoryOnline::InvalidRange(AddrInfo const &addrInfo) const {
