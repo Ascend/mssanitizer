@@ -76,6 +76,7 @@ void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
 void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event, MemType memType) {
     MemOpRecord record{};
     record.ignoreIllegalCheck = true;
+    record.isSimt = true;
     record.serialNo = event.serialNo;
     record.coreId = event.loc.coreId;
     record.blockType = event.loc.blockType;
@@ -89,6 +90,7 @@ void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event,
         record.pc = smRecords[i].location.pc;
         record.dstAddr = smRecords[i].addr;
         record.memSize = smRecords[i].size;
+        record.mainScalarPc = smRecords[i].threadLoc.mainScalarPc;
         record.type = FormatConverter::AccessTypeToMemOpType(smRecords[i].accessType);
         records.emplace_back(record);
     }
@@ -604,7 +606,8 @@ void AddressSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockTy
     error.auxData.blockType = blockType;
     error.auxData.serialNo = serialNo;
     error.auxData.side = MemOpSide::KERNEL;
-    error.auxData.isSimtError = true;
+    error.auxData.isSimt = true;
+    error.auxData.displayThread = true;
 
     for (size_t errorIdx = 0; errorIdx < record.errorNum; ++errorIdx) {
         const KernelErrorDesc &kernelErrorDesc = record.kernelErrorDesc[errorIdx];

@@ -21,6 +21,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <iterator>
 #include "core/framework/event_def.h"
 #include "core/framework/call_stack.h"
 #include "core/framework/kernel_manager.h"
@@ -50,10 +51,16 @@ inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event
     if (KernelManager::Instance().Get(event.deviceId, event.kernelIdx, kernelSummary)) {
         stack = CallStack::Instance().Query(kernelSummary.kernelName, event.pc);
     }
+    if (event.isSimt) {
+        CallStack::Stack mainScalarStack = CallStack::Instance().Query(
+            kernelSummary.kernelName, event.threadLoc.mainScalarPc);
+        stack.reserve(stack.size() + mainScalarStack.size());
+        stack.insert(stack.end(), std::make_move_iterator(mainScalarStack.begin()),
+            std::make_move_iterator(mainScalarStack.end()));
+    }
     if (stack.empty()) {
         return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo);
     }
-
     os << "at pc current 0x" << std::hex << event.pc << std::dec;
     if (!isOnlineError) os << " (serialNo:" << serialNo << ")";
     os << std::endl;

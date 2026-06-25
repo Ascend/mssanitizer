@@ -26,6 +26,7 @@
 #include <sstream>
 #include <functional>
 #include <algorithm>
+#include <iterator>
 #include "core/framework/call_stack.h"
 #include "core/framework/record_defs.h"
 #include "core/framework/record_format.h"
@@ -93,7 +94,7 @@ struct ErrorMsg {
         AuxData() : badAddr{}, nBadBytes{0UL}, baseAddr{}, baseSize{}, space{AddressSpace::INVALID},
                     moduleId(-1), fileName{}, lineNo{0UL}, coreId{0UL},
                     blockType{BlockType::AICUBE}, pc{0UL}, serialNo(0L),
-                    side{MemOpSide::HOST}, threadLoc{}, conflictedThreadLoc{}, isSimtError{false} { }
+                    side{MemOpSide::HOST}, threadLoc{}, conflictedThreadLoc{}, isSimt{false}, displayThread{false} { }
         Addr badAddr;
         uint64_t nBadBytes;
         Addr baseAddr;
@@ -109,7 +110,10 @@ struct ErrorMsg {
         MemOpSide side;
         SimtThreadLocation threadLoc;
         SimtThreadLocation conflictedThreadLoc;
-        bool isSimtError;
+        bool isSimt;
+        bool displayThread;  // 输出错误的格式是否展示线程数，由于simt的记录会被融合成dynamicRecord，其中包含了多个线程的读写事件；
+                             // 此时依托dynamicRecord检测出的错误类型，比如simt的核间踩踏、simt的未初始化等问题展示线程数不准确，
+                             // 此时该字段为false
     } auxData;
     ErrorMsg() : type(MemErrorType::INVALID), isError(false) {}
     bool operator==(const ErrorMsg &rhs) const noexcept
@@ -122,7 +126,8 @@ struct ErrorMsg {
             auxData.nBadBytes == rhs.auxData.nBadBytes && auxData.space == rhs.auxData.space &&
             auxData.moduleId == rhs.auxData.moduleId && auxData.fileName == rhs.auxData.fileName &&
             auxData.lineNo == rhs.auxData.lineNo && auxData.pc == rhs.auxData.pc &&
-            auxData.isSimtError == rhs.auxData.isSimtError && auxData.threadLoc == rhs.auxData.threadLoc;
+            auxData.isSimt == rhs.auxData.isSimt && auxData.displayThread == rhs.auxData.displayThread &&
+            auxData.threadLoc == rhs.auxData.threadLoc;
     }
     uint64_t operator()(const ErrorMsg &error) const
     {
@@ -135,7 +140,8 @@ struct ErrorMsg {
             std::hash<std::string>()(error.auxData.fileName) ^
             std::hash<uint64_t>()(error.auxData.lineNo) ^
             std::hash<uint64_t>()(error.auxData.pc) ^
-            std::hash<uint64_t>()(error.auxData.isSimtError) ^
+            std::hash<uint64_t>()(error.auxData.isSimt) ^
+            std::hash<uint64_t>()(error.auxData.displayThread) ^
             std::hash<uint64_t>()(error.auxData.threadLoc.idX) ^
             std::hash<uint64_t>()(error.auxData.threadLoc.idY) ^
             std::hash<uint64_t>()(error.auxData.threadLoc.idZ);
@@ -237,7 +243,7 @@ inline std::ostream &operator<<(std::ostream &os, FormatBlockInfo const &formatB
 {
     ReducedErrorMsg const &msg = formatBlockInfo.msg;
     os <<  "======    ";
-    if (msg.errorMsg.auxData.isSimtError) {
+    if (msg.errorMsg.auxData.isSimt && msg.errorMsg.auxData.displayThread) {
         const auto &threadLoc = msg.errorMsg.auxData.threadLoc;
         os <<  "by thread (" << threadLoc.idX << "," << threadLoc.idY << "," << threadLoc.idZ << ") ";
     }
@@ -282,6 +288,13 @@ inline std::ostream &PrintLocationInfo(std::ostream &os, const ErrorMsg &msg)
                                                          msg.auxData.pc);
     if (stack.empty()) {
         return PrintClassicLocation(os, msg);
+    }
+    if (msg.auxData.isSimt) {
+        CallStack::Stack mainScalarStack = CallStack::Instance().Query(
+            RuntimeContext::Instance().kernelSummary_.kernelName, msg.auxData.threadLoc.mainScalarPc);
+        stack.reserve(stack.size() + mainScalarStack.size());
+        stack.insert(stack.end(), std::make_move_iterator(mainScalarStack.begin()),
+            std::make_move_iterator(mainScalarStack.end()));
     }
 
     os << "======    code in pc current 0x" << std::hex << msg.auxData.pc << std::dec <<

@@ -34,7 +34,7 @@ struct AddrInfo {
 };
 
 template<RecordType recordType>
-AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record)
+AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record, uint64_t mainScalarPc = 0)
 {
     static_assert(recordType == RecordType::SIMT_LDG || recordType == RecordType::SIMT_STG ||
             recordType == RecordType::SIMT_LDS || recordType == RecordType::SIMT_STS ||
@@ -47,7 +47,9 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record)
     addrInfo.addr = record.addr;
     addrInfo.size = record.size;
     addrInfo.space = record.space;
-    if (recordType == RecordType::SIMT_LDG || recordType == RecordType::SIMT_LDS || recordType == RecordType::SIMT_LDK || recordType == RecordType::SIMT_LD) {
+    addrInfo.threadLoc.mainScalarPc = mainScalarPc;
+    if (recordType == RecordType::SIMT_LDG || recordType == RecordType::SIMT_LDS ||
+        recordType == RecordType::SIMT_LDK || recordType == RecordType::SIMT_LD) {
         addrInfo.opType = AccessType::READ;
     } else {
         addrInfo.opType = AccessType::WRITE;
@@ -57,7 +59,7 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtLoadStoreRecord const &record)
 }
 
 template<RecordType recordType>
-AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtAtomRecord const &record)
+AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtAtomRecord const &record, uint64_t mainScalarPc = 0)
 {
     // ATOM和RED是原子操作的两种模式，ATOM模式支持原子运算前取回原数值，RED模式不支持取回。
     // 原子操作不参与线程间内存踩踏检测和竞争检测，但是参与未初始化检测
@@ -69,6 +71,7 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtAtomRecord const &record)
     addrInfo.addr = record.addr;
     addrInfo.size = record.size;
     addrInfo.space = record.space;
+    addrInfo.threadLoc.mainScalarPc = mainScalarPc;
     addrInfo.opType = AccessType::MEMCPY_BLOCKS;
     addrInfo.option = record.option;
     addrInfo.alignSize = GetAlignSizeByDataType(record.detailedDataType);
@@ -77,11 +80,12 @@ AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtAtomRecord const &record)
 }
 
 template<RecordType recordType>
-AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtEmptyRecord const &record)
+AICORE_FUNC_HEAD AddrInfo ParseRecord(SimtEmptyRecord const &record, uint64_t mainScalarPc = 0)
 {
     AddrInfo addrInfo{};
     addrInfo.location = record.location;
     addrInfo.threadLoc = record.threadLoc;
+    addrInfo.threadLoc.mainScalarPc = mainScalarPc;
     return addrInfo;
 }
 

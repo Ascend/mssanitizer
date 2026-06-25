@@ -43,16 +43,19 @@ struct MemOpRecordForShadow {
     uint64_t memSize;
     uint16_t coreId;
     uint64_t serialNo;
+    uint64_t mainScalarPc;
+    bool isSimt;
 
     MemOpRecordForShadow(AddressSpace dstSpace, uint64_t dstAddr,
         uint64_t memSize, uint8_t coreId)
         : dstSpace{dstSpace}, dstAddr{dstAddr}, memSize{memSize},
-        coreId{coreId}, serialNo(0L)
+        coreId{coreId}, serialNo(0L), mainScalarPc{}, isSimt{false}
         {}
 
     explicit MemOpRecordForShadow(const MemOpRecord &memOpRecord)
         : dstSpace{memOpRecord.dstSpace}, dstAddr{memOpRecord.dstAddr}, memSize{memOpRecord.memSize},
-        coreId{static_cast<uint8_t>(memOpRecord.coreId)}, serialNo(memOpRecord.serialNo)
+        coreId{static_cast<uint8_t>(memOpRecord.coreId)}, serialNo(memOpRecord.serialNo),
+        mainScalarPc{memOpRecord.mainScalarPc}, isSimt{memOpRecord.isSimt}
     {
     }
 };
@@ -110,7 +113,8 @@ private:
     inline uint64_t GetGmAddrOffset(uint64_t addr);
     PM* GetMemMap(AddressSpace space) const;
     bool SkipSpace(AddressSpace space);
-    ErrorMsg MakeBadBytesMsg(MemErrorType error, AddressSpace space, uint64_t addr, uint64_t nbytes) const;
+    ErrorMsg MakeBadBytesMsg(MemErrorType error, AddressSpace space, uint64_t addr, uint64_t nbytes,
+        bool isSimt = false, uint64_t mainScalarPc = 0, bool displayThread = true) const;
 
     void StoreNBytesInRange(Range1D &range, AddressSpace space, uint8_t coreId, uint64_t &nBadBytesForOverlap);
 

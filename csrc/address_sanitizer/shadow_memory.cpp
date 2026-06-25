@@ -243,7 +243,8 @@ ErrorMsgList ShadowMemory::LoadNBytes(MemOpRecordForShadow memOpRecordForShadow,
     }
 
     if (nUninitializedReadBytes > 0U) {
-        msgList.emplace_back(MakeBadBytesMsg(MemErrorType::UNINITIALIZED_READ, space, addr, nUninitializedReadBytes));
+        msgList.emplace_back(MakeBadBytesMsg(MemErrorType::UNINITIALIZED_READ, space, addr, nUninitializedReadBytes,
+            memOpRecordForShadow.isSimt, memOpRecordForShadow.mainScalarPc, false));
     }
     return msgList;
 }
@@ -269,7 +270,8 @@ ErrorMsgList ShadowMemory::StoreNBytes(MemOpRecordForShadow memOpRecordForShadow
     if (!memCheck) { return msgList; }
 
     if (nBadBytesForOverlap > 0U) {
-        msgList.emplace_back(MakeBadBytesMsg(MemErrorType::OUT_OF_BOUNDS, space, addr, nBadBytesForOverlap));
+        msgList.emplace_back(MakeBadBytesMsg(MemErrorType::OUT_OF_BOUNDS, space, addr, nBadBytesForOverlap,
+            memOpRecordForShadow.isSimt, memOpRecordForShadow.mainScalarPc, false));
     }
 
     return msgList;
@@ -370,11 +372,15 @@ bool ShadowMemory::SkipSpace(AddressSpace space)
 }
 
 ErrorMsg ShadowMemory::MakeBadBytesMsg(MemErrorType error, AddressSpace space,
-                                       uint64_t addr, uint64_t nbytes) const
+                                       uint64_t addr, uint64_t nbytes, bool isSimt, uint64_t mainScalarPc,
+                                       bool displayThread) const
 {
     ErrorMsg msg;
     msg.SetType(error, space, addr);
     msg.auxData.nBadBytes = nbytes;
+    msg.auxData.isSimt = isSimt;
+    msg.auxData.displayThread = displayThread;
+    msg.auxData.threadLoc.mainScalarPc = mainScalarPc;
     return msg;
 }
 
