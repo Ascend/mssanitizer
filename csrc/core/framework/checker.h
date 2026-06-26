@@ -67,7 +67,7 @@ struct WorkArgs {
 //   将抽象类移到框架管理
 class Checker {
 public:
-    explicit Checker(Config const &config);
+    explicit Checker(Config const &config, bool enableDebugLog);
     ~Checker();
 
     void Finish();
@@ -92,6 +92,7 @@ private:
 
 private:
     Config config_;
+    bool enableDebugLog_;
     std::ostream *detectionOstream_{};
 
     std::array<std::mutex, TOOL_NUM> mtx_{};

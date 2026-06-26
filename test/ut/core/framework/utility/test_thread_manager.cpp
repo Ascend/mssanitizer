@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
- 
 #include <gtest/gtest.h>
 #include "address_sanitizer.h"
 #include "checker.h"
@@ -23,7 +22,7 @@
 #include "securec.h"
 #include "utility/log.h"
 #include "thread_manager.h"
- 
+
 using namespace Sanitizer;
 
 TEST(ThreadManager, one_thread_expect_run_checker_and_protocol_success)
@@ -34,7 +33,7 @@ TEST(ThreadManager, one_thread_expect_run_checker_and_protocol_success)
     };
     LogLv logLv = LogLv::DEBUG;
     char const* logFile = "/tmp/test.log";
-    ThreadManager threadManager(config, logLv, logFile);
+    ThreadManager threadManager(config, false, logLv, logFile);
 
     Checker& checker1 = threadManager.GetChecker();
     Checker& checker2 = threadManager.GetChecker();
@@ -52,7 +51,7 @@ TEST(ThreadManager, multi_thread_expect_run_checker_and_protocol_success)
     };
     LogLv logLv = LogLv::DEBUG;
     char const* logFile = "/tmp/test.log";
-    ThreadManager threadManager(config, logLv, logFile);
+    ThreadManager threadManager(config, false, logLv, logFile);
 
     std::vector<std::thread> threads;
     const int numThreads = 8;

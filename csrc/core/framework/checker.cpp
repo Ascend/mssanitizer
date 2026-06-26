@@ -95,8 +95,7 @@ bool IsSanitizerToolSupportDBI(DeviceType deviceType, SanitizerTool tool)
 
 namespace Sanitizer {
 
-Checker::Checker(Config const &config) : config_(config)
-{
+Checker::Checker(Config const &config, bool enableDebugLog) : config_(config), enableDebugLog_{enableDebugLog} {
     // 后续依据不同的工具选择使能不同的sanitizer功能
     auto rootTid = RuntimeContext::Instance().rootTid_;
 
@@ -454,9 +453,11 @@ void Checker::Do(const SanitizerRecord &record)
         KernelBlock::ResetAll();
     }
 
-    std::stringstream ss;
-    ss << record << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
-    SAN_LOG("%s", ss.str().c_str());
+    if (enableDebugLog_) {
+        std::stringstream ss;
+        ss << record << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
+        SAN_LOG("%s", ss.str().c_str());
+    }
 }
 
 void Checker::Do(const std::vector<SanitizerRecord> &records) {
@@ -496,10 +497,12 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
         workerCv_.notify_all();
     }
 
-    for (std::size_t i = 0; i < records.size(); ++i) {
-        std::stringstream ss;
-        ss << records[i] << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
-        SAN_LOG("%s", ss.str().c_str());
+    if (enableDebugLog_) {
+        for (std::size_t i = 0; i < records.size(); ++i) {
+            std::stringstream ss;
+            ss << records[i] << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
+            SAN_LOG("%s", ss.str().c_str());
+        }
     }
 }
 

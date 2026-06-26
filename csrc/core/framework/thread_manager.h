@@ -35,8 +35,9 @@ namespace Sanitizer {
 // ThreadManager类持有checkers_和protocols_，按照线程id进行创建和获取checker对象与Protocol指针
 class ThreadManager {
 public:
-    ThreadManager(Config const &config, const LogLv &lv, const std::string &logFile)
-        : config_{config}, loglv_(lv), logFd_(GetLogFd(logFile)), crossNpuChecker_(config) {}
+    ThreadManager(Config const &config, bool enableDebugLog, const LogLv &lv, const std::string &logFile)
+        : config_{config}, enableDebugLog_{enableDebugLog}, loglv_(lv), logFd_(GetLogFd(logFile)),
+          crossNpuChecker_(config) {}
     void PostLog() const;
     Checker& GetChecker(std::thread::id threadId);
     Checker& GetChecker();
@@ -51,6 +52,7 @@ private:
     std::unordered_map<std::thread::id, std::unique_ptr<Protocol>> protocols_;
     // 接收从command类中传入的参数
     Config config_;
+    bool enableDebugLog_;
     LogLv loglv_;
     std::ostream& logFd_;
     static std::mutex mutex_;

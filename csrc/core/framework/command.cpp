@@ -423,7 +423,7 @@ void Command::Exec(const ParamList &execParams)
     Process process(config_);
     auto socketPath = process.CreateSockPath();
     // 线程管理类，负责多线程开始前和结束后的工作
-    ThreadManager threadManager(config_, loglv_, logFile_);
+    ThreadManager threadManager(config_, enableDebugLog_, loglv_, logFile_);
     KernelManager::Instance().SetDemangleMode(config_.demangleMode);
 
     auto msgSplitFunc = [&threadManager, this](
