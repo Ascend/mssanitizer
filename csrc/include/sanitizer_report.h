@@ -209,7 +209,7 @@ INTERFACE_TYPE_TRAITS_SPEC(MstxDataCopyPadDesc, InterfaceType::MSTX_DATA_COPY_PA
 
 /**
  * @ingroup MSSANITIZER_REPORT
- * @brief report mstx varadic record
+ * @brief report mstx variadic record
  *
  * @param record        [IN] record payload
  */
@@ -218,7 +218,8 @@ inline [aicore] void SanitizerReport(RecordT const &record)
 {
 #ifdef __MSTX_DFX_REPORT__
     constexpr static InterfaceType interfaceType = InterfaceTypeTraits<RecordT>::value;
-    __mstx_dfx_report_stub(interfaceType, sizeof(record), &record);
+    __mstx_dfx_report_stub(static_cast<uint32_t>(interfaceType), static_cast<uint32_t>(sizeof(record)),
+        const_cast<void *>(static_cast<const void *>(&record)));
 #endif // __MSTX_DFX_REPORT__
 }
 
@@ -229,7 +230,7 @@ inline [aicore] void SanitizerReport(RecordT const &record)
 inline [aicore] void SanitizerFuseScopeStart()
 {
 #ifdef __MSTX_DFX_REPORT__
-    __mstx_dfx_report_stub(InterfaceType::MSTX_FUSE_SCOPE_START, 0, nullptr);
+    __mstx_dfx_report_stub(static_cast<uint32_t>(InterfaceType::MSTX_FUSE_SCOPE_START), 0, nullptr);
 #endif // __MSTX_DFX_REPORT__
 }
 
@@ -240,7 +241,7 @@ inline [aicore] void SanitizerFuseScopeStart()
 inline [aicore] void SanitizerFuseScopeEnd()
 {
 #ifdef __MSTX_DFX_REPORT__
-    __mstx_dfx_report_stub(InterfaceType::MSTX_FUSE_SCOPE_END, 0, nullptr);
+    __mstx_dfx_report_stub(static_cast<uint32_t>(InterfaceType::MSTX_FUSE_SCOPE_END), 0, nullptr);
 #endif // MSSANITIZER_REPORT_REPORT_H
 }
 
