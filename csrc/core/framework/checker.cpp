@@ -240,15 +240,14 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
 }
 
 void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args) {
-    if (!initWithDeviceInfoDone_[consumeId] && !initWithKernelInfoDone_[consumeId]) {
-        return;
-    }
-
-    for (std::size_t i = 0; i < args.records.size(); ++i) {
-        if (sanitizerArr_[consumeId]->CheckRecordBeforeProcess(args.records[i])) {
-            sanitizerArr_[consumeId]->Do(args.records[i], args.events[i]);
+    if (initWithDeviceInfoDone_[consumeId] || initWithKernelInfoDone_[consumeId]) {
+        for (std::size_t i = 0; i < args.records.size(); ++i) {
+            if (sanitizerArr_[consumeId]->CheckRecordBeforeProcess(args.records[i])) {
+                sanitizerArr_[consumeId]->Do(args.records[i], args.events[i]);
+            }
         }
     }
+
     if (finishProduce_) {
         WaitAfterConsumed(consumeId);
     }
