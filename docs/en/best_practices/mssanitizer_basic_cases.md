@@ -253,16 +253,16 @@ To identify a memory leak, perform the following steps:
 1. Set related environment variables by referring to "Preparations" in *msSanitizer User Guide*.
 2. Check whether memory leak occurs on the host.
 
-   2.1 Use the msSanitizer tool to start the program to be checked. The following is a command example:
+   1. Use the msSanitizer tool to start the program to be checked. The following is a command example:
 
        ```shell
          mssanitizer --check-device-heap=yes --leak-check=yes ./add_npu
        ```
 
          The path of the program to be checked (for example, *_add_custom_npu_*) can be set to either an absolute path or a relative path according to the actual situation.
-   2.2 If no exception information is displayed, the check program is running properly and no memory leak occurs on the host. If the following exception information is displayed, memory leak occurs on the host.
+   2. If no exception information is displayed, the check program is running properly and no memory leak occurs on the host. If the following exception information is displayed, memory leak occurs on the host.
        The following command output indicates that one memory allocation on the host is not destroyed, resulting in a 32800-byte memory leak.
-   2.3 Determine whether the memory leak is caused by AscendCL API calls.
+   3. Determine whether the memory leak is caused by AscendCL API calls.
 3. Use the msSanitizer tool to start the program to be checked. The following is a command example:
 
     ```shell

@@ -24,7 +24,7 @@ To use the functions of the latest code or modify the source code to enhance fun
 
 ### 2.1 Environment Setup
 
-Set up the environment by referring to the [Operator Tool Development Environment Setup Guide](https://gitcode.com/Ascend/msot/blob/master/docs/en/common/dev_env_setup.md).
+Set up the environment by referring to the [Operator Tool Development Environment Setup Guide](https://gitcode.com/Ascend/msot/blob/26.0.0/docs/en/common/dev_env_setup.md).
 
 ### 2.2 Building and Packaging
 
@@ -54,9 +54,13 @@ Copy the .run package to the operating environment (not required for local insta
 ```
 
 If an earlier version of the tool has been installed in the system, a message will be displayed during the installation asking you whether to replace it. Enter "y" to perform an overwrite installation.
+
 >[!NOTE]NOTE  
+> 
 > If the `ASCEND_HOME_PATH` environment variable has been configured in the environment, the tool will be installed in the `$ASCEND_HOME_PATH` directory.
+> 
 > Otherwise, the tool will be installed in the `$HOME/Ascend` directory by default. 
+> 
 > To specify a custom installation path, use the `--install-path` option. For example:
 > `./mindstudio-sanitizer_*.run --install-path=./xxx --run` install the runfile to the `xxx` directory.
 

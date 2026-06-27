@@ -6,7 +6,7 @@
 
 **API Overview**
 
-The msSanitizer tool contains two types of APIs: sanitizer APIs and mstx APIs. The sanitizer APIs are used to check the CANN software stack and correspond to the ACL APIs. These APIs additionally report the code file and line number of the API called to the tool. The header file of the sanitizer APIs needs to be imported and the dynamic library needs to be linked. For details, see "Checking the Memory of the CANN Software Stack" > "Importing the API Header File and Linking the Dynamic Library" in [MindStudio Sanitizer Typical Cases](../best_practices/basic_cases.md). The mstx APIs are used to report custom memory pool information for more accurate check. For details, see [MSTX Functions](#mstx-functions).
+The msSanitizer tool contains two types of APIs: sanitizer APIs and mstx APIs. The sanitizer APIs are used to check the CANN software stack and correspond to the ACL APIs. These APIs additionally report the code file and line number of the API called to the tool. The header file of the sanitizer APIs needs to be imported and the dynamic library needs to be linked. For details, see "Checking the Memory of the CANN Software Stack" > "Importing the API Header File and Linking the Dynamic Library" in [MindStudio Sanitizer Typical Cases](../best_practices/mssanitizer_basic_cases.md). The mstx APIs are used to report custom memory pool information for more accurate check. For details, see [MSTX Functions](#mstx-functions).
 
 **Table 1** msSanitizer APIs
 
@@ -70,7 +70,7 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -110,7 +110,7 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -148,7 +148,7 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -189,7 +189,7 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -231,7 +231,7 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -273,7 +273,7 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -316,7 +316,7 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -360,7 +360,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -405,7 +405,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -484,7 +484,7 @@ None
 
 **MSTX API Overview**
 
-The mstx APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the MSTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/master/docs/en/api_reference/mstx_api_reference.md) to implement more accurate memory check.
+The mstx APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the MSTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/26.0.0/docs/en/api_reference/README.md) to implement more accurate memory check.
 
 > [!NOTE]NOTE
 > 
@@ -514,7 +514,7 @@ The mstx APIs are a set of extension APIs provided by MindStudio to allow you to
 
 - Add the library file **libms_tools_ext.so** to the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt` directory. The address is `${INSTALL_DIR}/lib64/libms_tools_ext.so`.
     
-    ```c  
+    ```cmake  
         # Header path
         include_directories(
              ...

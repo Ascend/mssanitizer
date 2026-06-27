@@ -15,7 +15,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
 ## 2. Kernel Launch Symbol Scenario
 
-1. For details about the sample project code, see the [LAddKernelInvocationk code example](https://gitee.com/ascend/samples/tree/8.0.RC2/operator/AddCustomSample/KernelLaunch/AddKernelInvocation). Run the following command to download the sample code of the branch version:
+1. For details about the sample project code, see the [LAddKernelInvocation code example](https://gitee.com/ascend/samples/tree/8.0.RC2/operator/AddCustomSample/KernelLaunch/AddKernelInvocation). Run the following command to download the sample code of the branch version:
 
     ```sh
     git clone https://gitee.com/ascend/samples.git -b 8.0.RC2

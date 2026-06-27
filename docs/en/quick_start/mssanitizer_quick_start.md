@@ -10,11 +10,11 @@ This document demonstrates the core functions of msSanitizer based on the simple
 
 ### 1.1 Recommendations
 
-This document assumes that you have completed all operations in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a>. If you have not done so, complete that guide first for a better learning experience.
+This document assumes that you have completed all operations in <a href="https://gitcode.com/Ascend/msot/blob/26.0.0/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a>. If you have not done so, complete that guide first for a better learning experience.
 
 ### 1.2 Environment Setup
 
-Strictly follow the <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/installation_guide.md" target="_blank">Ascend AI Operator Development Toolchain Learning Environment Installation Guide</a> to complete the environment installation and workspace configuration.
+Strictly follow the <a href="https://gitcode.com/Ascend/msot/blob/26.0.0/docs/en/quick_start/installation_guide.md" target="_blank">Ascend AI Operator Development Toolchain Learning Environment Installation Guide</a> to complete the environment installation and workspace configuration.
 Even if you have a similar environment, perform the steps in the guide again to ensure that all dependent components and environment variables are complete and consistent.
 
 ## 2. Procedure
@@ -33,7 +33,7 @@ If an error occurs, refer to [Section 1.2](#12-environment-setup) for correct in
 
 ### 2.2 [Prerequisite] Completing Operator Project Preparation
 
-Follow the instructions in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete Sections 2.1 and 2.3.
+Follow the instructions in <a href="https://gitcode.com/Ascend/msot/blob/26.0.0/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete Sections 2.1 and 2.3.
 
 ### 2.3 [Check] msSanitizer
 
@@ -135,5 +135,6 @@ Run the following commands:
 
 ```shell
 cd ~/ot_demo/workspace/src/AddCustom
-\cp -f op_kernel/CMakeLists.txt.orig.bak op_kernel/CMakeLists.txt
+\cp -f ~/ot_demo/msot/example/quick_start/msopgen/code/op_kernel/add_custom.cpp ~/ot_demo/workspace/src/AddCustom/op_kernel/
+\cp -f op_kernel/CMakeLists.txt.bak op_kernel/CMakeLists.txt
 ```

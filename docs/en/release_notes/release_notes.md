@@ -11,7 +11,7 @@
 
 ### Related Product Versions
 
-| msSanitizer Version| CANN Version| Python version| JSON Version|SecureC Version| Makeself Version| llvm-project Version
+| msSanitizer Version| CANN Version| Python version| JSON Version|SecureC Version| Makeself Version| llvm-project Version |
 |----------|-----------------|----------|----------|----------|----------|----------|
 | 26.0.0 | 9.0.0 or later is recommended.| Python 3.11 or later is recommended.| v3.12.0 or later| v1.1.16 or later| release-2.5.0 or later| 19.1.7 |
 | 8.3.0 | 8.2.RC1 or later| Python 3.11 or later is recommended.| v3.12.0 or later| v1.1.16 or later| release-2.5.0 or later| 19.1.7 |
@@ -35,7 +35,7 @@ Function:
 
 1. Added out-of-bounds check support for `LocalTensor` across AscendC monocular and binocular computation APIs as well as data movement APIs.
 2. Added support for memory corruption check between SIMT and Main-Scalar pipelines.
-3. Added support for inter-thread race check within a SIMTR VF.
+3. Added support for inter-thread race check within a SIMT VF.
 4. Added support for redundancy check of the `SET_FLAG` instruction.
 5. Added instrumentation and processing for a large number of intra-core and inter-core synchronization instructions to enhance race check capabilities. Added commands `SET_FLAG`/`WAIT_FLAG`/`SET_FLAGI`/`WAIT_FLAGI`/`HSET`/`HWAIT`/`GET_BUF`/`RLS_BUF`.
 

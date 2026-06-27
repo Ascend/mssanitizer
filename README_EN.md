@@ -51,7 +51,7 @@ For details about how to use the tool, see [msSanitizer User Guide](docs/en/user
 
 ## 💡 Typical Cases
 
-For details about how to understand and use the tool through typical cases, see [msSanitizer Typical Cases](docs/en/best_practices/basic_cases.md).
+For details about how to understand and use the tool through typical cases, see [msSanitizer Typical Cases](docs/en/best_practices/mssanitizer_basic_cases.md).
 
 ## 📚 API Reference
 
@@ -59,7 +59,7 @@ For details about the APIs, including sanitizer APIs and MSTX APIs, see [msSanit
 
 ## 💬 FAQs
 
-For details about common issues and solutions, see [msSanitizer FAQs](docs/en/support/faq.md).
+For details about common issues and solutions, see [msSanitizer FAQs](docs/en/support/mssanitizer_faq.md).
 
 ## 🛠️ Contribution Guide
 

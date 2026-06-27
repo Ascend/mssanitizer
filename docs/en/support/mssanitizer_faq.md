@@ -14,7 +14,7 @@ The file name and line number are displayed as `<unknown\>:0`, or the file name 
 
     The msSanitizer tool fails to parse the correct file name and line number. You can use either of the following methods to solve the problem:
 
-    - If the `--check-cann-heap=yes` option is enabled to check the memory of the CANN software stack, you can import the sanitizer API header file and recompile the user program so that the detection tool can obtain the correct file name and line number. For details, see "Checking the Memory of the CANN Software Stack" > "Memory Leak Detection Principles" > "Step 4" in [Example](../best_practices/basic_cases.md).
+    - If the `--check-cann-heap=yes` option is enabled to check the memory of the CANN software stack, you can import the sanitizer API header file and recompile the user program so that the detection tool can obtain the correct file name and line number. For details, see "Checking the Memory of the CANN Software Stack" > "Memory Leak Detection Principles" > "Step 4" in [Example](../best_practices/mssanitizer_basic_cases.md).
     - If the operator is being checked for exceptions, the `-g` compilation option may not be enabled in the operator compilation phase. The correct file name and line number can be generated only after the `-g` compilation option is enabled. For details, see "Preparations" > "Preparations for Kernel Launch Symbol Scenario" in [MindStudio Sanitizer User Guide](../user_guide/mssanitizer_user_guide.md).
 
 - The file name is correct, but the line number is `0`.

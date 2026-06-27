@@ -35,7 +35,7 @@
 
 1. 支持 AscendC 单目、双目计算类以及搬运类 API 中 LocalTensor 的越界检测。
 2. 支持 SIMT 和 Main-Scalar 流水间的内存踩踏检测。
-3. 支持 SIMTR VF 内线程间竞争检测。
+3. 支持 SIMT VF 内线程间竞争检测。
 4. 支持冗余SET_FLAG指令检测。
 5. 新增大量核内、核间同步指令的插桩和处理，增强竞争检测能力。新增指令如下：SET_FLAG/WAIT_FLAG/SET_FLAGI/WAIT_FLAGI/HSET/HWAIT/GET_BUF/RLS_BUF。
 

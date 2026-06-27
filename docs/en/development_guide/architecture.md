@@ -438,7 +438,7 @@ sequenceDiagram
 1. Manage check algorithms and implement algorithm registration and creation through `SanitizerFactory`/`RegisteSanitizer`.
 2. Distribute check records. `Checker` distributes runtime records to each check tool.
 3. Provide parallel processing capabilities between check tools. Each `ToolType` corresponds to an independent consumer thread.
-4. Preprocess instrumentation records and convert raw instruction records into unified descriptions..
+4. Preprocess instrumentation records and convert raw instruction records into unified descriptions.
 5. Provide memory check algorithms (for illegal read/write, unaligned access, memory leak, and illegal release).
 6. Provide race check algorithms (for inter-core, inter-pipeline, and intra-pipeline races).
 7. Provide uninitialization check algorithms.
@@ -1006,7 +1006,7 @@ flowchart TD
 |-----|---------|
 | `-h, --help` | Displays the help information about the tool.|
 | `-v, --version` | Queries the version information|
-| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`.|Separate multiple tools with a pipe ( `\` ) to enable them simultaneously (e.g., `memcheck \ racecheck`). By default, all tools are enabled.| |
+| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`.Separate multiple tools with a pipe ( `\`) to enable them simultaneously (e.g., `memcheck \ racecheck`). By default, all tools are enabled.| 
 | `--log-file <file>` | Saves log information to a specified file. If no file is specified, the log information is printed.|
 | `--log-level <level>` | Specifies the print level. The default value is `warn`.|
 | `--max-debuglog-size <size>` | Specifies the size of a single debug log file.|

@@ -101,7 +101,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 1. In PyTorch graph mode (TorchAir), the check can be performed only when no compilation option is added to msSanitizer. For details, see [5. (Optional) Configuring Operator Compilation Options](#5-optional-configuring-operator-compilation-options).
 2. In PyTorch graph mode (TorchAir), the Ascend IR graph execution mode and aclgraph graph execution mode are supported. For details, see "PyTorch Graph Mode (TorchAir)" > "Reduce-Overhead Mode" > "Configuring the Reduce-Overhead Mode" in the [Ascend Extension for PyTorch](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00015.html).
-3. For details about the PyTorch framework calling scenario, see "PyTorch Framework Feature Guide" > "Custom Operator Adaptation Development" > "OpPlugin-based Operator Adaptation Development" in [Ascend Extension for PyTorch](https://www.hiascend.com/document/detail/zh/Pytorch/720/ptmoddevg/Frameworkfeatures/featuresguide_00021.html). For details, see "Checking Operators Called by PyTorch APIs" in [example](../best_practices/basic_cases.md).
+3. For details about the PyTorch framework calling scenario, see "PyTorch Framework Feature Guide" > "Custom Operator Adaptation Development" > "OpPlugin-based Operator Adaptation Development" in [Ascend Extension for PyTorch](https://www.hiascend.com/document/detail/zh/Pytorch/720/ptmoddevg/Frameworkfeatures/featuresguide_00021.html). For details, see "Checking Operators Called by PyTorch APIs" in [example](../best_practices/mssanitizer_basic_cases.md).
 
 ### 4.4 Triton Operator Calling Scenario
 
@@ -122,7 +122,7 @@ To ensure check accuracy and avoid cache interference, set the following environ
 > [!NOTE]NOTE
 > In a Triton scenario, PyTorch is used to create tensors. In the PyTorch framework, the GM is managed in memory pool mode by default, which interferes with memory check. Therefore, the memory cache must be disabled to ensure the validity of the check.
 
-For details, see section "Detecting Triton Operators" in [Basic Scenario Cases](../best_practices/basic_cases.md).
+For details, see section "Detecting Triton Operators" in [Basic Scenario Cases](../best_practices/mssanitizer_basic_cases.md).
 
 ## 5. (Optional) Configuring Operator Compilation Options
 
@@ -317,9 +317,9 @@ This exception occurs when memory that is allocated during operator running has 
 
 ```text
     ====== WARNING: Unused memory of 1000 byte(s)     // Basic error information, indicating that the allocated memory is not used.
-    ======    at 1240c0016000 on GM                    // Memory location where the exception occurs, including the address space and memory address.
+    ======    at 0x1240c0016000 on GM                    // Memory location where the exception occurs, including the address space and memory address.
     ======    code in add_custom.cpp:2 (serialNo:69)   // Code location when the exception occurs, including the file name, line number, and sequence number of the API call behavior.
-    ====== SUMMARY: 1100byte(s) unused memory in 2 allocation(s) // Exception summary, including the number of used memory blocks and bytes.
+    ====== SUMMARY: 1100 byte(s) unused memory in 2 allocation(s) // Exception summary, including the number of used memory blocks and bytes.
  ```
 
 ##### 6.1.3.7 Ascend 950 SIMT Unit Exception
