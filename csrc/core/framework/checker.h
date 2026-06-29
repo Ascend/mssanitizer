@@ -85,7 +85,8 @@ private:
     void ConsumeRecordThread(uint8_t consumeId, const std::thread::id &rootTid);
     void ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args);
     inline void WaitAfterConsumed(uint8_t consumeId);
-    inline bool IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx);
+    inline bool IsNeedFilterDbi(uint8_t toolIdx) const;
+    inline bool IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx) const;
     inline void TryPrintMissDebugLine();
     inline void DisplaySanitizerBegin(Config const &config) const;
     inline void DisplaySanitizerEnd(std::array<uint32_t, TOOL_NUM> const &errorCounts) const;
