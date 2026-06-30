@@ -262,14 +262,14 @@ public:
      */
     template<RecordType recordType, typename Record, typename Check = record_type_check<true>>
     AICORE_FUNC_HEAD void DumpRecord(Record const &record);
-    
+
     /* @param  type      fmatrix fmatrixB l3dRpt
      * @param  value     寄存器值
      * @brief 将需要的寄存器的值写入header
      */
     template<typename T>
     AICORE_FUNC_HEAD void SetRegister(T Register::*reg, T value) const;
- 
+
     /* @param  type      fmatrix fmatrixB l3dRpt
      * @param  value     寄存器值
      * @brief 获取需要的寄存器的值
@@ -296,7 +296,7 @@ public:
 
     template<RecordType recordType, typename Record>
     AICORE_FUNC_HEAD void UpdateSyncThreadCount(Record const &record);
-    
+
     AICORE_FUNC_HEAD void SetParaBaseAddr(uint64_t size);
 
 private:
@@ -434,7 +434,13 @@ AICORE_FUNC_HEAD void Recorder::GetRegister(T Register::*reg, T &value) const
 
 AICORE_FUNC_HEAD void Recorder::SetMstxFuseScope(bool inMstxFuseScope) const
 {
-    if (memInfoSimdBlock_ == nullptr) {
+    if (memInfo_ == nullptr || memInfoSimdBlock_ == nullptr) {
+        return;
+    }
+
+    // skip scope fuse if dcci check is enabled
+    __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo_);
+    if (globalHead->checkParms.dcciCheck) {
         return;
     }
 

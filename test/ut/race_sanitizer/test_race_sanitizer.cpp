@@ -414,15 +414,11 @@ TEST(RaceSanitizer, race_sanitizer_detect_load_store_missing_dcci_expect_get_mis
     events.clear();
 
     std::vector<RaceDispInfo> const &results = *alg.raceAlgs_[4]->GetResult();
-    ASSERT_EQ(results.size(), 2);
-    // race report
-    ASSERT_FALSE(results[0].isMissDcci);
+    ASSERT_EQ(results.size(), 1);
+    // miss dcci report
+    ASSERT_TRUE(results[0].isMissDcci);
     ASSERT_EQ(results[0].p1.addr, 0x1234);
     ASSERT_EQ(results[0].p2.addr, 0x1234);
-    // miss dcci report
-    ASSERT_TRUE(results[1].isMissDcci);
-    ASSERT_EQ(results[1].p1.addr, 0x1234);
-    ASSERT_EQ(results[1].p2.addr, 0x1234);
 
     ConfigManager::Instance().Get().checkDcci = false;
 }

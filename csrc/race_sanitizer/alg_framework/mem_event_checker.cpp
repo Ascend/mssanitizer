@@ -324,20 +324,22 @@ void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, Race
         auto opType = curEvent.memInfo.opType;
         auto memType = curEvent.memInfo.memType;
         if (metaData.isStart) {
-            // 检查与历史写事件的冲突
-            CheckExistRaceEvents(historyWriteEventsIdxMap[memType],
-                                 checkFuncIter->second, curEventIdx, raceMemEventsIdx);
             if (ConfigManager::Instance().Get().checkDcci) {
                 CheckExistRaceEvents(historyWriteEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent, curEventIdx,
                     missDcciMemEventsIdx);
+            } else {
+                // 检查与历史写事件的冲突
+                CheckExistRaceEvents(
+                    historyWriteEventsIdxMap[memType], checkFuncIter->second, curEventIdx, raceMemEventsIdx);
             }
             if (opType == AccessType::WRITE) {
                 // 检查与历史读事件的冲突
-                CheckExistRaceEvents(historyReadEventsIdxMap[memType],
-                                     checkFuncIter->second, curEventIdx, raceMemEventsIdx);
                 if (ConfigManager::Instance().Get().checkDcci) {
                     CheckExistRaceEvents(historyReadEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent,
                         curEventIdx, missDcciMemEventsIdx);
+                } else {
+                    CheckExistRaceEvents(
+                        historyReadEventsIdxMap[memType], checkFuncIter->second, curEventIdx, raceMemEventsIdx);
                 }
                 historyWriteEventsIdxMap[memType].insert(curEventIdx);
             } else {
