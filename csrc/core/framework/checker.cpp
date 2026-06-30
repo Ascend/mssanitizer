@@ -135,13 +135,7 @@ inline void Checker::WaitAfterConsumed(uint8_t consumeId)
     producerCv_.notify_one();
 }
 
-inline bool Checker::IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx)
-{
-    // host侧内存记录全部默认处理
-    if (record.version == RecordVersion::MEMORY_RECORD) {
-        return false;
-    }
-
+inline bool Checker::IsNeedFilterDbi(uint8_t toolIdx) const {
     // 静态插桩默认处理
     if (!isKernelWithDBI_) {
         return false;
@@ -159,6 +153,15 @@ inline bool Checker::IsNeedFilterDbi(const SanitizerRecord &record, uint8_t tool
     }
 
     return false;
+}
+
+inline bool Checker::IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx) const {
+    // host侧内存记录全部默认处理
+    if (record.version == RecordVersion::MEMORY_RECORD) {
+        return false;
+    }
+
+    return IsNeedFilterDbi(toolIdx);
 }
 
 inline bool IsTargetBlockIdx(DeviceType deviceType, int16_t checkBlockId, uint64_t blockIdx)
@@ -240,15 +243,14 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
 }
 
 void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args) {
-    if (!initWithDeviceInfoDone_[consumeId] && !initWithKernelInfoDone_[consumeId]) {
-        return;
-    }
-
-    for (std::size_t i = 0; i < args.records.size(); ++i) {
-        if (sanitizerArr_[consumeId]->CheckRecordBeforeProcess(args.records[i])) {
-            sanitizerArr_[consumeId]->Do(args.records[i], args.events[i]);
+    if (initWithDeviceInfoDone_[consumeId] || initWithKernelInfoDone_[consumeId]) {
+        for (std::size_t i = 0; i < args.records.size(); ++i) {
+            if (sanitizerArr_[consumeId]->CheckRecordBeforeProcess(args.records[i])) {
+                sanitizerArr_[consumeId]->Do(args.records[i], args.events[i]);
+            }
         }
     }
+
     if (finishProduce_) {
         WaitAfterConsumed(consumeId);
     }
@@ -466,7 +468,11 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
         RecordPreProcess::GetInstance().Process(records[i], events[i]);
     }
 
+    finishProduce_ = false;
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
+        if (IsNeedFilterDbi(i)) {
+            continue;
+        }
         if (sanitizerArr_[i] != nullptr) {
             std::lock_guard<std::mutex> lock(mtx_[i]);
             done_[i] = false;
@@ -483,6 +489,9 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
         workerCv_.notify_all();
         for (uint8_t i = 0; i < TOOL_NUM; ++i) {
             if (sanitizerArr_[i] == nullptr) {
+                continue;
+            }
+            if (IsNeedFilterDbi(i)) {
                 continue;
             }
             std::unique_lock<std::mutex> lock(mtx_[i]);
