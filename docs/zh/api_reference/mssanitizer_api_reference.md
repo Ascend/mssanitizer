@@ -484,14 +484,14 @@ void sanitizerReportFree(void *ptr);
 
 ### mstx接口简介
 
-mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
+mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.1.0/docs/zh/api_reference/README.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
 
 > [!NOTE]
 >《[MindStudio Sanitizer工具用户指南](../user_guide/mssanitizer_user_guide.md)》中的“异常检测功能介绍>功能说明>调用场景>Kernel直调算子开发”中的内核调用符场景暂不支持使用mstx接口。
 
 ### mstx接口列表
 
-msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[mstx_api](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》。
+msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.1.0/docs/zh/api_reference/README.md)》。
 
 **表 13**  msSanitizer工具调用的mstx接口列表<a name="table111"></a>
 
