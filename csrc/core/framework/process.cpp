@@ -189,7 +189,6 @@ std::string Process::CreateSockPath() const
     // 通过环境变量向用户进程传递主进程 PID，用于绑定到正确的 socket 文件
     std::string socketPath = "/tmp/msop_connect." + std::string{buf, len} + "." + std::to_string(mainPid_) + ".sock";
     setenv("MSOP_SOCKET_PATH", socketPath.c_str(), 1);
-    setenv("MSSANITIZER_PID", socketPath.c_str(), 1);
     return socketPath;
 }
 

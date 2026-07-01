@@ -239,6 +239,11 @@ public:
                 sectionHeader)) {
                 return false;
             }
+            if (sectionHeader.sh_name >= nameBuffer.size() || nameBuffer.data()[nameBuffer.size() - 1] != '\0') {
+                SAN_INFO_LOG(
+                    "section name offset %u out of bounds or nameBuffer not null-terminated.", sectionHeader.sh_name);
+                return false;
+            }
             std::string sectionName = std::string{nameBuffer.data() + sectionHeader.sh_name};
             sections_[sectionName] = sectionHeader;
         }

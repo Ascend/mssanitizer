@@ -61,7 +61,7 @@ MemOpRecord CreateRecord(MemOpType type, const ReportAddrInfo &addrInfo)
 
 inline bool ReadSockPathFromEnv(std::string &socketPath)
 {
-    char const *env = getenv("MSSANITIZER_PID");
+    char const *env = getenv("MSOP_SOCKET_PATH");
     socketPath = (env == nullptr) ? "" : std::string(env);
     if (socketPath.empty()) {
         return false;
@@ -92,7 +92,7 @@ bool HookReport::InitClient(void)
 
     std::string socketPath;
     if (!ReadSockPathFromEnv(socketPath)) {
-        std::cout << "Read main process pid FAILED" << std::endl;
+        std::cout << "Read socket path from environment FAILED" << std::endl;
         return false;
     }
 

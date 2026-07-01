@@ -92,6 +92,7 @@ std::ostream& ThreadManager::GetLogFd(const std::string &filename)
 
 void ThreadManager::ThreadFinish()
 {
+    std::lock_guard<std::mutex> guard(mutex_);
     checkers_.clear();
     protocols_.clear();
 
