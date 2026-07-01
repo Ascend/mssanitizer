@@ -23,7 +23,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
     ```
 
     > [!NOTE]
-    > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品和Atlas 350 加速卡。
+    > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品和Ascend 950 系列产品。
 
 2. 进行算子代码编译，需添加以下编译选项：
 
@@ -50,7 +50,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
     > - 添加-g编译选项会在生成的二进制文件中附带调试信息，建议限制带有调试信息的用户程序的访问权限，确保只有授权人员可以访问该二进制文件。
     > - 增加--cce-enable-sanitizer编译选项生成的算子二进制，需与msSanitizer工具配套使用。不建议单独使用该二进制，单独使用可能会导致不可预见的问题。
     > - 因**llvm-symbolizer**开源软件限制，调用栈的异常信息可能会获取失败。此时，用户可再次执行检测命令，就可以获取调用栈的异常信息。
-    > - 目前Atlas 350 加速卡不支持--cce-enable-sanitizer或--sanitizer以及-O0编译选项。如需在kernel侧添加-g编译选项，添加后若算子中存在异常信息，则工具会展示异常信息对应的调用栈信息。
+    > - 目前Ascend 950 系列产品不支持--cce-enable-sanitizer或--sanitizer以及-O0编译选项。如需在kernel侧添加-g编译选项，添加后若算子中存在异常信息，则工具会展示异常信息对应的调用栈信息。
 
 3. 链接阶段需增加target_link_options选项。
 

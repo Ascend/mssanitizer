@@ -71,7 +71,19 @@ chmod +x mindstudio-sanitizer_*.run
 > 如需指定自定义安装路径，请使用 `--install-path` 选项，例如：
 > `./mindstudio-sanitizer_*.run --install-path=./xxx --run`，即可将该运行包安装至 `xxx` 目录。
 
-## 3. 卸载
+## 3. 验证安装
+
+安装完成后，执行以下命令验证工具是否安装成功：
+
+```shell
+mssanitizer --help
+```
+
+若输出不报错，且能显示帮助信息，则表明安装成功。
+
+若提示命令未找到，请参见[第6节 FAQ](#6-faq)内容检查环境变量配置。
+
+## 4. 卸载
 
 可通过如下步骤卸载：
 
@@ -100,32 +112,14 @@ chmod +x mindstudio-sanitizer_*.run
    Successfully uninstalled 1 tool ({tools_name})
    ```
 
-## 4. 升级
+## 5. 升级
 
 升级即"先卸后装"。直接执行安装命令，工具将自动卸载旧版本，并引导您完成覆盖安装。也可以手动执行卸载后再安装：
 
-```shell
-# 先卸载旧版本（参考第 3 节）
-# 再按第 2 节中的方式安装新版本
-```
+- 先卸载旧版本（参考第 4 节）
+- 再按第 2 节中的方式安装新版本
 
-## 5. 验证安装
-
-安装完成后，执行以下命令验证工具是否安装成功：
-
-```shell
-mssanitizer --version
-```
-
-若正常输出类似如下版本信息，则表明安装成功：
-
-```text
-revision:
-  mssanitizer 26.0.0-a6db6e381b19cae6b0ca7d65bee8729e763893bd
-  msopscommon 338ecff46263e9b41106f4d48ab70d1cd4ac168b
-```
-
-若提示命令未找到，请参见第6节FAQ内容检查环境变量配置。
+可通过`mssanitizer --version`命令查看当前环境的版本信息，再选择需要升级的版本。升级版本时需要关注版本配套关系，请参见《[版本说明](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/26.0.0/release_notes.md)》。
 
 ## 6. FAQ
 
