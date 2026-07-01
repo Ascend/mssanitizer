@@ -144,6 +144,7 @@ Result DomainSocketServer::Accept(ClientId &id)
     if (getsockopt(cfd, SOL_SOCKET, SO_PEERCRED, &cred, &cred_len) == -1) {
         std::error_condition ec(errno, std::generic_category());
         result.SetError("get client SO_PEERCRED failed: " + ec.message());
+        close(cfd);
         return result;
     }
     // 检查客户端凭证（uid/gid）与当前进程是否一致

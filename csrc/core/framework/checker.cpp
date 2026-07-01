@@ -283,6 +283,7 @@ void Checker::SetKernelInfo(const KernelSummary &kernelInfo)
         if (sanitizerArr_[i] != nullptr) {
             bool initDone = sanitizerArr_[i]->SetKernelInfo(kernelInfo);
             initWithKernelInfoDone_[i] = initDone;
+            std::lock_guard<std::mutex> lock(mtx_[i]);
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::KERNEL_SUMMARY_UPDATED;
             workargs.kernelSummary = kernelInfo;
@@ -292,6 +293,7 @@ void Checker::SetKernelInfo(const KernelSummary &kernelInfo)
             workerArgs_[i].push(std::move(workargs));
         }
     }
+    workerCv_.notify_all();
 }
 
 void Checker::TryPrintMissDebugLine()

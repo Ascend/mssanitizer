@@ -27,6 +27,28 @@
 
 namespace Sanitizer {
 
+// 校验从 IPC 流中反序列化出的 PacketType 是否为已定义的合法值，
+// 防止未识别的类型导致下游逻辑异常。
+bool IsKnownPacketType(PacketType type) {
+    switch (type) {
+    case PacketType::DEVICE_SUMMARY:
+    case PacketType::KERNEL_SUMMARY:
+    case PacketType::KERNEL_BINARY:
+    case PacketType::LOG_STRING:
+    case PacketType::MEMORY_RECORD:
+    case PacketType::KERNEL_RECORD:
+    case PacketType::IPC_RECORD:
+    case PacketType::MEM_REGION_PERMISSION:
+    case PacketType::SANITIZER_RECORD:
+    case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:
+    case PacketType::IPC_RESPONSE:
+    case PacketType::KERNEL_RECORD_RESPONSE:
+        return true;
+    default:
+        return false;
+    }
+}
+
 class MemCheckProtocol::Extractor {
 public:
     Extractor() = default;
@@ -137,7 +159,14 @@ Packet MemCheckProtocol::GetBinaryDataPacket(void)
 
 bool MemCheckProtocol::GetPacketHead(PacketHead &head) const
 {
-    return extractor_->Read(head);
+    if (!extractor_->Read(head)) {
+        return false;
+    }
+    if (!IsKnownPacketType(head.type)) {
+        SAN_WARN_LOG("Unknown packet type [%u] from IPC stream, treated as INVALID.", static_cast<uint32_t>(head.type));
+        head.type = PacketType::INVALID;
+    }
+    return true;
 }
 
 bool MemCheckProtocol::GetBinaryData(std::string &data)
@@ -158,8 +187,7 @@ bool MemCheckProtocol::GetBinaryData(std::string &data)
     return true;
 }
 
-Packet MemCheckProtocol::GetPayLoad(PacketHead head)
-{
+Packet MemCheckProtocol::GetPayLoad(PacketHead head) {
     // 根据包头类型解包
     switch (head.type) {
         case PacketType::DEVICE_SUMMARY:

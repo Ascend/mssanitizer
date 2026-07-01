@@ -159,7 +159,7 @@ drvError_t halMemcpy2D(MEMCPY2D *pCopy)
                 result &= report.ReportStore(addrInfo);
             }
             if (isSrcDevicePtr) {
-                addrInfo.size = src + r * spitch;
+                addrInfo.addr = src + r * spitch;
                 result &= report.ReportLoad(addrInfo);
             }
         }
