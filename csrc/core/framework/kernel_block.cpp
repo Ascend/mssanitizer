@@ -611,6 +611,21 @@ std::unique_ptr<KernelBlock> KernelBlock::CreateKernelBlock(uint8_t const *memIn
 bool KernelBlock::ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRecord)
 {
     auto recordTypePtr = static_cast<const RecordType *>(static_cast<const void *>(record));
+
+    // 某些场景下认为当前指令与前一条指令同时发生，此时不更新 serialNo
+    if (*recordTypePtr == RecordType::ELEMENT) {
+        if (lastRecordType_ != RecordType::VGATHER && lastRecordType_ != RecordType::ELEMENT) {
+            ++RuntimeContext::Instance().serialNo_;
+        }
+    } else if (*recordTypePtr == RecordType::VSEL_OP) {
+        if (lastRecordType_ != RecordType::CMPMASK_OP) {
+            ++RuntimeContext::Instance().serialNo_;
+        }
+    } else {
+        ++RuntimeContext::Instance().serialNo_;
+    }
+    lastRecordType_ = *recordTypePtr;
+
     kernelRecord.recordType = *recordTypePtr;
     kernelRecord.blockType = this->simdRecordHead_.blockInfo.blockType;
     kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
@@ -623,7 +638,6 @@ bool KernelBlock::ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRec
     /// update record offset with recordSize
     this->simdOffset_ += sizeof(RecordType) + recordSize;
     ++this->recordIdx_;
-    ++RuntimeContext::Instance().serialNo_;
 
     /// 后续字段赋值，需要在ParseRecord之后赋值，ParseRecord会重新解析record，在此之前赋值会导致信息丢失；
     if (*recordTypePtr == RecordType::FFTS_SYNC || *recordTypePtr == RecordType::FFTS_SYNC_V) {
@@ -667,7 +681,7 @@ void KernelBlock::ParseSimtErrorRecord(std::vector<KernelRecord> &kernelRecords)
         for (size_t recordCount = 0; recordCount < simtRecordHead_->recordWriteCount; ++recordCount) {
             auto recordTypePtr = static_cast<const RecordType *>(static_cast<const void *>(simtRecords_));
             kernelRecord.recordType = *recordTypePtr;
-            kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
+            kernelRecord.serialNo = ++RuntimeContext::Instance().serialNo_;
             simtRecords_ += sizeof(RecordType);
 
             uint64_t recordSize{};
@@ -678,7 +692,6 @@ void KernelBlock::ParseSimtErrorRecord(std::vector<KernelRecord> &kernelRecords)
             kernelRecords.push_back(kernelRecord);
             simtRecords_ += recordSize;
             this->simtOffset_ += sizeof(RecordType) + recordSize;
-            ++RuntimeContext::Instance().serialNo_;
             if (this->simtOffset_ >= simtRecordHead_->offset) { break; }
         }
     }
@@ -699,7 +712,7 @@ void KernelBlock::ParseSimtErrorRecord(std::vector<KernelRecord> &kernelRecords)
 void KernelBlock::CacheDynamicRecord(uint8_t *startPtr, size_t recordCount, KernelRecord &kernelRecord, uint32_t offset) const
 {
     auto &dynamicRecord = kernelRecord.payload.dynamicRecord;
-    kernelRecord.serialNo = RuntimeContext::Instance().serialNo_;
+    kernelRecord.serialNo = ++RuntimeContext::Instance().serialNo_;
     dynamicRecord.count = recordCount;
     size_t allocSize = recordCount * sizeof(ShadowMemoryRecord);
     std::vector<uint8_t> memoryVec = AllocMemory(allocSize);
@@ -710,7 +723,6 @@ void KernelBlock::CacheDynamicRecord(uint8_t *startPtr, size_t recordCount, Kern
     for (size_t i = 0; i < dynamicRecord.count; ++i) {
         CalRecordPc(reinterpret_cast<ShadowMemoryRecord *>(dynamicRecord.buffer)[i]);
     }
-    ++RuntimeContext::Instance().serialNo_;
 }
 
 bool KernelBlock::ParseSimtEntryRecord(std::vector<KernelRecord> &kernelRecords) {
@@ -782,10 +794,16 @@ void KernelBlock::PrintCacheSizeLog(uint64_t totalSize)
 bool KernelBlock::NextSimd(KernelRecord &kernelRecord)
 {
     if (this->simdRecordHead_.recordWriteCount == 0U || this->simdOffset_ >= this->simdRecordHead_.writeOffset) {
+        lastRecordType_ = RecordType::BLOCK_FINISH;
         return false;
     }
     uint8_t const *currentRecord = this->simdRecords_ + this->simdOffset_;
-    return ParseSimdRecord(currentRecord, kernelRecord);
+    if (!ParseSimdRecord(currentRecord, kernelRecord)) {
+        lastRecordType_ = RecordType::BLOCK_FINISH;
+        return false;
+    }
+
+    return true;
 }
 
 uint64_t KernelBlock::GetTotalBlockDim() const
@@ -796,5 +814,6 @@ uint64_t KernelBlock::GetTotalBlockDim() const
 thread_local uint8_t KernelBlock::vecSubBlockDim_{};
 thread_local uint64_t KernelBlock::totalBlockDim_{};
 thread_local std::vector<std::vector<uint8_t>> KernelBlock::dynamicMemorys_{};
+thread_local RecordType KernelBlock::lastRecordType_{RecordType::BLOCK_FINISH};
 
 } // namespace Sanitizer
