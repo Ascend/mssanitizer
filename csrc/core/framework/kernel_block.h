@@ -60,6 +60,7 @@ private:
     thread_local static uint8_t vecSubBlockDim_;       // mix算子vec核使用的子核数目，只记录在了vec 0核的头部
     thread_local static uint64_t totalBlockDim_;       // 记录的总blockDim数，只记录在了0核的头部
     thread_local static std::vector<std::vector<uint8_t>> dynamicMemorys_;       // 动态内存记录缓存数组
+    thread_local static RecordType lastRecordType_; // 记录上一条处理的记录类型
     uint64_t extendCacheSize_{};                       // 溢出的cacheSize
     uint64_t extendRecordCount_{};                     // 溢出的记录数量
     uint32_t blockIdx_{};

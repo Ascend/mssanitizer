@@ -62,7 +62,7 @@ SanitizerRecord MemoryRecordToSanitizerRecord(HostMemRecord const &hostMemRecord
 {
     RuntimeContext &ctx = RuntimeContext::Instance();
     MemOpRecord memOpRecord(hostMemRecord);
-    memOpRecord.serialNo = ctx.serialNo_++;
+    memOpRecord.serialNo = ++ctx.serialNo_;
     memOpRecord.coreId = -1;
     memOpRecord.moduleId = -1;
     memOpRecord.srcSpace = AddressSpace::GM;
@@ -145,7 +145,7 @@ void HandleGMAddrOutOfBoundRecord(Checker &checker, GMAddrOutOfBoundRecord const
     RuntimeContext &ctx = RuntimeContext::Instance();
     MemOpRecord memOpRecord{};
     memOpRecord.type = MemOpType::GM_ADDR_OUT_OF_BOUND;
-    memOpRecord.serialNo = ctx.serialNo_++;
+    memOpRecord.serialNo = ++ctx.serialNo_;
     memOpRecord.coreId = -1;
     memOpRecord.moduleId = -1;
     memOpRecord.srcSpace = AddressSpace::GM;
@@ -309,7 +309,7 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
 
     // report block finish
     sanitizerRecord.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
-    sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
+    sanitizerRecord.payload.kernelRecord.serialNo = ++runtimeContext.serialNo_;
     records.emplace_back(sanitizerRecord);
     recordArray.Push(sanitizerRecord);
 
@@ -321,7 +321,7 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
         KernelRecordResponse resp{runtimeContext.currentBlockIdx_, ResponseStatus::SUCCESS};
         msgRspFunc(Serialize(PacketType::KERNEL_RECORD_RESPONSE, resp));
         sanitizerRecord.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
-        sanitizerRecord.payload.kernelRecord.serialNo = runtimeContext.serialNo_++;
+        sanitizerRecord.payload.kernelRecord.serialNo = ++runtimeContext.serialNo_;
         records.emplace_back(sanitizerRecord);
         recordArray.Push(sanitizerRecord);
         SAN_INFO_LOG("Finish processing the last kernel block.");
