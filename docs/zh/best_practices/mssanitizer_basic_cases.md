@@ -9,7 +9,12 @@
 1. 参考《[MindStudio Sanitizer 安装指南](../install_guide/mssanitizer_install_guide.md)》完成相关环境变量的配置。
 2. 请参考《[开启全量检测](../user_guide/compile_option_config.md)》中的“内核调用符场景”，完成使用前准备。
 3. 构建单算子可执行文件。
-  以Add算子为例，可执行文件的构建命令示例如下：
+    以Add算子为例，可执行文件的构建命令示例如下：
+
+    ```shell
+    bash run.sh -r npu -v <soc_version>
+    ```
+
     一键式编译运行脚本完成后，在工程目录下生成NPU侧可执行文件`_<kernel_name>_npu_`。
 4. 使用msSanitizer检测工具拉起单算子可执行文件（以_add_npu_为例）。
 
@@ -295,7 +300,7 @@ flowchart TB
 
 1. 使能Device系列接口进行泄漏检测，判断内存泄漏是否发生在Host侧。若没有，则定界到Device侧的应用出现泄漏；若有，则通过下一个步骤判断AscendCL接口调用是否发生泄漏；
 2. 使能AscendCL系列接口进行泄漏检测，判断用户代码调用AscendCL接口是否存在泄漏。若没有，则定界为非AscendCL接口调用问题；如果出现泄漏，则通过下一步定位到具体代码行；
-3. 使用msSanitizer检测工具中提供的新接口，对头文件重新编译，再用检测工具拉起检测程序，可定位到未释放内存的分配函数所对应的文件名与代码行号。新接口的详细说明请参见《mssanitizer_api》。
+3. 使用msSanitizer检测工具中提供的新接口，对头文件重新编译，再用检测工具拉起检测程序，可定位到未释放内存的分配函数所对应的文件名与代码行号。新接口的详细说明请参见《[MindStudio Sanitizer 对外接口使用说明](../api_reference/mssanitizer_api_reference.md)》。
 
 ### 5.2 排查步骤
 

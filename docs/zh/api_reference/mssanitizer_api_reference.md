@@ -542,7 +542,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 ```c
 mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = deviceId;       // 设备编号
-    rangeDesc.ptr = gm;                  // 注册的内存池CM首地址
+    rangeDesc.ptr = gm;                  // 注册的内存池GM首地址
     rangeDesc.size = 1024;               // 内存池大小
     heapDesc.typeSpecificDesc = &rangeDesc;
     mstxMemHeapDesc_t heapDesc{};

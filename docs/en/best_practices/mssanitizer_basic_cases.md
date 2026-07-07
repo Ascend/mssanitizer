@@ -6,20 +6,25 @@
 
 ### 1.1 Procedure
 
-1. Prepare for the check by referring to "Preparations" > "Enabling Full Check" > "Kernel Launch Symbol Scenario" in *msSanitizer User Guide*.
-2. Set related environment variables by referring to "Preparations" in *msSanitizer User Guide*.
+1. Set related environment variables by referring to [MindStudio Sanitizer Installation Guide](../install_guide/mssanitizer_install_guide.md).
+2. Prepare for the check by referring to "Kernel Launch Symbol Scenario" in [Enabling Full Check](../user_guide/compile_option_config.md) in the *MindStudio Sanitizer User Guide*.
 3. Build a single-operator executable file.
-  The following is an example of the command for building an Add operator executable file.
-    After the one-click script building and running is complete, the NPU-side executable file `_<kernel_name>_npu_` is generated in the project directory.
-4. Use msSanitizer to start the executable file of a single-operator (_add_npu_ is used as an example).
-
-  - Run the following command to perform memory check. For details about the option, see "Tool Overview" > "Command Summary " > "Common Options" and "Tool Overview" > "Command Summary" > "Memory Check Options" in *msSanitizer User Guide*. For details about memory check, see the [memory check example](#12-description-of-the-memory-check-example).
+   The following is an example of the command for building an Add operator executable file.
 
     ```shell
-    mssanitizer --tool=memcheck ./add_npu   # Specify --tool=memcheck for memory check.
+    bash run.sh -r npu -v <soc_version>
     ```
 
-    - Run the following command for race check. For details about the options, see "Tool Overview" > "Command Summary " > "Common Options" in *msSanitizer User Guide*. For details about race check, see the [race check example](#13-description-of-the-race-check-example).
+    After the one-click script building and running is complete, the NPU-side executable file `_<kernel_name>_npu_` is generated in the project directory.
+4. Use msSanitizer to start the executable file of a single-operator (`add_npu` is used as an example).
+
+  - Run the following command to perform memory check. For details about the option, see "Tool Overview" > "Command Summary " > "Common Options" and "Tool Overview" > "Command Summary" > "Memory Check Options" in the *MindStudio Sanitizer User Guide*. For details about memory check, see [Description of the Memory Check Example](#12-description-of-the-memory-check-example).
+
+    ```shell
+    mssanitizer --tool=memcheck ./add_npu   # Specify --tool=memcheck for memory check
+    ```
+
+    - Run the following command for race check. For details about the options, see "Tool Overview" > "Command Summary " > "Common Options" in the *MindStudio Sanitizer User Guide*. For details about race check, see [Description of the Race Check Example](#13-description-of-the-race-check-example).
     The path of the single-operator executable file can be set to either an absolute path or a relative path according to the actual situation.
 
 ### 1.2 Description of the Memory Check Example
@@ -40,7 +45,7 @@ After the custom operator is developed and deployed, use the single-operator API
 
 Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation) to obtain the sample project to prepare for operator check.
 
-> [!NOTE]NOTE
+> [!NOTE]
 >
 > - This sample project does not support Atlas A3 training products and Atlas A3 inference products.
 > - When downloading the code sample, run the following command to specify the branch version:
@@ -54,12 +59,12 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 1. Run the following command to generate a custom operator project and implement the operator on the host and kernel:
 
     ```shell
-    bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user.
+    bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user
     ```
 
-2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the *msOpGen User Guide*.
+2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/26.0.0/docs/en/user_guide/msopgen_user_guide.md).
 
-    > [!NOTE]NOTE  
+    > [!NOTE]  
     > In the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp` directory of the sample project, modify the `op_kernel/CMakeLists.txt` file and add the `-sanitizer` option to the kernel implementation to support the check function.
     >
     > ```cmake
@@ -69,7 +74,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 3. Click [Prerequisites](#21-prerequisites) to obtain the sample project directory for verifying the code.
 
     ```text
-      ├──input                                                 // Directory for storing the input data generated by the script.
+      ├──input                                                 // Directory for storing the input data generated by the script
       ├──output                                                // Directory for storing the output data and truth value generated during operator execution
       ├── inc                           // Header file directory
       │   ├── common.h                 // Common method class declaration file, used to read binary files
@@ -90,18 +95,18 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 4. Use the check tool to start the operator API running script.
 
     ```shell
-      mssanitizer --tool=memcheck bash run.sh  # Specify --tool=memcheck for memory check.
-      mssanitizer --tool=racecheck bash run.sh # Specify --tool=racecheck for race check.
+      mssanitizer --tool=memcheck bash run.sh  # Specify --tool=memcheck for memory check
+      mssanitizer --tool=racecheck bash run.sh # Specify --tool=racecheck for race check
     ```
 
-5. Analyze abnormal behavior by referring to "Memory Check" > "Interpreting a Memory Exception Report", "Race Check" > "Interpreting a Race Exception Report", and "Uninitialization Check" > "Interpreting an Uninitialized Memory Exception Report" in the *msSanitizer User Guide*.
+5. Analyze abnormal behavior by referring to "Memory Check" > "Interpreting a Memory Exception Report", "Race Check" > "Interpreting a Race Exception Report", and "Uninitialization Check" > "Interpreting an Uninitialized Memory Exception Report" in the *MindStudio Sanitizer User Guide*.
 
 ## 3. Checking the Operators Called by a PyTorch API
 
 ### 3.1 Prerequisites
 
 - Click [AddCustom Sample Code](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AddCustom) to obtain the sample project to prepare for operator check.
-  > [!NOTE]NOTE
+  > [!NOTE]
   >
   > - This sample project supports only Python 3.9. To run this sample project in other Python versions, change the Python version in the `run_op_plugin.sh` file in the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation` directory.
   > - This sample project does not support Atlas A3 training products and Atlas A3 inference products.
@@ -118,12 +123,12 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 1. Run the following command to generate a custom operator project and implement the operator on the host and kernel:
 
     ```shell
-      bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user.
+      bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user
     ```
 
-2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in *msOpGen User Guide*.
+2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/26.0.0/docs/en/user_guide/msopgen_user_guide.md).
 
-    > [!NOTE]NOTE
+    > [!NOTE]
     > Edit the **CMakeLists.txt** file in the sample project directory `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp/op_kernel` and add the compilation option `-sanitizer`.
     >
     > ```cmake
@@ -171,8 +176,8 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
       test pass
     ```
 
-5. Start the msSanitizer tool to start the Python program for exception check. For details about how to enable the exception check function, see "Tool Overview" > "Principles for Enabling the Exception Check Function" in the *msSanitizer User Guide*.
-6. Analyze abnormal behavior by referring to "Memory Check" > "Interpreting a Memory Exception Report", "Race Check" > "Interpreting a Race Exception Report", and "Uninitialization Check" > "Interpreting an Uninitialized Memory Exception Report" in *msSanitizer User Guide*.
+5. Start the msSanitizer tool to start the Python program for exception check. For details about how to enable the exception check function, see "Tool Overview" > "Principles for Enabling the Exception Check Function" in the *MindStudio Sanitizer User Guide*.
+6. Analyze abnormal behavior by referring to "Memory Check" > "Interpreting a Memory Exception Report", "Race Check" > "Interpreting a Race Exception Report", and "Uninitialization Check" > "Interpreting an Uninitialized Memory Exception Report" in the *MindStudio Sanitizer User Guide*.
 
 ## 4. Checking the Triton Operator
 
@@ -180,14 +185,24 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 
 - The Triton and Triton-Ascend plugin have been installed and configured by referring to [triton-ascend repository](https://gitcode.com/Ascend/triton-ascend).
 - Enable the following environment variables to prevent un-recompiled operators from causing issues.
+
+  ```sh
+  export TRITON_ALWAYS_COMPILE=1
+  ```
+
 - You have prepared the implementation file of the Triton operator.
     If you have not prepared the Triton operator, refer to the following example. This section describes the check process of the Triton operator based on this example.
 
 ### 4.2 Procedure
 
-1. Prepare for the check by referring to "Preparations" > "Enabling Full Check" > "Triton Operator Calling Scenario" in *msSanitizer User Guide*.
+1. Prepare for the check by referring to "Preparations" > "Enabling Full Check" > "Triton Operator Calling Scenario" in the *MindStudio Sanitizer User Guide*.
 2. Disable the memory pool.
   In the sample, PyTorch is used to create tensors. In the PyTorch framework, the GM is managed in memory pool mode by default, which interferes with memory check. Therefore, you need to set the following environment variable to disable the memory pool before the check to ensure that the check result is accurate.
+
+    ```sh
+    export PYTORCH_NO_NPU_MEMORY_CACHING=1
+    ```
+
 3. Construct an illegal read/write scenario within the Triton operator. Shift the first loaded memory rightward by 100 elements, thereby causing an illegal read on GM during the load operation.
 
     ```python
@@ -197,12 +212,12 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
           loops1: tl.constexpr = (XBLOCK + XBLOCK_SUB - 1) // XBLOCK_SUB
           for loop1 in range(loops1):
               x0 = offset + (loop1 * XBLOCK_SUB) + base1
-              # ERROR: Construct an illegal read exception.
+              # ERROR: Construct an illegal read exception
               tmp0 = tl.load(in_ptr0 + (x0) + 100, None)
               tmp1 = tl.load(in_ptr1 + (x0), None)
     ```
 
-4. Use the msSanitizer tool to start the Triton operator. For details about the options, see "Tool Overview" > "Command Summary " > "Common Options" and "Tool Overview" > "Command Summary" > "Memory Check Options" in *msSanitizer User Guide*. For details about memory check, see "Memory Check" in *msSanitizer User Guide*.
+4. Use the msSanitizer tool to start the Triton operator. For details about the options, see "Tool Overview" > "Command Summary " > "Common Options" and "Tool Overview" > "Command Summary" > "Memory Check Options" in the *MindStudio Sanitizer User Guide*. For details about memory check, see "Memory Check" in the *MindStudio Sanitizer User Guide*.
 
   ```shell
     mssanitizer -t memcheck -- python sample.py
@@ -210,7 +225,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 
 ### 4.3 Memory Exception Report Example
 
-According to the report generated by the check tool, an illegal read of 368 bytes is performed on the GM in line 18 of `sample.py`, which is consistent with the constructed exception scenario.
+According to the report generated by the check tool, an illegal read of 368Bytes is performed on the GM in line 18 of `sample.py`, which is consistent with the constructed exception scenario.
 
 ```text
 $ mssanitizer -t memcheck -- python sample.py
@@ -246,11 +261,11 @@ To identify a memory leak, perform the following steps:
 
 1. Enable leak check for device APIs to determine whether memory leak occurs on the host. If no, the leak occurs on the device. If yes, go to the next step to check whether AscendCL API call leak occurs.
 2. Enable leak check for AscendCL APIs to determine whether leak occurs when user code calls AscendCL APIs. If no, the problem is not caused by AscendCL API calls. If yes, go to the next step to identify the specific code line.
-3. Use the new APIs provided by the msSanitizer tool to recompile the header file, and then use the tool to start the check program to identify the file name and code line number corresponding to the allocation function whose allocations are not destroyed. For details about the new APIs, see *msSanitizer APIs*.
+3. Use the new APIs provided by the msSanitizer tool to recompile the header file, and then use the tool to start the check program to identify the file name and code line number corresponding to the allocation function whose allocations are not destroyed. For details about the new APIs, see [MindStudio Sanitizer API Reference](../api_reference/mssanitizer_api_reference.md).
 
 ### 5.2 Troubleshooting Procedure
 
-1. Set related environment variables by referring to "Preparations" in *msSanitizer User Guide*.
+1. Set related environment variables by referring to [msSanitizer Installation Guide](../install_guide/mssanitizer_install_guide.md).
 2. Check whether memory leak occurs on the host.
 
    1. Use the msSanitizer tool to start the program to be checked. The following is a command example:
@@ -261,26 +276,58 @@ To identify a memory leak, perform the following steps:
 
          The path of the program to be checked (for example, *_add_custom_npu_*) can be set to either an absolute path or a relative path according to the actual situation.
    2. If no exception information is displayed, the check program is running properly and no memory leak occurs on the host. If the following exception information is displayed, memory leak occurs on the host.
-       The following command output indicates that one memory allocation on the host is not destroyed, resulting in a 32800-byte memory leak.
-   3. Determine whether the memory leak is caused by AscendCL API calls.
-3. Use the msSanitizer tool to start the program to be checked. The following is a command example:
 
-    ```shell
-      mssanitizer --check-cann-heap=yes --leak-check=yes ./add_npu
-    ```
+      The following command output indicates that one memory allocation on the host is not destroyed, resulting in a 32800-byte memory leak.
 
-4. If no exception information is displayed, the check program is running successfully and no memory leak occurs during the AscendCL API calls. If the following exception information is displayed, memory leak occurs during the AscendCL API calls.
-    The following information indicates that one memory allocation is not destroyed when the AscendCL API is called, resulting in a 32768-byte memory leak.
-5. If memory leak occurs, use the msSanitizer API header file `acl.h` and the corresponding dynamic library file provided by the msSanitizer tool to identify the code file and code line where memory leak occurs.
-  To identify the code file and code line where memory leak occurs, replace the original header file `acl/acl.h` in the user code with the msSanitizer API header file `acl.h` provided by the tool, link the dynamic library file `libascend_acl_hook.so` to the user's application project, and rebuild the application project. For details, see [Importing the API Header File and Linking the Dynamic Library](#53-importing-the-api-header-file-and-linking-the-dynamic-library).
+       ```text
+       ====== ERROR: LeakCheck: detected memory leaks
 
-   5.1 Use the msSanitizer tool to restart the program. The following is a command example:
+       ======    Direct leak of 32800 byte(s) 
+       ======      at 0x124080024000 on GM allocated in <unknown>:0 (serialNo:0) 
 
-     ```text
-       mssanitizer --check-cann-heap=yes --leak-check=yes ./add_npu
-     ```
+       ====== SUMMARY: 32800 byte(s) leaked in 1 allocation(s)
+      ```
 
-       The following information indicates that the one memory allocation is not destroyed in line 55 of the `main.cpp` file of the application. Then you can identify the cause of the memory leak.
+3. Determine whether the memory leak is caused by AscendCL API calls.
+
+   1. Use the msSanitizer tool to start the program to be checked. The following is a command example:
+
+       ```shell
+         mssanitizer --check-cann-heap=yes --leak-check=yes ./add_npu
+       ```
+
+   2. If no exception information is displayed, the check program is running successfully and no memory leak occurs during the AscendCL API calls. If the following exception information is displayed, memory leak occurs during the AscendCL API calls.
+
+      The following information indicates that one memory allocation is not destroyed when the AscendCL API is called, resulting in a 32768-byte memory leak.
+
+       ```text
+       ====== ERROR: LeakCheck: detected memory leaks
+
+       ======    Direct leak of 32768 byte(s) 
+       ======      at 0x124080024000 on GM allocated in <unknown>:0 (serialNo:0)
+
+       ====== SUMMARY: 32768 byte(s) leaked in 1 allocation(s)
+       ```
+
+4. If memory leak occurs, use the msSanitizer API header file `acl.h` and the corresponding dynamic library file provided by the msSanitizer tool to identify the code file and code line where memory leak occurs.
+   To identify the code file and code line where memory leak occurs, replace the original header file `acl/acl.h` in the user code with the msSanitizer API header file `acl.h` provided by the tool, link the dynamic library file `libascend_acl_hook.so` to the user's application project, and rebuild the application project. For details, see [Importing the API Header File and Linking the Dynamic Library](#53-importing-the-api-header-file-and-linking-the-dynamic-library).
+
+5. Use the msSanitizer tool to restart the program. The following is a command example:
+
+   ```text
+     mssanitizer --check-cann-heap=yes --leak-check=yes ./add_npu
+   ```
+
+   The following information indicates that one memory allocation is not destroyed in line 55 of the `main.cpp` file. Then you can identify the cause of the memory leak.
+
+   ```text
+   ====== ERROR: LeakCheck: detected memory leaks  
+
+   ======    Direct leak of 32768 byte(s) 
+   ======     at 0x124080024000 on GM allocated in main.cpp:55 (serialNo:0)
+
+   ====== SUMMARY: 32768 byte(s) leaked in 1 allocation(s)
+   ```
 
 ### 5.3 Importing the API Header File and Linking the Dynamic Library
 
@@ -288,7 +335,7 @@ This example uses the kernel launch symbol scenario of the Atlas A2 training pro
 
 1. Click [AddKernelInvocationNeo Sample Code](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo) to obtain the sample project for verifying the code.
 
-    > [!NOTE]NOTE
+    > [!NOTE]
     > When downloading the code sample, run the following command to specify the branch version:
     >
     > ```shell
@@ -297,7 +344,7 @@ This example uses the kernel launch symbol scenario of the Atlas A2 training pro
     >
 2. In the `${git_clone_path}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo` directory, replace the `acl/acl.h` header file introduced by the `main.cpp` file with the `acl.h` header file provided by msSanitizer.
 
-    > [!NOTE]NOTE
+    > [!NOTE]
     > 
     > In the template library scenario, you need to replace `#include <acl/acl.h>` in the `/examples/common/helper.hpp` path of the Ascend C template library with `#include "acl.h"`. The procedure is as follows:
     >
@@ -319,7 +366,7 @@ This example uses the kernel launch symbol scenario of the Atlas A2 training pro
 3. Edit the `CMakeLists.txt` file in the `${git_clone_path}/samples/operator/ascendc/0_introduction/3_add_kernellaunch/AddKernelInvocationNeo` directory and import the API header file path `${INSTALL_DIR}/tools/mssanitizer/include/acl` and the dynamic library path
   `${INSTALL_DIR}/tools/mssanitizer/lib64/libascend_acl_hook.so`.
 
-    > [!NOTE]NOTE
+    > [!NOTE]
     >
     > - The template library scenario applies only to Atlas A2 training products/Atlas A2 inference products.
     > - In the template library scenario, run the following commands to add compilation check options:
@@ -332,5 +379,10 @@ This example uses the kernel launch symbol scenario of the Atlas A2 training pro
     >
 4. Import environment variables and recompile the operator.
 
-    > [!NOTE]NOTE
+    > [!NOTE]
     > Run the `npu-smi info` command on the server where the Ascend AI Processor is installed to obtain the chip name. Note that the actual value is represented by `AscendChip_name`. For example, if the chip name is `xxxyy`, the actual value is `Ascendxxxyy`.
+
+    ```sh
+    export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/tools/mssanitizer/lib64:$LD_LIBRARY_PATH
+    mssanitizer --check-cann-heap=yes --leak-check=yes -- bash run.sh -r npu -v Ascendxxxyy
+    ```

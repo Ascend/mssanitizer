@@ -544,7 +544,7 @@ The mstx APIs are a set of extension APIs provided by MindStudio to allow you to
 ```c
 mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = deviceId;       // Device ID
-    rangeDesc.ptr = gm;                  // Start address of the registered memory pool CM
+    rangeDesc.ptr = gm;                  // Start address of the registered memory pool GM
     rangeDesc.size = 1024;               // Memory pool size
     heapDesc.typeSpecificDesc = &rangeDesc;
     mstxMemHeapDesc_t heapDesc{};

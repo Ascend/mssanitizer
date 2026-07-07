@@ -174,7 +174,7 @@ The following table lists memory exception types supported by memory check, incl
 | [Illegal Read/Write](#6131-illegal-readwrite)| This exception occurs when unallocated memory is accessed.| Kernel, Host| GM, UB, L0{A,B,C}, L1|
 | [Multi-Core Corruption](#6132-multi-core-corruption)| This exception occurs when the AI Core accesses overlapped memory.| Kernel | GM |
 | [Unaligned Access](#6133-unaligned-access)| This exception occurs when the address transferred by DMA (responsible for transferring data between the global memory and local memory) is not aligned with the minimum memory access granularity.| Kernel | GM, UB, L0{A,B,C}, L1|
-| [Illegal Release](#6135-illegal-release)| This exception occurs when the IP address that is not allocated or has been released is released.| Host | GM |
+| [Illegal Release](#6135-illegal-release)| This exception occurs when the memory address that is not allocated or has been released is released.| Host | GM |
 | [Memory Leak](#6134-memory-leak)| This exception occurs when the memory usage keeps increasing during program running after the allocated memory is not released after being used.| Host | GM |
 | [Allocated Memory Unused](#6136-allocated-memory-unused)| This exception occurs when memory is not used after being allocated.| Kernel, Host| GM |
 | [Ascend 950 SIMT unit exception](#6137-ascend-950-simt-unit-exception)| Displays the thread where the exception occurs in the SIMT architecture.| Kernel | GM |

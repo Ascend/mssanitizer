@@ -2,41 +2,48 @@
 
 <br>
 
-## 1. Binary Installation
+## 1. Installation Notes
 
-The MindStudio toolchain is integrated into the CANN package for release. You can install it in either of the following ways.
+This tool is integrated into CANN. If CANN is already installed and you do not need to update this tool, you can use it directly without following this document for installation.
 
-### Method 1: Install the software according to the CANN official document
+If CANN is not yet installed in your environment, see [CANN Quick Install](https://www.hiascend.com/cann/download) to install the Ascend NPU driver and CANN software (including the Toolkit and ops packages), and configure the environment variables.
 
-For details, see <a href="https://www.hiascend.com/document/detail/zh/canncommercial/850/softwareinst" target="_blank"> CANN Installation Guide</a>.
-Perform the installation and configuration step by step according to the document.
+To upgrade this tool separately or use the latest version, you can install it in one of the following ways: [Online Installation](#21-online-installation), [Offline Installation](#22-offline-installation), [Source Code Installation](#23-source-code-installation).
 
-### Method 2: Use the official CANN container image
+## 2. Installation Methods
 
-Visit <a href="https://www.hiascend.com/developer/ascendhub/detail/17da20d1c2b6493cb38765adeba85884" target="_blank"> CANN official image repository</a>.
-Pull the image and start the container according to the instructions in the repository.
+### 2.1 Online Installation
 
-<br>
+If your device has internet access, you can automatically download and install the tool with a single command. Go to the MindStudio [Download](https://www.hiascend.com/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Online Installation" as the installation method. The system then guides you through the remaining steps.
 
-## 2. Source Code Installation
+### 2.2 Offline Installation
 
-To use the functions of the latest code or modify the source code to enhance functions, you can download the code from this repository, build and package the tool, and install it.
+For devices in an enterprise intranet or other environments without internet access, first download the complete offline installation package on a machine with internet access, and then transfer it to the target device for installation. Go to the MindStudio [Download](https://www.hiascend.com/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Offline Installation" to obtain the installation package and instructions.
 
-### 2.1 Environment Setup
+### 2.3 Source Code Installation
+
+#### 2.3.1 Environment Setup
 
 Set up the environment by referring to the [Operator Tool Development Environment Setup Guide](https://gitcode.com/Ascend/msot/blob/26.0.0/docs/en/common/dev_env_setup.md).
 
-### 2.2 Building and Packaging
+#### 2.3.2 Building and Packaging
 
-Run the one-click script to automatically download and build the dependency repository:
+- Clone this repository.
 
-```shell
-python build.py
-```
+    ```sh
+    git clone https://gitcode.com/Ascend/mssanitizer.git -b 26.0.0
+    ```
 
-### 2.3 Installation and Uninstallation
+- Run the one-click script to automatically download and build the dependency repository:
 
-#### 2.3.1 Preparing the .run Package
+    ```shell
+    cd mssanitizer
+    python build.py
+    ```
+
+#### 2.3.3 Installation
+
+##### 2.3.3.1 Preparing the .run Package
 
 The .run package is generated in the `output` directory. Run the following commands to ensure that the .run package has the execute permission:
 
@@ -45,7 +52,7 @@ cd output
 chmod +x mindstudio-sanitizer_*.run
 ```
 
-#### 2.3.2 Installation
+##### 2.3.3.2 Installation
 
 Copy the .run package to the operating environment (not required for local installation) and perform the following operation:
 
@@ -55,54 +62,80 @@ Copy the .run package to the operating environment (not required for local insta
 
 If an earlier version of the tool has been installed in the system, a message will be displayed during the installation asking you whether to replace it. Enter "y" to perform an overwrite installation.
 
->[!NOTE]NOTE  
-> 
+> [!NOTE]
+>
+> Installation path description.
+>
 > If the `ASCEND_HOME_PATH` environment variable has been configured in the environment, the tool will be installed in the `$ASCEND_HOME_PATH` directory.
-> 
-> Otherwise, the tool will be installed in the `$HOME/Ascend` directory by default. 
-> 
+> Otherwise, the tool will be installed in the `$HOME/Ascend` directory by default.
 > To specify a custom installation path, use the `--install-path` option. For example:
-> `./mindstudio-sanitizer_*.run --install-path=./xxx --run` install the runfile to the `xxx` directory.
+> `./mindstudio-sanitizer_*.run --install-path=./xxx --run` installs the runfile to the `xxx` directory.
 
-#### 2.3.3 Uninstallation
+## 3. Verifying the Installation
 
-You can run the following command to uninstall the tool:
+After the installation is complete, run the following command to verify that the tool is successfully installed:
 
 ```shell
-./mindstudio-sanitizer_*.run --uninstall
+mssanitizer --help
 ```
 
->[!NOTE]NOTE  
-> By default, the tool is uninstalled from the `$HOME/Ascend` directory. If a custom path is specified using `--install-path` during the installation,
-> explicitly add the `--install-path` option during uninstallation. For example:
-> `./mindstudio-sanitizer_*.run --install-path=./xxx --uninstall`.
+If no error is reported and the help information is displayed, the installation is successful.
 
-#### 2.3.4 Upgrade
+## 4. Uninstallation
 
-The upgrade process essentially involves uninstalling the old version and installing the new version, which is the same as the overwrite installation method described in Section [2.3.2 Installation](#232-installation).
+You can uninstall by following these steps:
 
-### 2.4 FAQs
+1. Download the script.
 
-#### 2.4.1 Why Is the Newly Compiled Tool Not Being Invoked After Installation?
+   ```bash
+   curl -O https://inst.obs.cn-north-4.myhuaweicloud.com/26.0.0/ms_install.py
+   ```
 
-Run the following commands to check whether the related environment variables are correctly configured to ensure that the newly installed operator tool is preferentially used by the system:
+   > [!NOTE]
+   >
+   > - A network connection is required to download the script. If the environment does not allow internet access or is offline, download the script on a machine with internet access first and copy it to the target device.
+   > - If the command does not respond or encounters a connection failure, SSL certificate error, or similar issue, see [FAQ](https://www.hiascend.com/developer/blog/details/02176213671719317003).
+
+2. Perform the uninstallation.
+
+   ```bash
+   python ms_install.py uninstall {tools_name}
+   ```
+
+   Replace `{tools_name}` with the name of the tool to be uninstalled. You can query the tool name by running `python ms_install.py help`; the tool name is displayed under the Available Tools field in the output.
+
+   If the uninstallation is successful, the following information is printed:
+
+   ```ColdFusion
+   Successfully uninstalled 1 tool ({tools_name})
+   ```
+
+## 5. Upgrade
+
+Simply run the installation command. The tool automatically uninstalls the old version and guides you through the overwrite installation.
+
+## 6. FAQ
+
+### The Newly Compiled Tool Is Not Being Invoked After Installation
+
+Run the following commands to check whether the related environment variables are correctly configured to ensure that the system preferentially uses the newly installed operator tool:
 
 ```shell
-export ASCEND_HOME_PATH=$HOME/Ascend  # For custom installation paths, run "export ASCEND_HOME_PATH=$PWD/xxx".
+export ASCEND_HOME_PATH=$HOME/Ascend  # Or export ASCEND_HOME_PATH=$PWD/xxx (for custom installation paths)
 export PATH=$ASCEND_HOME_PATH/bin:$PATH
 export LD_LIBRARY_PATH=$ASCEND_HOME_PATH/lib64:$LD_LIBRARY_PATH
 ```
 
-#### 2.4.2 How Do I Uninstall the Software When the .run Package Has Been Deleted?
+### How Do I Uninstall the Software When the .run Package Has Been Deleted?
 
 You can run the following command to perform the uninstallation:
 
 ```shell
-bash $HOME/Ascend/share/info/mindstudio-sanitizer/script/uninstall.sh
+bash $HOME/Ascend/cann/share/info/mindstudio-sanitizer/script/uninstall.sh
 ```
 
 For a custom installation path, use the uninstallation script in the corresponding path:
 
 ```shell
-bash ./xxx/share/info/mindstudio-sanitizer/script/uninstall.sh 
+bash ./xxx/share/info/mindstudio-sanitizer/script/uninstall.sh
 ```
