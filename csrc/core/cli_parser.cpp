@@ -490,40 +490,45 @@ void ParseEnvironVariables(UserCommand &userCommand) {
 
 void ShowHelpInfo()
 {
-    std::cout <<
+    std::cout << std::endl <<
+        "Usage: mssanitizer [options] <program> [program-args]" << std::endl <<
         std::endl <<
-        "Usage: mssanitizer <option(s)> prog-and-args" << std::endl <<
+        "Basic Options:" << std::endl <<
+        "  -h, --help                       Show this help message" << std::endl <<
+        "  -v, --version                    Show version information" << std::endl <<
+        "  -t, --tool=<NAME>                Select sanitizer tool:" << std::endl <<
+        "                                     NAME:memcheck|racecheck|initcheck|synccheck, default: memcheck" << std::endl <<
+        "      --log-file=<FILE>            Write log messages to FILE" << std::endl <<
+        "      --log-level=<LEVEL>          Set log level to LEVEL" << std::endl <<
+        "                                     LEVEL:info|warn|error, default: warn" << std::endl <<
+        "      --max-debuglog-size=<SIZE>   Set max debug log file size to SIZE" << std::endl <<
+        "                                     SIZE:1-10240 in MB, default: 1024" << std::endl <<
+        "      --kernel-name=<NAME>         Only check the kernel with specified NAME" << std::endl <<
+        "      --demangle=<MODE>            Set demangling MODE for device function names" << std::endl <<
+        "                                     MODE:full|simple|no, default: full" << std::endl <<
+        "      --full-backtrace=<BOOL>      Print full backtrace including Ascend C internal calls" << std::endl <<
+        "                                     BOOL:yes|no, default: no" << std::endl <<
         std::endl <<
-        "  basic user options, with default in [ ]:" << std::endl <<
-        "    -h --help            show this message" << std::endl <<
-        "    -v --version         show version" << std::endl <<
-        "    -t --tool=<name>     use the asan tool named <name> [memcheck|racecheck|initcheck|synccheck]" << std::endl <<
-        "    --full-backtrace     print the full backtrace including Ascend C internal calls."  << std::endl <<
-        "    --log-file=<file>    log messages to <file>" << std::endl <<
-        "    --log-level=<level>  set log level to <level> [warn]" << std::endl <<
-        "    --max-debuglog-size=<size>" << std::endl <<
-        "                         set debuglog file's max size to <size> (MB), default:1024" << std::endl <<
-        "    --kernel-name=<name> only the kernel with the specified name <kernel> is going to be checked" << std::endl <<
-        "    --demangle=<mode>    set the demangling <mode> of device funtion name. [full]" << std::endl <<
+        "Memcheck Options:" << std::endl <<
+        "      --leak-check=<BOOL>          Search for memory leaks at exit" << std::endl <<
+        "                                     BOOL:yes|no, default: no" << std::endl <<
+        "      --check-unused-memory=<BOOL> Search for unused memory allocations" << std::endl <<
+        "                                     BOOL:yes|no, default: no" << std::endl <<
+        "      --check-device-heap=<BOOL>   Enable device heap check" << std::endl <<
+        "                                     BOOL:yes|no, default: no" << std::endl <<
+        "      --check-cann-heap=<BOOL>     Enable CANN heap check" << std::endl <<
+        "                                     BOOL:yes|no, default: no" << std::endl <<
+        "      --block-id=<ID>              Set block ID to check" << std::endl <<
+        "                                     ID:0-200, default: all" << std::endl <<
+        "      --cache-size=<SIZE>          Set record buffer SIZE per block" << std::endl <<
+        "                                     SIZE:1-" << MAX_RECORD_BUF_SIZE_EACH_BLOCK <<
+        " in MB, default: 100" << std::endl <<
+        "      --padding=<SIZE>             Set GM safe zone SIZE for out-of-bounds detection" << std::endl <<
+        "                                     SIZE:32-1024 in bytes, default: 32" << std::endl <<
         std::endl <<
-        "  user options for memcheck:" << std::endl <<
-        "    --leak-check=no|yes  search for memory leaks at exit [no]" << std::endl <<
-        "    --check-unused-memory=no|yes" << std::endl <<
-        "                         search for unused memory allocations [no]" << std::endl <<
-        "    --check-device-heap=no|yes" << std::endl <<
-        "                         enable device heap check [no]" << std::endl <<
-        "    --check-cann-heap=no|yes" << std::endl <<
-        "                         enable cann heap check [no]" << std::endl <<
-        "    --block-id=<block-id>" << std::endl <<
-        "                         set check block id, default check all block" << std::endl <<
-        "    --cache-size=<size>  set single block records size to <size> (MB), default:100, max:" <<
-        MAX_RECORD_BUF_SIZE_EACH_BLOCK << std::endl <<
-        "    --padding=<size>     set the safe zone <size> in bytes for out of bounds detection at GM. " <<
-        "Valid range:32-1024, default:32" << std::endl <<
-        std::endl <<
-        "  user options for racecheck:" << std::endl <<
-        "    --check-cross-npu-races=no|yes" << std::endl <<
-        "                         check races for kernel on different NPUs [no]" << std::endl <<
+        "Racecheck Options:" << std::endl <<
+        "      --check-cross-npu-races=<BOOL> Check races across different NPUs" << std::endl <<
+        "                                       BOOL:yes|no, default: no" << std::endl <<
         std::endl;
 }
 
