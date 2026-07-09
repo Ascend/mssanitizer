@@ -110,7 +110,7 @@ TEST_F(TestRecordParse, parse_load_record_and_expect_success)
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
-    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
     MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x12, 1, 100, 1, 1, 1, 100};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
@@ -135,7 +135,7 @@ TEST_F(TestRecordParse, parse_load_private_record_and_expect_success)
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
-    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
     MemOpInfo memOpInfo = {MemType::PRIVATE, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x12, 1, 100, 1, 1, 1, 100};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
@@ -160,7 +160,7 @@ TEST_F(TestRecordParse, parse_store_record_and_expect_success)
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
-    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
     MemOpInfo memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x12, 1, 100, 1, 1, 1, 100};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
@@ -263,21 +263,21 @@ static DmaMovConvReluRecord CreateDmaMovConvReluRecord(void)
     dmaMovConvReluRecord.location.blockId = CORE_ID;
     return dmaMovConvReluRecord;
 }
- 
+
 TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b16_record_and_expect_success)
 {
     std::vector<SanEvent> events;
     KernelRecord record{};
     record.recordType = RecordType::DMA_MOV_DEPTH_WISE;
     record.payload.dmaMovConvReluRecord = CreateDmaMovConvReluRecord();
- 
+
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 3);
- 
+
     MemOpInfo memOpInfo;
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
@@ -285,14 +285,14 @@ TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b16_record_and_expect_success)
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x55, 8, 512, 1, 1, 1, 512};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
     memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0xaa, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
- 
+
     ASSERT_EQ(events[2].loc.coreId, 7);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_V);
@@ -300,25 +300,25 @@ TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b16_record_and_expect_success)
         8, 0xaa + 2048 + 32 * 8, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b32_to_b16_record_and_expect_success)
 {
     std::vector<SanEvent> events;
     KernelRecord record{};
     record.recordType = RecordType::DMA_MOV_DEPTH_WISE;
     record.payload.dmaMovConvReluRecord = CreateDmaMovConvReluRecord();
- 
+
     record.payload.dmaMovConvReluRecord.srcDataType = DataType::DATA_B32;
     record.payload.dmaMovConvReluRecord.dstDataType = DataType::DATA_B16;
     record.payload.dmaMovConvReluRecord.crMode = ConvRelu::CRMODE_F32toF16_NONE;
- 
+
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 3);
- 
+
     MemOpInfo memOpInfo;
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
@@ -326,14 +326,14 @@ TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b32_to_b16_record_and_expect_su
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x55, 8, 1024, 1, 1, 1, 1024};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
     memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0xaa, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
- 
+
     ASSERT_EQ(events[2].loc.coreId, 7);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_V);
@@ -341,19 +341,19 @@ TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b32_to_b16_record_and_expect_su
         8, 0xaa + 2048 + 32 * 8, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b16_with_CRMODE_F32toF16_NONE_record_and_expect_success)
 {
     std::vector<SanEvent> events;
     KernelRecord record{};
     record.recordType = RecordType::DMA_MOV_DEPTH_WISE;
     record.payload.dmaMovConvReluRecord = CreateDmaMovConvReluRecord();
- 
+
     record.payload.dmaMovConvReluRecord.crMode = ConvRelu::CRMODE_F32toF16_NONE;
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 1);
 }
@@ -1355,20 +1355,20 @@ TEST_F(TestRecordParse, parse_decompress_header_record_and_export_success)
 {
     std::vector<SanEvent> events;
     KernelRecord record{};
- 
+
     record.recordType = RecordType::DECOMPRESS_HEADER;
     record.payload.decompressHeaderRecord.src = 0x12;
     record.payload.decompressHeaderRecord.nBlock = 10;
     record.payload.decompressHeaderRecord.location.fileNo = 7;
     record.payload.decompressHeaderRecord.location.lineNo = 8;
- 
+
     record.payload.decompressHeaderRecord.srcMemType = MemType::GM;
     record.payload.decompressHeaderRecord.location.blockId = 9;
- 
+
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].loc.coreId, 9);
@@ -1383,7 +1383,7 @@ TEST_F(TestRecordParse, parse_dc_preload_record_and_export_success)
 {
     std::vector<SanEvent> events;
     KernelRecord record{};
- 
+
     record.recordType = RecordType::DC_PRELOAD;
     record.payload.dcPreloadRecord.addr = 0x12;
     record.payload.dcPreloadRecord.offset = 32;
@@ -1395,12 +1395,12 @@ TEST_F(TestRecordParse, parse_dc_preload_record_and_export_success)
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
-    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
     MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
         0x12 + 32, 1, 0, 1, 1, 1, 1};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
@@ -2162,18 +2162,18 @@ TEST_F(TestRecordParse, parse_cmpmask_op_record_and_expect_success)
 {
     std::vector<SanEvent> events;
     KernelRecord record{};
- 
+
     record.recordType = RecordType::CMPMASK_OP;
     record.blockType = BlockType::AIVEC;
     record.payload.cmpMaskRecord.addr = 0xaa;
     record.payload.cmpMaskRecord.size = 123;
     record.payload.cmpMaskRecord.accessType = AccessType::READ;
     record.payload.cmpMaskRecord.location.blockId = 7;
- 
+
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].eventInfo.memInfo.alignSize, 16);
@@ -2584,9 +2584,9 @@ TEST_F(TestRecordParse, parse_sync_all_record_expect_success_and_correct)
     ASSERT_EQ(events.size(), 2);
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::CROSS_CORE_SYNC_EVENT);
-    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
     ASSERT_EQ(events[0].eventInfo.fftsSyncInfo.opType, SyncType::FFTS_SYNC);
-    ASSERT_EQ(events[0].eventInfo.fftsSyncInfo.dstPipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[0].eventInfo.fftsSyncInfo.dstPipe, PipeType::PIPE_S);
     ASSERT_EQ(events[0].eventInfo.fftsSyncInfo.mode, 0);
 }
 
@@ -2853,7 +2853,7 @@ TEST_F(TestRecordParse, parse_mstx_signal_set_record_expect_get_correct_events)
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 1);
     ASSERT_EQ(events[0].type, EventType::MSTX_SIGNAL_SET_EVENT);
-    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
     ASSERT_EQ(events[0].eventInfo.mstxSignalSet.addr, mstxSignalSet.addr);
     ASSERT_EQ(events[0].eventInfo.mstxSignalSet.value, mstxSignalSet.value);
 }
@@ -2992,7 +2992,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_two_sync_expect_get_in
     KernelRecord record{};
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.location.blockId = 0;
     record.payload.syncRecord.src = PipeType::PIPE_V;
@@ -3003,7 +3003,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_two_sync_expect_get_in
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
     record.payload.syncRecord.dst = PipeType::PIPE_V;
@@ -3020,7 +3020,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_two_sync_expect_get_in
     ASSERT_EQ(events[lastEventIdx].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
     RecordParse::ResetSyncInPipeInfo();
 }
- 
+
 TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_three_sync_expect_get_inner_pipe_event_success)
 {
     RecordParse::ResetSyncInPipeInfo();
@@ -3028,7 +3028,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_three_sync_expect_get_
     KernelRecord record{};
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.location.blockId = 0;
     record.payload.syncRecord.src = PipeType::PIPE_V;
@@ -3039,7 +3039,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_three_sync_expect_get_
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE3;
@@ -3048,7 +3048,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_three_sync_expect_get_
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE3;
     record.payload.syncRecord.dst = PipeType::PIPE_V;
@@ -3057,7 +3057,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_three_sync_expect_get_
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     const size_t targetEventSize = 7;
     ASSERT_EQ(events.size(), targetEventSize);
     size_t lastEventIdx = events.size() - 1;
@@ -3066,7 +3066,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_three_sync_expect_get_
     ASSERT_EQ(events[lastEventIdx].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
     RecordParse::ResetSyncInPipeInfo();
 }
- 
+
 TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_pipe_s_sync_expect_get_inner_pipe_event_success)
 {
     RecordParse::ResetSyncInPipeInfo();
@@ -3074,7 +3074,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_pipe_s_sync_expect_get
     KernelRecord record{};
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.location.blockId = 0;
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
@@ -3085,7 +3085,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_pipe_s_sync_expect_get
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     const size_t targetEventSize = 3;
     ASSERT_EQ(events.size(), targetEventSize);
     size_t lastEventIdx = events.size() - 1;
@@ -3094,7 +3094,7 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_pipe_s_sync_expect_get
     ASSERT_EQ(events[lastEventIdx].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
     RecordParse::ResetSyncInPipeInfo();
 }
- 
+
 TEST_F(TestRecordParse,
     parse_cycle_cross_pipe_event_with_three_event_pipe_s_sync_expect_get_inner_pipe_event_success)
 {
@@ -3103,7 +3103,7 @@ TEST_F(TestRecordParse,
     KernelRecord record{};
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.location.blockId = 0;
     record.payload.syncRecord.src = PipeType::PIPE_V;
@@ -3114,7 +3114,7 @@ TEST_F(TestRecordParse,
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE1;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE2;
@@ -3123,7 +3123,7 @@ TEST_F(TestRecordParse,
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
     record.payload.syncRecord.dst = PipeType::PIPE_S;
@@ -3132,7 +3132,7 @@ TEST_F(TestRecordParse,
     record.recordType = RecordType::WAIT_FLAG;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
- 
+
     const size_t targetEventSize = 9;
     ASSERT_EQ(events.size(), targetEventSize);
     size_t lastEventIdx = events.size() - 1;
@@ -3448,7 +3448,7 @@ void CreateLoad3DV2Record(Load3DV2Record &load3DV2Record)
     load3DV2Record.fMapRightPad = 0;
     load3DV2Record.fMapTopPad = 0;
     load3DV2Record.fMapBottomPad = 0;
-    
+
     load3DV2Record.matrixRptStride = 32;
     load3DV2Record.matrixRptTimes = 1;
     load3DV2Record.matrixRptMode = 0;
@@ -3485,7 +3485,7 @@ void CreateL1OrUbMovL1UbRecord(MovL1UBRecord &movL1UbRecord)
     movL1UbRecord.location.lineNo = 8;
     movL1UbRecord.location.blockId = 0;
 }
- 
+
 TEST_F(TestRecordParse, parse_record_copy_cbuf_to_ubuf_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4118,10 +4118,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_normal_movement_and_expe
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 2);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4130,7 +4130,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_normal_movement_and_expe
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 24, 32, 1, 3, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4139,7 +4139,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_normal_movement_and_expe
         8, 0x111, 384, 4, 1, 3, 80, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int8_channal_merging_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4170,10 +4170,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int8_channal_merging_and
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 3);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4182,7 +4182,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int8_channal_merging_and
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 32, 32, 1, 3, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4190,12 +4190,12 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int8_channal_merging_and
     memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x111, 32 * 32, 1, 1, 1, 32, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
- 
+
     memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x111 + 32 * 1, 32 * 16, 1, 1, 1, 64, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int4_channal_merging_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4226,10 +4226,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int4_channal_merging_and
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 2);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4238,7 +4238,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int4_channal_merging_and
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 32, 32, 1, 8, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4247,7 +4247,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int4_channal_merging_and
         8, 0x111, 32 * 32, 1, 1, 2, 16, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_f32_channel_split_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4278,10 +4278,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_f32_channel_split_and_ex
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 2);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4290,7 +4290,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_f32_channel_split_and_ex
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 64, 32, 1, 2, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4299,7 +4299,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_f32_channel_split_and_ex
         8, 0x111, 64 * 8, 4, 1, 3, 64, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2ND_conversion_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4330,10 +4330,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2ND_conversion_and_exp
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 6);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4342,7 +4342,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2ND_conversion_and_exp
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 48, 32, 1, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
@@ -4382,10 +4382,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2DN_conversion_and_exp
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 6);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4394,7 +4394,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2DN_conversion_and_exp
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 48, 32, 2, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
@@ -4403,7 +4403,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2DN_conversion_and_exp
         8, 0x111, 48, 4, 1, 24, 48, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_normal_movement_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4434,10 +4434,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_normal_movement_and_expe
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 2);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4446,7 +4446,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_normal_movement_and_expe
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 24, 32, 1, 3, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4455,7 +4455,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_normal_movement_and_expe
         8, 0x111, 384, 4, 1, 3, 80, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int8_channal_merging_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4486,10 +4486,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int8_channal_merging_and
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 3);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4498,7 +4498,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int8_channal_merging_and
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 32, 32, 1, 3, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4506,12 +4506,12 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int8_channal_merging_and
     memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x111, 32 * 32, 1, 1, 1, 32, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
- 
+
     memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x111 + 32 * 1, 32 * 16, 1, 1, 1, 64, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int4_channal_merging_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4542,10 +4542,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int4_channal_merging_and
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 2);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4554,7 +4554,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int4_channal_merging_and
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 32, 32, 1, 8, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4563,7 +4563,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int4_channal_merging_and
         8, 0x111, 32 * 32, 1, 1, 2, 16, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_f32_channel_split_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4594,10 +4594,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_f32_channel_split_and_ex
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 2);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4606,7 +4606,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_f32_channel_split_and_ex
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 64, 32, 1, 2, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
@@ -4615,7 +4615,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_f32_channel_split_and_ex
         8, 0x111, 64 * 8, 4, 1, 3, 64, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2ND_conversion_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4646,10 +4646,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2ND_conversion_and_exp
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 6);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4658,7 +4658,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2ND_conversion_and_exp
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 48, 32, 1, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
@@ -4667,7 +4667,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2ND_conversion_and_exp
         8, 0x111, 24, 4, 1, 48, 48, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
- 
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2DN_conversion_and_expect_success)
 {
     std::vector<SanEvent> events;
@@ -4698,10 +4698,10 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2DN_conversion_and_exp
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     sanitizerRecord.payload.kernelRecord = record;
- 
+
     RecordParse::Parse(sanitizerRecord, events);
     ASSERT_EQ(events.size(), 6);
- 
+
     MemOpInfo memOpInfo;
     // 校验读内存event
     ASSERT_EQ(events[0].loc.coreId, 0);
@@ -4710,7 +4710,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2DN_conversion_and_exp
     memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
         8, 0x0, 48, 32, 2, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
- 
+
     // 校验写内存event
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
