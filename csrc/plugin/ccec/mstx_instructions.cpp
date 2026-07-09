@@ -20,7 +20,6 @@
 
 using namespace Sanitizer;
 
-SANITIZER_REPORT(__mstx_dfx_report_stub, uint32_t interfaceId, uint32_t bufferLens, void *buffer)
-{
+SANITIZER_REPORT(__mstx_dfx_report_stub, uint32_t interfaceId, uint32_t bufferLens, void *buffer) {
     RecordMstxEvent(EXTRA_PARAMS, interfaceId, bufferLens, buffer);
 }

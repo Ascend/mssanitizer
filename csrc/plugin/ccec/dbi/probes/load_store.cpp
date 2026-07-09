@@ -32,8 +32,11 @@ AICORE_FUNC_HEAD uint64_t UpdateAddrByOffset(uint64_t addr, int64_t offset, uint
 
 } // namespace [Dummy]
 
-SANITIZER_REPORT(__mstx_dfx_report_stub, uint32_t interfaceId, uint32_t bufferLens, void *buffer)
-{
+SANITIZER_REPORT(__mstx_dfx_report_stub_calli, uint32_t interfaceId, uint32_t bufferLens, void *buffer) {
+    RecordMstxEvent(EXTRA_PARAMS, interfaceId, bufferLens, buffer);
+}
+
+SANITIZER_REPORT(__mstx_dfx_report_stub_call, uint32_t interfaceId, uint32_t bufferLens, void *buffer) {
     RecordMstxEvent(EXTRA_PARAMS, interfaceId, bufferLens, buffer);
 }
 

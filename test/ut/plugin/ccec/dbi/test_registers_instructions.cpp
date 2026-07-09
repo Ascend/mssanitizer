@@ -25,7 +25,7 @@ TEST(RegisterInstructions, set_vector_mask_0_sw_off)
     RecordGlobalHead head{};
     head.checkParms.registerCheck = false;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
-    __sanitizer_report_set_vector_mask(memInfo.data(), record.location.pc, 0, 0, regvalU64);
+    __sanitizer_report_set_vector_mask_0(memInfo.data(), record.location.pc, 0, 0, regvalU64);
 
     RecordBlockHead blockHead = *reinterpret_cast<RecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead));
     ASSERT_EQ(blockHead.recordWriteCount, 0);
@@ -43,7 +43,7 @@ TEST(RegisterInstructions, set_vector_mask_0_expect_get_correct_records)
     RecordGlobalHead head{};
     head.checkParms.registerCheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
-    __sanitizer_report_set_vector_mask(memInfo.data(), record.location.pc, 0, 0, regvalU64);
+    __sanitizer_report_set_vector_mask_0(memInfo.data(), record.location.pc, 0, 0, regvalU64);
 
     RecordBlockHead blockHead = *reinterpret_cast<RecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead));
     ASSERT_EQ(blockHead.recordWriteCount, 1);
@@ -65,7 +65,7 @@ TEST(RegisterInstructions, set_vector_mask_1_expect_get_correct_records)
     RecordGlobalHead head{};
     head.checkParms.registerCheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
-    __sanitizer_report_set_vector_mask(memInfo.data(), record.location.pc, 0, 1, regvalU64);
+    __sanitizer_report_set_vector_mask_1(memInfo.data(), record.location.pc, 0, 1, regvalU64);
 
     RecordBlockHead blockHead = *reinterpret_cast<RecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead));
     ASSERT_EQ(blockHead.recordWriteCount, 1);
