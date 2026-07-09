@@ -22,8 +22,17 @@ using namespace Sanitizer;
 
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
 
-SANITIZER_REPORT(set_vector_mask, uint64_t reg_idx, uint64_t reg_value)
-{
+SANITIZER_REPORT(set_vector_mask_0, uint64_t reg_idx, uint64_t reg_value) {
+    (void)reg_idx;
+    (void)reg_value;
+}
+
+SANITIZER_REPORT(set_vector_mask_1, uint64_t reg_idx, uint64_t reg_value) {
+    (void)reg_idx;
+    (void)reg_value;
+}
+
+SANITIZER_REPORT(set_vector_mask_imm, uint64_t reg_idx, uint64_t reg_value) {
     (void)reg_idx;
     (void)reg_value;
 }
@@ -60,8 +69,15 @@ SANITIZER_REPORT(set_lrelu_alpha, uint64_t config)
 
 #else
 
-SANITIZER_REPORT(set_vector_mask, uint64_t reg_idx, uint64_t reg_value)
-{
+SANITIZER_REPORT(set_vector_mask_0, uint64_t reg_idx, uint64_t reg_value) {
+    RecordVectorMask(EXTRA_PARAMS, reg_idx, reg_value);
+}
+
+SANITIZER_REPORT(set_vector_mask_1, uint64_t reg_idx, uint64_t reg_value) {
+    RecordVectorMask(EXTRA_PARAMS, reg_idx, reg_value);
+}
+
+SANITIZER_REPORT(set_vector_mask_imm, uint64_t reg_idx, uint64_t reg_value) {
     RecordVectorMask(EXTRA_PARAMS, reg_idx, reg_value);
 }
 

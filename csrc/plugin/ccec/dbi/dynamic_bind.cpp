@@ -369,9 +369,9 @@ std::vector<BindStub> bindStubs{
     /// sync_instructions.cpp end
 
     /// registers_instructions.cpp start
-    {InstrType::MOVE_MASK_0, "__sanitizer_report_set_vector_mask", {0, 1}},
-    {InstrType::MOVE_MASK_1, "__sanitizer_report_set_vector_mask", {0, 1}},
-    {InstrType::MOVE_MASK_IMM, "__sanitizer_report_set_vector_mask", {0, 1}},
+    {InstrType::MOVE_MASK_0, "__sanitizer_report_set_vector_mask_0", {0, 1}},
+    {InstrType::MOVE_MASK_1, "__sanitizer_report_set_vector_mask_1", {0, 1}},
+    {InstrType::MOVE_MASK_IMM, "__sanitizer_report_set_vector_mask_imm", {0, 1}},
     {InstrType::SET_CTRL, "__sanitizer_report_set_ctrl", {0}},
     {InstrType::SET_FFTS_BASE_ADDR, "__sanitizer_report_set_ffts_base_addr", {0}},
     {InstrType::SET_FPC, "__sanitizer_report_set_fpc", {0}},
@@ -392,8 +392,8 @@ std::vector<BindStub> bindStubs{
     {InstrType::SIMT_CALL, "__sanitizer_report_simt_call", {}},
     // main_scalar_empty_instructions.cpp end
 
-    {InstrType::MSTX_STUB_CALLI, "__sanitizer_report___mstx_dfx_report_stub", {0, 1, 2}},
-    {InstrType::MSTX_STUB_CALL, "__sanitizer_report___mstx_dfx_report_stub", {0, 1, 2}},
+    {InstrType::MSTX_STUB_CALLI, "__sanitizer_report___mstx_dfx_report_stub_calli", {0, 1, 2}},
+    {InstrType::MSTX_STUB_CALL, "__sanitizer_report___mstx_dfx_report_stub_call", {0, 1, 2}},
 };
 
 void MSBitAtInit()

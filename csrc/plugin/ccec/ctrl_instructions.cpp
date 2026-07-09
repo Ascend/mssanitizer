@@ -47,8 +47,7 @@ SANITIZER_REPORT(set_mask_norm)
 }
 
 // #2208
-SANITIZER_REPORT(set_vector_mask, uint64_t reg_idx, uint64_t reg_value)
-{
+SANITIZER_REPORT(set_vector_mask, uint64_t reg_idx, uint64_t reg_value) {
     RecordVectorMask(EXTRA_PARAMS, reg_idx, reg_value);
 }
 
