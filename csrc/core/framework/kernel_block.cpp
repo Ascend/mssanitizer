@@ -621,6 +621,11 @@ bool KernelBlock::ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRec
         if (lastRecordType_ != RecordType::CMPMASK_OP) {
             ++RuntimeContext::Instance().serialNo_;
         }
+    } else if (*recordTypePtr == RecordType::UNARY_OP || *recordTypePtr == RecordType::BINARY_OP ||
+        *recordTypePtr == RecordType::DMA_MOV || *recordTypePtr == RecordType::MOV_ALIGN) {
+        if (lastRecordType_ != RecordType::MSTX_STUB) {
+            ++RuntimeContext::Instance().serialNo_;
+        }
     } else {
         ++RuntimeContext::Instance().serialNo_;
     }
