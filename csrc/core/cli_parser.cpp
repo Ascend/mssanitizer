@@ -27,9 +27,7 @@
 #include <cstdio>
 #include <dlfcn.h>
 #include <csignal>
-#include <cstring>
 
-#include "cli_logo.h"
 #include "core/framework/config.h"
 #include "core/framework/utility/file_system.h"
 #include "core/framework/utility/path.h"
@@ -480,8 +478,18 @@ void ParseUserCommand(const int32_t &opt, const std::string &param, UserCommand 
     }
 }
 
+void ShowDescription()
+{
+    std::cout <<
+        "mssanitizer(MindStudio Sanitizer) is part of MindStudio Operator-dev Tools." << std::endl <<
+        "mssanitizer is a functional correctness checking suite. This suite contains" << std::endl <<
+        "multiple tools that can perform different type of checks. The features contain" << std::endl <<
+        "memcheck, racecheck, initcheck and synccheck now." << std::endl;
+}
+
 void ShowHelpInfo()
 {
+    ShowDescription();
     std::cout <<
         std::endl <<
         "Usage: mssanitizer <option(s)> prog-and-args" << std::endl <<
@@ -552,6 +560,7 @@ std::string GetFuncInjectionRevision()
 
 void ShowVersion()
 {
+    ShowDescription();
     std::cout << std::endl <<
         "revision:" << std::endl <<
         "  mssanitizer " << __PACKAGE_VERSION__ << "-" << __MSSANITIZER_COMMIT_REVISION__ << std::endl <<
@@ -700,24 +709,10 @@ void SigIntHandler(int signo)
 }
 
 namespace Sanitizer {
-
-static bool IsHelpRequested(int32_t argc, char **argv) {
-    for (int32_t i = 1; i < argc; ++i) {
-        if (argv[i] != nullptr && (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void CliParser::Interpretor(int32_t argc, char **argv) const
 {
     // 主进程忽略 SIGINT 信号，确保第一次 ctrlc 后不立即退出以完成当前算子的检测
     signal(SIGINT, SigIntHandler);
-
-    if (!IsHelpRequested(argc, argv)) {
-        PrintLogo();
-    }
 
     auto userCommand = Parse(argc, argv);
     DoUserCommand(userCommand);

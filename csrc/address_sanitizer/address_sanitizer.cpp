@@ -45,7 +45,7 @@ Sanitizer::LogLv GetNotifyLv(const Sanitizer::MemErrorType &type)
     static const std::map<MemErrorType, LogLv> ERROR_NOTIFY_LV_MAP = {
         {MemErrorType::OUT_OF_BOUNDS, LogLv::WARN},
         {MemErrorType::MISALIGNED_ACCESS, LogLv::ERROR},
-        {MemErrorType::MEM_LEAK, LogLv::ERROR},
+        {MemErrorType::MEM_LEAK, LogLv::WARN},
         {MemErrorType::MEM_UNUSED, LogLv::WARN},
     };
     auto iter = ERROR_NOTIFY_LV_MAP.find(type);
