@@ -65,7 +65,7 @@ constexpr int64_t C220_A3_ODD_DEVICE_VEC_CUBE_CORE_START_IDS = 32768;
 
 /// c310架构A5芯片：vec核对应的物理核编号范围:[18, 51]和>= 72
 constexpr int64_t C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_START_IDS = 18;
-constexpr int64_t C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_END_IDS = 51;
+constexpr int64_t C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_END_IDS = 53;
 constexpr int64_t C310_A5_DEVICE_VEC_PHYS_GREAT_BOUND_CORE_START_IDS = 72;
 
 // GM地址写入时，优先写入RecordType，再写入Record；RecordType为32bit目的是为了后续写入GM时的地址对齐
