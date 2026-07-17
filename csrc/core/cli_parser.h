@@ -31,6 +31,9 @@ public:
 private:
     UserCommand Parse(int32_t argc, char **argv) const;
 };
+
+void PrintLogo();
+
 }
 
 #endif

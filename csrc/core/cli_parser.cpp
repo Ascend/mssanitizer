@@ -873,4 +873,41 @@ UserCommand CliParser::Parse(int32_t argc, char **argv) const
     return userCommand;
 }
 
+//logo
+
+constexpr const char *kReset     = "\033[0m";
+constexpr const char *kDimGray   = "\033[38;5;240m";
+constexpr const char *kBoldWhite = "\033[1;97m";
+constexpr const char *kHighlight = "\033[48;5;21;38;5;46m"; // green on blue
+
+bool ShouldUseColorLogo()
+{
+    if (!isatty(STDERR_FILENO)) {
+        return false;
+    }
+    const char *term = std::getenv("TERM");
+    return term && strcmp(term, "dumb") != 0 && strcmp(term, "unknown") != 0;
+}
+
+
+void PrintLogo()
+{
+    if (!ShouldUseColorLogo()) {
+        std::cerr << "=================================================================" << "\n"
+                  << "                   >>>>>   MindStudio   <<<<<" << "\n"
+                  << "    THE END-TO-END TOOLCHAIN TO UNLEASH HUAWEI ASCEND COMPUTE" << "\n"
+                  << "=================================================================" << "\n"
+                  << std::endl;
+        return;
+    }
+
+    std::cerr << kDimGray  << "=================================================================" << kReset << "\n"
+              << kBoldWhite << "                   >>>>>  "
+              << kHighlight << " MindStudio " << kReset << kBoldWhite << "  <<<<<" << kReset << "\n"
+              << kBoldWhite << "    THE END-TO-END TOOLCHAIN TO UNLEASH HUAWEI ASCEND COMPUTE" << kReset << "\n"
+              << kDimGray  << "=================================================================" << kReset << "\n"
+              << std::endl;
+}
+
+
 }

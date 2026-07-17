@@ -20,6 +20,7 @@
 
 int32_t main(int32_t argc, char **argv)
 {
+    Sanitizer::PrintLogo();
     Sanitizer::CliParser cli;
     cli.Interpretor(argc, argv);
     return 0;
