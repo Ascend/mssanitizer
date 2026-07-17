@@ -34,10 +34,10 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
     ```cmake
     target_compile_options(${smoke_testcase}_npu PRIVATE
-                        -O2
-                        -std=c++17
-                        --cce-enable-sanitizer
-                        -g
+        -O2
+        -std=c++17
+        --cce-enable-sanitizer
+        -g
     )
     ```
 
