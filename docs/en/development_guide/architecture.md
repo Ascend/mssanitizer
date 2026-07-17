@@ -1006,7 +1006,7 @@ flowchart TD
 |-----|---------|
 | `-h, --help` | Displays the help information about the tool.|
 | `-v, --version` | Queries the version information|
-| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`.|Separate multiple tools with a pipe ( `\` ) to enable them simultaneously (e.g., `memcheck \ racecheck`). By default, all tools are enabled.| |
+| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`.Separate multiple tools with a pipe  (`\|`)  to enable them simultaneously (e.g., `memcheck\|racecheck`). By default, all tools are enabled.| 
 | `--log-file <file>` | Saves log information to a specified file. If no file is specified, the log information is printed.|
 | `--log-level <level>` | Specifies the print level. The default value is `warn`.|
 | `--max-debuglog-size <size>` | Specifies the size of a single debug log file.|

@@ -484,7 +484,7 @@ None
 
 **MSTX API Overview**
 
-The mstx APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the MSTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/master/docs/en/api_reference/mstx_api_reference.md) to implement more accurate memory check.
+The mstx APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the MSTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/master/docs/en/api_reference/README.md) to implement more accurate memory check.
 
 > [!NOTE]NOTE
 > 

@@ -491,7 +491,7 @@ mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程
 
 ### mstx接口列表
 
-msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[mstx_api](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》。
+msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》。
 
 **表 13**  msSanitizer工具调用的mstx接口列表<a name="table111"></a>
 
@@ -510,6 +510,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 - mstx当前提供了两种API的使用方式：库文件和头文件，以[AclNNInvocation中代码](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation)为例：
 
     >[!NOTE]
+    > 
     > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
 
 - 在`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt`路径下新增库文件`libms_tools_ext.so`，地址为：`${INSTALL_DIR}/lib64/libms_tools_ext.so`。
@@ -544,7 +545,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 ```c++
     mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = deviceId;       // 设备编号
-    rangeDesc.ptr = gm;                  // 注册的内存池CM首地址
+    rangeDesc.ptr = gm;                  // 注册的内存池GM首地址
     rangeDesc.size = 1024;               // 内存池大小
     mstxMemHeapDesc_t heapDesc{};
     heapDesc.typeSpecificDesc = &rangeDesc;
