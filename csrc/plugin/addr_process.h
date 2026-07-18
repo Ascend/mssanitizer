@@ -110,4 +110,4 @@ AICORE_FUNC_HEAD uint64_t GmAddrSubOffset(__gm__ uint8_t *memInfo, MemType memTy
 
 } // namespace Sanitizer
 
-#endif  // ADDR_PROCESS
+#endif // ADDR_PROCESS

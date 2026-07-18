@@ -66,6 +66,13 @@ AICORE_FUNC_HEAD void RecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space,
 #endif // __NPU_ARCH__
 #endif // __CCE_IS_AICORE__
 
+    // 编译器那边容易把stack上的gm地址推断成PRIVATE，这里做一个补充
+    if (space == AddressSpace::PRIVATE) {
+        uint64_t sysVaBase = GetSysVaBase();
+        if (GetUintFromConf<48, 25>(addr) != GetUintFromConf<48, 25>(sysVaBase) || GetUintFromConf<24>(addr) == 1) {
+            space = AddressSpace::GM;
+        }
+    }
     if (space == AddressSpace::PRIVATE) {
         auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
         /// 不开启初始化检测时，过滤掉栈上的LOAD/STORE记录
