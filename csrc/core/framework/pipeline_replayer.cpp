@@ -289,11 +289,10 @@ ReturnType PipelineReplayer::ProcessGetRlsBufSyncEvent(const SanEvent& event)
             // 每个buf_id的第一个get_buf，不具备阻塞作用
             return ReturnType::PROCESS_OK;
         }
-        if (it == getRlsBufMap_.cend() || it->second.size() < bufSync.rlsCount ||
-            consumed + bufSync.rlsCount > available) {
+        if (it == getRlsBufMap_.cend() || it->second.size() < bufSync.rlsCount || consumed + 1 > available) {
             return ReturnType::PROCESS_STALLED;
         }
-        getBufCount_[bufKey] += bufSync.rlsCount;
+        ++getBufCount_[bufKey];
         return ReturnType::PROCESS_OK;
     } else if (bufSync.opType == SyncType::RLS_BUF) {
         VectorTime vt{};
