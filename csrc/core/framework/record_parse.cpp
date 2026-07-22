@@ -3063,7 +3063,8 @@ static void ParseRecordGetBuf(const KernelRecord &record, std::vector<SanEvent> 
     event.eventInfo.bufSyncInfo.bufId = record.payload.bufRecord.bufId;
     event.eventInfo.bufSyncInfo.mode = record.payload.bufRecord.mode;
     if (event.eventInfo.bufSyncInfo.mode == BufMode::BLOCK_MODE) {
-        event.eventInfo.bufSyncInfo.rlsCount = RecordParse::getRlsBufMap_[event.eventInfo.bufSyncInfo.bufId];
+        auto key = std::make_pair(record.payload.bufRecord.location.blockId, event.eventInfo.bufSyncInfo.bufId);
+        event.eventInfo.bufSyncInfo.rlsCount = RecordParse::getRlsBufMap_[key];
     }
     events.emplace_back(event);
 }
@@ -3078,7 +3079,8 @@ static void ParseRecordRlsBuf(const KernelRecord &record, std::vector<SanEvent> 
     event.eventInfo.bufSyncInfo.pipe = record.payload.bufRecord.pipe;
     event.eventInfo.bufSyncInfo.bufId = record.payload.bufRecord.bufId;
     event.eventInfo.bufSyncInfo.mode = record.payload.bufRecord.mode;
-    RecordParse::getRlsBufMap_[event.eventInfo.bufSyncInfo.bufId]++;
+    auto key = std::make_pair(record.payload.bufRecord.location.blockId, event.eventInfo.bufSyncInfo.bufId);
+    RecordParse::getRlsBufMap_[key]++;
     events.emplace_back(event);
 }
 
@@ -4240,7 +4242,7 @@ void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEv
 thread_local std::array<bool, static_cast<uint8_t>(PipeType::SIZE)> RecordParse::setWaitStat_ = {};
 thread_local RecordParse::DstSrcGraph RecordParse::dstSrcGraph_ = {};
 thread_local std::map<HsetRecordKey, HsetRecordState> RecordParse::hsetSyncMap_ = {};
-thread_local std::unordered_map<uint64_t, uint64_t> RecordParse::getRlsBufMap_ = {};
+thread_local std::map<std::pair<uint16_t, uint64_t>, uint64_t> RecordParse::getRlsBufMap_ = {};
 
 void RecordParse::ResetSyncInPipeInfo()
 {
