@@ -150,7 +150,7 @@ static void ParseScalarOpRecord(const KernelRecord &record, std::vector<SanEvent
     auto& loadStoreRecord = record.payload.loadStoreRecord;
     SetLocationInfo(event, loadStoreRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
-    event.pipe = PipeType::PIPE_S;
+    event.pipe = PipeType::PIPE_S_CAL;
     memInfo.memType = AddrSpaceToMemType(loadStoreRecord.space);
 
     if (record.recordType == RecordType::LOAD || record.recordType == RecordType::LD || record.recordType == RecordType::LD_IO ||
@@ -1803,7 +1803,7 @@ static void ParseRecordDcPreload(const KernelRecord &record, std::vector<SanEven
     auto& dcPreloadRecord = record.payload.dcPreloadRecord;
     SetLocationInfo(event, dcPreloadRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
-    event.pipe = PipeType::PIPE_S;
+    event.pipe = PipeType::PIPE_S_CAL;
     memInfo.memType = MemType::GM;
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = { static_cast<uint64_t>(-1), static_cast<uint64_t>(-1) };
@@ -3427,7 +3427,7 @@ static void ParseMstxSignalSet(const KernelRecord &record, std::vector<SanEvent>
     SanEvent event;
     SetLocationInfo(event, record.payload.mstxRecord, record.blockType, record.serialNo);
     event.type = EventType::MSTX_SIGNAL_SET_EVENT;
-    event.pipe = PipeType::PIPE_S;
+    event.pipe = PipeType::PIPE_S_CAL;
     event.eventInfo.mstxSignalSet = mstxSignalSet;
     events.emplace_back(event);
 }
@@ -4411,5 +4411,6 @@ void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &ev
     if (events.size() == 0) { return; }
     ProcessHsetWaitSync(events);
     UpdateSyncInPipe(kernelRecord, events);
+    ReplaceSetSyncPipeScalar(events);
 }
 }
