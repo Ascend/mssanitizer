@@ -51,6 +51,8 @@ private:
     ReturnType ProcessEvent(const SanEvent& event);
     ReturnType ProcessMemEvent(const SanEvent& event);
     ReturnType ProcessSyncEvent(const SanEvent& event);
+    ReturnType ProcessBufSyncEvent(const SanEvent &event);
+
 private:
     // Scalar流水之间的同步由硬件自动保证，调用PipeBarrier<PIPE_S>()会引发硬件错误，因此PIPE_S除外
     static constexpr uint8_t MAX_PIPE_NUM_FOR_BARRIER = static_cast<uint8_t>(PipeType::SIZE) - 1;

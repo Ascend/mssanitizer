@@ -77,6 +77,8 @@ ReturnType SinglePipeRaceAlgImpl::ProcessEvent(const SanEvent& event)
                 return ReturnType::PROCESS_OK;
             }
             return ProcessMemEvent(event);
+        case EventType::BUF_SYNC_EVENT:
+            return ProcessBufSyncEvent(event);
         default:
             break;
     }
@@ -86,7 +88,7 @@ ReturnType SinglePipeRaceAlgImpl::ProcessEvent(const SanEvent& event)
 ReturnType SinglePipeRaceAlgImpl::ProcessMemEvent(const SanEvent& event)
 {
     auto e = MemEvent(event);
-    uint8_t pipeNum = static_cast<uint8_t>(event.pipe) - 1;  // PIPE_S除外
+    uint8_t pipeNum = static_cast<uint8_t>(event.pipe) - 1; // PIPE_S除外
     e.barrierNo = pipeBarrierNo_[pipeNum];
     // 一条指令被拆成多个事件，所以连续事件的serialNo类似10,10,11,11，需要去重后再更新pipeSerialNo
     if (pipeSerialNo_[pipeNum][0] != event.serialNo) {
@@ -106,6 +108,20 @@ ReturnType SinglePipeRaceAlgImpl::ProcessSyncEvent(const SanEvent& event)
         return ReturnType::PROCESS_OK;
     }
     pipeBarrierNo_[static_cast<uint8_t>(event.pipe) - 1]++;
+    return ReturnType::PROCESS_OK;
+}
+
+ReturnType SinglePipeRaceAlgImpl::ProcessBufSyncEvent(const SanEvent &event) {
+    // GET_BUF(BLOCK_MODE)会stall流水线等待数据就绪，起到同pipe同步屏障作用；
+    // RLS_BUF不阻塞流水线，不递增barrierNo，避免将跨核buffer释放误判为同pipe屏障
+    if (event.eventInfo.bufSyncInfo.opType == SyncType::GET_BUF &&
+        event.eventInfo.bufSyncInfo.mode == BufMode::BLOCK_MODE) {
+        // 每个buf_id的第一个get_buf不具备阻塞作用，rlsCount为0表示尚无RLS_BUF，无需等待
+        if (event.eventInfo.bufSyncInfo.rlsCount == 0U) {
+            return ReturnType::PROCESS_OK;
+        }
+        pipeBarrierNo_[static_cast<uint8_t>(event.pipe) - 1]++;
+    }
     return ReturnType::PROCESS_OK;
 }
 
