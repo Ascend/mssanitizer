@@ -287,14 +287,7 @@ Failed
 
 如下图所示，CANN软件栈内存操作接口包含两个层级，向下使用驱动侧提供的Device侧接口，向上提供了AscendCL系列接口供用户代码调用。
 
-```mermaid
-flowchart TB
-    U[用户代码] -->|AscendCL系列接口| C[CANN软件栈]
-    C -->|Device系列接口| D[Device]
-    D --> DVPP[DVPP]
-    D --> AICPU[AICPU]
-    D --> DRV[驱动]
-```
+![](../figures/case5.1.png)
 
 内存泄漏定位可分为以下步骤：
 

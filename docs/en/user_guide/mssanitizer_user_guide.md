@@ -207,7 +207,7 @@ When msSanitizer is running, memory check is enabled by default. In the command,
 >
 > - After the user program is complete, an exception report is displayed on the GUI.
 > - When you use a framework such as PyTorch to access an operator, the framework may use a memory pool to manage the GM. However, the memory pool usually allocates a large amount of the GM at a time and reuses the memory during running. In this case, if you check the operator and record all memory allocation and release information about the GM, the check may be inaccurate due to the memory management mode of the memory pool. Therefore, the check tool provides APIs for manually reporting the GM allocation information so that you can manually report the GM range used by an operator when the operator is called. For details about the APIs, see the `sanitizerReportMalloc` and `sanitizerReportFree` APIs in [MindStudio Sanitizer External API Reference](../api_reference/mssanitizer_api_reference.md).
-> - msSanitizer also supports the invalid read and write check for the `AllReduce`, `AllGather`, `ReduceScatter`, and `AlltoAll` APIs of Atlas A2 training products/Atlas A2 inference products and the `AllGather`, `ReduceScatter`, and `AlltoAllV` APIs of Atlas A3 training products/Atlas A3 inference products. For details, see "Advanced APIs" > "HCCL" > "HCCL Kernel APIs" in [Ascend C Operator Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/ascendcopapi/atlasascendc_api_07_0869.html).
+> - msSanitizer also supports the invalid read and write check for the `AllReduce`, `AllGather`, `ReduceScatter`, and `AlltoAll` APIs of Atlas A2 training products/Atlas A2 inference products and the `AllGather`, `ReduceScatter`, and `AlltoAllV` APIs of Atlas A3 training products/Atlas A3 inference products. For details, see "Advanced APIs" > "HCCL" > "HCCL Kernel APIs" in [Ascend C Operator Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/ascendcopapi/atlasascendc_api_07_0869.html).
 > - msSanitizer can also check invalid read and write operations of MC2 operators.
 > - Currently, Ascend 950 supports GM/UB/L1/L0A/L0B/L0C in memory check. Other types are not supported.
 
@@ -231,27 +231,28 @@ An illegal read/write exception occurs when an operator program accesses unalloc
 
 In the preceding example, the 0x12c0c0015000 address on GM is illegally read, and the instruction that causes the exception corresponds to line 18 in the operator implementation file `add_custom.cpp`.
 
-   > [!NOTE]NOTE  
-    > If no compilation option is added, the following call stack information is not displayed in the exception report:
-
-    ====== #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:58:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
-    ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:58:9
-    ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:443:5
-    ======    #3 illegal_read_and_write/add_custom.cpp:18:5
+> [!NOTE]NOTE
+> 
+> If no compilation option is added, the following call stack information is not displayed in the exception report:
+> 
+> ====== #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:58:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
+> ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:58:9
+> ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:443:5
+> ======    #3 illegal_read_and_write/add_custom.cpp:18:5
 
 ##### 6.1.3.2 Multi-Core Corruption
 
  AI Core is the compute core within the AI processor. The AI processor contains multiple AI Cores, and operator execution takes place on these AI Cores. During computation, these AI Cores transfer data to and from GM. In the absence of explicit inter-core synchronization, a multi-core corruption may occur when the GM regions accessed by multiple cores overlap, and at least one core performs a write operation to the overlapped address. Here we use the concept of ownership to ensure that no corruption occurs between multiple cores. Once a memory region has been written to by a given core, that memory region becomes owned by that core. Any access to this memory region by another core will result in an out-of-bounds exception.
 
 ```text
-    ====== WARNING: out of bounds of size 256  // Basic error information, including the number of corrupted bytes.
-    ======    at 0x12c0c00150fc on GM when writing data in add_custom_kernel  // Memory location where the exception occurs, including kernel function name, address space, and memory address. The memory address refers to the start address in a memory access.
-    ======    in block aiv(9) on device 0  // Block index of the Vector core corresponding to the exception code.
-    ======    code in pc current 0x7b8 (serialNo:22)  // PC pointer where the exception occurs and sequence number of the API call behavior.
-    ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
-    ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:155:9
-    ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:461:5
-    ======    #3 out_of_bound/add_custom.cpp:21:5
+====== WARNING: out of bounds of size 256  // Basic error information, including the number of corrupted bytes.
+======    at 0x12c0c00150fc on GM when writing data in add_custom_kernel  // Memory location where the exception occurs, including kernel function name, address space, and memory address. The memory address refers to the start address in a memory access.
+======    in block aiv(9) on device 0  // Block index of the Vector core corresponding to the exception code.
+======    code in pc current 0x7b8 (serialNo:22)  // PC pointer where the exception occurs and sequence number of the API call behavior.
+======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
+======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:155:9
+======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:461:5
+======    #3 out_of_bound/add_custom.cpp:21:5
 ```
 
 In the preceding example, a total of 256 bytes are corrupted, and multi-core corruption occurs when the 0x12c0c00150fc address in the GM is accessed. In addition, the instruction that causes the exception corresponds to line 21 in the operator implementation file **add_custom.cpp**.
@@ -261,40 +262,40 @@ In the preceding example, a total of 256 bytes are corrupted, and multi-core cor
 Ascend AI Processor integrates multiple types of memory. When accessed via DMA, different memory types may have varying minimum access granularities depending on the specific processor. If the memory address being accessed is not aligned with the corresponding minimum access granularity, issues such as data or AI Core exceptions may occur. Access alignment check can output alignment exception information when an alignment problem occurs.
 
  ```text
-    ====== ERROR: misaligned access of size 13  // Basic error information, including the number of bytes pertaining to the alignment exception.
-    ======    at 0x6 on UB in add_custom_kernel   // Memory location where the exception occurs, including kernel function name, address space, and memory address.
-    ======    in block aiv(0) on device 0  // Block index of the Vector core corresponding to the exception code.
-    ======    code in pc current 0x780 (serialNo:33)  // PC pointer where the exception occurs and sequence number of the API call behavior.
-    ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
-    ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:155:9
-    ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:461:5
-    ======    #3 illegal_align/add_custom.cpp:18:5
+====== ERROR: misaligned access of size 13  // Basic error information, including the number of bytes pertaining to the alignment exception.
+======    at 0x6 on UB in add_custom_kernel   // Memory location where the exception occurs, including kernel function name, address space, and memory address.
+======    in block aiv(0) on device 0  // Block index of the Vector core corresponding to the exception code.
+======    code in pc current 0x780 (serialNo:33)  // PC pointer where the exception occurs and sequence number of the API call behavior.
+======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
+======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:155:9
+======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:461:5
+======    #3 illegal_align/add_custom.cpp:18:5
 ```
 
 In the preceding example, the alignment exception occurs on 13 bytes when the 0x6 address on the UB is accessed. The instruction that causes this exception corresponds to line 18 in the operator implementation file `add_custom.cpp`.
 
 > [!NOTE]NOTE
 > 
-    > If no compilation option is added, the following call stack information is not displayed in the exception report:
-    >
-    > ```text
-    > ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
-    > ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:155:9
-    > ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:461:5
-    > ======    #3 illegal_align/add_custom.cpp:18:5
-    > ```
+> If no compilation option is added, the following call stack information is not displayed in the exception report:
+>
+> ```text
+> ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
+> ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:155:9
+> ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:461:5
+> ======    #3 illegal_align/add_custom.cpp:18:5
+> ```
 
 ##### 6.1.3.4 Memory Leak
 
 Memory check can check memory leak on the device. This problem is usually caused by developers' failure to correctly free the memory allocated by AscendCL APIs. Memory allocation is not performed in local memory. Therefore, memory leak occurs only in the GM. You can enable memory leak check by specifying the command line option `--leak-check=yes`.
 
 ```text
-    ====== ERROR: LeakCheck: detected memory leaks     // Memory leak occurs.
-    ======    Direct leak of 100 byte(s)      // Information about the leaked memory
-    ======      at 0x124080013000 on GM allocated in add_custom.cpp:14 (serialNo:37)
-    ======    Direct leak of 1000 byte(s)
-    ======      at 0x124080014000 on GM allocated in add_custom.cpp:15 (serialNo:55)
-    ====== SUMMARY: 1100 byte(s) leaked in 2 allocation(s)     // Summary of memory leaks, including the number of memory leaks and the number of leaked bytes.
+====== ERROR: LeakCheck: detected memory leaks     // Memory leak occurs.
+======    Direct leak of 100 byte(s)      // Information about the leaked memory
+======      at 0x124080013000 on GM allocated in add_custom.cpp:14 (serialNo:37)
+======    Direct leak of 1000 byte(s)
+======      at 0x124080014000 on GM allocated in add_custom.cpp:15 (serialNo:55)
+====== SUMMARY: 1100 byte(s) leaked in 2 allocation(s)     // Summary of memory leaks, including the number of memory leaks and the number of leaked bytes.
 ```
 
 In the preceding example, the first piece of memory leak information includes the address space, memory address, memory size, and code location. The code location points to the file name and line number of the call that allocates the memory.
@@ -304,9 +305,9 @@ In the preceding example, the first piece of memory leak information includes th
 Illegal release refers to the release of an unassigned or released address, which usually occurs on the GM.
 
 ```text
-    ====== ERROR: illegal free()     // Basic error information, indicating that an illegal release exception occurs.
-    ======    at 0x124080013000 on GM      // Memory location where the exception occurs, including the address space and memory address.
-    ======    code in add_custom.cpp:84 (serialNo:63)    // Code location when the exception occurs, including the file name, line number, and sequence number of the API call behavior.
+====== ERROR: illegal free()     // Basic error information, indicating that an illegal release exception occurs.
+======    at 0x124080013000 on GM      // Memory location where the exception occurs, including the address space and memory address.
+======    code in add_custom.cpp:84 (serialNo:63)    // Code location when the exception occurs, including the file name, line number, and sequence number of the API call behavior.
 ```
 
 In the preceding example, the 0x124080013000 address in the GM is illegally released, and the instruction that causes the exception corresponds to line 84 in the operator implementation file **add_custom.cpp**.
@@ -316,10 +317,10 @@ In the preceding example, the 0x124080013000 address in the GM is illegally rele
 This exception occurs when memory that is allocated during operator running has never been used until the operation running ends. This exception is generally caused by incorrect memory access by an operator or flawed operator logic, and it often occurs in the GM.
 
 ```text
-    ====== WARNING: Unused memory of 1000 byte(s)     // Basic error information, indicating that the allocated memory is not used.
-    ======    at 0x1240c0016000 on GM                    // Memory location where the exception occurs, including the address space and memory address.
-    ======    code in add_custom.cpp:2 (serialNo:69)   // Code location when the exception occurs, including the file name, line number, and sequence number of the API call behavior.
-    ====== SUMMARY: 1100 byte(s) unused memory in 2 allocation(s) // Exception summary, including the number of used memory blocks and bytes.
+====== WARNING: Unused memory of 1000 byte(s)     // Basic error information, indicating that the allocated memory is not used.
+======    at 0x1240c0016000 on GM                    // Memory location where the exception occurs, including the address space and memory address.
+======    code in add_custom.cpp:2 (serialNo:69)   // Code location when the exception occurs, including the file name, line number, and sequence number of the API call behavior.
+====== SUMMARY: 1100 byte(s) unused memory in 2 allocation(s) // Exception summary, including the number of used memory blocks and bytes.
  ```
 
 ##### 6.1.3.7 Ascend 950 SIMT Unit Exception
@@ -327,11 +328,11 @@ This exception occurs when memory that is allocated during operator running has 
 In the SIMT architecture, the location of the thread where the exception occurs is also provided. The thread ID starts from 0. For example, the following exception occurs at the thread whose ID X=1, ID Y=0, and ID Z=0. When the SIMT unit of the Ascend 950 product is abnormal, the error information is displayed as follows:
 
  ```text
-    ====== ERROR: illegal read of size 4
-    ======    at 0x300000018ffc on GM in vec_add
-    ======    by thread (1,0,0) in block aiv(0-1) on device 0
-    ======    code in pc current 0x178 (serialNo:16)
-    ======    #0 ${ASCEND_HOME_PATH}/illegal_read_and_write_simt_gm_float/kernel.cpp:16:21
+====== ERROR: illegal read of size 4
+======    at 0x300000018ffc on GM in vec_add
+======    by thread (1,0,0) in block aiv(0-1) on device 0
+======    code in pc current 0x178 (serialNo:16)
+======    #0 ${ASCEND_HOME_PATH}/illegal_read_and_write_simt_gm_float/kernel.cpp:16:21
 ```
 
 ##### 6.1.3.8 Inter-Thread Corruption
@@ -339,23 +340,24 @@ In the SIMT architecture, the location of the thread where the exception occurs 
 In the SIMT architecture, when programming with multiple threads, improper handling of GM accesses may result in multiple threads writing data to the same memory address simultaneously, leading to a memory corruption issue between threads. The check mechanism operates similarly to multi-core corruption check. Once a given thread writes to a memory block for the first time, the memory block is considered exclusively owned by that thread. If any other thread attempts to write to that memory location, an out-of-bounds exception occurs.
 
 ```text
-    ====== WARNING: out of bounds of size 4
-    ======    at 0x300000056000 on GM when writing data in vec_add
-    ======    by thread (1,0,0) in block aiv(0) on device 0
-    ======    code in pc current 0xd8 (serialNo:16)
-    ======    #0 vec_add_simt.cpp:20:12
- ```
+====== WARNING: out of bounds of size 4
+======    at 0x300000056000 on GM when writing data in vec_add
+======    by thread (1,0,0) in block aiv(0) on device 0
+======    code in pc current 0xd8 (serialNo:16)
+======    #0 vec_add_simt.cpp:20:12
+```
 
 ##### 6.1.3.9 Register Alarm
 
 When a register is found not to have its default value, an alarm is generated to notify the user. The alert displays the name of the non-reset register, the associated core number, the operator name, the expected default value, and the current actual value.
 
 ```text
-    [mssanitizer]Warning:Register XXX was not reset to default in block aiv(XXX) on kernel XXX. Expected default value is (XXX), but current value is (XXX)
+[mssanitizer]Warning:Register XXX was not reset to default in block aiv(XXX) on kernel XXX. Expected default value is (XXX), but current value is (XXX)
 ```
 
 > [!NOTE]NOTE
-    > Currently, only memory check supports register alarms.
+> 
+> Currently, only memory check supports register alarms.
 
 ### 6.2 Race Check
 

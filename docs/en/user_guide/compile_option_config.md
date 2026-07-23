@@ -71,7 +71,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
         endif()
         ```
 
-4. To enable the msSanitizer tool, load the executable file `_<kernel\_name>__npu` on the NPU. For details about how to obtain the file, see "Kernel Launch Operator Development" > "[Kernel Launch](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/opdevg/Ascendcopdevg/atlas_ascendc_10_0056.html)" in *Ascend C Operator Development Guide*.
+4. To enable the msSanitizer tool, load the executable file `_<kernel_name>__npu` on the NPU. For details about how to obtain the file, see "Kernel Launch Operator Development" > "[Kernel Launch](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/programug/Ascendcopdevg/atlas_ascendc_10_0056.html)" in *Ascend C Operator Development Guide*.
 
 ## 3. msOpGen Operator Project Compilation Scenario
 

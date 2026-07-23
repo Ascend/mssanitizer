@@ -248,14 +248,7 @@ When the device memory queried by running the `npu-smi info` command keeps incre
 
 As shown in the following figure, the CANN software stack memory operation APIs consist of two levels: the lower device APIs provided by the driver and the upper AscendCL APIs for user code to call.
 
-```mermaid
-flowchart TB
-    U[User code] -->|AscendCL APIs| C[CANN software stack]
-    C -->|Device series APIs| D[Device]
-    D --> DVPP[DVPP]
-    D --> AICPU[AICPU]
-    D --> DRV[Driver]
-```
+![](../figures/case5.1.png)
 
 To identify a memory leak, perform the following steps:
 

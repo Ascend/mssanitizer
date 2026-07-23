@@ -43,8 +43,9 @@ The msSanitizer tool contains two types of APIs: sanitizer APIs and mstx APIs. T
 
 Calls `aclrtMalloc` to allocate `size` bytes linear memory on the device, returns the pointer to the allocated memory by using `*devPtr`, and reports the memory allocation information to the check tool. The actual memory allocation behavior and parameter meanings are the same as those of `aclrtMalloc`.
 
->[!NOTE]NOTE
->For details about `aclrtMalloc`, see "ACL API Reference (C)"> "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMalloc`, see "ACL API Reference (C)"> "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0095.html).
 
 **Prototype**
 
@@ -83,8 +84,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMallocCached` to allocate `size` bytes linear memory on the device, returns the pointer to the allocated memory by using `*devPtr`, and reports the memory allocation information to the check tool. In any scenario, the allocated memory supports cache. The actual memory allocation behavior and parameter meanings are the same as those of `aclrtMallocCached`.
 
-> [!NOTE]NOTE       
-> For details about `aclrtMallocCached`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMallocCached`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0097.html).
 
 **Prototype**
 
@@ -123,8 +125,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtFree` to release the memory on the device and reports the memory release information to the check tool. The actual memory release behavior and parameter meanings are the same as those of `aclrtFree`.
 
->[!NOTE]NOTE
->For details about `aclrtFree`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtFree`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0100.html).
 
 **Prototype**
 
@@ -161,8 +164,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemset` to initialize the memory, sets the content in the memory to a specified value, and reports the memory initialization information to the check tool. The actual memory initialization behavior and parameter meanings are the same as those of `aclrtMemset`.
 
->[!NOTE]NOTE
->For details about `aclrtMemset`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMemset`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0103.html).
 
 **Prototype**
 
@@ -202,8 +206,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemsetAsync` to initialize the memory, sets the content in the memory to a specified value, and reports the memory initialization information to the check tool. This API is asynchronous. The actual memory initialization behavior and parameter meanings are the same as those of `aclrtMemsetAsync`.
 
->[!NOTE]NOTE
->For details about `aclrtMemsetAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMemsetAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0104.html).
 
 **Prototype**
 
@@ -244,8 +249,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpy` to copy the memory and reports the memory copy information to the check tool. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpy`, see "ACL API Reference (C)"> "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMemcpy`, see "ACL API Reference (C)"> "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0105.html).
 
 **Prototype**
 
@@ -286,8 +292,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpyAsync` to copy the memory and reports the memory copy information to the check tool. This API is asynchronous. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpyAsync`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpyAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMemcpyAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0106.html).
 
 **Prototype**
 
@@ -329,8 +336,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpy2d` to copy the matrix data memory and reports the memory copy information to the check tool. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy2d`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpy2d`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMemcpy2d`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0108.html).
 
 **Prototype**
 
@@ -373,8 +381,9 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpy2dAsync` to copy the matrix data memory and reports the memory copy information to the check tool. This API is asynchronous. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy2dAsync`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpy2dAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]NOTE
+> 
+> For details about `aclrtMemcpy2dAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/900/API/runtimeapi/aclcppdevg_03_0109.html).
 
 **Prototype**
 
