@@ -25,6 +25,7 @@
 #include <thread>
 #include <unistd.h>
 #include <sstream>
+#include <sys/syscall.h>
 
 #include "securec.h"
 
@@ -70,6 +71,11 @@ public:
     }
     std::string GetTimeStamp(void) const;
     std::string GetRunningTime(void) const;
+    static uint64_t GetThreadId(void)
+    {
+        thread_local uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
+        return tid;
+    }
 
     void SetMaxDebugLogSizeRate(long rate);
 
@@ -98,13 +104,18 @@ private:
 
 // sanitizer internal log macros
 
+// 日志格式：[时间戳] [线程号] [文件名:行号] 日志信息
 // 因为首次调用会生成日志文件，所以在执行用户命令成功后再调用来记录有效的日志。
 #define SAN_LOG(format, ...)                                                                 \
     do {                                                                                     \
         Sanitizer::Log &log = *Sanitizer::Log::GetLog();                                     \
         FILE *fp = log.GetLogFp();                                                           \
         if (fp != nullptr) {                                                                 \
-            fprintf(fp, format "\n", ##__VA_ARGS__);                                         \
+            fprintf(fp, "%s [%lu] [%s:%d] " format "\n",                                    \
+                    log.GetTimeStamp().c_str(),                                              \
+                    Sanitizer::Log::GetThreadId(),                                           \
+                    __FILENAME__, __LINE__,                                                       \
+                    ##__VA_ARGS__);                                                          \
             fflush(fp);                                                                      \
         }                                                                                    \
     } while (0)
@@ -115,13 +126,17 @@ private:
 
 // 此宏函数用来将内容存放在缓冲中，待下次调用SAN_LOG时将缓冲内容输出并清空。用于
 // 缓存执行用户cmd前对参数解析的日志文本。
-#define SAN_BUFF_LOG(format, ...)                                           \
-    {                                                                       \
-        char buf[LOG_BUF_SIZE]{0};                                          \
-        int ret = sprintf_s(buf, LOG_BUF_SIZE, format "\n", ##__VA_ARGS__); \
-        if (ret != -1) {                                                    \
-            Sanitizer::Log::GetLog()->AppendBuff(buf);                      \
-        }                                                                   \
+#define SAN_BUFF_LOG(format, ...)                                                             \
+    {                                                                                         \
+        char buf[LOG_BUF_SIZE]{0};                                                            \
+        int ret = sprintf_s(buf, LOG_BUF_SIZE, "%s [%lu] [%s:%d] " format "\n",              \
+                           Sanitizer::Log::GetLog()->GetTimeStamp().c_str(),                  \
+                           Sanitizer::Log::GetThreadId(),                                     \
+                           __FILENAME__, __LINE__,                                                 \
+                           ##__VA_ARGS__);                                                    \
+        if (ret != -1) {                                                                      \
+            Sanitizer::Log::GetLog()->AppendBuff(buf);                                        \
+        }                                                                                     \
     }
 
 #define SAN_BUFF_ERROR_LOG(format, ...) SAN_BUFF_LOG("[E] " format, ##__VA_ARGS__)

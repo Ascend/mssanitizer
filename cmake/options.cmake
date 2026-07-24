@@ -10,6 +10,8 @@ add_compile_options("-fPIC")
 add_compile_options("-fstack-protector-all")
 add_compile_options("-Wall")
 add_compile_options("-fno-strict-aliasing")
+# 定义 __FILENAME__ 宏，编译期提取纯文件名，替代 __FILE__ 用于日志
+add_definitions("-D__FILENAME__=(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)")
 
 # 根据CMAKE_BUILD_TYPE选择编译选项
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
