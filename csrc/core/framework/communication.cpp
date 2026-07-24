@@ -34,7 +34,7 @@ CommunicationServer::CommunicationServer(const std::string& socketPath)
     acceptWorkerRun_ = true;
     socket_ = MakeUnique<DomainSocketServer>(socketPath, maxClientNum_);
 }
- 
+
 CommunicationServer::~CommunicationServer()
 {
     acceptWorkerRun_ = false;
@@ -42,7 +42,7 @@ CommunicationServer::~CommunicationServer()
         acceptWorker_.join();
     }
 }
- 
+
 void CommunicationServer::StartListen()
 {
     Result result = socket_->ListenAndBind();
@@ -67,7 +67,6 @@ void CommunicationServer::StartListen()
             }
         }
     });
-    return;
 }
 
 void CommunicationServer::Listen(ClientId clientId)
@@ -90,7 +89,6 @@ void CommunicationServer::Listen(ClientId clientId)
             msgHandler_(msg, msgRspFunc);
         }
     }
-    return;
 }
 
 Result CommunicationServer::Read(ClientId clientId, std::string &msg)
@@ -100,7 +98,7 @@ Result CommunicationServer::Read(ClientId clientId, std::string &msg)
         result.SetError("socket is null");
         return result;
     }
-    
+
     constexpr std::size_t maxSize = 1024ULL;
     size_t readSize = 0;
     result = socket_->Read(clientId, msg, maxSize, readSize);
@@ -110,7 +108,7 @@ Result CommunicationServer::Read(ClientId clientId, std::string &msg)
     }
     return result;
 }
- 
+
 Result CommunicationServer::Write(ClientId clientId, std::string const &msg)
 {
     Result result;
@@ -118,7 +116,7 @@ Result CommunicationServer::Write(ClientId clientId, std::string const &msg)
         result.SetError("socket is null");
         return result;
     }
- 
+
     size_t sendBytes = 0;
     result = socket_->Write(clientId, msg, sendBytes);
     if (result.Fail()) {

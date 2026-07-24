@@ -26,6 +26,7 @@ namespace Sanitizer {
 // 将 SyncType 枚举值转为字符串（利用 # 宏字符串化）
 static const char *SyncTypeToStr(SyncType t) {
     switch (t) {
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CASE_SYNC_TYPE(v) \
     case SyncType::v: \
         return #v
@@ -52,7 +53,7 @@ static const char *SyncTypeToStr(SyncType t) {
 
 // 根据 SanEvent 类型提取对应的指令名，填入 ErrorEvent.instructName
 static void FillStuckInstructName(ErrorEvent &errEvent, const SanEvent &event) {
-    const char *name = "";
+    const char *name;
     switch (event.type) {
     case EventType::SYNC_EVENT:
         name = SyncTypeToStr(event.eventInfo.syncInfo.opType);

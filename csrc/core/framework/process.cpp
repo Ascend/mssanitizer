@@ -86,12 +86,12 @@ ExecCmd::ExecCmd(std::vector<string> const &args)
     char *absPath = realpath(args[0].c_str(), nullptr);
     if (absPath) {
         path_ = string(absPath);
-        free(absPath);
+        free(absPath); // NOLINT(cppcoreguidelines-owning-memory)
     }
 
     argc_ = static_cast<int>(args.size());
     for (auto &arg : args_) {
-        argv_.push_back(const_cast<char*>(arg.data()));
+        argv_.push_back(const_cast<char *>(arg.data())); // NOLINT(cppcoreguidelines-pro-type-const-cast)
     }
     argv_.push_back(nullptr);
 }
@@ -131,7 +131,6 @@ void Process::RegisterMsgTrap(const ANALYSIS_FUNC& analysisFunc, const std::stri
         server_->RegisterMsgHandler(analysisFunc);
         server_->StartListen();
     }
-    return;
 }
 
 void Process::PreProcess(Config const &config)
@@ -143,7 +142,6 @@ void Process::PreProcess(Config const &config)
             this->server_->Write(clientId, Serialize<Config>(config));
         });
     }
-    return;
 }
 
 void Process::PostProcess(pid_t child, ExecCmd const &cmd)
@@ -170,7 +168,6 @@ void Process::PostProcess(pid_t child, ExecCmd const &cmd)
         server_->Close();
         SAN_INFO_LOG("Server is closed.");
     }
-    return;
 }
 
 void Process::DoLaunch(const ExecCmd &cmd) const

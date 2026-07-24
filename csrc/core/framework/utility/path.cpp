@@ -145,13 +145,13 @@ Path Path::operator/(Path rhs) const &
 Path Path::operator/(Path rhs) &&
 {
     if (rhs.absolute_) {
-        return std::move(rhs);
+        return rhs;
     }
 
     for (auto &r : rhs.route_) {
         route_.emplace_back(std::move(r));
     }
-    return std::move(*this);
+    return *this;
 }
 
 bool Path::GetStat(struct stat &st) const
@@ -172,17 +172,17 @@ bool Path::IsSubPathOf(const Path& other) const
     if (resolvedThis.absolute_ != resolvedOther.absolute_) {
         return false;
     }
- 
+
     if (resolvedOther.route_.size() > resolvedThis.route_.size()) {
         return false;
     }
- 
+
     for (size_t i = 0; i < resolvedOther.route_.size(); ++i) {
         if (resolvedThis.route_.at(i) != resolvedOther.route_.at(i)) {
             return false;
         }
     }
- 
+
     return true;
 }
 } // namespace Sanitizer

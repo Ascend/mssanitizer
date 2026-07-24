@@ -31,7 +31,7 @@ std::vector<char *> ToRawCArgv(std::vector<std::string> const &argv)
 {
     std::vector<char *> rawArgv;
     for (auto const &arg: argv) {
-        rawArgv.emplace_back(const_cast<char *>(arg.data()));
+        rawArgv.emplace_back(const_cast<char *>(arg.data())); // NOLINT(cppcoreguidelines-pro-type-const-cast)
     }
     rawArgv.emplace_back(nullptr);
     return rawArgv;

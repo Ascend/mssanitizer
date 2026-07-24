@@ -251,7 +251,6 @@ void CrossCoreSyncInfoContainer::SetBlockSyncInfo(uint8_t flagId, FftsSyncMode m
     } else if (mode == FftsSyncMode::MODE4) {
         SetMode4SyncInfo(flagId, blockIdx, vectorTime, vecSubBlockDim);
     }
-    return;
 }
 
 bool CrossCoreSyncInfoContainer::GetBlockSyncInfo(uint8_t flagId, uint32_t blockIdx, VectorTime &vectorTime)

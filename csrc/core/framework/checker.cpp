@@ -383,7 +383,6 @@ void Checker::SetDetectionInfo(const LogLv &expectLv, std::ostream &detectionOst
             sanitizerArr_[i]->RegisterNotifyFunc(func);
         }
     }
-    return;
 }
 
 void Checker::ParseOnlineError(const SanitizerRecord &record)

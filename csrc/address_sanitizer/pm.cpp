@@ -104,8 +104,8 @@ PM::PM(const uint64_t &byteNum, uint8_t memInitVal) noexcept
 
 void PM::Reset(uint8_t memInitVal) noexcept
 {
-    for (auto &sm : smList_) {
-        delete sm;
+    for (auto &sm : smList_) { // NOLINT(cppcoreguidelines-owning-memory)
+        delete sm; // NOLINT(cppcoreguidelines-owning-memory)
         sm = nullptr;
     }
 
@@ -114,8 +114,8 @@ void PM::Reset(uint8_t memInitVal) noexcept
 
 PM::~PM()
 {
-    for (auto &sm : smList_) {
-        delete sm;
+    for (auto &sm : smList_) { // NOLINT(cppcoreguidelines-owning-memory)
+        delete sm; // NOLINT(cppcoreguidelines-owning-memory)
     }
 }
 
@@ -151,14 +151,14 @@ void PM::Set(uint64_t addr, uint64_t size, uint8_t bits)
         }
         // 整个 block 可以由一个合法的 repeat 覆盖时使用 commonBitsList 保存状态
         if (addr <= blockAddrL && addr + size >= blockAddrR) {
-            delete smList_[blockIndex];
+            delete smList_[blockIndex]; // NOLINT(cppcoreguidelines-owning-memory)
             smList_[blockIndex] = nullptr;
             commonBitsList_[blockIndex] = bits;
             continue;
         }
 
         if (smList_[blockIndex] == nullptr) {
-            smList_[blockIndex] = new SM(commonBitsList_[blockIndex]);
+            smList_[blockIndex] = new SM(commonBitsList_[blockIndex]); // NOLINT(cppcoreguidelines-owning-memory)
         }
         PM::SM &sm = *smList_[blockIndex];
         uint64_t addrL = std::max(addr, blockAddrL);
@@ -220,9 +220,9 @@ void GmPM::Reset(uint8_t memInitVal) noexcept
 
 GmPM::~GmPM()
 {
-    for (auto pm : pmList_) {
+    for (auto pm : pmList_) { // NOLINT(cppcoreguidelines-owning-memory)
         if (pm) {
-            delete pm;
+            delete pm; // NOLINT(cppcoreguidelines-owning-memory)
         }
     }
 }
@@ -294,7 +294,7 @@ GmPM::PmPtr GmPM::GetPM(uint64_t addr)
         return nullptr;
     }
     if (pmList_[pmIdx] == nullptr) {
-        pmList_[pmIdx] = new PM(byteNum_, memInitVal_);
+        pmList_[pmIdx] = new PM(byteNum_, memInitVal_); // NOLINT(cppcoreguidelines-owning-memory)
     }
     return pmList_[pmIdx];
 }

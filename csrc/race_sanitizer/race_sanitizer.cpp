@@ -283,11 +283,7 @@ void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType 
     }
 }
 
-void RaceSanitizer::RegisterNotifyFunc(const MSG_FUNC &func)
-{
-    msgFunc_ = func;
-    return;
-}
+void RaceSanitizer::RegisterNotifyFunc(const MSG_FUNC &func) { msgFunc_ = func; }
 
 void RaceSanitizer::Exit()
 {

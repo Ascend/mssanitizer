@@ -79,7 +79,7 @@ void Log::AppendBuff(const std::string &text)
 Log::~Log()
 {
     if (fp_ != nullptr) {
-        fclose(fp_);
+        fclose(fp_); // NOLINT(cppcoreguidelines-owning-memory)
         fp_ = nullptr;
     }
 }
@@ -113,7 +113,7 @@ void Log::RotateLogFile()
     if (fp_ == nullptr) {
         return;
     }
-    fclose(fp_);
+    fclose(fp_); // NOLINT(cppcoreguidelines-owning-memory)
     fp_ = nullptr;
     if (rotateCount_ >= MAX_LOG_FILE_NUMBER) {
         printf("[mssanitizer] the number of rotated log files exceeded limit(%ld), remove oldest log.\n",

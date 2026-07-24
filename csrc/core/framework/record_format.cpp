@@ -25,8 +25,8 @@
 namespace {
 
 struct NonEmptyString {
-    NonEmptyString(std::string const &str, std::string const &placeholder = "<unknown>")
-        : str{str}, placeholder{placeholder} { }
+    explicit NonEmptyString(std::string const &str, std::string const &placeholder = "<unknown>")
+        : str{str}, placeholder{placeholder} {}
     std::string const &str;
     std::string const &placeholder;
 };

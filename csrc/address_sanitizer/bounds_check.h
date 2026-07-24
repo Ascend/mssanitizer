@@ -36,15 +36,16 @@ public:
         uint32_t permission;
     };
 
-    virtual ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission = DEFAULT_PERMISSION) = 0;
+    virtual ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission) = 0;
     virtual ErrorMsg Remove(uint64_t addr, uint64_t size) = 0;
     virtual ErrorMsg SetPermission(uint64_t addr, uint64_t size, uint32_t permission) = 0;
     virtual ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const = 0;
+    virtual ~Bounds() = default;
 };
 
 class DiscreteBounds : public Bounds {
 public:
-    ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission = DEFAULT_PERMISSION) override;
+    ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission) override;
     ErrorMsg Remove(uint64_t addr, uint64_t size) override;
     ErrorMsg SetPermission(uint64_t addr, uint64_t size, uint32_t permission) override;
     ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const override;
@@ -65,9 +66,9 @@ private:
 class UnionBounds : public Bounds {
 public:
     UnionBounds(uint64_t addr, uint64_t size) : range_{addr, addr + size, DEFAULT_PERMISSION} { }
-    ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission = DEFAULT_PERMISSION) override { return {}; }
+    ErrorMsg Add(uint64_t addr, uint64_t size, uint32_t permission) override { return {}; }
     ErrorMsg Remove(uint64_t addr, uint64_t size) override { return {}; };
-    ErrorMsg SetPermission(uint64_t addr, uint64_t size, uint32_t permission) { return {}; }
+    ErrorMsg SetPermission(uint64_t addr, uint64_t size, uint32_t permission) override { return {}; }
     ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const override;
 
 private:
@@ -79,7 +80,7 @@ private:
 
 class BoundsCheck {
 public:
-    BoundsCheck(bool localMemoryNeedAlloc = false);
+    explicit BoundsCheck(bool localMemoryNeedAlloc = false);
     void Init(ChipInfo const &chipInfo);
     ErrorMsg Add(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission = Bounds::DEFAULT_PERMISSION);
     ErrorMsg Remove(AddressSpace space, uint64_t addr, uint64_t size);

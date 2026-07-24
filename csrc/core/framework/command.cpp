@@ -478,7 +478,6 @@ void Command::Exec(const ParamList &execParams)
     process.Launch(cmd); // 子进程结束后，Launch函数返回
     threadManager.ThreadFinish();
     threadManager.PostLog();
-    return;
 }
 
 std::vector<std::string> GetSortedProjects(const std::string &dumpPath)

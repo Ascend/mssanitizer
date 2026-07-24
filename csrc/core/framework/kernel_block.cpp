@@ -793,7 +793,6 @@ void KernelBlock::PrintCacheSizeLog(uint64_t totalSize)
                   << ", please use --cache-size=" << totalSize << " to run the operator again."
                   << std::endl;
     }
-    return;
 }
 
 bool KernelBlock::NextSimd(KernelRecord &kernelRecord)

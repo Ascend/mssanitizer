@@ -96,7 +96,7 @@ bool HookReport::InitClient(void)
         return false;
     }
 
-    client_.reset(new CommunicationClient(socketPath));
+    client_.reset(new CommunicationClient(socketPath)); // NOLINT(cppcoreguidelines-owning-memory)
     if (client_ == nullptr) {
         return false;
     }

@@ -28,7 +28,7 @@ TEST(BoundsCheck, discrete_bounds_add_range_overflow_uint64_max_expect_return_il
     uint64_t addr = static_cast<uint64_t>(-1);
     uint64_t size = 100;
     DiscreteBounds bounds;
-    ErrorMsg msg = bounds.Add(addr, size);
+    ErrorMsg msg = bounds.Add(addr, size, Bounds::DEFAULT_PERMISSION);
     ASSERT_TRUE(msg.isError);
     ASSERT_EQ(msg.type, MemErrorType::ILLEGAL_ADDR_WRITE);
     ASSERT_EQ(msg.auxData.badAddr.addr, addr);
@@ -40,16 +40,16 @@ TEST(BoundsCheck, discrete_bounds_add_range_fuse_with_sides_expect_return_succes
     DiscreteBounds bounds;
     ErrorMsg msg;
     // add first range [0, 100]
-    msg = bounds.Add(0, 100);
+    msg = bounds.Add(0, 100, Bounds::DEFAULT_PERMISSION);
     ASSERT_FALSE(msg.isError);
     // add range [200, 300], it should insert after [0, 100]
-    msg = bounds.Add(200, 100);
+    msg = bounds.Add(200, 100, Bounds::DEFAULT_PERMISSION);
     ASSERT_FALSE(msg.isError);
     // add range [150, 200], it should fuse with [200, 300], then got range [150, 300]
-    msg = bounds.Add(150, 50);
+    msg = bounds.Add(150, 50, Bounds::DEFAULT_PERMISSION);
     ASSERT_FALSE(msg.isError);
     // add range [100, 150], it should fuse with [0, 100] and [150, 300], got range [0, 300]
-    msg = bounds.Add(100, 50);
+    msg = bounds.Add(100, 50, Bounds::DEFAULT_PERMISSION);
     ASSERT_FALSE(msg.isError);
     // check ranges in bounds
     ASSERT_EQ(bounds.GetRanges().size(), 1UL);
@@ -101,9 +101,9 @@ TEST(BoundsCheck, discrete_bounds_remove_range_overflow_all_ranges_expect_return
     DiscreteBounds bounds;
     ErrorMsg msg;
     // add range [0, 100]
-    bounds.Add(0, 100);
+    bounds.Add(0, 100, Bounds::DEFAULT_PERMISSION);
     // add range [200, 300]
-    bounds.Add(200, 100);
+    bounds.Add(200, 100, Bounds::DEFAULT_PERMISSION);
     // remove range over all ranges
     msg = bounds.Remove(400, 100);
     ASSERT_FALSE(msg.isError);
@@ -114,7 +114,7 @@ TEST(BoundsCheck, discrete_bounds_remove_range_out_of_range_expect_return)
     DiscreteBounds bounds;
     ErrorMsg msg;
     // add range [200, 300]
-    bounds.Add(200, 100);
+    bounds.Add(200, 100, Bounds::DEFAULT_PERMISSION);
     // remove range out of left bound
     msg = bounds.Remove(150, 100);
     ASSERT_FALSE(msg.isError);
@@ -203,7 +203,7 @@ TEST(BoundsCheck, discrete_bounds_check_range_inside_expect_return_success)
     DiscreteBounds bounds;
     ErrorMsg msg;
     // add range [200, 300]
-    bounds.Add(200, 100);
+    bounds.Add(200, 100, Bounds::DEFAULT_PERMISSION);
 
     // check range [200, 300]
     msg = bounds.Check(200, 100, AccessType::READ);
@@ -222,9 +222,9 @@ TEST(BoundsCheck, discrete_bounds_check_range_out_of_ranges_expect_return_illega
     ASSERT_EQ(msg.auxData.nBadBytes, 100);
 
     // add range [200, 300]
-    bounds.Add(200, 100);
+    bounds.Add(200, 100, Bounds::DEFAULT_PERMISSION);
     // add range [400, 500]
-    bounds.Add(400, 100);
+    bounds.Add(400, 100, Bounds::DEFAULT_PERMISSION);
 
     // check range out of left bound
     msg = bounds.Check(150, 100, AccessType::READ);
@@ -278,7 +278,7 @@ TEST(BoundsCheck, union_bounds_add_and_remove_range_expect_return_success)
 {
     UnionBounds bounds(200, 100);
     ErrorMsg msg;
-    msg = bounds.Add(200, 100);
+    msg = bounds.Add(200, 100, Bounds::DEFAULT_PERMISSION);
     ASSERT_FALSE(msg.isError);
     msg = bounds.Remove(200, 100);
     ASSERT_FALSE(msg.isError);

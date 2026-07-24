@@ -365,17 +365,17 @@ ErrorMsgList AddressSanitizer::ScopeDoAction(std::shared_ptr<AsanAction> action)
 {
     switch (boundsCheckScope_) {
         case AddressSanitizer::BoundsCheckScope::DFX:
-            return action->doAction(*shadowMemory_, boundsCheckDfx_, config_);
+            return action->doAction(*shadowMemory_, boundsCheckDfx_, config_, false);
         case AddressSanitizer::BoundsCheckScope::BYPASS: {
             // bypass第一次处理时先忽略shadowMemory，保证boundsCheck free时能获取到size，以防漏报；
             ErrorMsgList dfxError = action->doAction(*shadowMemory_, boundsCheckDfx_, config_, true);
-            ErrorMsgList rtError = action->doAction(*shadowMemory_, boundsCheckRuntime_, config_);
+            ErrorMsgList rtError = action->doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
             dfxError.reserve(dfxError.size() + rtError.size());
             dfxError.insert(dfxError.end(), rtError.begin(), rtError.end());
             return dfxError;
         }
         default:
-            return action->doAction(*shadowMemory_, boundsCheckRuntime_, config_);
+            return action->doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
     }
 }
 
@@ -692,7 +692,6 @@ void AddressSanitizer::RegisterNotifyFunc(const MSG_FUNC& func)
 {
     msgFunc_ = func;
     AlignChecker::Instance().RegisterNotifyFunc(func);
-    return;
 }
 
 void AddressSanitizer::Exit()
@@ -719,8 +718,6 @@ void AddressSanitizer::Exit()
         // 未启用leak check则直接退出
         SAN_INFO_LOG("Leak check is not enabled");
     }
-
-    return;
 }
 
 void AddressSanitizer::SummaryUnusedHeapCheck()

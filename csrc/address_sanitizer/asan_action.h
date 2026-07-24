@@ -30,11 +30,10 @@ namespace Sanitizer {
 // 这种情况下ignoreShadowMemory字段为true，直接跳过shadowMemory的相关动作
 class AsanAction {
 public:
-    // AsanAction在ShadowMemory上操作的接口，由对应的操作子类具体实现，同时会包含异常检测逻辑
     explicit AsanAction(const MemOpRecord &record) : record_(record) {}
     virtual ~AsanAction() = default;
-    virtual ErrorMsgList doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,
-                                  bool ignoreShadowMemory = false) = 0;
+    virtual ErrorMsgList doAction(
+        ShadowMemory &shadowMemory, BoundsCheck &boundsCheck, const Config &config, bool ignoreShadowMemory) = 0;
 
     MemOpRecord record_;
 };
@@ -48,37 +47,37 @@ public:
 class AsanMalloc : public AsanAction {
 public:
     explicit AsanMalloc(const MemOpRecord &record) : AsanAction(record) {}
-    ErrorMsgList doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,
-                          bool ignoreShadowMemory = false) override;
+    ErrorMsgList doAction(
+        ShadowMemory &shadowMemory, BoundsCheck &boundsCheck, const Config &config, bool ignoreShadowMemory) override;
 };
 
 class AsanFree : public AsanAction {
 public:
     explicit AsanFree(const MemOpRecord &record) : AsanAction(record) {}
-    ErrorMsgList doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,
-                          bool ignoreShadowMemory = false) override;
+    ErrorMsgList doAction(
+        ShadowMemory &shadowMemory, BoundsCheck &boundsCheck, const Config &config, bool ignoreShadowMemory) override;
 };
 
 class AsanMemcpyBlocks : public AsanAction {
 public:
     explicit AsanMemcpyBlocks(const MemOpRecord &record) : AsanAction(record) {}
-    ErrorMsgList doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,
-                          bool ignoreShadowMemory = false) override;
+    ErrorMsgList doAction(
+        ShadowMemory &shadowMemory, BoundsCheck &boundsCheck, const Config &config, bool ignoreShadowMemory) override;
 };
 
 // 该类对shadow memory指定内存进行load操作
 class AsanLoad : public AsanAction {
 public:
     explicit AsanLoad(const MemOpRecord &record) : AsanAction(record) {}
-    ErrorMsgList doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,
-                          bool ignoreShadowMemory = false) override;
+    ErrorMsgList doAction(
+        ShadowMemory &shadowMemory, BoundsCheck &boundsCheck, const Config &config, bool ignoreShadowMemory) override;
 };
 
 class AsanStore : public AsanAction {
 public:
     explicit AsanStore(const MemOpRecord &record) : AsanAction(record) {}
-    ErrorMsgList doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,
-                          bool ignoreShadowMemory = false) override;
+    ErrorMsgList doAction(
+        ShadowMemory &shadowMemory, BoundsCheck &boundsCheck, const Config &config, bool ignoreShadowMemory) override;
 };
 }
 
