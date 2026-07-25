@@ -43,7 +43,7 @@ bool RegisterSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
 
 bool RegisterSanitizer::Init()
 {
-    for (int i = 0; i < C220_A2_A3_MAXCORE_NUM; ++i) {
+    for (int i = 0; i < MAX_AICORE_NUM; ++i) {
         for (int regIdx = 0; regIdx < static_cast<int>(RegisterType::MAX); ++regIdx) {
             regValActual_[i][regIdx].regVal = g_regInfoTbl[regIdx].regDftVal;
             regValActual_[i][regIdx].blockType = BlockType::AIVEC;
@@ -77,7 +77,7 @@ void RegisterSanitizer::Do(const SanitizerRecord &record, const std::vector<SanE
         // 某个算子的事件记录全部结束后，检查是否所有需要检查的寄存器都还原回默认值
         if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
             event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
-            for (int i = 0; i < C220_A2_A3_MAXCORE_NUM; ++i) {
+            for (int i = 0; i < MAX_AICORE_NUM; ++i) {
                 for (int regIdx = 0; regIdx < static_cast<int>(RegisterType::MAX); ++regIdx) {
                     if ((regValActual_[i][regIdx].regVal != g_regInfoTbl[regIdx].regDftVal) &&
                         g_regInfoTbl[regIdx].check) {
@@ -103,7 +103,7 @@ void RegisterSanitizer::Do(const SanitizerRecord &record, const std::vector<SanE
         int32_t regType = static_cast<int>(event.eventInfo.regInfo.regType);
         uint64_t regVal = event.eventInfo.regInfo.regPayLoad.regVal;
         // ctrl寄存器仅检测bit56是否归0
-        if (event.eventInfo.regInfo.regType == RegisterType::CTRL) {    
+        if (event.eventInfo.regInfo.regType == RegisterType::CTRL) {
             regVal = (regVal >> 56) & 1;
         }
 

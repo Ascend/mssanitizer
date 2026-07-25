@@ -67,7 +67,7 @@ private:
     int16_t checkBlockId_ = CHECK_ALL_BLOCK;
     MSG_FUNC msgFunc_;
     bool isFinished_{false};
-    RegValStore regValActual_[C220_A2_A3_MAXCORE_NUM][static_cast<size_t>(RegisterType::MAX)] = {0};
+    RegValStore regValActual_[MAX_AICORE_NUM][static_cast<size_t>(RegisterType::MAX)] = {0};
 
     // 当前正在检测的算子的信息
     std::string kernelName_;
