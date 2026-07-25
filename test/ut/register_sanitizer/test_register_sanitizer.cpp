@@ -30,7 +30,7 @@ void UT_FillRegRecord(SanitizerRecord& record, RecordType type, uint16_t coreId,
 {
     record.version = RecordVersion::KERNEL_RECORD;
     record.payload.kernelRecord.recordType = type;
-    
+
     auto& regRecord = record.payload.kernelRecord.payload.registerSetRecord;
     regRecord.location.blockId = coreId;
     regRecord.regPayLoad.regValType = regValType;
@@ -42,7 +42,7 @@ int64_t UT_GetRegIdx()
 {
     static int64_t regIdx = 0;
     regIdx += 5;
-    if (regIdx >= C220_A2_A3_MAXCORE_NUM) {
+    if (regIdx >= MAX_AICORE_NUM) {
         regIdx = 0;
     }
     return regIdx;
@@ -73,7 +73,7 @@ TEST(RegisterSanitizer, set_vector_mask_0_expect_report_exception)
     RecordType recordType = RecordType::SET_VECTOR_MASK_0;
     uint16_t coreId = 0;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 未重置为默认值报告警
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
@@ -143,7 +143,7 @@ TEST(RegisterSanitizer, set_vector_mask_1_expect_report_exception)
     RecordType recordType = RecordType::SET_VECTOR_MASK_1;
     uint16_t coreId = 1;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 未重置为默认值报告警
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
@@ -214,7 +214,7 @@ TEST(RegisterSanitizer, set_ctrl_non_bit56_expect_not_report_exception)
     RecordType recordType = RecordType::SET_CTRL;
     uint16_t coreId = 0;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 非bit56位未复位不报告警
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
@@ -318,7 +318,7 @@ TEST(RegisterSanitizer, set_ffts_base_addr_expect_report_exception)
     RecordType recordType = RecordType::SET_FFTS_BASE_ADDR;
     uint16_t coreId = 1;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 未重置为默认值报告警
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
@@ -459,7 +459,7 @@ TEST(RegisterSanitizer, set_quant_pre_expect_report_exception)
     RecordType recordType = RecordType::SET_QUANT_PRE;
     uint16_t coreId = 1;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 未重置为默认值报告警
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
@@ -529,7 +529,7 @@ TEST(RegisterSanitizer, set_quant_post_expect_not_report_exception)
     RecordType recordType = RecordType::SET_QUANT_POST;
     uint16_t coreId = 0;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 未重置为默认值不报告警，因为post_expect寄存器不检测
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
@@ -601,7 +601,7 @@ TEST(RegisterSanitizer, set_lrelu_alpha_uint64_expect_report_exception)
     RecordType recordType = RecordType::SET_LRELU_ALPHA;
     uint16_t coreId = 1;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 未重置为默认值报告警 - UINT64
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);
@@ -637,7 +637,7 @@ TEST(RegisterSanitizer, set_lrelu_alpha_uint64_expect_not_report_exception)
     RecordType recordType = RecordType::SET_LRELU_ALPHA;
     uint16_t coreId = 1;
     int64_t regIdx = UT_GetRegIdx();
-    
+
     // 重置为默认值不报告警 - UINT64
     UT_FillRegRecord(record, recordType, coreId, RegisterValueType::VAL_UINT64, regvalU64, regIdx);
     RecordPreProcess::GetInstance().Process(record, events);

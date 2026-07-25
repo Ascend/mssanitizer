@@ -17,6 +17,7 @@
 #ifndef CORE_FRAMEWORK_RECORD_DEFS_H
 #define CORE_FRAMEWORK_RECORD_DEFS_H
 
+#include <algorithm>
 #include "arch_def.h"
 #include "utility/struct.h"
 #include "sanitizer_report.h"
@@ -63,10 +64,14 @@ constexpr int64_t C220_A3_ODD_DEVICE_VEC_PHYS_CORE_START_IDS = 32793;
 constexpr int64_t C220_A3_ODD_DEVICE_VEC_PHYS_CORE_END_IDS = 32842;
 constexpr int64_t C220_A3_ODD_DEVICE_VEC_CUBE_CORE_START_IDS = 32768;
 
-/// c310架构A5芯片：vec核对应的物理核编号范围:[18, 51]和>= 72
+/// c310架构A5芯片：cube[0,17] + vec[18,53] + cube[54,71] + vec[72,107], 最大108核
+constexpr int64_t C310_A5_MAXCORE_NUM = 108;
 constexpr int64_t C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_START_IDS = 18;
 constexpr int64_t C310_A5_DEVICE_VEC_PHYS_SMALL_BOUND_CORE_END_IDS = 53;
 constexpr int64_t C310_A5_DEVICE_VEC_PHYS_GREAT_BOUND_CORE_START_IDS = 72;
+
+// 所有架构的最大核数
+constexpr int64_t MAX_AICORE_NUM = C310_A5_MAXCORE_NUM;
 
 // GM地址写入时，优先写入RecordType，再写入Record；RecordType为32bit目的是为了后续写入GM时的地址对齐
 // 这里将不同种类的记录分成若干区间，之后新增记录时，只从每类的最后添加，这样可以保证枚举的底层值
@@ -771,7 +776,7 @@ struct RecordGlobalHeadImpl {
     SimtInfo simtInfo{};
     bool supportSimt{false};                // 当前芯片类型是否支持simt
 
-    Register registers[C220_A2_A3_MAXCORE_NUM]; // 保存核上寄存器状态，数组下标对应coreID
+    Register registers[MAX_AICORE_NUM]; // 保存核上寄存器状态，数组下标对应coreID
 };
 
 using RecordGlobalHead = StructAlignBy<RecordGlobalHeadImpl, 64UL>;

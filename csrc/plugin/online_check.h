@@ -584,7 +584,11 @@ AICORE_FUNC_HEAD void OnlineCheck::DumpErrorInfo(KernelErrorRecord &errorRecord,
 
 AICORE_FUNC_HEAD bool CheckRegIdxValid(int64_t regIdx)
 {
+#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
+    return (regIdx >= 0) && (regIdx < C310_A5_MAXCORE_NUM);
+#else
     return (regIdx >= 0) && (regIdx <= C220_A2_OR_A3_EVEN_DEVICE_VEC_PHYS_CORE_END_IDS);
+#endif
 }
 
 // 获取跟当前 coreid 匹配的寄存器状态保存结构
@@ -612,6 +616,8 @@ AICORE_FUNC_HEAD int64_t GetRegisterIdx()
         return coreId - C220_A3_ODD_DEVICE_VEC_CUBE_CORE_START_IDS;
     }
 #endif // __CCE_IS_AICORE__
+
+    // A5: 108核按物理编号线性排列, coreId直接当索引(0-107)
     return coreId;
 }
 
