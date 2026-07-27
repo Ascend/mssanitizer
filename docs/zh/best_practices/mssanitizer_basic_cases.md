@@ -136,7 +136,7 @@
 > git clone https://gitee.com/ascend/samples.git -b master
 > ```
 
-- 已参考《[Ascend Extension for PyTorch 软件安装指南](https://www.hiascend.com/document/detail/zh/Pytorch/2600/configandinstg/instg/docs/zh/installation_guide/installation_description.md)》，完成PyTorch框架和torch_npu插件的安装。
+- 已参考《[TorchNPU软件安装](https://gitcode.com/Ascend/pytorch/blob/v2.7.1-26.1.0/docs/zh/installation_guide/installation_description.md)》，完成PyTorch框架和TorchNPU插件的安装。
 
 ### 3.2 操作步骤
 

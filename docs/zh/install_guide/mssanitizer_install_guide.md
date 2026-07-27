@@ -119,7 +119,7 @@ mssanitizer --help
 - 先卸载旧版本（参考第 4 节）
 - 再按第 2 节中的方式安装新版本
 
-可通过`mssanitizer --version`命令查看当前环境的版本信息，再选择需要升级的版本。升级版本时需要关注版本配套关系，请参见《[版本说明](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/26.0.0/release_notes.md)》。
+可通过`mssanitizer --version`命令查看当前环境的版本信息，再选择需要升级的版本。升级版本时需要关注版本配套关系，请参见《[版本说明](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/26.1.0/release_notes.md)》。
 
 ## 6. FAQ
 
