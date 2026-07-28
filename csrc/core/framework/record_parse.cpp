@@ -635,11 +635,13 @@ static void DmaMovNdorDn2nzDavDefault(
     AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV_ND2NZ_D);
     /// 向上取整计算每个ndNum数据包含多少个完整的分型矩阵
     uint32_t matrixNum = CeilByAlignSize<C0_SIZE>(dmaMovRecord.dValue * dTypeByteSize) / C0_SIZE;
+    // N 方向 C0 块行数 = nValue（无论 ND2NZ 还是 DN2NZ，写入 NZ 格式后 N 方向行数恒等于 nValue）
+    uint64_t writeRowNum = dmaMovRecord.nValue;
     for (uint64_t i = 0; i < matrixNum; ++i) {
         uint64_t loop3Addr = dmaMovRecord.dst + i * dmaMovRecord.loop3DstStride * C0_SIZE;
         for (uint64_t h = 0; h < dmaMovRecord.ndNum; ++h) {
             uint64_t loop4Addr = loop3Addr + h * dmaMovRecord.loop4DstStride * C0_SIZE;
-            for (uint64_t k = 0; k < rowNum; ++k) {
+            for (uint64_t k = 0; k < writeRowNum; ++k) {
                 memInfo.addr = loop4Addr + k * dmaMovRecord.loop2DstStride * C0_SIZE;
                 events.emplace_back(event);
             }
