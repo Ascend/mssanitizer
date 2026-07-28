@@ -79,6 +79,7 @@ struct Config {
 struct UserCommand {
     bool printHelpInfo{false};
     bool printVersionInfo{false};
+    bool enableDebugLog{false};
     bool logFileAvailable{true};
     LogLv logLv{LogLv::WARN};
     Config config{};

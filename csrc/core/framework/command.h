@@ -48,14 +48,16 @@ using ShareeMemMpType = std::map<GMType, MemNameType>;
 // 其本身是串接流程的主要类
 class Command {
 public:
-    Command(Config const &config, const LogLv &lv, const std::string &logFile)
-        : config_{config}, loglv_(lv), logFile_(logFile) {}
+    Command(Config const &config, bool enableDebugLog, const LogLv &lv, const std::string &logFile)
+        : config_{config}, enableDebugLog_{enableDebugLog}, loglv_(lv), logFile_(logFile) {}
     using ParamList = std::vector<std::string>;
     void Exec(const ParamList &execParams);
     static SharedMemInfoMpType sharedMemInfoMp;
     thread_local static ShareeMemMpType shareeMemInfoMp;
+
 private:
     Config config_;
+    bool enableDebugLog_;
     LogLv loglv_;
     std::string logFile_;
 };

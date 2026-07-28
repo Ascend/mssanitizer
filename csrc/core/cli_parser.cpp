@@ -25,6 +25,7 @@
 #include <iterator>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <dlfcn.h>
 #include <csignal>
 #include <cstring>
@@ -480,6 +481,13 @@ void ParseUserCommand(const int32_t &opt, const std::string &param, UserCommand 
     }
 }
 
+void ParseEnvironVariables(UserCommand &userCommand) {
+    const char *enableDebugLog = std::getenv("MSSANITIZER_ENABLE_DEBUG_LOG");
+    if (enableDebugLog && std::string(enableDebugLog) == "1") {
+        userCommand.enableDebugLog = true;
+    }
+}
+
 void ShowHelpInfo()
 {
     std::cout <<
@@ -686,7 +694,7 @@ void DoUserCommand(const UserCommand &userCommand)
         std::cout << "[mssanitizer] Use --help for more information" << std::endl;
         return;
     }
-    Command cmd(resolvedCommand.config, resolvedCommand.logLv, resolvedCommand.logFile);
+    Command cmd(resolvedCommand.config, resolvedCommand.enableDebugLog, resolvedCommand.logLv, resolvedCommand.logFile);
     cmd.Exec(resolvedCommand.cmd);
     DetectDumpProject(cmd, resolvedCommand.config.dumpPath);
 }
@@ -856,6 +864,9 @@ UserCommand CliParser::Parse(int32_t argc, char **argv) const
             return userCommand;
         }
     }
+
+    // 解析环境变量中的开关和设置
+    ParseEnvironVariables(userCommand);
 
     /// 如果defaultCheck为false，有3种情况：
     /// (1) -t只开启raceCheck, (2) -t没开initCheck或memCheck，但是开了内存检测附加功能, (3) 命令行没有参数

@@ -44,7 +44,7 @@ Checker &ThreadManager::GetChecker(std::thread::id threadId)
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (checkers_.find(threadId) == checkers_.end()) {
-        checkers_[threadId] = MakeUnique<Checker>(config_);
+        checkers_[threadId] = MakeUnique<Checker>(config_, enableDebugLog_);
     }
     return *checkers_[threadId];
 }
@@ -54,7 +54,7 @@ Checker& ThreadManager::GetChecker()
     std::lock_guard<std::mutex> guard(mutex_);
     std::thread::id threadId = std::this_thread::get_id();
     if (checkers_.find(threadId) == checkers_.end()) {
-        checkers_[threadId] = MakeUnique<Checker>(config_);
+        checkers_[threadId] = MakeUnique<Checker>(config_, enableDebugLog_);
         checkers_[threadId]->SetDetectionInfo(loglv_, logFd_);
     }
     return *checkers_[threadId];

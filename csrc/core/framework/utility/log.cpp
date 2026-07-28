@@ -55,6 +55,11 @@ std::string GetLogFilePath()
 namespace Sanitizer {
 Log::Log() : logFilePath_(GetLogFilePath()), maxDebugLogSizeRate_(1024L)
 {
+    const char *enableDebugLog = std::getenv("MSSANITIZER_ENABLE_DEBUG_LOG");
+    if (enableDebugLog == nullptr || std::string(enableDebugLog) != "1") {
+        return;
+    }
+
     fp_ = OpenLogFile(logFilePath_);
     if (fp_ != nullptr) {
         printf("[mssanitizer] logging to file: %s\n", logFilePath_.c_str());

@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
- 
 #include <gtest/gtest.h>
 #include <any>
 #include <mutex>
@@ -27,7 +26,7 @@
 #include "platform_config.h"
 #include "securec.h"
 #include "utility/log.h"
- 
+
 using namespace Sanitizer;
 
 TEST(Checker, set_invalid_device_type_expect_run_checker_success)
@@ -36,7 +35,7 @@ TEST(Checker, set_invalid_device_type_expect_run_checker_success)
         .defaultCheck = true,
         .memCheck = true,
     };
-    Checker checker(config);
+    Checker checker(config, false);
     DeviceInfoSummary deviceInfo = {};
     deviceInfo.device = DeviceType::INVALID;
     checker.SetDeviceInfo(deviceInfo);
@@ -49,7 +48,7 @@ TEST(Checker, set_loglv_and_path_expect_run_checker_success)
         .memCheck = true,
     };
     std::vector<DetectionInfo> detectionInfo;
-    Checker checker(config);
+    Checker checker(config, false);
     char const* logFile = "/tmp/test.log";
     checker.SetDetectionInfo(LogLv::INFO, std::cout);
     remove(logFile);
@@ -109,7 +108,7 @@ std::shared_ptr<Checker> GetNewChecker(std::stringstream &ss)
     config.memCheck = true;
     config.raceCheck = true;
 
-    auto checker = std::make_shared<Checker>(config);
+    auto checker = std::make_shared<Checker>(config, false);
     // 重置 notify func，防止因生命周期导致 core dump
     checker->SetDetectionInfo(LogLv::WARN, ss);
     DeviceInfoSummary deviceInfo = {};
@@ -212,7 +211,7 @@ TEST(Checker, test_element_alignment_for_310p_expect_no_misalignment)
     config.memCheck = true;
     config.raceCheck = false;
 
-    auto checker = std::make_shared<Checker>(config);
+    auto checker = std::make_shared<Checker>(config, false);
     checker->SetDetectionInfo(LogLv::WARN, ss);
     DeviceInfoSummary deviceInfo = {};
     deviceInfo.device = DeviceType::ASCEND_310P;
@@ -246,7 +245,7 @@ TEST(Checker, test_element_alignment_for_910b_expect_misalignment)
     config.memCheck = true;
     config.raceCheck = false;
 
-    auto checker = std::make_shared<Checker>(config);
+    auto checker = std::make_shared<Checker>(config, false);
     checker->SetDetectionInfo(LogLv::WARN, ss);
     DeviceInfoSummary deviceInfo = {};
     deviceInfo.device = DeviceType::ASCEND_910B1;
@@ -275,7 +274,7 @@ TEST(Checker, test_online_mem_check_expect_got_error)
     config.memCheck = true;
     config.raceCheck = false;
 
-    auto checker = std::make_shared<Checker>(config);
+    auto checker = std::make_shared<Checker>(config, false);
     checker->SetDetectionInfo(LogLv::WARN, ss);
     DeviceInfoSummary deviceInfo = {};
     deviceInfo.device = DeviceType::ASCEND_910B1;

@@ -120,7 +120,6 @@ std::string CallStack::Load(std::vector<char> const &binary)
 {
     Path kernelPath = Path(OUTPUT_DIR) / Path(CreateKernelFileName());
     std::string const &kernelStr = kernelPath.ToString();
-    UmaskGuard umaskGuard(REGULAR_MODE_MASK);
     if (kernelPath.Exists()) {
         if (remove(kernelStr.c_str()) != 0) {
             printf("[mssanitizer] WARNING: Failed to remove old kernel binary file (%s). Please remove it to enable "
@@ -144,6 +143,7 @@ std::string CallStack::Load(std::vector<char> const &binary)
     if (IsSoftLink(kernelDirStr)) {
         printf("[mssanitizer] WARNING: The kernel binary (%s) is soft link.\n", kernelDirStr.c_str());
     }
+    UmaskGuard umaskGuard(REGULAR_MODE_MASK);
     if (!WriteBinary(kernelStr, binary.data(), binary.size())) {
         printf("[mssanitizer] ERROR: Callstack may be unavailable: Failed to store kernel binary. Please make sure the "
                "user has write permission to the directory (%s).\n",
