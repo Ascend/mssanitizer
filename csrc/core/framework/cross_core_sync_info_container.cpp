@@ -183,9 +183,9 @@ void CrossCoreSyncInfoContainer::SetMode4SyncInfo(uint8_t syncId, uint32_t block
         SAN_WARN_LOG("Set SyncInfo Mode 4 failed due to VecSubBlockDim error");
         return;
     }
+    // AIV上syncID超过15时属于不合法范围，硬件会截断高bit位，工具需同步截断以避免死锁误报
     if (!IsAIC(blockIdx, kernelType_) && syncId >= 16) {
-        SAN_WARN_LOG("Set SyncInfo Mode 4 failed due to SyncId invalid in vector core");
-        return;
+        syncId = syncId & 0xF;
     }
     blockSyncEvent_[blockIdx][syncId].setVec4.push(vectorTime);
     if (vecSubBlockDim == 1) {
@@ -271,6 +271,10 @@ bool CrossCoreSyncInfoContainer::GetIntraBlockSyncInfo(uint8_t syncId, uint32_t 
 {
     if (blockIdx >= maxBlockNum_) {
         return false;
+    }
+    // AIV上syncID超过15时属于不合法范围，硬件会截断高bit位，工具需同步截断以避免死锁误报
+    if (!IsAIC(blockIdx, kernelType_) && syncId >= 16) {
+        syncId = syncId & 0xF;
     }
     if (!blockSyncEvent_[blockIdx][syncId].intrablockwaitVec.empty()) {
         VectorClock::UpdateVectorTime(blockSyncEvent_[blockIdx][syncId].intrablockwaitVec.front(), vectorTime);
