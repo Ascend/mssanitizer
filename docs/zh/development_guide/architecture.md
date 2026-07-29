@@ -1110,6 +1110,7 @@ struct Config {
     bool leakCheck;
     bool checkUnusedMemory;
     bool isPrintFullStack{false};
+    bool traceNonDefaultSprReg{false};
     int16_t checkBlockId = -1;
     uint32_t cacheSize = 100;
     DemangleMode demangleMode{DemangleMode::FULL_DEMANGLED_NAME};

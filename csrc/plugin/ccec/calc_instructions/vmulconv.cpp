@@ -22,7 +22,7 @@ using namespace Sanitizer;
 // #3105
 SANITIZER_REPORT(vmulconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VMULCONV>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
 }
 
 // #3106
@@ -30,7 +30,7 @@ SANITIZER_REPORT(vmulconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src0, __u
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VMULCONV>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
         src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         4, 8, 8, 32, 32, 32);
 }
@@ -48,7 +48,7 @@ SANITIZER_REPORT(vmulconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src0, __u
 // #3108
 SANITIZER_REPORT(vmulconv_f162u8, __ubuf__ uint8_t *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VMULCONV>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
 }
 
 // #3109
@@ -56,7 +56,7 @@ SANITIZER_REPORT(vmulconv_f162u8, __ubuf__ uint8_t *dst, __ubuf__ half *src0, __
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VMULCONV>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
         src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         4, 8, 8, 32, 32, 32);
 }

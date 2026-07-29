@@ -30,7 +30,7 @@ SANITIZER_REPORT(vaxpy, __ubuf__ half *dst, __ubuf__ half *src, half a, uint64_t
     auto dstRepeatStride = uint16_t{};
     auto srcRepeatStride = uint16_t{};
     ParseUnaryConfigByArch(config, repeat, dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src, dst, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAXPY>(EXTRA_PARAMS, dst, src, dst, repeat,
         dstBlockStride, srcBlockStride, dstBlockStride, dstRepeatStride, srcRepeatStride,
         dstRepeatStride, 8, 8, 8, 32, 32, 32);
 }
@@ -40,7 +40,7 @@ SANITIZER_REPORT(vaxpy, __ubuf__ half *dst, __ubuf__ half *src, half a, uint64_t
 SANITIZER_REPORT(vaxpy, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src, dst, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAXPY>(EXTRA_PARAMS, dst, src, dst, repeat,
         dstBlockStride, srcBlockStride, dstBlockStride, dstRepeatStride, srcRepeatStride,
         dstRepeatStride, 8, 8, 8, 32, 32, 32);
 }
@@ -74,7 +74,7 @@ SANITIZER_REPORT(vaxpy, __ubuf__ float *dst, __ubuf__ float *src, float a, uint6
     auto dstRepeatStride = uint16_t{};
     auto srcRepeatStride = uint16_t{};
     ParseUnaryConfigByArch(config, repeat, dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src, dst, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAXPY>(EXTRA_PARAMS, dst, src, dst, repeat,
         dstBlockStride, srcBlockStride, dstBlockStride, dstRepeatStride, srcRepeatStride,
         dstRepeatStride, 8, 8, 8, 32, 32, 32);
 }
@@ -84,7 +84,7 @@ SANITIZER_REPORT(vaxpy, __ubuf__ float *dst, __ubuf__ float *src, float a, uint6
 SANITIZER_REPORT(vaxpy, __ubuf__ float *dst, __ubuf__ float *src, float a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src, dst, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAXPY>(EXTRA_PARAMS, dst, src, dst, repeat,
         dstBlockStride, srcBlockStride, dstBlockStride, dstRepeatStride, srcRepeatStride,
         dstRepeatStride, 8, 8, 8, 32, 32, 32);
 }
@@ -118,7 +118,7 @@ SANITIZER_REPORT(vaxpy, __ubuf__ float *dst, __ubuf__ half *src, half a, uint64_
     auto dstRepeatStride = uint16_t{};
     auto srcRepeatStride = uint16_t{};
     ParseUnaryConfigByArch(config, repeat, dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src, dst, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAXPY>(EXTRA_PARAMS, dst, src, dst, repeat,
         dstBlockStride, srcBlockStride, dstBlockStride, dstRepeatStride, srcRepeatStride,
         dstRepeatStride, 8, 4, 8, 32, 32, 32);
 }
@@ -128,7 +128,7 @@ SANITIZER_REPORT(vaxpy, __ubuf__ float *dst, __ubuf__ half *src, half a, uint64_
 SANITIZER_REPORT(vaxpy, __ubuf__ float *dst, __ubuf__ half *src, half a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src, dst, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAXPY>(EXTRA_PARAMS, dst, src, dst, repeat,
         dstBlockStride, srcBlockStride, dstBlockStride, dstRepeatStride, srcRepeatStride,
         dstRepeatStride, 8, 4, 8, 32, 32, 32);
 }

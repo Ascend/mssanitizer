@@ -22,7 +22,7 @@ using namespace Sanitizer;
 // #3225
 SANITIZER_REPORT(vshr, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int32_t shrDistance, uint64_t config, bool round)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3226
@@ -39,14 +39,14 @@ SANITIZER_REPORT(vshr, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int32_t shr
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride,
     bool round)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #3228
 SANITIZER_REPORT(vshr, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t shrDistance, uint64_t config, bool round)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3229
@@ -63,7 +63,7 @@ SANITIZER_REPORT(vshr, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t shr
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride,
     bool round)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -71,7 +71,7 @@ SANITIZER_REPORT(vshr, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t shr
 SANITIZER_REPORT(vshr, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src, uint32_t shrDistance,
     uint64_t config, bool round)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3232
@@ -88,7 +88,7 @@ SANITIZER_REPORT(vshr, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src, uint32_t 
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride,
     bool round)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -96,7 +96,7 @@ SANITIZER_REPORT(vshr, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src, uint32_t 
 SANITIZER_REPORT(vshr, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src, uint32_t shrDistance,
     uint64_t config, bool round)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3235
@@ -113,7 +113,7 @@ SANITIZER_REPORT(vshr, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src, uint32_t 
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride,
     bool round)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VSHR>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 

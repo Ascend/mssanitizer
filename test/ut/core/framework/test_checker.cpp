@@ -82,6 +82,7 @@ SanitizerRecord CreateKernelSanRecord()
         .src0DataBits = 32,
         .src1DataBits = 32,
         .maskMode = MaskMode::MASK_COUNT,
+        .instrName = InstrName::NONE
     };
     sanRecord.payload.kernelRecord.recordType = RecordType::BINARY_OP;
     sanRecord.payload.kernelRecord.blockType = BlockType::AIVEC;
@@ -197,6 +198,7 @@ Sanitizer::UnaryOpRecord GenUnaryOpRecord()
         .dstDataBits = 16,
         .srcDataBits = 32,
         .maskMode = MaskMode::MASK_NORM,
+        .instrName = InstrName::NONE
     };
     return unaryOpRecord;
 }

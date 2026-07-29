@@ -108,6 +108,7 @@ struct MemOpInfo {
     // vectorMask/maskMode/dataBits均是描述掩码的参数，在maskmode为MASK_NORM时均不生效
     VectorMask vectorMask;
     MaskMode maskMode;
+    InstrName instrName;
     uint8_t dataBits;
 
     uint64_t addr;

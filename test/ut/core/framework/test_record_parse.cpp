@@ -34,6 +34,7 @@ inline bool operator==(MemOpInfo const &lhs, MemOpInfo const &rhs)
     return lhs.memType == rhs.memType &&
         lhs.opType == rhs.opType &&
         lhs.maskMode == rhs.maskMode &&
+        lhs.instrName == rhs.instrName &&
         lhs.dataBits == rhs.dataBits &&
         lhs.addr == rhs.addr &&
         lhs.blockNum == rhs.blockNum &&
@@ -111,7 +112,7 @@ TEST_F(TestRecordParse, parse_load_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
-    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12, 1, 100, 1, 1, 1, 100};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -136,7 +137,7 @@ TEST_F(TestRecordParse, parse_load_private_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
-    MemOpInfo memOpInfo = {MemType::PRIVATE, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::PRIVATE, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12, 1, 100, 1, 1, 1, 100};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -161,7 +162,7 @@ TEST_F(TestRecordParse, parse_store_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
-    MemOpInfo memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12, 1, 100, 1, 1, 1, 100};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -193,14 +194,14 @@ TEST_F(TestRecordParse, parse_dma_mov_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE3);
-    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 8, 32, 1, 100, 8 + 8, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_MTE3);
-    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 8, 32, 1, 100, 8 + 8, 1};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -233,14 +234,14 @@ TEST_F(TestRecordParse, parse_dma_mov_conv_relu_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 8, 32, 1, 100, 8 + 8 * 512 / 32, 512};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 8, 32, 1, 100, 8 + 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -282,21 +283,21 @@ TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b16_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 8, 512, 1, 1, 1, 512};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[2].loc.coreId, 7);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa + 2048 + 32 * 8, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -323,21 +324,21 @@ TEST_F(TestRecordParse, parse_dma_mov_depth_wise_b32_to_b16_record_and_expect_su
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 8, 1024, 1, 1, 1, 1024};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[2].loc.coreId, 7);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa + 2048 + 32 * 8, 1, 2048, 1, 1, 1, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -389,11 +390,11 @@ TEST_F(TestRecordParse, parse_dma_mov_nd2nz_b16_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 24, 2, 1, 8, 32, 0};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0 + 12 * 32 * 2, 24, 2, 1, 8, 32, 0};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
@@ -401,11 +402,11 @@ TEST_F(TestRecordParse, parse_dma_mov_nd2nz_b16_record_and_expect_success)
     ASSERT_EQ(events[3].loc.coreId, 0);
     ASSERT_EQ(events[3].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[3].pipe, PipeType::PIPE_MTE2);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 8, 32, 2, 3, 17, 32};
     ASSERT_EQ(events[3].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0 + 52 * 32, 8, 32, 2, 3, 17, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
@@ -441,11 +442,11 @@ TEST_F(TestRecordParse, parse_dma_mov_nd2nz_b32_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 24, 4, 1, 8, 32, 0};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0 + 12 * 32 * 4, 24, 4, 1, 8, 32, 0};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
@@ -453,11 +454,11 @@ TEST_F(TestRecordParse, parse_dma_mov_nd2nz_b32_record_and_expect_success)
     ASSERT_EQ(events[3].loc.coreId, 0);
     ASSERT_EQ(events[3].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[3].pipe, PipeType::PIPE_MTE2);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 8, 32, 2, 3, 17, 32};
     ASSERT_EQ(events[3].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0 + 52 * 32, 8, 32, 2, 3, 17, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
@@ -493,11 +494,11 @@ TEST_F(TestRecordParse, parse_dma_mov_nd2nz_b8_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 24, 1, 1, 8, 32, 0};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0 + 12 * 32 * 1, 24, 1, 1, 8, 32, 0};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
@@ -505,7 +506,7 @@ TEST_F(TestRecordParse, parse_dma_mov_nd2nz_b8_record_and_expect_success)
     ASSERT_EQ(events[3].loc.coreId, 0);
     ASSERT_EQ(events[3].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[3].pipe, PipeType::PIPE_MTE2);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 8, 32, 2, 3, 17, 32};
     ASSERT_EQ(events[3].eventInfo.memInfo, memOpInfo);
 }
@@ -538,13 +539,13 @@ TEST_F(TestRecordParse, parse_mov_align_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 8, 1, 1, 100, 16, 1};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_MTE2);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 96, 1, 1, 100, 352, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -574,7 +575,7 @@ TEST_F(TestRecordParse, parse_mov_bt_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x15, 2 * 2, 32, 1, 1, 2 * 2 + 3, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -614,7 +615,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_normal_movement_and_expect_succ
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 24, 64, 1, 3, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -622,7 +623,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_normal_movement_and_expect_succ
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 48, 32, 1, 3, 80, 1};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -662,7 +663,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_int8_channal_merging_and_expect
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 32, 64, 1, 3, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -670,11 +671,11 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_int8_channal_merging_and_expect
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 32, 32, 1, 1, 32, 1};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111 + 32 * 32, 32, 16, 1, 1, 64, 1};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -714,7 +715,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_int4_channal_merging_and_expect
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 32, 64, 1, 8, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -722,7 +723,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_int4_channal_merging_and_expect
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 32, 32, 1, 2, 32, 1};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -762,7 +763,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_f32_channel_split_and_expect_su
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 64, 64, 1, 2, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -770,7 +771,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_f32_channel_split_and_expect_su
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 64, 32, 1, 3, 64, 1};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -810,7 +811,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_NZ2ND_conversion_and_expect_suc
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 48, 64, 1, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -818,7 +819,7 @@ TEST_F(TestRecordParse, parse_mov_fp_record_with_NZ2ND_conversion_and_expect_suc
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[4].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::GM, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 24, 4, 1, 48, 48, 1};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
@@ -837,6 +838,7 @@ TEST_F(TestRecordParse, parse_vec_dup_record_expect_success)
     record.payload.vecDupRecord.dataBits = 32;
     record.payload.vecDupRecord.maskMode = MaskMode::MASK_NORM;
     record.payload.vecDupRecord.vectorMask = DEFAULT_VECTOR_MASK;
+    record.payload.vecDupRecord.instrName = InstrName::NONE;
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -848,7 +850,7 @@ TEST_F(TestRecordParse, parse_vec_dup_record_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    MemOpInfo memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         32, 0xaa, 8, 32, 8, 100, 9, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -868,6 +870,7 @@ TEST_F(TestRecordParse, parse_vec_dup_record_with_mask_count_expect_success)
     record.payload.vecDupRecord.vectorMask.mask0 = 64;
     record.payload.vecDupRecord.vectorMask.mask1 = 0;
     record.payload.vecDupRecord.maskMode = MaskMode::MASK_COUNT;
+    record.payload.vecDupRecord.instrName = InstrName::NONE;
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -879,7 +882,7 @@ TEST_F(TestRecordParse, parse_vec_dup_record_with_mask_count_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    MemOpInfo memOpInfo = {MemType::UB, AccessType::WRITE, {64, 0}, MaskMode::MASK_COUNT,
+    MemOpInfo memOpInfo = {MemType::UB, AccessType::WRITE, {64, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         32, 0xaa, 8, 32, 8, 1, 9, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -917,11 +920,11 @@ TEST_F(TestRecordParse, parse_load_2d_record)
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12 + 512 * 3, 1, 512, 0, record.payload.load2DRecord.repeat,
         record.payload.load2DRecord.srcStride, 1};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo1 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo1 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x13, 1, 512, 0, record.payload.load2DRecord.repeat,
         record.payload.load2DRecord.dstStride, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo1);
@@ -954,13 +957,13 @@ TEST_F(TestRecordParse, parse_load_2d_sparse_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, (0x12 & 0xFFFFFFFF) + 512 * 2, 1, 512, 1, record.payload.load2DSparseRecord.repeat, 1, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo1 = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo1 = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, ((0x12 >> 32U) & 0xFFFFFFFF) + 128 * 2, 1, 128, 1, record.payload.load2DSparseRecord.repeat, 1, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo1);
-    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x13, 1, 512, 1, record.payload.load2DSparseRecord.repeat, 1, 512};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo2);
 }
@@ -1022,11 +1025,11 @@ TEST_F(TestRecordParse, parse_load_2d_to_cb_transpose_b4_record_and_expect_succe
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 512 * 4, 4, 512, 1, record.payload.load2DTransposeRecord.repeat,
         4U * record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         4, 512, record.payload.load2DTransposeRecord.dstFracStride + 1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1063,11 +1066,11 @@ TEST_F(TestRecordParse, parse_load_2d_to_cb_transpose_b8_record_and_expect_succe
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 512 * 2, 2, 512, 1, record.payload.load2DTransposeRecord.repeat,
         2U * record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         2, 512, record.payload.load2DTransposeRecord.dstFracStride + 1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1104,13 +1107,13 @@ TEST_F(TestRecordParse, parse_load_2d_to_cb_transpose_b8_record_with_addrMode_tr
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12U + 512 * 2 * (6 - record.payload.load2DTransposeRecord.srcStride *
         (record.payload.load2DTransposeRecord.repeat - 1)),
         2, 512, 1,
         record.payload.load2DTransposeRecord.repeat, 2U * record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         2, 512, record.payload.load2DTransposeRecord.dstFracStride + 1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1147,11 +1150,11 @@ TEST_F(TestRecordParse, parse_load_2d_to_cb_transpose_b16_record_and_expect_succ
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 512, 1, 512, 1, record.payload.load2DTransposeRecord.repeat,
         record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         1, 512, record.payload.load2DTransposeRecord.dstFracStride +1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1188,11 +1191,11 @@ TEST_F(TestRecordParse, parse_load_2d_to_cb_transpose_b32_record_and_expect_succ
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 512 * 2, 2, 512, 1, record.payload.load2DTransposeRecord.repeat,
         2U * record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         2, 512, record.payload.load2DTransposeRecord.dstFracStride + 1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1229,11 +1232,11 @@ TEST_F(TestRecordParse, parse_load_2d_to_ca_transpose_b8_record_and_export_succe
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 512 * 2, 2, 512, 1, record.payload.load2DTransposeRecord.repeat,
         2U * record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         2, 512, record.payload.load2DTransposeRecord.dstFracStride + 1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1270,11 +1273,11 @@ TEST_F(TestRecordParse, parse_load_2d_to_ca_transpose_b16_record_and_export_succ
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 512, 1, 512, 1, record.payload.load2DTransposeRecord.repeat,
         record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         1, 512, record.payload.load2DTransposeRecord.dstFracStride +1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1311,11 +1314,11 @@ TEST_F(TestRecordParse, parse_load_2d_to_ca_transpose_b32_record_and_export_succ
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 512 * 2, 2, 512, 1, record.payload.load2DTransposeRecord.repeat,
         2U * record.payload.load2DTransposeRecord.srcStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo2 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8, 0x13,
+    MemOpInfo memOpInfo2 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8, 0x13,
         2, 512, record.payload.load2DTransposeRecord.dstFracStride + 1U,
         record.payload.load2DTransposeRecord.repeat, record.payload.load2DTransposeRecord.dstStride + 1U, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo2);
@@ -1374,7 +1377,7 @@ TEST_F(TestRecordParse, parse_decompress_header_record_and_export_success)
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12, 1, 32 * 10, 1, 1, 1, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -1401,7 +1404,7 @@ TEST_F(TestRecordParse, parse_dc_preload_record_and_export_success)
     ASSERT_EQ(events[0].loc.coreId, 9);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_S_CAL);
-    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, 8,
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE, 8,
         0x12 + 32, 1, 0, 1, 1, 1, 1};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -1442,10 +1445,10 @@ TEST_F(TestRecordParse, parse_broadcast_L0C16_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12, 2, 32, 1, record.payload.broadcastRecord.nBurst, 3, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x13, 2, 512, 1, record.payload.broadcastRecord.nBurst, 3, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo1);
 }
@@ -1468,10 +1471,10 @@ TEST_F(TestRecordParse, parse_broadcast_L0C32_record_with_conv_and_expect_succes
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12, 2, 32, 1, record.payload.broadcastRecord.nBurst, 3, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x13, 2, 1024, 1, record.payload.broadcastRecord.nBurst, 3, 1024};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo1);
 }
@@ -1496,10 +1499,10 @@ TEST_F(TestRecordParse, parse_broadcast_L0C32_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12, 4, 32, 1, record.payload.broadcastRecord.nBurst, 5, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x13, 2, 1024, 1, record.payload.broadcastRecord.nBurst, 3, 1024};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo1);
 }
@@ -1540,10 +1543,10 @@ TEST_F(TestRecordParse, parse_broadcast_L0C16_record_with_enable_repeat_and_expe
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x12, 1, 32, 1, record.payload.broadcastRecord.nBurst, 2, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo1 = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x13, 2, 512, 1, record.payload.broadcastRecord.nBurst, 4, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo1);
 }
@@ -1590,10 +1593,10 @@ TEST_F(TestRecordParse, parse_load_3d_record)
     ASSERT_EQ(events[0].loc.coreId, 111);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x5F5F5F, 1, 32, 1, 1, 1, 0};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
-    MemOpInfo memOpInfo1 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo1 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x5F5F, 1, 288, 1, 1, 1, 512};
     ASSERT_EQ(events[2209].eventInfo.memInfo, memOpInfo1);
 }
@@ -1622,10 +1625,10 @@ TEST_F(TestRecordParse, parse_load_b2_record)
     ASSERT_EQ(events[0].loc.coreId, 21);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo MemOpInfo0 = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo MemOpInfo0 = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 32, 1, 512, 1, 1, 0, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, MemOpInfo0);
-    MemOpInfo MemOpInfo1 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo MemOpInfo1 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 512, 1, 512, 1, 1, 0, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, MemOpInfo1);
 }
@@ -1666,7 +1669,7 @@ TEST_F(TestRecordParse, parse_load_A_winograd_record)
     uint8_t sizeFactor = record.dataType == DataType::DATA_B8 ? 1 : 2;
     uint32_t dstBlkSize = record.extStepK * record.extStepM * sizeFactor;
     MemOpInfo MemOpInfo0 = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK,
-                            MaskMode::MASK_NORM, 8, record.src, 1,
+                            MaskMode::MASK_NORM, InstrName::NONE, 8, record.src, 1,
                             static_cast<uint32_t>(record.fmSizeW) *
                             static_cast<uint32_t>(record.fmSizeH) *
                             static_cast<uint32_t>(record.fmSizeCh) *
@@ -1674,7 +1677,7 @@ TEST_F(TestRecordParse, parse_load_A_winograd_record)
                             0, 1, 0, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, MemOpInfo0);
     MemOpInfo MemOpInfo1 = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK,
-                            MaskMode::MASK_NORM, 8, record.dst, dstBlkSize / 512,
+                            MaskMode::MASK_NORM, InstrName::NONE, 8, record.dst, dstBlkSize / 512,
                             512, 1, 4, dstBlkSize / 512 + 1, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, MemOpInfo1);
 }
@@ -1707,11 +1710,11 @@ TEST_F(TestRecordParse, parse_load_B_winograd_record)
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
     MemOpInfo MemOpInfo0 = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK,
-                            MaskMode::MASK_NORM, 8, record.src, 9, 512U, 1, record.repeat,
+                            MaskMode::MASK_NORM, InstrName::NONE, 8, record.src, 9, 512U, 1, record.repeat,
                             record.srcRptStride, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, MemOpInfo0);
     MemOpInfo MemOpInfo1 = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK,
-                            MaskMode::MASK_NORM, 8, record.dst, 4, 512U, record.innerDstStride,
+                            MaskMode::MASK_NORM, InstrName::NONE, 8, record.dst, 4, 512U, record.innerDstStride,
                             record.repeat, record.dstRptStride, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, MemOpInfo1);
 }
@@ -1740,7 +1743,7 @@ TEST_F(TestRecordParse, parse_set_l0a_2d_record)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE1);
-    MemOpInfo memOpInfo = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x15, 1, 512, 1, 1, 1 + 1, 512};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -1769,7 +1772,7 @@ TEST_F(TestRecordParse, parse_set_l1_2d_record)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x15, 1, 32, 1, 1, 1 + 1, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -1782,7 +1785,7 @@ TEST_F(TestRecordParse, parse_set_l1_2d_record)
     ASSERT_EQ(events[1].loc.coreId, 9);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_MTE1);
-    memOpInfo = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x15, 1, 512, 1, 1, 1 + 1, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
@@ -1794,7 +1797,7 @@ TEST_F(TestRecordParse, parse_set_l1_2d_record)
     ASSERT_EQ(events[2].loc.coreId, 10);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_MTE1);
-    memOpInfo = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0B, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x15, 1, 512, 1, 1, 1 + 1, 512};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -1830,7 +1833,7 @@ TEST_F(TestRecordParse, parse_load_image_s8_record)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    MemOpInfo memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x15, blockNum, 32, 1, 1, 0, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 }
@@ -1856,7 +1859,7 @@ TEST_F(TestRecordParse, parse_load_smask_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
-    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
                            8, 0x78F00, 1, 8, 0, 1, 0, 2};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -1894,6 +1897,7 @@ TEST_F(TestRecordParse, parse_unary_op_record_and_expect_success)
     record.payload.unaryOpRecord.maskMode = MaskMode::MASK_NORM;
     record.payload.unaryOpRecord.srcDataBits = 8;
     record.payload.unaryOpRecord.dstDataBits = 8;
+    record.payload.unaryOpRecord.instrName = InstrName::NONE;
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -1906,14 +1910,14 @@ TEST_F(TestRecordParse, parse_unary_op_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 4, 16, 1, 100, 8, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 8, 32, 1, 100, 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -1942,6 +1946,7 @@ TEST_F(TestRecordParse, parse_vcopy_op_record_with_mask_count_and_expect_success
     record.payload.unaryOpRecord.maskMode = MaskMode::MASK_COUNT;
     record.payload.unaryOpRecord.srcDataBits = 8;
     record.payload.unaryOpRecord.dstDataBits = 8;
+    record.payload.unaryOpRecord.instrName = InstrName::NONE;
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -1954,14 +1959,14 @@ TEST_F(TestRecordParse, parse_vcopy_op_record_with_mask_count_and_expect_success
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, {32, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::READ, {32, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0x55, 2, 16, 1, 100, 8, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, {32, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::WRITE, {32, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0xaa, 1, 32, 1, 100, 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -1990,6 +1995,7 @@ TEST_F(TestRecordParse, parse_vreducev2_unary_record_with_mask_count_and_expect_
     record.payload.unaryOpRecord.maskMode = MaskMode::MASK_COUNT;
     record.payload.unaryOpRecord.srcDataBits = 8;
     record.payload.unaryOpRecord.dstDataBits = 8;
+    record.payload.unaryOpRecord.instrName = InstrName::NONE;
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -2002,14 +2008,14 @@ TEST_F(TestRecordParse, parse_vreducev2_unary_record_with_mask_count_and_expect_
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, {32, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::READ, {32, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0x55, 2, 16, 1, 100, 8, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, {32, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::WRITE, {32, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0xaa, 1, 32 * 100, 1, 1, 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -2036,6 +2042,7 @@ TEST_F(TestRecordParse, parse_vmrgsort4_op_record_and_expect_success)
     record.payload.unaryOpRecord.maskMode = MaskMode::MASK_NORM;
     record.payload.unaryOpRecord.srcDataBits = 16;
     record.payload.unaryOpRecord.dstDataBits = 16;
+    record.payload.unaryOpRecord.instrName = InstrName::NONE;
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -2077,6 +2084,7 @@ static BinaryOpRecord CreateBinaryOpRecord(void)
     binaryOpRecord.src0DataBits = 8;
     binaryOpRecord.src1DataBits = 8;
     binaryOpRecord.dstDataBits = 8;
+    binaryOpRecord.instrName = InstrName::NONE;
     return binaryOpRecord;
 }
 
@@ -2098,21 +2106,21 @@ TEST_F(TestRecordParse, parse_binary_op_record_with_binary_op_and_expect_success
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 4, 16, 1, 100, 8, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 2, 8, 1, 100, 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[2].loc.coreId, 7);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xcc, 8, 32, 1, 100, 8, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -2139,21 +2147,21 @@ TEST_F(TestRecordParse, parse_binary_op_record_with_mask_count_and_expect_succes
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, {64, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::READ, {64, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0x55, 4, 16, 1, 1, 8, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, {64, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::READ, {64, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0xaa, 2, 8, 1, 4, 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[2].loc.coreId, 7);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, {64, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::WRITE, {64, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0xcc, 2, 32, 1, 1, 8, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -2203,6 +2211,7 @@ TEST_F(TestRecordParse, parse_reduce_op_record_and_expect_success)
     record.payload.reduceOpRecord.vectorMask = DEFAULT_VECTOR_MASK;
     record.payload.reduceOpRecord.maskMode = MaskMode::MASK_NORM;
     record.payload.reduceOpRecord.dstAlignSize = 32;
+    record.payload.reduceOpRecord.instrName = InstrName::NONE;
 
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
@@ -2215,14 +2224,14 @@ TEST_F(TestRecordParse, parse_reduce_op_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 4, 16, 3, 100, 8, 32};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 1, 4, 1, 100, 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
@@ -2232,7 +2241,7 @@ TEST_F(TestRecordParse, parse_reduce_op_record_and_expect_success)
     events.clear();
     RecordParse::Parse(sanitizerRecord, events);
 
-    memOpInfo = {MemType::UB, AccessType::WRITE, {16, 0}, MaskMode::MASK_COUNT,
+    memOpInfo = {MemType::UB, AccessType::WRITE, {16, 0}, MaskMode::MASK_COUNT, InstrName::NONE,
         8, 0xaa, 1, 4, 1, 4, 8, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -2289,19 +2298,19 @@ TEST_F(TestRecordParse, parse_matrix_mul_l0c_op_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_M);
-    memOpInfo = {MemType::L0A, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0A, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 4, 32, 1, 2, 18, 512};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_M);
-    memOpInfo = {MemType::L0B, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0B, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 8, 48, 1, 1, 0, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_M);
-    memOpInfo = {MemType::L0C, AccessType::MEMCPY_BLOCKS, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::MEMCPY_BLOCKS, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xcc, 2, 12, 1, 1, 0, 512};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -2325,19 +2334,19 @@ TEST_F(TestRecordParse, parse_matrix_mul_btb_op_record_and_expect_success)
     ASSERT_EQ(events[0].loc.coreId, 7);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_M);
-    memOpInfo = {MemType::L0A, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0A, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x55, 4, 32, 1, 2, 18, 512};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
     ASSERT_EQ(events[1].loc.coreId, 7);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_M);
-    memOpInfo = {MemType::L0B, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0B, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xaa, 8, 48, 1, 1, 0, 512};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
     ASSERT_EQ(events[2].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[2].pipe, PipeType::PIPE_M);
-    memOpInfo = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xcc, 2, 12, 1, 1, 0, 512};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -4127,7 +4136,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_normal_movement_and_expe
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 24, 32, 1, 3, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4135,7 +4144,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_normal_movement_and_expe
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 384, 4, 1, 3, 80, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -4179,7 +4188,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int8_channal_merging_and
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 32, 32, 1, 3, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4187,11 +4196,11 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int8_channal_merging_and
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 32 * 32, 1, 1, 1, 32, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111 + 32 * 1, 32 * 16, 1, 1, 1, 64, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -4235,7 +4244,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int4_channal_merging_and
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 32, 32, 1, 8, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4243,7 +4252,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int4_channal_merging_and
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 32 * 32, 1, 1, 2, 16, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -4287,7 +4296,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_f32_channel_split_and_ex
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 64, 32, 1, 2, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4295,7 +4304,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_f32_channel_split_and_ex
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 64 * 8, 4, 1, 3, 64, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -4339,7 +4348,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2ND_conversion_and_exp
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 48, 32, 1, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4347,7 +4356,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2ND_conversion_and_exp
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[4].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 24, 4, 1, 48, 48, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
@@ -4391,7 +4400,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2DN_conversion_and_exp
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 48, 32, 2, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4399,7 +4408,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_NZ2DN_conversion_and_exp
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[4].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L1, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 48, 4, 1, 24, 48, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
@@ -4443,7 +4452,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_normal_movement_and_expe
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 24, 32, 1, 3, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4451,7 +4460,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_normal_movement_and_expe
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 384, 4, 1, 3, 80, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -4495,7 +4504,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int8_channal_merging_and
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 32, 32, 1, 3, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4503,11 +4512,11 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int8_channal_merging_and
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 32 * 32, 1, 1, 1, 32, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111 + 32 * 1, 32 * 16, 1, 1, 1, 64, 32};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
 }
@@ -4551,7 +4560,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int4_channal_merging_and
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 32, 32, 1, 8, 32, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4559,7 +4568,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_int4_channal_merging_and
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 32 * 32, 1, 1, 2, 16, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -4603,7 +4612,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_f32_channel_split_and_ex
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 64, 32, 1, 2, 64, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4611,7 +4620,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_f32_channel_split_and_ex
     ASSERT_EQ(events[1].loc.coreId, 0);
     ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[1].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 64 * 8, 4, 1, 3, 64, 32};
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
@@ -4655,7 +4664,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2ND_conversion_and_exp
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 48, 32, 1, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4663,7 +4672,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2ND_conversion_and_exp
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[4].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 24, 4, 1, 48, 48, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
@@ -4707,7 +4716,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2DN_conversion_and_exp
     ASSERT_EQ(events[0].loc.coreId, 0);
     ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::L0C, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x0, 48, 32, 2, 1, 80, 64};
     ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
 
@@ -4715,7 +4724,7 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_UB_record_with_NZ2DN_conversion_and_exp
     ASSERT_EQ(events[4].loc.coreId, 0);
     ASSERT_EQ(events[4].type, EventType::MEM_EVENT);
     ASSERT_EQ(events[4].pipe, PipeType::PIPE_FIX);
-    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0x111, 48, 4, 1, 24, 48, 32};
     ASSERT_EQ(events[4].eventInfo.memInfo, memOpInfo);
 }
@@ -4754,4 +4763,113 @@ TEST_F(TestRecordParse, parse_shadow_memory_record_and_expect_success)
     ASSERT_EQ(bufferRecord->size, 10);
 }
 
+TEST_F(TestRecordParse, parse_unary_op_record_with_instr_name_expect_instr_name_propagated) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::UNARY_OP;
+    record.payload.unaryOpRecord.dst = 0xaa;
+    record.payload.unaryOpRecord.src = 0x55;
+    record.payload.unaryOpRecord.dstBlockStride = 1;
+    record.payload.unaryOpRecord.srcBlockStride = 1;
+    record.payload.unaryOpRecord.dstRepeatStride = 8;
+    record.payload.unaryOpRecord.srcRepeatStride = 8;
+    record.payload.unaryOpRecord.location.blockId = 7;
+    record.payload.unaryOpRecord.repeat = 100;
+    record.payload.unaryOpRecord.dstBlockSize = 32;
+    record.payload.unaryOpRecord.srcBlockSize = 16;
+    record.payload.unaryOpRecord.dstBlockNum = 8;
+    record.payload.unaryOpRecord.srcBlockNum = 4;
+    record.payload.unaryOpRecord.vectorMask = DEFAULT_VECTOR_MASK;
+    record.payload.unaryOpRecord.maskMode = MaskMode::MASK_NORM;
+    record.payload.unaryOpRecord.srcDataBits = 8;
+    record.payload.unaryOpRecord.dstDataBits = 8;
+    record.payload.unaryOpRecord.instrName = InstrName::VABS;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+    ASSERT_EQ(events[0].eventInfo.memInfo.instrName, InstrName::VABS);
+    ASSERT_EQ(events[1].eventInfo.memInfo.instrName, InstrName::VABS);
+}
+
+TEST_F(TestRecordParse, parse_binary_op_record_with_instr_name_expect_instr_name_propagated) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    record.recordType = RecordType::BINARY_OP;
+    record.payload.binaryOpRecord = CreateBinaryOpRecord();
+    record.payload.binaryOpRecord.instrName = InstrName::VADD;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 3);
+    ASSERT_EQ(events[0].eventInfo.memInfo.instrName, InstrName::VADD);
+    ASSERT_EQ(events[1].eventInfo.memInfo.instrName, InstrName::VADD);
+    ASSERT_EQ(events[2].eventInfo.memInfo.instrName, InstrName::VADD);
+}
+
+TEST_F(TestRecordParse, parse_reduce_op_record_with_instr_name_expect_instr_name_propagated) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::REDUCE_OP;
+    record.blockType = BlockType::AIVEC;
+    record.payload.reduceOpRecord.dst = 0xaa;
+    record.payload.reduceOpRecord.src = 0x55;
+    record.payload.reduceOpRecord.srcBlockStride = 3;
+    record.payload.reduceOpRecord.dstRepeatStride = 8;
+    record.payload.reduceOpRecord.srcRepeatStride = 8;
+    record.payload.reduceOpRecord.dstRepeatLength = 4;
+    record.payload.reduceOpRecord.location.blockId = 7;
+    record.payload.reduceOpRecord.repeat = 1;
+    record.payload.reduceOpRecord.dstBlockSize = 4;
+    record.payload.reduceOpRecord.srcBlockSize = 16;
+    record.payload.reduceOpRecord.dstBlockNum = 1;
+    record.payload.reduceOpRecord.srcBlockNum = 4;
+    record.payload.reduceOpRecord.srcDataBits = 8;
+    record.payload.reduceOpRecord.dstDataBits = 8;
+    record.payload.reduceOpRecord.vectorMask = DEFAULT_VECTOR_MASK;
+    record.payload.reduceOpRecord.maskMode = MaskMode::MASK_NORM;
+    record.payload.reduceOpRecord.dstAlignSize = 32;
+    record.payload.reduceOpRecord.instrName = InstrName::VREDUCE;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+    ASSERT_EQ(events[0].eventInfo.memInfo.instrName, InstrName::VREDUCE);
+    ASSERT_EQ(events[1].eventInfo.memInfo.instrName, InstrName::VREDUCE);
+}
+
+TEST_F(TestRecordParse, parse_vec_dup_record_with_instr_name_expect_instr_name_propagated) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::VEC_DUP;
+    record.payload.vecDupRecord.dst = 0xaa;
+    record.payload.vecDupRecord.dstBlockStride = 8;
+    record.payload.vecDupRecord.dstRepeatStride = 9;
+    record.payload.vecDupRecord.location.blockId = 7;
+    record.payload.vecDupRecord.repeat = 100;
+    record.payload.vecDupRecord.dataBits = 32;
+    record.payload.vecDupRecord.maskMode = MaskMode::MASK_NORM;
+    record.payload.vecDupRecord.vectorMask = DEFAULT_VECTOR_MASK;
+    record.payload.vecDupRecord.instrName = InstrName::VECTOR_DUP;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 1);
+    ASSERT_EQ(events[0].eventInfo.memInfo.instrName, InstrName::VECTOR_DUP);
+}
 }

@@ -19,6 +19,7 @@
 #include "core/framework/arch_def.h"
 #include "core/framework/device_manager.h"
 #include "core/framework/record_defs.h"
+#include "core/framework/utility/spans.h"
 
 using namespace Sanitizer;
 
@@ -71,6 +72,42 @@ TEST(DeviceManager, get_device_list_expect_get_correct_device_list)
     ASSERT_EQ(deviceList[0], 3);
     ASSERT_EQ(deviceList[1], 5);
     ASSERT_EQ(deviceList[2], 7);
+
+    DeviceManager::Instance().Clear();
+}
+
+TEST(DeviceManager, get_shared_memory_spans_expect_created_and_accessible) {
+    auto &spans0 = DeviceManager::Instance().GetSharedMemorySpans(0);
+    spans0.Union(Span<uint64_t>{0x1000, 0x1100});
+    spans0.Union(Span<uint64_t>{0x2000, 0x2200});
+
+    auto &spans1 = DeviceManager::Instance().GetSharedMemorySpans(1);
+    spans1.Union(Span<uint64_t>{0x3000, 0x3300});
+
+    ASSERT_TRUE(spans0.HasIntersection(Span<uint64_t>{0x1050, 0x1060}));
+    ASSERT_TRUE(spans0.HasIntersection(Span<uint64_t>{0x2100, 0x2200}));
+    ASSERT_FALSE(spans0.HasIntersection(Span<uint64_t>{0x3000, 0x3010}));
+    ASSERT_TRUE(spans1.HasIntersection(Span<uint64_t>{0x3050, 0x3060}));
+    ASSERT_FALSE(spans1.HasIntersection(Span<uint64_t>{0x1000, 0x1010}));
+
+    DeviceManager::Instance().Clear();
+}
+
+TEST(DeviceManager, set_overwrite_expect_updated_device_info) {
+    DeviceInfoSummary deviceInfo{};
+    deviceInfo.device = DeviceType::ASCEND_910B1;
+    deviceInfo.deviceId = 1;
+    DeviceManager::Instance().Set(0, deviceInfo);
+
+    DeviceInfoSummary updatedInfo{};
+    updatedInfo.device = DeviceType::ASCEND_910_PREMIUM_A;
+    updatedInfo.deviceId = 2;
+    DeviceManager::Instance().Set(0, updatedInfo);
+
+    DeviceInfoSummary ret{};
+    ASSERT_TRUE(DeviceManager::Instance().Get(0, ret));
+    ASSERT_EQ(ret.device, DeviceType::ASCEND_910_PREMIUM_A);
+    ASSERT_EQ(ret.deviceId, 2);
 
     DeviceManager::Instance().Clear();
 }

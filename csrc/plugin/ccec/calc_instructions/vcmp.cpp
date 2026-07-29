@@ -37,7 +37,7 @@ AICORE_FUNC_HEAD void ClearCmpMaskAddr(EXTRA_PARAMS_DEC)
 SANITIZER_REPORT(vcmp_eq, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -47,7 +47,7 @@ SANITIZER_REPORT(vcmp_eq, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -67,7 +67,7 @@ SANITIZER_REPORT(vcmp_eq, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
 SANITIZER_REPORT(vcmp_eq, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -77,7 +77,7 @@ SANITIZER_REPORT(vcmp_eq, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t re
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -127,7 +127,7 @@ SANITIZER_REPORT(vcmp_eq, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint
 SANITIZER_REPORT(vcmp_ge, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -137,7 +137,7 @@ SANITIZER_REPORT(vcmp_ge, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -157,7 +157,7 @@ SANITIZER_REPORT(vcmp_ge, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
 SANITIZER_REPORT(vcmp_ge, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -167,7 +167,7 @@ SANITIZER_REPORT(vcmp_ge, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t re
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -217,7 +217,7 @@ SANITIZER_REPORT(vcmp_ge, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint
 SANITIZER_REPORT(vcmp_gt, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -227,7 +227,7 @@ SANITIZER_REPORT(vcmp_gt, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -247,7 +247,7 @@ SANITIZER_REPORT(vcmp_gt, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
 SANITIZER_REPORT(vcmp_gt, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -257,7 +257,7 @@ SANITIZER_REPORT(vcmp_gt, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t re
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -307,7 +307,7 @@ SANITIZER_REPORT(vcmp_gt, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint
 SANITIZER_REPORT(vcmp_le, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -317,7 +317,7 @@ SANITIZER_REPORT(vcmp_le, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -337,7 +337,7 @@ SANITIZER_REPORT(vcmp_le, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
 SANITIZER_REPORT(vcmp_le, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -347,7 +347,7 @@ SANITIZER_REPORT(vcmp_le, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t re
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -397,7 +397,7 @@ SANITIZER_REPORT(vcmp_le, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint
 SANITIZER_REPORT(vcmp_lt, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -407,7 +407,7 @@ SANITIZER_REPORT(vcmp_lt, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -427,7 +427,7 @@ SANITIZER_REPORT(vcmp_lt, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
 SANITIZER_REPORT(vcmp_lt, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -437,7 +437,7 @@ SANITIZER_REPORT(vcmp_lt, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t re
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -487,7 +487,7 @@ SANITIZER_REPORT(vcmp_lt, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint
 SANITIZER_REPORT(vcmp_ne, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -497,7 +497,7 @@ SANITIZER_REPORT(vcmp_ne, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }
@@ -517,7 +517,7 @@ SANITIZER_REPORT(vcmp_ne, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repe
 SANITIZER_REPORT(vcmp_ne, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr),
                                                     src0, src1, config, 0, 8, 8, 0, 32, 32);
 }
 
@@ -527,7 +527,7 @@ SANITIZER_REPORT(vcmp_ne, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t re
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     ClearCmpMaskAddr(EXTRA_PARAMS);
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VCMP>(EXTRA_PARAMS, static_cast<__ubuf__ void*>(nullptr), src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         0, 8, 8, 0, 32, 32);
 }

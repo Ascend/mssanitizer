@@ -24,7 +24,7 @@ using namespace Sanitizer;
 // #2258
 SANITIZER_REPORT(vabs, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VABS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -32,7 +32,7 @@ SANITIZER_REPORT(vabs, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 SANITIZER_REPORT(vabs, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VABS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -57,7 +57,7 @@ SANITIZER_REPORT(vabs, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat,
 // #2262
 SANITIZER_REPORT(vabs, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VABS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -65,7 +65,7 @@ SANITIZER_REPORT(vabs, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config
 SANITIZER_REPORT(vabs, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VABS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -98,7 +98,7 @@ SANITIZER_REPORT(vabs, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, uint64_t co
 SANITIZER_REPORT(vabs, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VABS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else

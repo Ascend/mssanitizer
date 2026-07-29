@@ -50,6 +50,7 @@ auto g_fillUnaryOpRecord = [](SanitizerRecord& record, uint64_t addr, uint64_t b
     unaryOpRecord.srcDataBits = 8;
     unaryOpRecord.vectorMask.mask0 = mask0;
     unaryOpRecord.maskMode = maskMode;
+    unaryOpRecord.instrName = InstrName::NONE;
 };
 
 TEST(RaceSanitizer, race_sanitizer_detect_cntmask_overlapping_mem_race_events_expect_success)
@@ -113,8 +114,8 @@ TEST(RaceSanitizer, race_sanitizer_detect_race_events_mask_count_expect_success)
     event.type = EventType::MEM_EVENT;
     event.pipe = PipeType::PIPE_M;
     event.eventInfo.memInfo = {MemType::UB, AccessType::WRITE, Sanitizer::VectorMask{0, 0},
-        Sanitizer::MaskMode::MASK_NORM, 8, static_cast<uint32_t>(0x50) + unitSize * 4,
-        3U, unitSize, 1U, 1U, 1U, 32};
+        Sanitizer::MaskMode::MASK_NORM, InstrName::NONE, 8,
+        static_cast<uint32_t>(0x50) + unitSize * 4, 3U, unitSize, 1U, 1U, 1U, 32};
     events.emplace_back(event);
 
     // mask = 16时，两条UnaryOpRecord的内存示意图
@@ -165,6 +166,7 @@ auto g_createBinaryOpRecord = [](BinaryOpRecord& binaryOpRecord) {
     binaryOpRecord.src0DataBits = 8;
     binaryOpRecord.src1DataBits = 8;
     binaryOpRecord.dstDataBits = 8;
+    binaryOpRecord.instrName = InstrName::NONE;
 };
 
 TEST(RaceSanitizer, race_sanitizer_can_detect_aiv_pipe_race_events_expect_success)

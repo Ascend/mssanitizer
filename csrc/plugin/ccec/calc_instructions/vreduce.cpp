@@ -40,7 +40,7 @@ SANITIZER_REPORT(vreduce, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src0, __ubu
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride, src0BlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VREDUCE>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride, src0BlockStride,
         src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride, 8, 8, 1, 32, 32, 16);
 }
 
@@ -73,7 +73,7 @@ SANITIZER_REPORT(vreduce, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src0, __ubu
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride, src0BlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VREDUCE>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride, src0BlockStride,
         src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride, 8, 8, 1, 32, 32, 8);
 }
 

@@ -47,7 +47,7 @@ SANITIZER_REPORT(vcadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, 
 // #2368
 SANITIZER_REPORT(vcadd, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config, bool MASK)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config,
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCADD>(EXTRA_PARAMS, dst, src, config,
         2, 1, 8, 2, 32, 2);
 }
 
@@ -56,10 +56,10 @@ SANITIZER_REPORT(vcadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, 
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool mode)
 {
     if (!mode) {
-        RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+        RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCADD>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 2, 1, 8, 2, 32, 2);
     } else {
-        RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+        RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCADD>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 0, 0, 8, 0, 32, 2);
     }
 }
@@ -90,7 +90,7 @@ SANITIZER_REPORT(vcadd, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat
 // #2373
 SANITIZER_REPORT(vcadd, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config, bool MASK)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config,
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCADD>(EXTRA_PARAMS, dst, src, config,
         4, 1, 8, 4, 32, 4);
 }
 
@@ -99,10 +99,10 @@ SANITIZER_REPORT(vcadd, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool mode)
 {
     if (!mode) {
-        RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+        RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCADD>(EXTRA_PARAMS, dst, src, repeat,
             dstRepeatStride, srcBlockStride, srcRepeatStride, 4, 1, 8, 4, 32, 4);
     } else {
-        RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+        RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCADD>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 0, 0, 8, 0, 32, 4);
     }
 }

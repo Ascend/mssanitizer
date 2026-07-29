@@ -23,7 +23,7 @@ using namespace Sanitizer;
 // #2327
 SANITIZER_REPORT(vand, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, __ubuf__ int16_t *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VAND>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
 
 // #2328
@@ -31,11 +31,11 @@ SANITIZER_REPORT(vand, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, __ubuf__ i
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAND>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2329
 SANITIZER_REPORT(vand, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, __ubuf__ int16_t *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
@@ -45,23 +45,23 @@ SANITIZER_REPORT(vand, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, __ubuf__ i
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2330
 SANITIZER_REPORT(vand, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VAND>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2331
 SANITIZER_REPORT(vand, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VAND>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2332
 SANITIZER_REPORT(vand, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src0, __ubuf__ uint16_t *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \

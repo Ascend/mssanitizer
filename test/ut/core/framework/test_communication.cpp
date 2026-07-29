@@ -50,3 +50,40 @@ TEST(CommunicationClientTest, ConnectToServer) {
     Result connectResult = client.ConnectToServer(); // 调用真实的 Connect 方法
     EXPECT_TRUE(!connectResult.Fail());
 }
+
+TEST(CommunicationServerTest, RegisterMsgHandler_expect_callable) {
+    std::string socketPath = "/tmp/msop_connect_register_msg.202511121043.12345.sock";
+    CommunicationServer server(socketPath);
+    bool handlerCalled = false;
+    server.RegisterMsgHandler(
+        [&handlerCalled](std::string msg, CommunicationServer::MsgResponseFunc &rsp) { handlerCalled = true; });
+    server.StartListen();
+    server.Close();
+}
+
+TEST(CommunicationServerTest, SetClientConnectHook_expect_callable) {
+    std::string socketPath = "/tmp/msop_connect_set_hook.202511121043.12345.sock";
+    CommunicationServer server(socketPath);
+    bool hookCalled = false;
+    CommunicationServer::ClientId connectedId = 0;
+    server.SetClientConnectHook([&hookCalled, &connectedId](CommunicationServer::ClientId id) {
+        hookCalled = true;
+        connectedId = id;
+    });
+    server.StartListen();
+    server.Close();
+}
+
+TEST(CommunicationClientTest, ClientReadWrite_expect_success) {
+    std::string socketPath = "/tmp/msop_connect_rw.202511121043.12345.sock";
+    CommunicationServer server(socketPath);
+    server.StartListen();
+
+    CommunicationClient client(socketPath);
+    Result connectResult = client.ConnectToServer();
+    ASSERT_TRUE(!connectResult.Fail());
+
+    std::string testData = "hello_mssanitizer";
+    Result writeResult = client.Write(testData);
+    ASSERT_TRUE(!writeResult.Fail());
+}

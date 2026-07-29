@@ -22,7 +22,7 @@ using namespace Sanitizer;
 // #3111
 SANITIZER_REPORT(vmuls, __ubuf__ half *dst, __ubuf__ half *src, half a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -30,7 +30,7 @@ SANITIZER_REPORT(vmuls, __ubuf__ half *dst, __ubuf__ half *src, half a, uint64_t
 SANITIZER_REPORT(vmuls, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -55,7 +55,7 @@ SANITIZER_REPORT(vmuls, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t 
 // #3115
 SANITIZER_REPORT(vmuls, __ubuf__ float *dst, __ubuf__ float *src, float a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -63,7 +63,7 @@ SANITIZER_REPORT(vmuls, __ubuf__ float *dst, __ubuf__ float *src, float a, uint6
 SANITIZER_REPORT(vmuls, __ubuf__ float *dst, __ubuf__ float *src, float a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -88,7 +88,7 @@ SANITIZER_REPORT(vmuls, __ubuf__ float *dst, __ubuf__ float *src0, float a, uint
 // #3119
 SANITIZER_REPORT(vmuls, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int16_t a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -96,7 +96,7 @@ SANITIZER_REPORT(vmuls, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int16_t a,
 SANITIZER_REPORT(vmuls, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int16_t a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -121,7 +121,7 @@ SANITIZER_REPORT(vmuls, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, int16_t a
 // #3123
 SANITIZER_REPORT(vmuls, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -129,7 +129,7 @@ SANITIZER_REPORT(vmuls, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t a,
 SANITIZER_REPORT(vmuls, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMULS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else

@@ -15,7 +15,7 @@
  * ------------------------------------------------------------------------- */
 
 #include "plugin/record_calc_instructions.h"
- 
+
 using namespace Sanitizer;
 
 #if !(defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1 && defined(__DAV_C220_CUBE__))
@@ -23,17 +23,17 @@ using namespace Sanitizer;
 // #2407
 SANITIZER_REPORT(vcgadd, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 16, 1, 8, 16, 32, 16);
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCGADD>(EXTRA_PARAMS, dst, src, config, 16, 1, 8, 16, 32, 16);
 }
- 
+
 // #2408
 SANITIZER_REPORT(vcgadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride)
 {
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCGADD>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 16, 1, 8, 16, 32, 16);
 }
- 
+
 // #2409
 SANITIZER_REPORT(vcgadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool repeatStrideMode, bool strideSizeMode)
@@ -41,18 +41,18 @@ SANITIZER_REPORT(vcgadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat,
     RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 16, 1, 8, 16, 32, 16);
 }
- 
+
 // #2410
 SANITIZER_REPORT(vcgadd, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 32, 1, 8, 32, 32);
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCGADD>(EXTRA_PARAMS, dst, src, config, 32, 1, 8, 32, 32);
 }
- 
+
 // #2411
 SANITIZER_REPORT(vcgadd, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride)
 {
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCGADD>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 32, 1, 8, 32, 32);
 }
 // #2412

@@ -21,19 +21,19 @@ using namespace Sanitizer;
 // #2924
 SANITIZER_REPORT(vdiv, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VDIV>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2925
 SANITIZER_REPORT(vdiv, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VDIV>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2926
 SANITIZER_REPORT(vdiv, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
@@ -43,23 +43,23 @@ SANITIZER_REPORT(vdiv, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *s
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2927
 SANITIZER_REPORT(vdiv, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VDIV>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2928
 SANITIZER_REPORT(vdiv, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VDIV>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #2929
 SANITIZER_REPORT(vdiv, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \

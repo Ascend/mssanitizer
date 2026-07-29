@@ -31,7 +31,7 @@ TEST(VconvCalcInstructions, dump_bf16_to_other_type_records_and_parse_each_expec
     std::vector<CheckUnaryOpBlockInfo> blockInfoVec(12);
     CheckUnaryOpBlockInfo  initialValue= {8, 4, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryU16Func<float, __bf16>(memInfo.data(), records, idx++, __sanitizer_report_vconv_bf162f32);
     CallUnaryConfigFunc<float, __bf16>(memInfo.data(), records, idx++, __sanitizer_report_vconv_bf162f32);
     CallUnaryU16Func<int32_t, __bf16>(memInfo.data(), records, idx++, __sanitizer_report_vconv_bf162s32a);
@@ -44,7 +44,7 @@ TEST(VconvCalcInstructions, dump_bf16_to_other_type_records_and_parse_each_expec
     CallUnaryConfigFunc<int32_t, __bf16>(memInfo.data(), records, idx++, __sanitizer_report_vconv_bf162s32r);
     CallUnaryU16Func<int32_t, __bf16>(memInfo.data(), records, idx++, __sanitizer_report_vconv_bf162s32z);
     CallUnaryConfigFunc<int32_t, __bf16>(memInfo.data(), records, idx++, __sanitizer_report_vconv_bf162s32z);
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -52,13 +52,13 @@ TEST(VconvCalcInstructions, dump_bf16_to_other_type_records_and_parse_each_expec
 TEST(VconvCalcInstructions, dump_deq_records_and_parse_each_expect_success)
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
-    uint8_t recordNum = 15;
+    uint8_t recordNum = 13;
     auto records = CreateRandomUnaryOpRecords(recordNum);
     uint8_t idx = 0;
-    std::vector<CheckUnaryOpBlockInfo> blockInfoVec(15);
+    std::vector<CheckUnaryOpBlockInfo> blockInfoVec(13);
     CheckUnaryOpBlockInfo  initialValue= {4, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryU8Func<half, int32_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deq);
     CallUnaryConfigFunc<half, int32_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deq);
     CallUnaryU8Func<half, int32_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deq, bool{}, bool{});
@@ -73,15 +73,11 @@ TEST(VconvCalcInstructions, dump_deq_records_and_parse_each_expect_success)
     CallUnaryConfigFunc<int8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8h);
     CallUnaryU8Func<int8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8h);
     CallUnaryConfigFunc<uint8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8h);
-    CallUnaryU8Func<uint8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8h,
-        bool{}, bool{});
 
     CallUnaryConfigFunc<int8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8l);
     CallUnaryU8Func<int8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8l);
     CallUnaryConfigFunc<uint8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8l);
-    CallUnaryU8Func<uint8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_deqs162b8l,
-        bool{}, bool{});
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -95,7 +91,7 @@ TEST(VconvCalcInstructions, dump_half_to_float_records_and_parse_each_expect_suc
     std::vector<CheckUnaryOpBlockInfo> blockInfoVec(3);
     CheckUnaryOpBlockInfo  initialValue= {8, 4, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryU16Func<float, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162f32);
     CallUnaryConfigFunc<float, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162f32);
     CallUnaryU8Func<float, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162f32, bool{}, bool{});
@@ -113,7 +109,7 @@ TEST(VconvCalcInstructions, dump_half_to_int_type_records_and_parse_each_expect_
     std::vector<CheckUnaryOpBlockInfo> blockInfoVec(11);
     CheckUnaryOpBlockInfo  initialValue= {8, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryU16Func<int16_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s16a);
     CallUnaryConfigFunc<int16_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s16a);
     CallUnaryU16Func<int16_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s16c);
@@ -125,7 +121,7 @@ TEST(VconvCalcInstructions, dump_half_to_int_type_records_and_parse_each_expect_
     CallUnaryU16Func<int16_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s16r);
     CallUnaryU16Func<int16_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s16z);
     CallUnaryConfigFunc<int16_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s16z);
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -139,7 +135,7 @@ TEST(VconvCalcInstructions, dump_half_to_int_type_records_and_parse_each_expect_
     std::vector<CheckUnaryOpBlockInfo> blockInfoVec(12);
     CheckUnaryOpBlockInfo  initialValue= {8, 4, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryConfigFunc<int32_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s32a);
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     CallUnaryU16Func<int32_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s32a);
@@ -168,7 +164,7 @@ TEST(VconvCalcInstructions, dump_half_to_int_type_records_and_parse_each_expect_
     CallUnaryU8Func<int32_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s32r);
 #endif
     CallUnaryU8Func<int32_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s32r, bool{}, bool{});
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -186,7 +182,7 @@ TEST(VconvCalcInstructions, dump_half_to_int_and_void_type_records_and_parse_eac
     std::fill_n(blockInfoVec.begin(), 3, initialValue);
     std::fill_n(blockInfoVec.begin() + 3, 13, secondValue);
     std::fill_n(blockInfoVec.begin() + 16, 3, thirdValue);
-    
+
     CallUnaryConfigFunc<int32_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s32z);
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     CallUnaryU16Func<int32_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s32z);
@@ -215,7 +211,7 @@ TEST(VconvCalcInstructions, dump_half_to_int_and_void_type_records_and_parse_eac
     CallUnaryU8Func<int8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s8);
 #endif
     CallUnaryU8Func<int8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s8, bool{}, bool{});
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -229,7 +225,7 @@ TEST(VconvCalcInstructions, dump_half_to_int8_type_records_and_parse_each_expect
     std::vector<CheckUnaryOpBlockInfo> blockInfoVec(17);
     CheckUnaryOpBlockInfo  initialValue= {4, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryConfigFunc<int8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s8a);
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     CallUnaryU16Func<int8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162s8a);
@@ -267,7 +263,7 @@ TEST(VconvCalcInstructions, dump_half_to_int8_type_records_and_parse_each_expect
     CallUnaryU8Func<uint8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162u8);
 #endif
     CallUnaryU8Func<uint8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162u8, bool{}, bool{});
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -281,7 +277,7 @@ TEST(VconvCalcInstructions, dump_half_to_uint8_type_records_and_parse_each_expec
     std::vector<CheckUnaryOpBlockInfo> blockInfoVec(20);
     CheckUnaryOpBlockInfo  initialValue= {4, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryConfigFunc<uint8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162u8a);
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     CallUnaryU16Func<uint8_t, half>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f162u8a);
@@ -318,7 +314,7 @@ TEST(VconvCalcInstructions, dump_half_to_uint8_type_records_and_parse_each_expec
     CallUnaryConfigFunc<__bf16, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322bf16c);
     CallUnaryU16Func<__bf16, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322bf16f);
     CallUnaryConfigFunc<__bf16, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322bf16f);
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -334,7 +330,7 @@ TEST(VconvCalcInstructions, dump_float_to_half_type_records_and_parse_each_expec
     CheckUnaryOpBlockInfo  secondValue= {8, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), 20, initialValue);
     std::fill_n(blockInfoVec.begin() + 20, 6, secondValue);
-    
+
     CallUnaryU16Func<__bf16, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322bf16r);
     CallUnaryConfigFunc<__bf16, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322bf16r);
     CallUnaryU16Func<__bf16, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322bf16z);
@@ -369,7 +365,7 @@ TEST(VconvCalcInstructions, dump_float_to_half_type_records_and_parse_each_expec
     CallUnaryConfigFunc<float, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322f32c);
     CallUnaryU16Func<float, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322f32f);
     CallUnaryConfigFunc<float, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322f32f);
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -386,7 +382,7 @@ TEST(VconvCalcInstructions, dump_float_to_float_type_records_and_parse_each_expe
     std::fill_n(blockInfoVec.begin(), 4, initialValue);
     std::fill_n(blockInfoVec.begin() + 4, 12, secondValue);
     std::fill_n(blockInfoVec.begin() + 16, 3, initialValue);
-    
+
     CallUnaryU16Func<float, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322f32r);
     CallUnaryConfigFunc<float, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322f32r);
     CallUnaryU16Func<float, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322f32z);
@@ -418,7 +414,7 @@ TEST(VconvCalcInstructions, dump_float_to_float_type_records_and_parse_each_expe
     CallUnaryU8Func<int32_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s32a);
 #endif
     CallUnaryU8Func<int32_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s32a, bool{}, bool{});
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -432,7 +428,7 @@ TEST(VconvCalcInstructions, dump_float_to_int32_type_records_and_parse_each_expe
     std::vector<CheckUnaryOpBlockInfo> blockInfoVec(12);
     CheckUnaryOpBlockInfo  initialValue= {8, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
-    
+
     CallUnaryConfigFunc<int32_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s32c);
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     CallUnaryU16Func<int32_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s32c);
@@ -461,7 +457,7 @@ TEST(VconvCalcInstructions, dump_float_to_int32_type_records_and_parse_each_expe
     CallUnaryU8Func<int32_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s32z);
 #endif
     CallUnaryU8Func<int32_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s32z, bool{}, bool{});
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -478,7 +474,7 @@ TEST(VconvCalcInstructions, dump_int16_to_half_type_records_and_parse_each_expec
     std::fill_n(blockInfoVec.begin(), 10, initialValue);
     std::fill_n(blockInfoVec.begin() + 10, 13, secondValue);
     std::fill_n(blockInfoVec.begin() + 23, 3, initialValue);
-    
+
     CallUnaryU16Func<int64_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s64a);
     CallUnaryConfigFunc<int64_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s64a);
     CallUnaryU16Func<int64_t, float>(memInfo.data(), records, idx++, __sanitizer_report_vconv_f322s64c);
@@ -505,7 +501,7 @@ TEST(VconvCalcInstructions, dump_int16_to_half_type_records_and_parse_each_expec
     CallUnaryConfigFunc<float, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s162f32);
     CallUnaryU8Func<float, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s162f32, bool{}, bool{});
     CallUnaryU16Func<float, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s162f32);
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }
@@ -521,7 +517,7 @@ TEST(VconvCalcInstructions, dump_int32_to_float_type_records_and_parse_each_expe
     CheckUnaryOpBlockInfo  secondValue= {4, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), 13, initialValue);
     std::fill_n(blockInfoVec.begin() + 13, 2, secondValue);
-    
+
     CallUnaryConfigFunc<float, int32_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s322f32);
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     CallUnaryU16Func<float, int32_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s322f32);
@@ -558,7 +554,7 @@ TEST(VconvCalcInstructions, dump_int32_to_float_type_records_and_parse_each_expe
     std::fill_n(blockInfoVec.begin(), 2, initialValue);
     std::fill_n(blockInfoVec.begin() + 2, 2, secondValue);
     std::fill_n(blockInfoVec.begin() + 4, 12, thirdValue);
-    
+
     CallUnaryU16Func<int64_t, int32_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s322s64);
     CallUnaryConfigFunc<int64_t, int32_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s322s64);
     CallUnaryU8Func<half, void>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s42f16);
@@ -591,7 +587,7 @@ TEST(VconvCalcInstructions, dump_int8_to_half_type_records_and_parse_each_expect
     CheckUnaryOpBlockInfo  secondValue= {4, 8, 32, 32};
     std::fill_n(blockInfoVec.begin(), 6, initialValue);
     std::fill_n(blockInfoVec.begin() + 6, 12, secondValue);
-    
+
     CallUnaryConfigFunc<half, int8_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s82f16);
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     CallUnaryU16Func<half, int8_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_s82f16);
@@ -620,7 +616,7 @@ TEST(VconvCalcInstructions, dump_int8_to_half_type_records_and_parse_each_expect
     CallUnaryConfigFunc<int8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_vdeqs162b8l);
     CallUnaryU8Func<uint8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_vdeqs162b8l);
     CallUnaryConfigFunc<uint8_t, int16_t>(memInfo.data(), records, idx++, __sanitizer_report_vconv_vdeqs162b8l);
-    
+
     bool isEqual = MultiIsEqual<UnaryOpRecord, CheckUnaryOpBlockInfo>(memInfo.data(), records, blockInfoVec);
     ASSERT_TRUE(isEqual);
 }

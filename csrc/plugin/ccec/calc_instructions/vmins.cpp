@@ -22,7 +22,7 @@ using namespace Sanitizer;
 // #3056
 SANITIZER_REPORT(vmins, __ubuf__ half *dst, __ubuf__ half *src, half a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3057
@@ -30,7 +30,7 @@ SANITIZER_REPORT(vmins, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t 
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride,
     bool repeatStrideMode, bool strideSizeMode)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -38,14 +38,14 @@ SANITIZER_REPORT(vmins, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t 
 SANITIZER_REPORT(vmins, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #3059
 SANITIZER_REPORT(vmins, __ubuf__ float *dst, __ubuf__ float *src, float a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3060
@@ -53,7 +53,7 @@ SANITIZER_REPORT(vmins, __ubuf__ float *dst, __ubuf__ float *src, float a, uint8
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride,
     bool repeatStrideMode, bool strideSizeMode)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -61,14 +61,14 @@ SANITIZER_REPORT(vmins, __ubuf__ float *dst, __ubuf__ float *src, float a, uint8
 SANITIZER_REPORT(vmins, __ubuf__ float *dst, __ubuf__ float *src, float a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #3062
 SANITIZER_REPORT(vmins, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int16_t a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3063
@@ -76,7 +76,7 @@ SANITIZER_REPORT(vmins, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int16_t a,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride,
     bool repeatStrideMode, bool strideSizeMode)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -84,14 +84,14 @@ SANITIZER_REPORT(vmins, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int16_t a,
 SANITIZER_REPORT(vmins, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, int16_t a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #3065
 SANITIZER_REPORT(vmins, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3066
@@ -99,7 +99,7 @@ SANITIZER_REPORT(vmins, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t a,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride,
     bool repeatStrideMode, bool strideSizeMode)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -107,7 +107,7 @@ SANITIZER_REPORT(vmins, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t a,
 SANITIZER_REPORT(vmins, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, int32_t a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VMINS>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 

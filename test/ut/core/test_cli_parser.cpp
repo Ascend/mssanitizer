@@ -749,19 +749,19 @@ TEST(CliParser, no_set_full_backtrace_parameter_expect_get_full_backtrace_false)
     std::vector<const char*> argv = {
         "asan"
     };
- 
+
     CliParser cliParser;
     UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
     ASSERT_FALSE(cmd.config.isPrintFullStack);
 }
- 
+
 TEST(CliParser, set_full_backtrace_parameter_expect_get_full_backtrace_true)
 {
     std::vector<const char*> argv = {
         "asan",
         "--full-backtrace=yes"
     };
- 
+
     CliParser cliParser;
     UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
     ASSERT_TRUE(cmd.config.isPrintFullStack);
@@ -777,7 +777,7 @@ TEST(CliParser, do_not_set_demangle_mode_expect_get_default_demangle_mode_is_ful
     UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
     ASSERT_EQ(cmd.config.demangleMode, DemangleMode::FULL_DEMANGLED_NAME);
 }
- 
+
 TEST(CliParser, set_demangle_mode_parameter_expect_get_correct_demangle_mode)
 {
     std::vector<const char*> argv = {
@@ -898,4 +898,141 @@ TEST(CliParser, set_check_cross_npu_races_no_expect_get_check_cross_npu_races_fa
     ASSERT_FALSE(cmd.config.checkCrossNpuRaces);
 }
 
+TEST(CliParser, set_trace_non_default_spr_reg_vector_expect_trace_enabled_and_log_level_info)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--trace-non-default-spr-reg=vector"
+    };
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_TRUE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_EQ(cmd.logLv, LogLv::INFO);
+    ASSERT_TRUE(cmd.config.defaultCheck);
+    ASSERT_TRUE(cmd.config.memCheck);
+    ASSERT_NE(capture.find("automatically sets to INFO"), std::string::npos);
+}
+
+TEST(CliParser, set_trace_non_default_spr_reg_with_log_level_warn_expect_log_level_overridden_to_info)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--log-level=warn",
+        "--trace-non-default-spr-reg=vector"
+    };
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_TRUE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_EQ(cmd.logLv, LogLv::INFO);
+    ASSERT_TRUE(cmd.config.memCheck);
+}
+
+TEST(CliParser, set_trace_non_default_spr_reg_invalid_mode_expect_print_help)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--trace-non-default-spr-reg=invalid"
+    };
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_FALSE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_TRUE(cmd.printHelpInfo);
+    ASSERT_NE(capture.find("only vector MODE is supported now"), std::string::npos);
+}
+
+TEST(CliParser, set_trace_non_default_spr_reg_empty_expect_print_help)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer",
+        "--trace-non-default-spr-reg="
+    };
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_FALSE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_TRUE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, default_config_expect_trace_non_default_spr_reg_false)
+{
+    std::vector<const char*> argv = {
+        "mssanitizer"
+    };
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_FALSE(cmd.config.traceNonDefaultSprReg);
+}
+
+TEST(CliParser, trace_non_default_spr_reg_with_log_level_error_expect_overridden_to_info) {
+    std::vector<const char *> argv = {"mssanitizer", "--log-level=error", "--trace-non-default-spr-reg=vector"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_TRUE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_EQ(cmd.logLv, LogLv::INFO);
+}
+
+TEST(CliParser, trace_non_default_spr_reg_before_log_level_expect_log_level_info) {
+    std::vector<const char *> argv = {"mssanitizer", "--trace-non-default-spr-reg=vector", "--log-level=warn"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_TRUE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_EQ(cmd.logLv, LogLv::INFO);
+}
+
+TEST(CliParser, trace_non_default_spr_reg_with_racecheck_expect_both_enabled) {
+    std::vector<const char *> argv = {"mssanitizer", "--tool=racecheck", "--trace-non-default-spr-reg=vector"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_TRUE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_TRUE(cmd.config.raceCheck);
+    ASSERT_TRUE(cmd.config.defaultCheck);
+    ASSERT_TRUE(cmd.config.memCheck);
+    ASSERT_EQ(cmd.logLv, LogLv::INFO);
+}
+
+TEST(CliParser, trace_non_default_spr_reg_with_leak_check_expect_both_enabled) {
+    std::vector<const char *> argv = {"mssanitizer", "--leak-check=yes", "--trace-non-default-spr-reg=vector"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_TRUE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_TRUE(cmd.config.leakCheck);
+    ASSERT_TRUE(cmd.config.defaultCheck);
+    ASSERT_TRUE(cmd.config.memCheck);
+    ASSERT_EQ(cmd.logLv, LogLv::INFO);
+}
+
+TEST(CliParser, trace_non_default_spr_reg_uppercase_vector_expect_print_help) {
+    std::vector<const char *> argv = {"mssanitizer", "--trace-non-default-spr-reg=VECTOR"};
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_FALSE(cmd.config.traceNonDefaultSprReg);
+    ASSERT_TRUE(cmd.printHelpInfo);
+}
 }

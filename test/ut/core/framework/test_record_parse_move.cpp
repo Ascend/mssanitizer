@@ -28,6 +28,7 @@ inline bool operator==(MemOpInfo const &lhs, MemOpInfo const &rhs)
     return lhs.memType == rhs.memType &&
         lhs.opType == rhs.opType &&
         lhs.maskMode == rhs.maskMode &&
+        lhs.instrName == rhs.instrName &&
         lhs.dataBits == rhs.dataBits &&
         lhs.addr == rhs.addr &&
         lhs.blockNum == rhs.blockNum &&

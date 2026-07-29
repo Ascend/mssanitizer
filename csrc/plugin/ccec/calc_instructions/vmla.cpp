@@ -21,77 +21,77 @@ using namespace Sanitizer;
 // #3068
 SANITIZER_REPORT(vmla, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
- 
+
 // #3069
 SANITIZER_REPORT(vmla, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #3070
 SANITIZER_REPORT(vmla, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool repeatStrideMode, bool strideSizeMode)
 {
-    RecordBinaryOpFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #3071
 SANITIZER_REPORT(vmla, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
- 
+
 // #3072
 SANITIZER_REPORT(vmla, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #3073
 SANITIZER_REPORT(vmla, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool repeatStrideMode, bool strideSizeMode)
 {
-    RecordBinaryOpFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
- 
+
 // #3074
 SANITIZER_REPORT(vmla, __ubuf__ float *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 4, 4, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, config, 8, 4, 4, 32, 32, 32);
 }
- 
+
 // #3075
 SANITIZER_REPORT(vmla, __ubuf__ float *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 4, 4, 32, 32, 32);
 }
- 
+
 // #3076
 SANITIZER_REPORT(vmla, __ubuf__ float *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint8_t repeat, \
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride, \
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool repeatStrideMode, bool strideSizeMode)
 {
-    RecordBinaryOpFunc<RecordType::TERNARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, \
+    RecordBinaryOpFunc<RecordType::TERNARY_OP, InstrName::VMLA>(EXTRA_PARAMS, dst, src0, src1, repeat, \
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 4, 4, 32, 32, 32);
 }

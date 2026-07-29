@@ -25,7 +25,7 @@ using namespace Sanitizer;
 SANITIZER_REPORT(vaddreluconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src0, __ubuf__ half *src1,
     uint64_t config, bool h)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
 }
 
 // #2297
@@ -43,7 +43,7 @@ SANITIZER_REPORT(vaddreluconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src0,
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool repeatStrideMode, bool strideSizeMode, bool h)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
         src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         4, 8, 8, 32, 32, 32);
 }
@@ -52,20 +52,20 @@ SANITIZER_REPORT(vaddreluconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src0,
 SANITIZER_REPORT(vaddreluconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src0, __ubuf__ float *src1,
     uint64_t config, bool h)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
 }
 
-// #2300
+// #2301
 SANITIZER_REPORT(vaddreluconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t repeat,
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool h)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
         src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         4, 8, 8, 32, 32, 32);
 }
 
-// #2301
+// #2300
 SANITIZER_REPORT(vaddreluconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint8_t repeat,
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool repeatStrideMode, bool strideSizeMode, bool h)
@@ -79,20 +79,20 @@ SANITIZER_REPORT(vaddreluconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src0,
 SANITIZER_REPORT(vaddreluconv_s162s8, __ubuf__ int8_t *dst, __ubuf__ int16_t *src0, __ubuf__ int16_t *src1,
     uint64_t config, bool h)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, config, 4, 8, 8, 32, 32, 32);
 }
 
-// #2303
+// #2304
 SANITIZER_REPORT(vaddreluconv_s162s8, __ubuf__ int8_t *dst, __ubuf__ int16_t *src0, __ubuf__ int16_t *src1,
     uint8_t repeat, uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool h)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
         src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         4, 8, 8, 32, 32, 32);
 }
 
-// #2304
+// #2303
 SANITIZER_REPORT(vaddreluconv_s162s8, __ubuf__ int8_t *dst, __ubuf__ int16_t *src0, __ubuf__ int16_t *src1,
     uint8_t repeat, uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool repeatStrideMode, bool strideSizeMode, bool h)
@@ -132,7 +132,7 @@ SANITIZER_REPORT(vaddreluconv_vdeqs162b8, __ubuf__ uint8_t *dst, __ubuf__ int16_
     uint8_t repeat, uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool h)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
         src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         4, 8, 8, 32, 32, 32);
 }
@@ -152,7 +152,7 @@ SANITIZER_REPORT(vaddreluconv_vdeqs162b8, __ubuf__ int8_t *dst, __ubuf__ int16_t
     uint8_t repeat, uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, bool h)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VADDRELUCONV>(EXTRA_PARAMS, dst, src0, src1, repeat, dstBlockStride,
         src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         4, 8, 8, 32, 32, 32);
 }

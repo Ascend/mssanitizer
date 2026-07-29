@@ -22,17 +22,17 @@ using namespace Sanitizer;
 // #2413
 SANITIZER_REPORT(vcgmax, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 16, 1, 8, 16, 32, 16);
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCGMAX>(EXTRA_PARAMS, dst, src, config, 16, 1, 8, 16, 32, 16);
 }
- 
+
 // #2414
 SANITIZER_REPORT(vcgmax, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride)
 {
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCGMAX>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 16, 1, 8, 16, 32, 16);
 }
- 
+
 // #2415
 SANITIZER_REPORT(vcgmax, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool repeatStrideMode, bool strideSizeMode)
@@ -40,18 +40,18 @@ SANITIZER_REPORT(vcgmax, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat,
     RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 16, 1, 8, 16, 32, 16);
 }
- 
+
 // #2416
 SANITIZER_REPORT(vcgmax, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 32, 1, 8, 32, 32, 32);
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCGMAX>(EXTRA_PARAMS, dst, src, config, 32, 1, 8, 32, 32, 32);
 }
- 
+
 // #2417
 SANITIZER_REPORT(vcgmax, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride)
 {
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCGMAX>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 32, 1, 8, 32, 32, 32);
 }
 // #2418

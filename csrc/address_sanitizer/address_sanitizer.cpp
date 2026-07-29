@@ -510,6 +510,26 @@ void AddressSanitizer::ReportAfterKernelFinish() {
     this->errorBuffer_.Clear();
 }
 
+void AddressSanitizer::CheckNonDefaultReg(const SanEvent &event) {
+    if (event.type == EventType::MEM_EVENT && event.eventInfo.memInfo.instrName != InstrName::NONE &&
+        (event.eventInfo.memInfo.vectorMask.mask0 != ~0ULL || event.eventInfo.memInfo.vectorMask.mask1 != ~0ULL)) {
+        ErrorMsg errorMsg;
+        errorMsg.type = MemErrorType::NON_DEFAULT_REG;
+        errorMsg.auxData.vectorMask.mask0 = event.eventInfo.memInfo.vectorMask.mask0;
+        errorMsg.auxData.vectorMask.mask1 = event.eventInfo.memInfo.vectorMask.mask1;
+        errorMsg.auxData.maskMode = event.eventInfo.memInfo.maskMode;
+        errorMsg.auxData.serialNo = event.serialNo;
+        errorMsg.auxData.pc = event.loc.pc;
+        errorMsg.auxData.instrName = event.eventInfo.memInfo.instrName;
+
+        msgFunc_(LogLv::INFO, [&errorMsg](void) {
+            std::stringstream ss;
+            ss << ReducedErrorMsg{errorMsg, {}, {}, {}} << std::endl;
+            return DetectionInfo{ToolType::MEMCHECK, ss.str()};
+        });
+    }
+}
+
 void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
     if (record.version == RecordVersion::REGION_PERMISSION) {
         return SetPermission(record.payload.permissionDesc);
@@ -530,6 +550,13 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
     }
 
     for (auto &event : events) {
+        // 同一条指令会被拆成多个event（读和写），特殊情况下还会被拆成多条记录（vgather）
+        // 但是“非默认寄存器值”对一条指令只需要检测一次，因此用serialNo过滤重复值
+        if (config_.traceNonDefaultSprReg && event.serialNo != preSerialNo_) {
+            CheckNonDefaultReg(event);
+        }
+        preSerialNo_ = event.serialNo;
+
         pipelineReplayer_.Do(event);
     }
 
@@ -668,11 +695,13 @@ void AddressSanitizer::DoMemOpRecord(MemOpRecord const &record, bool reduce)
         return;
     }
 
-    msgFunc_(LogLv::INFO, [&action](void) {
-        std::stringstream recordStr;
-        recordStr << action->record_ << std::endl;
-        return DetectionInfo{ToolType::MEMCHECK, recordStr.str()};
-    });
+    if (!config_.traceNonDefaultSprReg) {
+        msgFunc_(LogLv::INFO, [&action](void) {
+            std::stringstream recordStr;
+            recordStr << action->record_ << std::endl;
+            return DetectionInfo{ToolType::MEMCHECK, recordStr.str()};
+        });
+    }
 
     ErrorMsgList errorTypes = ScopeDoAction(action);
     for (ErrorMsg const &error : errorTypes) {

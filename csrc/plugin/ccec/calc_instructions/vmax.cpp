@@ -22,7 +22,7 @@ using namespace Sanitizer;
 // #3014
 SANITIZER_REPORT(vmax, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
 
 // #3015
@@ -30,7 +30,7 @@ SANITIZER_REPORT(vmax, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *s
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
@@ -48,7 +48,7 @@ SANITIZER_REPORT(vmax, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *s
 // #3017
 SANITIZER_REPORT(vmax, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
 
 // #3018
@@ -56,7 +56,7 @@ SANITIZER_REPORT(vmax, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
@@ -74,7 +74,7 @@ SANITIZER_REPORT(vmax, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float
 // #3020
 SANITIZER_REPORT(vmax, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, __ubuf__ int16_t *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
 
 // #3021
@@ -82,7 +82,7 @@ SANITIZER_REPORT(vmax, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, __ubuf__ i
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
@@ -100,7 +100,7 @@ SANITIZER_REPORT(vmax, __ubuf__ int16_t *dst, __ubuf__ int16_t *src0, __ubuf__ i
 // #3023
 SANITIZER_REPORT(vmax, __ubuf__ int32_t *dst, __ubuf__ int32_t *src0, __ubuf__ int32_t *src1, uint64_t config)
 {
-    RecordBinaryOpConfigFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+    RecordBinaryOpConfigFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
 }
 
 // #3024
@@ -108,7 +108,7 @@ SANITIZER_REPORT(vmax, __ubuf__ int32_t *dst, __ubuf__ int32_t *src0, __ubuf__ i
     uint8_t dstBlockStride, uint8_t src0BlockStride, uint8_t src1BlockStride, uint8_t dstRepeatStride,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
-    RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::BINARY_OP, InstrName::VMAX>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }

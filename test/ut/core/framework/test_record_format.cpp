@@ -346,7 +346,8 @@ TEST(RecordFormat, format_unary_op_record_expect_correct_result)
         .srcBlockNum = 88,
         .dstDataBits = 8,
         .srcDataBits = 8,
-        .maskMode = MaskMode::MASK_COUNT
+        .maskMode = MaskMode::MASK_COUNT,
+        .instrName = InstrName::NONE
     };
     std::stringstream ss;
     ss << record;
@@ -381,7 +382,7 @@ TEST(RecordFormat, format_binary_op_record_expect_correct_result)
         .repeat = 88,
         .dstBlockNum = 167, .src0BlockNum = 168, .src1BlockNum = 203,
         .dstDataBits = 8, .src0DataBits = 8, .src1DataBits = 8,
-        .maskMode = MaskMode::MASK_COUNT
+        .maskMode = MaskMode::MASK_COUNT, .instrName = InstrName::NONE
     };
     std::stringstream ss;
     ss << record;
@@ -429,7 +430,8 @@ TEST(RecordFormat, format_reduce_op_record_expect_correct_result)
         .dstDataBits = 8,
         .srcDataBits = 8,
         .dstDataBitsFactor = 1,
-        .maskMode = MaskMode::MASK_COUNT
+        .maskMode = MaskMode::MASK_COUNT,
+        .instrName = InstrName::NONE
     };
     std::stringstream ss;
     ss << record;
@@ -466,7 +468,8 @@ TEST(RecordFormat, format_reducev2_record_expect_return_correct_result)
         .src0BlockStride = 16,
         .dataBytes = 17,
         .patternMode = 18,
-        .maskMode = MaskMode::MASK_COUNT
+        .maskMode = MaskMode::MASK_COUNT,
+        .instrName = InstrName::NONE
     };
     std::stringstream ss;
     ss << record;
@@ -639,7 +642,8 @@ TEST(RecordFormat, format_vector_dup_record_expect_correct_result)
         .dstRepeatStride = 32,
         .repeat = 10,
         .dataBits = 16,
-        .maskMode = MaskMode::MASK_NORM
+        .maskMode = MaskMode::MASK_NORM,
+        .instrName = InstrName::NONE
     };
     std::stringstream ss;
     ss << record;

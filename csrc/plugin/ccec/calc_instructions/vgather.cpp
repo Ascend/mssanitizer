@@ -29,7 +29,7 @@ SANITIZER_REPORT(vgather, __ubuf__ uint16_t *dst, __ubuf__ uint32_t *src, uint64
 SANITIZER_REPORT(vgather, __ubuf__ uint16_t *dst, __ubuf__ uint32_t *src, uint32_t offsetAddr,
     uint16_t dstRepeatStride, uint8_t repeat)
 {
-    RecordVgatherOpFunc(EXTRA_PARAMS, dst, src, offsetAddr, dstRepeatStride, 1U, repeat, 128U, true);
+    RecordVgatherOpFunc<InstrName::VGATHER>(EXTRA_PARAMS, dst, src, offsetAddr, dstRepeatStride, 1U, repeat, 128U, true);
 }
 
 // #2973: dav-m200|dav-m200-vec|dav-c220-vec|dav-c220
@@ -42,19 +42,19 @@ SANITIZER_REPORT(vgather, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src, uint64
 SANITIZER_REPORT(vgather, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src, uint32_t offsetAddr,
     uint16_t dstRepeatStride, uint8_t repeat)
 {
-    RecordVgatherOpFunc(EXTRA_PARAMS, dst, src, offsetAddr, dstRepeatStride, 1U, repeat, 64U, true);
+    RecordVgatherOpFunc<InstrName::VGATHER>(EXTRA_PARAMS, dst, src, offsetAddr, dstRepeatStride, 1U, repeat, 64U, true);
 }
 
 // #2971: dav-m200|dav-m200-vec
 SANITIZER_REPORT(vgather, __ubuf__ uint16_t *dst, __ubuf__ uint32_t *src, uint32_t offsetAddr, bool repeatStrideMode)
 {
-    RecordVgatherOpFunc(EXTRA_PARAMS, dst, src, offsetAddr, 1U, 1U, 1U, 128U, true);
+    RecordVgatherOpFunc<InstrName::VGATHER>(EXTRA_PARAMS, dst, src, offsetAddr, 1U, 1U, 1U, 128U, true);
 }
 
 // #2974: dav-m200|dav-m200-vec
 SANITIZER_REPORT(vgather, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src, uint32_t offsetAddr, bool repeatStrideMode)
 {
-    RecordVgatherOpFunc(EXTRA_PARAMS, dst, src, offsetAddr, 1U, 1U, 1U, 64U, true);
+    RecordVgatherOpFunc<InstrName::VGATHER>(EXTRA_PARAMS, dst, src, offsetAddr, 1U, 1U, 1U, 64U, true);
 }
 
 #endif

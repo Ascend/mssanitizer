@@ -339,10 +339,19 @@ SIMT架构下多线程编程时，如果各线程对GM的访问未正确处理�
 
 ##### 6.1.3.9 寄存器告警
 
-出现寄存器未复位默认值的情况时，通过告警提示用户。告警显示未重置寄存器的名称、所在核编号、算子名称、期望的默认值和当前实际值。
+算子运行结束时，出现寄存器未复位默认值的情况时，通过告警提示用户。告警显示未重置寄存器的名称、所在核编号、算子名称、期望的默认值和当前实际值。
 
 ```text
 [mssanitizer]Warning:Register XXX was not reset to default in block aiv(XXX) on kernel XXX. Expected default value is (XXX), but current value is (XXX)
+```
+
+当命令行开启--trace-non-default-spr-reg=vector，会在运行态追踪所有使用非默认值寄存器的指令，展示这些指令对应的代码调用栈和寄存器值。由于该功能的告警等级是INFO，因此工具会将--log-level设置为info，即使用户通过命令行将--log-level设置为其他等级（如error），只要--trace-non-default-spr-reg=vector开启，--log-level就会变成info。
+
+```text
+====== INFO: VADD is using non-default mask. MaskMode: Counter, MaskHigh: 0x0, MaskLow: 0x64
+======    in kernel vec_add on device 0
+======    code in pc current 0x198 (serialNo:17)
+======    #0 vec_add.cpp:26:5
 ```
 
 > [!NOTE]

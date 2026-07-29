@@ -36,6 +36,7 @@ void AssertEqual(UnaryOpRecord const &lhs, UnaryOpRecord const &rhs)
     ASSERT_EQ(lhs.dstRepeatStride, rhs.dstRepeatStride);
     ASSERT_EQ(lhs.srcRepeatStride, rhs.srcRepeatStride);
     ASSERT_EQ(lhs.repeat,          rhs.repeat);
+    ASSERT_EQ(lhs.instrName,       rhs.instrName);
 }
 
 void AssertEqual(BinaryOpRecord const &lhs, BinaryOpRecord const &rhs)
@@ -51,6 +52,7 @@ void AssertEqual(BinaryOpRecord const &lhs, BinaryOpRecord const &rhs)
     ASSERT_EQ(lhs.src0RepeatStride, rhs.src0RepeatStride);
     ASSERT_EQ(lhs.src1RepeatStride, rhs.src1RepeatStride);
     ASSERT_EQ(lhs.repeat,           rhs.repeat);
+    ASSERT_EQ(lhs.instrName,        rhs.instrName);
 }
 
 void AssertEqual(DmaMovRecord const &lhs, DmaMovRecord const &rhs)

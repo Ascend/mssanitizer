@@ -77,6 +77,9 @@ enum class MemErrorType : uint8_t {
     // AICPU Tiling场景下，GM地址越界
     GM_ADDR_OUT_OF_BOUND,
 
+    // 指令使用的寄存器非默认值
+    NON_DEFAULT_REG,
+
     INVALID,
 };
 
@@ -90,10 +93,11 @@ struct ErrorMsg {
     MemErrorType type;
     bool isError;
     struct AuxData {
-        AuxData() : badAddr{}, nBadBytes{0UL}, baseAddr{}, baseSize{}, space{AddressSpace::INVALID},
-                    moduleId(-1), fileName{}, lineNo{0UL}, coreId{0UL},
-                    blockType{BlockType::AICUBE}, pc{0UL}, serialNo(0L),
-                    side{MemOpSide::HOST}, threadLoc{}, conflictedThreadLoc{}, isSimt{false}, displayThread{false} { }
+        AuxData()
+            : badAddr{}, nBadBytes{0UL}, baseAddr{}, baseSize{}, space{AddressSpace::INVALID}, moduleId(-1), fileName{},
+              lineNo{0UL}, coreId{0UL}, blockType{BlockType::AICUBE}, pc{0UL}, serialNo(0L), vectorMask{}, maskMode{},
+              side{MemOpSide::HOST}, threadLoc{}, conflictedThreadLoc{}, instrName{}, isSimt{false},
+              displayThread{false} {}
         Addr badAddr;
         uint64_t nBadBytes;
         Addr baseAddr;
@@ -106,9 +110,12 @@ struct ErrorMsg {
         BlockType blockType;
         uint64_t pc;
         uint64_t serialNo;
+        VectorMask vectorMask;
+        MaskMode maskMode;
         MemOpSide side;
         SimtThreadLocation threadLoc;
         SimtThreadLocation conflictedThreadLoc;
+        InstrName instrName;
         bool isSimt;
         bool displayThread;  // 输出错误的格式是否展示线程数，由于simt的记录会被融合成dynamicRecord，其中包含了多个线程的读写事件；
                              // 此时依托dynamicRecord检测出的错误类型，比如simt的核间踩踏、simt的未初始化等问题展示线程数不准确，
@@ -120,8 +127,7 @@ struct ErrorMsg {
         if (!isError || !rhs.isError) {
             return isError == rhs.isError;
         }
-        return
-            isError == rhs.isError && type == rhs.type && auxData.badAddr.addr == rhs.auxData.badAddr.addr &&
+        return isError == rhs.isError && type == rhs.type && auxData.badAddr.addr == rhs.auxData.badAddr.addr &&
             auxData.nBadBytes == rhs.auxData.nBadBytes && auxData.space == rhs.auxData.space &&
             auxData.moduleId == rhs.auxData.moduleId && auxData.fileName == rhs.auxData.fileName &&
             auxData.lineNo == rhs.auxData.lineNo && auxData.pc == rhs.auxData.pc &&
@@ -447,6 +453,73 @@ inline std::ostream &PrintGMAddrError(std::ostream &out, const ReducedErrorMsg &
     return out;
 }
 
+inline std::ostream &operator<<(std::ostream &os, const InstrName &instrName) {
+    static const std::map<InstrName, std::string> INSTR_NAME_MAP = {
+        {InstrName::VABS, "VABS"},
+        {InstrName::VADD, "VADD"},
+        {InstrName::VADDRELU, "VADDRELU"},
+        {InstrName::VADDRELUCONV, "VADDRELUCONV"},
+        {InstrName::VADDS, "VADDS"},
+        {InstrName::VAND, "VAND"},
+        {InstrName::VAXPY, "VAXPY"},
+        {InstrName::VCADD, "VCADD"},
+        {InstrName::VCGADD, "VCGADD"},
+        {InstrName::VCGMAX, "VCGMAX"},
+        {InstrName::VCGMIN, "VCGMIN"},
+        {InstrName::VCMAX, "VCMAX"},
+        {InstrName::VCMIN, "VCMIN"},
+        {InstrName::VCMP, "VCMP"},
+        {InstrName::VCONV, "VCONV"},
+        {InstrName::VCOPY, "VCOPY"},
+        {InstrName::VCPADD, "VCPADD"},
+        {InstrName::VDIV, "VDIV"},
+        {InstrName::VECTOR_DUP, "VECTOR_DUP"},
+        {InstrName::VEXP, "VEXP"},
+        {InstrName::VGATHER, "VGATHER"},
+        {InstrName::VLN, "VLN"},
+        {InstrName::VLRELU, "VLRELU"},
+        {InstrName::VMADD, "VMADD"},
+        {InstrName::VMADDRELU, "VMADDRELU"},
+        {InstrName::VMAX, "VMAX"},
+        {InstrName::VMAXS, "VMAXS"},
+        {InstrName::VMIN, "VMIN"},
+        {InstrName::VMINS, "VMINS"},
+        {InstrName::VMLA, "VMLA"},
+        {InstrName::VMUL, "VMUL"},
+        {InstrName::VMULCONV, "VMULCONV"},
+        {InstrName::VMULS, "VMULS"},
+        {InstrName::VNOT, "VNOT"},
+        {InstrName::VOR, "VOR"},
+        {InstrName::VREC, "VREC"},
+        {InstrName::VREDUCE, "VREDUCE"},
+        {InstrName::VREDUCEV2, "VREDUCEV2"},
+        {InstrName::VRELU, "VRELU"},
+        {InstrName::VRSQRT, "VRSQRT"},
+        {InstrName::VSEL, "VSEL"},
+        {InstrName::VSHL, "VSHL"},
+        {InstrName::VSHR, "VSHR"},
+        {InstrName::VSQRT, "VSQRT"},
+        {InstrName::VSUB, "VSUB"},
+        {InstrName::VSUBRELU, "VSUBRELU"},
+        {InstrName::VSUBRELUCONV, "VSUBRELUCONV"},
+    };
+
+    return FormatEnum(os, INSTR_NAME_MAP, instrName, "InstrName");
+}
+
+inline std::ostream &PrintNonDefaultReg(std::ostream &out, const ReducedErrorMsg &reducedMsg)
+{
+    ErrorMsg const &msg = reducedMsg.errorMsg;
+    std::string mode = msg.auxData.maskMode == MaskMode::MASK_NORM ? "Normal" : "Counter";
+
+    out << "====== INFO: " << msg.auxData.instrName << " is using non-default mask. MaskMode: " << mode
+        << ", MaskHigh: 0x" << std::hex << msg.auxData.vectorMask.mask1 << ", MaskLow: 0x"
+        << msg.auxData.vectorMask.mask0 << std::dec << std::endl
+        << "======    in kernel " << RuntimeContext::Instance().kernelNameDisplay << " on device "
+        << RuntimeContext::Instance().GetDeviceId() << std::endl;
+    return PrintLocationInfo(out, msg);
+}
+
 inline std::ostream &operator<<(std::ostream &out, const ReducedErrorMsg &reducedMsg)
 {
     using PrintFunc = std::function<std::ostream &(std::ostream &, const ReducedErrorMsg &)>;
@@ -461,6 +534,7 @@ inline std::ostream &operator<<(std::ostream &out, const ReducedErrorMsg &reduce
         {MemErrorType::UNINITIALIZED_READ, PrintUninitializedRead},
         {MemErrorType::INTERNAL_ERROR, PrintInternalError},
         {MemErrorType::GM_ADDR_OUT_OF_BOUND, PrintGMAddrError},
+        {MemErrorType::NON_DEFAULT_REG, PrintNonDefaultReg},
     };
     auto it = PRINT_FUNC_MAP.find(reducedMsg.errorMsg.type);
     if (it != PRINT_FUNC_MAP.end()) {

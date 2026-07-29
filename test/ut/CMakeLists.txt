@@ -11,6 +11,7 @@ file(GLOB_RECURSE TEST_SOURCE
   ./register_sanitizer/*.cpp
   ./core/framework/*.cpp
   ./core/framework/utility/*.cpp
+  ./hooks/*.cpp
   ./plugin/*.cpp)
 list(SORT TEST_SOURCE)
 target_sources(mssanitizer_test PRIVATE ${TEST_SOURCE})

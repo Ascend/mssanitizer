@@ -353,6 +353,57 @@ enum class RecordType : uint32_t {
     FINISH,
 };
 
+enum class InstrName : uint8_t {
+    NONE = 0,
+    VABS,
+    VADD,
+    VADDRELU,
+    VADDRELUCONV,
+    VADDS,
+    VAND,
+    VAXPY,
+    VCADD,
+    VCGADD,
+    VCGMAX,
+    VCGMIN,
+    VCMAX,
+    VCMIN,
+    VCMP,
+    VCONV,
+    VCOPY,
+    VCPADD,
+    VDIV,
+    VECTOR_DUP,
+    VEXP,
+    VGATHER,
+    VLN,
+    VLRELU,
+    VMADD,
+    VMADDRELU,
+    VMAX,
+    VMAXS,
+    VMIN,
+    VMINS,
+    VMLA,
+    VMUL,
+    VMULCONV,
+    VMULS,
+    VNOT,
+    VOR,
+    VREC,
+    VREDUCE,
+    VREDUCEV2,
+    VRELU,
+    VRSQRT,
+    VSEL,
+    VSHL,
+    VSHR,
+    VSQRT,
+    VSUB,
+    VSUBRELU,
+    VSUBRELUCONV,
+};
+
 enum class DataType : uint8_t {
     DATA_B4 = 0,
     DATA_B8,
@@ -1110,6 +1161,7 @@ struct VecDupRecord {
     uint8_t repeat;
     uint8_t dataBits;
     MaskMode maskMode;
+    InstrName instrName;
 };
 
 struct UnaryOpRecord {
@@ -1129,6 +1181,7 @@ struct UnaryOpRecord {
     uint8_t dstDataBits;
     uint8_t srcDataBits;
     MaskMode maskMode;
+    InstrName instrName;
 };
 
 struct VgatherRecord {
@@ -1147,16 +1200,20 @@ struct VgatherRecord {
     uint8_t dstRepeat;
     uint8_t dstDataBits;
     MaskMode maskMode;
+    InstrName instrName;
 };
 
 struct ElementRecord {
     Location location;
+    VectorMask vectorMask;
     uint64_t addr;
     uint16_t blockSize;
     uint16_t blockNum;
     uint16_t alignSize;
     uint8_t dataBits;
     AccessType accessType;
+    MaskMode maskMode;
+    InstrName instrName;
 };
 
 struct BinaryOpRecord {
@@ -1182,6 +1239,7 @@ struct BinaryOpRecord {
     uint8_t src0DataBits;
     uint8_t src1DataBits;
     MaskMode maskMode;
+    InstrName instrName;
 };
 
 struct MarixMulOpRecord {
@@ -1278,6 +1336,7 @@ struct ReduceOpRecord {
     uint8_t srcDataBits;
     uint8_t dstDataBitsFactor;
     MaskMode maskMode;
+    InstrName instrName;
 };
 
 struct ReduceV2Record {
@@ -1294,6 +1353,7 @@ struct ReduceV2Record {
     uint8_t dataBytes;
     uint8_t patternMode;
     MaskMode maskMode;
+    InstrName instrName;
 };
 
 struct SyncRecord {

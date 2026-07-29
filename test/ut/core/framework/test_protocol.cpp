@@ -162,3 +162,57 @@ TEST(Protocol, get_host_mem_record_from_protocol_expect_success_and_equal_to_pac
     HostMemRecord ret = packet.GetPayload().hostMemRecord;
     ASSERT_EQ(record, ret);
 }
+
+TEST(Packet, copy_constructor_binary_expect_deep_copy) {
+    std::string binaryData = "hello_kernel_binary";
+    Packet original(PacketType::KERNEL_BINARY, binaryData);
+    Packet copy(original);
+
+    ASSERT_EQ(copy.GetType(), PacketType::KERNEL_BINARY);
+    ASSERT_EQ(copy.GetPayload().binary.len, original.GetPayload().binary.len);
+    ASSERT_NE(copy.GetPayload().binary.buf, original.GetPayload().binary.buf);
+    ASSERT_EQ(std::string(copy.GetPayload().binary.buf, copy.GetPayload().binary.len), binaryData);
+}
+
+TEST(Packet, move_constructor_binary_expect_ownership_transfer) {
+    std::string binaryData = "hello_kernel_binary";
+    Packet original(PacketType::KERNEL_BINARY, binaryData);
+    char *originalBuf = original.GetPayload().binary.buf;
+
+    Packet moved(std::move(original));
+    ASSERT_EQ(moved.GetType(), PacketType::KERNEL_BINARY);
+    ASSERT_EQ(moved.GetPayload().binary.buf, originalBuf);
+    ASSERT_EQ(original.GetPayload().binary.buf, nullptr);
+}
+
+TEST(Packet, IsBinaryPacket_expect_correct_classification) {
+    ASSERT_TRUE(Packet::IsBinaryPacket(PacketType::KERNEL_BINARY));
+    ASSERT_TRUE(Packet::IsBinaryPacket(PacketType::LOG_STRING));
+    ASSERT_TRUE(Packet::IsBinaryPacket(PacketType::KERNEL_RECORD));
+    ASSERT_FALSE(Packet::IsBinaryPacket(PacketType::DEVICE_SUMMARY));
+    ASSERT_FALSE(Packet::IsBinaryPacket(PacketType::KERNEL_SUMMARY));
+    ASSERT_FALSE(Packet::IsBinaryPacket(PacketType::SANITIZER_RECORD));
+    ASSERT_FALSE(Packet::IsBinaryPacket(PacketType::MEMORY_RECORD));
+}
+
+TEST(Protocol, get_kernel_summary_from_protocol_expect_success) {
+    PacketHead header;
+    header.type = PacketType::KERNEL_SUMMARY;
+    KernelSummary summary{};
+    summary.blockDim = 4;
+    summary.kernelType = KernelType::AICPU;
+    summary.pcStartAddr = 0x5000;
+
+    MemCheckProtocol protocol;
+    protocol.Feed(Serialize(header));
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::INVALID);
+
+    protocol.Feed(Serialize(summary));
+    packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::KERNEL_SUMMARY);
+    KernelSummary ret = packet.GetPayload().kernelSummary;
+    ASSERT_EQ(ret.blockDim, summary.blockDim);
+    ASSERT_EQ(ret.kernelType, summary.kernelType);
+    ASSERT_EQ(ret.pcStartAddr, summary.pcStartAddr);
+}

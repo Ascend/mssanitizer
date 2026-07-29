@@ -2276,23 +2276,30 @@ static void ParseRecordLoadSmask(const KernelRecord &record, std::vector<SanEven
     events.emplace_back(event);
 }
 
-static void MaskCountProcessByRepeat(std::vector<SanEvent> &events, SanEvent &event)
-{
+static void MaskCountProcessByRepeat(
+    std::vector<SanEvent> &events, SanEvent &event, bool isFromNorm = false, uint64_t mask0 = ~0ULL) {
     // VCOPY的MASK_COUNT机制特殊，repeat_times不变，mask0表示单次repeat的有效数据个数；
     // 先对每次repeat重新计算blockNum，记为一次内存行为
     auto& memInfo = event.eventInfo.memInfo;
+    uint64_t vectorMask0;
+    // 特殊情况：mask norm当做mask count处理：
+    if (isFromNorm) {
+        vectorMask0 = mask0;
+    } else {
+        vectorMask0 = memInfo.vectorMask.mask0;
+    }
     uint64_t elemEachBlock = memInfo.blockSize * BITS_EACH_BYTE / memInfo.dataBits;
     if (elemEachBlock == 0) {
         SAN_WARN_LOG("Element each block equals zero! (serialNo:%lu)", event.serialNo);
         return;
     }
-    uint64_t nBlock = memInfo.vectorMask.mask0 / elemEachBlock;
+    uint64_t nBlock = vectorMask0 / elemEachBlock;
     if (nBlock > 0) {
         memInfo.blockNum = nBlock;
         events.emplace_back(event);
     }
     // 再判断剩下的数据是否满足repeat结构（要求repeatStride是blockSize的整数倍）
-    uint64_t elemLastBlock = memInfo.vectorMask.mask0 - nBlock * elemEachBlock;
+    uint64_t elemLastBlock = vectorMask0 - nBlock * elemEachBlock;
     if (elemLastBlock > 0) {
         uint64_t newAddr = memInfo.addr + nBlock * memInfo.blockStride * memInfo.blockSize;
         uint64_t oldRepeat = memInfo.repeatTimes;
@@ -2414,12 +2421,7 @@ static void MaskNormalProcess(std::vector<SanEvent> &events, SanEvent &event)
         events.emplace_back(event);
         return;
     }
-    VectorMask normalMask = memInfo.vectorMask;
-    memInfo.maskMode = MaskMode::MASK_COUNT;
-    memInfo.vectorMask = { count, 0x00 };
-    MaskCountProcessByRepeat(events, event);
-    memInfo.maskMode = MaskMode::MASK_NORM;
-    memInfo.vectorMask = normalMask;
+    MaskCountProcessByRepeat(events, event, true, count); // 通过入参传入count，不修改原来的mask值
 }
 
 static void MaskModeProcess(std::vector<SanEvent> &events, SanEvent &event, RecordType recordType = RecordType::LOAD)
@@ -2454,6 +2456,7 @@ static void ParseVecdupRecord(const KernelRecord &record, std::vector<SanEvent> 
     memInfo.opType = AccessType::WRITE;
     memInfo.vectorMask = vecDupRecord.vectorMask;
     memInfo.maskMode = vecDupRecord.maskMode;
+    memInfo.instrName = vecDupRecord.instrName;
     memInfo.dataBits = vecDupRecord.dataBits;
     memInfo.addr = vecDupRecord.dst;
     memInfo.blockNum = 8U;
@@ -2478,6 +2481,7 @@ static void ParseRecordUnaryOp(const KernelRecord &record, std::vector<SanEvent>
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = unaryOpRecord.vectorMask;
     memInfo.maskMode = unaryOpRecord.maskMode;
+    memInfo.instrName = unaryOpRecord.instrName;
     memInfo.dataBits = unaryOpRecord.srcDataBits;
     memInfo.addr = unaryOpRecord.src;
     memInfo.blockNum = unaryOpRecord.srcBlockNum;
@@ -2617,6 +2621,7 @@ static void ParseRecordVgather(const KernelRecord &record, std::vector<SanEvent>
     memInfo.memType = MemType::UB;
     memInfo.vectorMask = vgatherRecord.vectorMask;
     memInfo.maskMode = vgatherRecord.maskMode;
+    memInfo.instrName = vgatherRecord.instrName;
 
     memInfo.opType = AccessType::READ;
     memInfo.dataBits = 32U;
@@ -2650,6 +2655,9 @@ static void ParseRecordElement(const KernelRecord &record, std::vector<SanEvent>
     event.type = EventType::MEM_EVENT;
     event.pipe = PipeType::PIPE_V;
     memInfo.memType = MemType::UB;
+    memInfo.vectorMask = elementRecord.vectorMask;
+    memInfo.maskMode = elementRecord.maskMode;
+    memInfo.instrName = elementRecord.instrName;
 
     memInfo.opType = elementRecord.accessType;
     memInfo.dataBits = elementRecord.dataBits;
@@ -2678,6 +2686,7 @@ static void ParseRecordBinaryOp(const KernelRecord &record, std::vector<SanEvent
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = binaryOpRecord.vectorMask;
     memInfo.maskMode = binaryOpRecord.maskMode;
+    memInfo.instrName = binaryOpRecord.instrName;
     memInfo.dataBits = binaryOpRecord.src0DataBits;
     memInfo.addr = binaryOpRecord.src0;
     memInfo.blockNum = binaryOpRecord.src0BlockNum;
@@ -2723,6 +2732,7 @@ static void ParseRecordVsel(const KernelRecord &record, std::vector<SanEvent> &e
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = binaryOpRecord.vectorMask;
     memInfo.maskMode = binaryOpRecord.maskMode;
+    memInfo.instrName = binaryOpRecord.instrName;
     memInfo.dataBits = binaryOpRecord.src0DataBits;
     memInfo.addr = binaryOpRecord.src0;
     memInfo.blockNum = binaryOpRecord.src0BlockNum;
@@ -2786,6 +2796,7 @@ static void ParseRecordReduceOp(const KernelRecord &record, std::vector<SanEvent
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = reduceOpRecord.vectorMask;
     memInfo.maskMode = reduceOpRecord.maskMode;
+    memInfo.instrName = reduceOpRecord.instrName;
     memInfo.dataBits = reduceOpRecord.srcDataBits;
     memInfo.addr = reduceOpRecord.src;
     memInfo.blockNum = reduceOpRecord.srcBlockNum;
@@ -2881,6 +2892,7 @@ static void ParseRecordReduceV2(const KernelRecord &record, std::vector<SanEvent
     memInfo.memType = MemType::UB;
     memInfo.vectorMask = reduceV2Record.vectorMask;
     memInfo.maskMode = reduceV2Record.maskMode;
+    memInfo.instrName = reduceV2Record.instrName;
     memInfo.dataBits = reduceV2Record.dataBytes * BITS_EACH_BYTE;
 
     // src0 read

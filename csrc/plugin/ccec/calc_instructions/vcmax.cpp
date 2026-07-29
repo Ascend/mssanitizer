@@ -70,7 +70,7 @@ SANITIZER_REPORT(vcmax, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config,
     auto enOrder = static_cast<OrderType>(order);
     uint8_t dataBitsFactor = 1;
     ParseOrder<half>(enOrder, dstRepeatLength, dataBitsFactor, alignSize);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMAX>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32, alignSize,
         dataBitsFactor);
 }
@@ -84,7 +84,7 @@ SANITIZER_REPORT(vcmax, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, 
     auto alignSize = uint16_t{};
     auto enOrder = static_cast<OrderType>(order);
     ParseOrder<half>(enOrder, dstRepeatLength, dataBitsFactor, alignSize);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMAX>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32, alignSize,
         dataBitsFactor);
 }
@@ -114,7 +114,7 @@ SANITIZER_REPORT(vcmax, __ubuf__ float *dst, __ubuf__ float *src, uint64_t confi
     auto alignSize = uint16_t{};
     auto enOrder = static_cast<OrderType>(order);
     ParseOrder<float>(enOrder, dstRepeatLength, dataBitsFactor, alignSize);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMAX>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32, alignSize,
         dataBitsFactor);
 }
@@ -128,7 +128,7 @@ SANITIZER_REPORT(vcmax, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat
     auto alignSize = uint16_t{};
     auto enOrder = static_cast<OrderType>(order);
     ParseOrder<float>(enOrder, dstRepeatLength, dataBitsFactor, alignSize);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMAX>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32, alignSize,
         dataBitsFactor);
 }

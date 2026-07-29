@@ -26,7 +26,7 @@ SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 {
     RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 2, 1, 8, 2, 32, 4);
 }
- 
+
 // #2447
 SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride)
@@ -34,7 +34,7 @@ SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, 
     RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 2, 1, 8, 2, 32, 4);
 }
- 
+
 // #2448
 SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool repeatStrideMode, bool strideSizeMode)
@@ -42,14 +42,14 @@ SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, 
     RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 2, 1, 8, 2, 32, 4);
 }
- 
+
 #if defined(__DAV_M200_VEC__) || defined(__DAV_M200__)
 // #2449
 SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config, bool order)
 {
     RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 2, 1, 8, 2, 32, 4);
 }
- 
+
 // #2450
 SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool repeatStrideMode, bool strideSizeMode, bool order)
@@ -57,7 +57,7 @@ SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, 
     RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 2, 1, 8, 2, 32, 4);
 }
- 
+
 #else
 // #2451
 SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config, Order_t order)
@@ -72,7 +72,7 @@ SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config,
     auto dstRepeatLength = uint16_t{};
     auto enOrder = static_cast<OrderType>(order);
     ParseOrder<half>(enOrder, dstRepeatLength, dataBitsFactor, dstAddrAlignUnit);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMIN>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32, dstAddrAlignUnit,
         dataBitsFactor);
 }
@@ -85,12 +85,12 @@ SANITIZER_REPORT(vcmin, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, 
     uint8_t dataBitsFactor = 1;
     uint16_t dstAddrAlignUnit{};
     ParseOrder<half>(enOrder, dstRepeatLength, dataBitsFactor, dstAddrAlignUnit);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMIN>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32,
         dstAddrAlignUnit, dataBitsFactor);
 }
 #endif
- 
+
 #if defined(__DAV_M200_VEC__) || defined(__DAV_M200__)
 // #2453
 SANITIZER_REPORT(vcmin, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config, bool order)
@@ -119,7 +119,7 @@ SANITIZER_REPORT(vcmin, __ubuf__ float *dst, __ubuf__ float *src, uint64_t confi
     auto enOrder = static_cast<OrderType>(order);
     uint16_t dstAddrAlignUnit{};
     ParseOrder<float>(enOrder, dstRepeatLength, dataBitsFactor, dstAddrAlignUnit);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMIN>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32,
         dstAddrAlignUnit, dataBitsFactor);
 }
@@ -132,18 +132,18 @@ SANITIZER_REPORT(vcmin, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat
     auto enOrder = static_cast<OrderType>(order);
     uint16_t dstAddrAlignUnit{};
     ParseOrder<float>(enOrder, dstRepeatLength, dataBitsFactor, dstAddrAlignUnit);
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCMIN>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, dstRepeatLength, 1, 8, dstRepeatLength, 32, dstAddrAlignUnit,
         dataBitsFactor);
 }
 #endif
- 
+
 // #2457
 SANITIZER_REPORT(vcmin, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src, uint64_t config, bool order)
 {
     RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 2, 1, 8, 2, 32, 8);
 }
- 
+
 // #2458
 SANITIZER_REPORT(vcmin, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool repeatStrideMode, bool strideSizeMode, bool order)

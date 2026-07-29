@@ -22,7 +22,7 @@ using namespace Sanitizer;
 // #2996
 SANITIZER_REPORT(vlrelu, __ubuf__ half *dst, __ubuf__ half *src, half a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VLRELU>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2997
@@ -38,14 +38,14 @@ SANITIZER_REPORT(vlrelu, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t
 SANITIZER_REPORT(vlrelu, __ubuf__ half *dst, __ubuf__ half *src, half a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VLRELU>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2999
 SANITIZER_REPORT(vlrelu, __ubuf__ float *dst, __ubuf__ float *src, float a, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VLRELU>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #3000
@@ -61,7 +61,7 @@ SANITIZER_REPORT(vlrelu, __ubuf__ float *dst, __ubuf__ float *src, float a, uint
 SANITIZER_REPORT(vlrelu, __ubuf__ float *dst, __ubuf__ float *src, float a, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VLRELU>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 

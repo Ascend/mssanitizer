@@ -68,6 +68,7 @@ private:
     size_t GetRecordsNum(const std::vector<SanEvent> &events) const;
     void ReportErrorMsg();
     void ReportAfterKernelFinish();
+    void CheckNonDefaultReg(const SanEvent &event);
     bool SwitchToScope(BoundsCheckScope scope);
     void BeforeScopeSwitch(MemOpRecord const &record);
     void AfterScopeSwitch(MemOpRecord const &record);
@@ -92,6 +93,7 @@ private:
     PipelineReplayer pipelineReplayer_;
     std::vector<SanEvent> replayedEvents_;
     DeviceType deviceType_ = DeviceType::INVALID;
+    uint64_t preSerialNo_{0};
 };
 }
 

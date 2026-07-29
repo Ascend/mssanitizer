@@ -22,56 +22,56 @@ using namespace Sanitizer;
 // #2910
 SANITIZER_REPORT(vcopy, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
  // #2911
 SANITIZER_REPORT(vcopy, __ubuf__ int16_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2912
 SANITIZER_REPORT(vcopy, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
  // #2913
 SANITIZER_REPORT(vcopy, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2914
 SANITIZER_REPORT(vcopy, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
  // #2915
 SANITIZER_REPORT(vcopy, __ubuf__ uint16_t *dst, __ubuf__ uint16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2916
 SANITIZER_REPORT(vcopy, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
  // #2917
 SANITIZER_REPORT(vcopy, __ubuf__ uint32_t *dst, __ubuf__ uint32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCOPY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::VCOPY_OP, InstrName::VCOPY>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 

@@ -217,8 +217,191 @@ TEST(MemErrorDef, format_internal_error_msg_expect_sucesss)
 TEST(MemErrorDef, format_invalid_error_msg_expect_success)
 {
     ErrorMsg msg;
-    msg.SetType(static_cast<MemErrorType>(10), AddressSpace::GM, 0x61);
+    msg.SetType(static_cast<MemErrorType>(100), AddressSpace::GM, 0x61);
     std::stringstream oss;
     oss << ReducedErrorMsg{msg, {0}, {}, {}};
     ASSERT_TRUE(oss.str().empty());
+}
+
+TEST(MemErrorDef, format_non_default_reg_error_msg_expect_success)
+{
+    ErrorMsg msg;
+    msg.type = MemErrorType::NON_DEFAULT_REG;
+    msg.isError = true;
+    msg.auxData.instrName = InstrName::VADD;
+    msg.auxData.maskMode = MaskMode::MASK_NORM;
+    msg.auxData.vectorMask.mask0 = 0x0000FFFFULL;
+    msg.auxData.vectorMask.mask1 = 0ULL;
+    std::stringstream oss;
+    oss << ReducedErrorMsg{msg, {0}, {}, {}};
+    ASSERT_TRUE(oss.str().find("non-default mask") != std::string::npos);
+    ASSERT_TRUE(oss.str().find("VADD") != std::string::npos);
+    ASSERT_TRUE(oss.str().find("MaskMode") != std::string::npos);
+}
+
+TEST(MemErrorDef, format_mask_mode_norm_expect_normal_string)
+{
+    std::stringstream oss;
+    oss << MaskMode::MASK_NORM;
+    ASSERT_EQ(oss.str(), "NORM");
+}
+
+TEST(MemErrorDef, format_mask_mode_count_expect_counter_string)
+{
+    std::stringstream oss;
+    oss << MaskMode::MASK_COUNT;
+    ASSERT_EQ(oss.str(), "COUNT");
+}
+
+TEST(MemErrorDef, format_instr_name_vadd_expect_vadd_string)
+{
+    std::stringstream oss;
+    oss << InstrName::VADD;
+    ASSERT_EQ(oss.str(), "VADD");
+}
+
+TEST(MemErrorDef, format_instr_name_none_expect_default_string)
+{
+    std::stringstream oss;
+    oss << InstrName::NONE;
+    ASSERT_TRUE(oss.str().find("InstrName") != std::string::npos);
+}
+
+TEST(MemErrorDef, error_msg_with_vector_mask_expect_equal_when_same_mask)
+{
+    ErrorMsg msg1;
+    msg1.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg1.isError = true;
+    msg1.auxData.vectorMask.mask0 = 0x0000FFFFULL;
+    msg1.auxData.vectorMask.mask1 = 0ULL;
+    msg1.auxData.maskMode = MaskMode::MASK_NORM;
+
+    ErrorMsg msg2;
+    msg2.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg2.isError = true;
+    msg2.auxData.vectorMask.mask0 = 0x0000FFFFULL;
+    msg2.auxData.vectorMask.mask1 = 0ULL;
+    msg2.auxData.maskMode = MaskMode::MASK_NORM;
+
+    ASSERT_TRUE(msg1 == msg2);
+}
+
+TEST(MemErrorDef, error_msg_with_vector_mask_expect_equal_when_different_mask) {
+    ErrorMsg msg1;
+    msg1.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg1.isError = true;
+    msg1.auxData.vectorMask.mask0 = 0x0000FFFFULL;
+    msg1.auxData.vectorMask.mask1 = 0ULL;
+
+    ErrorMsg msg2;
+    msg2.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg2.isError = true;
+    msg2.auxData.vectorMask.mask0 = ~0ULL;
+    msg2.auxData.vectorMask.mask1 = ~0ULL;
+
+    ASSERT_TRUE(msg1 == msg2);
+}
+
+TEST(MemErrorDef, error_msg_with_mask_mode_expect_equal_when_different_mode) {
+    ErrorMsg msg1;
+    msg1.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg1.isError = true;
+    msg1.auxData.maskMode = MaskMode::MASK_NORM;
+
+    ErrorMsg msg2;
+    msg2.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg2.isError = true;
+    msg2.auxData.maskMode = MaskMode::MASK_COUNT;
+
+    ASSERT_TRUE(msg1 == msg2);
+}
+
+TEST(MemErrorDef, format_non_default_reg_with_mask_count_expect_counter_mode)
+{
+    ErrorMsg msg;
+    msg.type = MemErrorType::NON_DEFAULT_REG;
+    msg.isError = true;
+    msg.auxData.instrName = InstrName::VMUL;
+    msg.auxData.maskMode = MaskMode::MASK_COUNT;
+    msg.auxData.vectorMask.mask0 = 0ULL;
+    msg.auxData.vectorMask.mask1 = 0ULL;
+    std::stringstream oss;
+    oss << ReducedErrorMsg{msg, {0}, {}, {}};
+    ASSERT_TRUE(oss.str().find("VMUL") != std::string::npos);
+    ASSERT_TRUE(oss.str().find("Counter") != std::string::npos);
+}
+
+TEST(MemErrorDef, aux_data_default_init_expect_vector_mask_zero) {
+    ErrorMsg::AuxData auxData;
+    ASSERT_EQ(auxData.vectorMask.mask0, 0ULL);
+    ASSERT_EQ(auxData.vectorMask.mask1, 0ULL);
+    ASSERT_EQ(auxData.maskMode, MaskMode::MASK_NORM);
+    ASSERT_EQ(auxData.instrName, InstrName::NONE);
+}
+
+TEST(MemErrorDef, format_instr_name_vconv_expect_vconv_string) {
+    std::stringstream oss;
+    oss << InstrName::VCONV;
+    ASSERT_EQ(oss.str(), "VCONV");
+}
+
+TEST(MemErrorDef, format_instr_name_vsub_expect_vsub_string) {
+    std::stringstream oss;
+    oss << InstrName::VSUB;
+    ASSERT_EQ(oss.str(), "VSUB");
+}
+
+TEST(MemErrorDef, format_instr_name_vector_dup_expect_vector_dup_string) {
+    std::stringstream oss;
+    oss << InstrName::VECTOR_DUP;
+    ASSERT_EQ(oss.str(), "VECTOR_DUP");
+}
+
+TEST(MemErrorDef, error_msg_with_instr_name_expect_equal_when_different_instr) {
+    ErrorMsg msg1;
+    msg1.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg1.isError = true;
+    msg1.auxData.instrName = InstrName::VADD;
+
+    ErrorMsg msg2;
+    msg2.SetType(MemErrorType::NON_DEFAULT_REG, AddressSpace::GM, 0x0);
+    msg2.isError = true;
+    msg2.auxData.instrName = InstrName::VSUB;
+
+    ASSERT_TRUE(msg1 == msg2);
+}
+
+TEST(MemErrorDef, format_non_default_reg_with_hex_mask_expect_hex_output) {
+    ErrorMsg msg;
+    msg.type = MemErrorType::NON_DEFAULT_REG;
+    msg.isError = true;
+    msg.auxData.instrName = InstrName::VADD;
+    msg.auxData.maskMode = MaskMode::MASK_NORM;
+    msg.auxData.vectorMask.mask0 = 0x0000FFFFULL;
+    msg.auxData.vectorMask.mask1 = 0xFF000000ULL;
+    std::stringstream oss;
+    oss << ReducedErrorMsg{msg, {0}, {}, {}};
+    std::string output = oss.str();
+    ASSERT_TRUE(output.find("0xff000000") != std::string::npos);
+    ASSERT_TRUE(output.find("0xffff") != std::string::npos);
+}
+
+TEST(MemErrorDef, format_non_default_reg_default_mask_expect_no_report) {
+    ErrorMsg msg;
+    msg.type = MemErrorType::NON_DEFAULT_REG;
+    msg.isError = true;
+    msg.auxData.instrName = InstrName::VADD;
+    msg.auxData.maskMode = MaskMode::MASK_NORM;
+    msg.auxData.vectorMask.mask0 = ~0ULL;
+    msg.auxData.vectorMask.mask1 = ~0ULL;
+    std::stringstream oss;
+    oss << ReducedErrorMsg{msg, {0}, {}, {}};
+    ASSERT_TRUE(oss.str().find("VADD") != std::string::npos);
+    ASSERT_TRUE(oss.str().find("non-default mask") != std::string::npos);
+}
+
+TEST(MemErrorDef, format_instr_name_vgather_expect_vgather_string) {
+    std::stringstream oss;
+    oss << InstrName::VGATHER;
+    ASSERT_EQ(oss.str(), "VGATHER");
 }

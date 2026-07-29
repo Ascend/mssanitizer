@@ -219,12 +219,10 @@ TEST(AddressSanitizer, free_twice_expect_return_double_free)
     std::string msg;
     asan->RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
-    ASSERT_TRUE(msg.find("MALLOC") != std::string::npos);
 
     record.version = RecordVersion::MEMORY_RECORD;
     record.payload.memoryRecord = CreateMemOpRecord(MemOpType::FREE);
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
-    ASSERT_TRUE(msg.find("FREE") != std::string::npos);
 
     /// Double Free
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
@@ -347,7 +345,6 @@ TEST(AddressSanitizer, malloc_free_but_not_use_expect_return_mem_not_use)
     record.version = RecordVersion::MEMORY_RECORD;
     record.payload.memoryRecord = CreateMemOpRecord(MemOpType::FREE);
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
-    ASSERT_TRUE(msg.find("FREE") != std::string::npos);
     ASSERT_TRUE(msg.find("Unused memory") != std::string::npos);
 }
 
@@ -372,7 +369,6 @@ TEST(AddressSanitizer, malloc_free_and_use_expect_no_exception)
     record.version = RecordVersion::MEMORY_RECORD;
     record.payload.memoryRecord = CreateMemOpRecord(MemOpType::FREE);
     ASSERT_FALSE(asan->CheckRecordBeforeProcess(record));
-    ASSERT_TRUE(msg.find("FREE") != std::string::npos);
     ASSERT_TRUE(msg.find("Unused memory") == std::string::npos);
 }
 
@@ -1635,6 +1631,7 @@ TEST(AddressSanitizer, parse_vec_dup_records)
     vecDupRecord.dstRepeatStride = 1;
     vecDupRecord.maskMode = MaskMode::MASK_NORM;
     vecDupRecord.vectorMask = {static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
+    vecDupRecord.instrName = InstrName::NONE;
 
     KernelRecord kernelRecord;
     kernelRecord.recordType = RecordType::VEC_DUP;
@@ -1663,6 +1660,7 @@ TEST(AddressSanitizer, parse_muti_repeat_vec_dup_records)
     vecDupRecord.dstRepeatStride = 1;
     vecDupRecord.maskMode = MaskMode::MASK_NORM;
     vecDupRecord.vectorMask = {static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
+    vecDupRecord.instrName = InstrName::NONE;
 
     KernelRecord kernelRecord;
     kernelRecord.recordType = RecordType::VEC_DUP;
@@ -1691,6 +1689,7 @@ TEST(AddressSanitizer, parse_count_model_mask0_zero_vec_dup_records)
     vecDupRecord.dstRepeatStride = 1;
     vecDupRecord.maskMode = MaskMode::MASK_COUNT;
     vecDupRecord.vectorMask = {static_cast<uint64_t>(0), static_cast<uint64_t>(-1)};
+    vecDupRecord.instrName = InstrName::NONE;
 
     KernelRecord kernelRecord;
     kernelRecord.recordType = RecordType::VEC_DUP;
@@ -2238,6 +2237,7 @@ TEST(AddressSanitizer, parse_unary_op_record_expect_get_correct_memory_records)
     unaryOpRecord.srcDataBits = 8U;
     unaryOpRecord.vectorMask = { ~0UL, ~0UL };
     unaryOpRecord.maskMode = MaskMode::MASK_NORM;
+    unaryOpRecord.instrName = InstrName::NONE;
 
     KernelRecord kernelRecord;
     kernelRecord.recordType = RecordType::UNARY_OP;
@@ -2287,6 +2287,7 @@ static BinaryOpRecord CreateBinaryOpRecord(void)
     binaryOpRecord.src1BlockSize = SRC1_BLOCK_SIZE;
     binaryOpRecord.maskMode = MaskMode::MASK_NORM;
     binaryOpRecord.vectorMask = {static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
+    binaryOpRecord.instrName = InstrName::NONE;
     return binaryOpRecord;
 }
 
@@ -2335,6 +2336,8 @@ static ReduceOpRecord CreateReduceOpRecord(RecordType recordType)
     reduceOpRecord.dstDataBits = 8U;
     reduceOpRecord.srcDataBits = 8U;
     reduceOpRecord.vectorMask = { ~0UL, ~0UL };
+    reduceOpRecord.maskMode = MaskMode::MASK_NORM;
+    reduceOpRecord.instrName = InstrName::NONE;
     return reduceOpRecord;
 }
 

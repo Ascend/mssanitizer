@@ -127,7 +127,7 @@ AICORE_FUNC_HEAD void ParseVaRegister(Recorder const &recorder, VaRegister &vaRe
 #endif
 }
 
-template<RecordType recordType, typename TO, typename TI>
+template<RecordType recordType, InstrName instrName = InstrName::NONE, typename TO, typename TI>
 AICORE_FUNC_HEAD void RecordUnaryOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint8_t repeat, uint16_t dstBlockStride, uint16_t srcBlockStride,
     uint16_t dstRepeatStride, uint16_t srcRepeatStride, uint8_t dstBlockNum, uint8_t srcBlockNum,
@@ -158,6 +158,7 @@ AICORE_FUNC_HEAD void RecordUnaryOpFunc(EXTRA_PARAMS_DEC,
     ParseDataBits<recordType, TO, TI>(record);
     Recorder recorder(memInfo, blockIdx);
     ParseVectorMask(record, recorder, useMask);
+    record.instrName = instrName;
     recorder.DumpRecord<recordType>(record);
 }
 
@@ -197,6 +198,7 @@ AICORE_FUNC_HEAD void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst,
 
     Recorder recorder(memInfo, blockIdx);
     ParseVectorMask(record, recorder, true);
+    record.instrName = InstrName::VECTOR_DUP;
     recorder.DumpRecord<RecordType::VEC_DUP>(record);
 }
 
@@ -213,7 +215,7 @@ AICORE_FUNC_HEAD void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst, uint6
     RecordVecDupEvent(EXTRA_PARAMS, dst, repeat, dstBlockStride, dstRepeatStride);
 }
 
-template<RecordType recordType, typename TO, typename TI0, typename TI1>
+template<RecordType recordType, InstrName instrName = InstrName::NONE, typename TO, typename TI0, typename TI1>
 AICORE_FUNC_HEAD void RecordBinaryOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI0 *src0, __ubuf__ TI1 *src1, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t src0BlockStride, uint16_t src1BlockStride, uint16_t dstRepeatStride, uint16_t src0RepeatStride,
@@ -250,6 +252,7 @@ AICORE_FUNC_HEAD void RecordBinaryOpFunc(EXTRA_PARAMS_DEC,
     ParseDataBits<recordType, TO, TI0, TI1>(record);
     Recorder recorder(memInfo, blockIdx);
     ParseVectorMask(record, recorder, useMask);
+    record.instrName = instrName;
     recorder.DumpRecord<recordType>(record);
 }
 
@@ -263,7 +266,7 @@ AICORE_FUNC_HEAD void RecordVgatherbConfigFunc(uint64_t config, uint32_t &offset
     repeat = (config >> 56U) & 0xFF;
 }
 
-template<RecordType recordType, typename TO, typename TI>
+template<RecordType recordType, InstrName instrName = InstrName::NONE, typename TO, typename TI>
 AICORE_FUNC_HEAD void RecordReduceOpFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint8_t repeat, uint16_t dstRepeatStride, uint16_t srcBlockStride,
     uint16_t srcRepeatStride, uint16_t dstRepeatLength, uint8_t dstBlockNum, uint8_t srcBlockNum,
@@ -298,6 +301,7 @@ AICORE_FUNC_HEAD void RecordReduceOpFunc(EXTRA_PARAMS_DEC,
     Recorder recorder(memInfo, blockIdx);
     // 所有归约类指令都支持 vector mask
     ParseVectorMask(record, recorder, true);
+    record.instrName = instrName;
     recorder.DumpRecord<recordType>(record);
 }
 
@@ -453,16 +457,16 @@ AICORE_FUNC_HEAD void RecordVreduceFunc(EXTRA_PARAMS_DEC, uint8_t patternMode,
     uint8_t src0RepeatStride, uint8_t src1RepeatStride, uint8_t src1BlockSize)
 {
     if (patternMode == 0) {
-        RecordBinaryOpFunc<RecordType::VREDUCEV2_BINARY>(EXTRA_PARAMS, dst, src0, src1, repeat, 1, src0BlockStride,
+        RecordBinaryOpFunc<RecordType::VREDUCEV2_BINARY, InstrName::VREDUCE>(EXTRA_PARAMS, dst, src0, src1, repeat, 1, src0BlockStride,
         1, 8, src0RepeatStride, src1RepeatStride, 8, 8, 1, 32, 32, src1BlockSize, true);
     } else if (patternMode < 3U) {
-        RecordUnaryOpFunc<RecordType::VREDUCEV2_UNARY>(EXTRA_PARAMS, dst, src0, repeat, 1, src0BlockStride, 4,
+        RecordUnaryOpFunc<RecordType::VREDUCEV2_UNARY, InstrName::VREDUCE>(EXTRA_PARAMS, dst, src0, repeat, 1, src0BlockStride, 4,
             src0RepeatStride, 4, 8, 32, 32, true);
     } else if (patternMode < 7U) {
-        RecordUnaryOpFunc<RecordType::VREDUCEV2_UNARY>(EXTRA_PARAMS, dst, src0, repeat, 1, src0BlockStride, 2,
+        RecordUnaryOpFunc<RecordType::VREDUCEV2_UNARY, InstrName::VREDUCE>(EXTRA_PARAMS, dst, src0, repeat, 1, src0BlockStride, 2,
             src0RepeatStride, 2, 8, 32, 32, true);
     } else {
-        RecordUnaryOpFunc<RecordType::VREDUCEV2_UNARY>(EXTRA_PARAMS, dst, src0, repeat, 1, src0BlockStride, 8,
+        RecordUnaryOpFunc<RecordType::VREDUCEV2_UNARY, InstrName::VREDUCE>(EXTRA_PARAMS, dst, src0, repeat, 1, src0BlockStride, 8,
             src0RepeatStride, 8, 8, 32, 32, true);
     }
 }
@@ -496,6 +500,7 @@ AICORE_FUNC_HEAD void RecordVreducev2Func(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __u
     Recorder recorder(memInfo, blockIdx);
     ParseVectorMask(record, recorder, true);
     ParseCompareMask(record.compareMask, src1);
+    record.instrName = InstrName::VREDUCEV2;
     recorder.DumpRecord<RecordType::VREDUCEV2>(record);
 }
 
@@ -647,7 +652,7 @@ AICORE_FUNC_HEAD void RecordVmrgsort4C310(EXTRA_PARAMS_DEC, uint64_t dst, uint64
     recorder.DumpRecord<RecordType::VMRGSORT4_OP_C310>(record);
 }
 
-template<RecordType recordType, typename TO, typename TI>
+template<RecordType recordType, InstrName instrName = InstrName::NONE, typename TO, typename TI>
 AICORE_FUNC_HEAD void RecordUnaryOpConfigFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint64_t config, uint8_t dstBlockNum, uint8_t srcBlockNum,
     uint16_t dstBlockSize, uint16_t srcBlockSize, bool useMask = true)
@@ -658,11 +663,11 @@ AICORE_FUNC_HEAD void RecordUnaryOpConfigFunc(EXTRA_PARAMS_DEC,
     auto dstRepeatStride = uint16_t{};
     auto srcRepeatStride = uint16_t{};
     ParseUnaryConfigByArch(config, repeat, dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride);
-    RecordUnaryOpFunc<recordType>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<recordType, instrName>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, dstBlockNum, srcBlockNum, dstBlockSize, srcBlockSize, useMask);
 }
 
-template<RecordType recordType, typename TO, typename TI1, typename TI2>
+template<RecordType recordType, InstrName instrName = InstrName::NONE, typename TO, typename TI1, typename TI2>
 AICORE_FUNC_HEAD void RecordBinaryOpConfigFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI1 *src0, __ubuf__ TI2 *src1, uint64_t config, uint8_t dstBlockNum,
     uint8_t src0BlockNum, uint8_t src1BlockNum, uint16_t dstBlockSize, uint16_t src0BlockSize,
@@ -677,7 +682,7 @@ AICORE_FUNC_HEAD void RecordBinaryOpConfigFunc(EXTRA_PARAMS_DEC,
     auto src1RepeatStride = uint8_t{};
     ParseBinaryConfig(config, repeat, dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride,
         src0RepeatStride, src1RepeatStride);
-    RecordBinaryOpFunc<recordType>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<recordType, instrName>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         dstBlockNum, src0BlockNum, src1BlockNum, dstBlockSize, src0BlockSize, src1BlockSize, useMask);
 }
@@ -767,6 +772,9 @@ AICORE_FUNC_HEAD void ParseElementRecordMaskNorm(const VgatherRecord& record, Re
     element.alignSize = 32U;
     element.dataBits = 32U;
     element.addr = record.src;
+    element.vectorMask = record.vectorMask;
+    element.maskMode = record.maskMode;
+    element.instrName = record.instrName;
     recorder.DumpRecord<RecordType::ELEMENT>(element);
     // N*repeat次掩码后的“读”+“写”
     element.blockSize = record.dstDataBits / BITS_EACH_BYTE;
@@ -852,7 +860,7 @@ AICORE_FUNC_HEAD void ClassifyVgatherByMaskMode(VgatherRecord& record, Recorder&
 // 如果没有mask：拆成1次读写（完整长度） + N*repeat次读，即一个VgatherRecord + N*repeat个ElementRecord
 // 如果是mask norm：拆成1次读（完整长度） + 掩码后的N*repeat次读写，即1 + 2*掩码后的N*repeat个ElementRecord
 // 如果是mask count：拆成1次读写（前count个元素）+ count次读，即一个VgatherRecord + count个ElementRecord
-template<typename T>
+template<InstrName instrName = InstrName::NONE, typename T>
 AICORE_FUNC_HEAD void RecordVgatherOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf__ uint32_t *src,
                                            uint32_t offsetAddr, uint16_t dstRepeatStride, uint8_t dstBlockStride,
                                            uint8_t repeat, uint8_t sizeN, bool useMask)
@@ -862,6 +870,7 @@ AICORE_FUNC_HEAD void RecordVgatherOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __u
     Recorder recorder(memInfo, blockIdx);
     auto record = VgatherRecord();
     ParseVectorMask(record, recorder, useMask);
+    record.instrName = instrName;
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src = reinterpret_cast<uint64_t>(src);
 #if !defined(BUILD_DYNAMIC_PROBE)
@@ -903,7 +912,7 @@ AICORE_FUNC_HEAD void RecordVgatherOpConfFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst,
     uint16_t dstRepeatStride = (((config >> 44) & 0xf00) | ((config >> 32) & 0xff));
     uint8_t repeat = ((config >> 56) & 0xff);
     uint8_t sizeN = static_cast<uint8_t>(std::is_same<T, uint32_t>::value ? 64 : 128);
-    RecordVgatherOpFunc(EXTRA_PARAMS, dst, src, offsetAddr, dstRepeatStride, 1U, repeat, sizeN, true);
+    RecordVgatherOpFunc<InstrName::VGATHER>(EXTRA_PARAMS, dst, src, offsetAddr, dstRepeatStride, 1U, repeat, sizeN, true);
 }
 
 template<typename T>
@@ -922,8 +931,8 @@ AICORE_FUNC_HEAD void RecordVscatterOpFunc(EXTRA_PARAMS_DEC, __ubuf__ dstT *dst,
                                      uint32_t offset, bool strideSizeMode, bool repeatUpdateMode,
                                      uint8_t repeatTimes, uint8_t srcRepeatStrideSize)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeatTimes, 1, 1, 1, srcRepeatStrideSize,
-                                            8, 8, 32, 32);
+    RecordUnaryOpFunc<RecordType::UNARY_OP>(
+        EXTRA_PARAMS, dst, src, repeatTimes, 1, 1, 1, srcRepeatStrideSize, 8, 8, 32, 32);
 }
 
 template<typename dstT, typename srcT>
@@ -999,7 +1008,7 @@ AICORE_FUNC_HEAD void RecordViouOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __ubuf
     constexpr uint16_t ResultSize = PropNum * PropNum * ElementSize;
     uint8_t repeat = config >> RepeatShift & 0xFF;
     RecordBinaryOpFunc<RecordType::BINARY_OP>(EXTRA_PARAMS, dst, src0, src1, repeat, 1, 1, 0, 1, 1, 1, 1, 1, 1,
-                                              ResultSize, PropSize * PropNum, PropSize * PropNum);
+        ResultSize, PropSize * PropNum, PropSize * PropNum);
 }
 
 AICORE_FUNC_HEAD void ParseMadConfig(uint64_t config, uint16_t &m, uint16_t &k,
@@ -1134,7 +1143,7 @@ AICORE_FUNC_HEAD void RecordMmadA5(EXTRA_PARAMS_DEC, __cc__ void *dst, __ca__ vo
     recorder.DumpRecord<RecordType::MMAD_A5>(record);
 }
 
-template<RecordType recordType, typename TO, typename TI>
+template<RecordType recordType, InstrName instrName = InstrName::NONE, typename TO, typename TI>
 AICORE_FUNC_HEAD void RecordReduceOpConfigFunc(EXTRA_PARAMS_DEC,
     __ubuf__ TO *dst, __ubuf__ TI *src, uint64_t config, uint16_t dstRepeatLength, uint8_t dstBlockNum,
     uint8_t srcBlockNum, uint8_t dstBlockSize, uint8_t srcBlockSize, uint16_t dstAlignSize = 32,
@@ -1145,7 +1154,7 @@ AICORE_FUNC_HEAD void RecordReduceOpConfigFunc(EXTRA_PARAMS_DEC,
     auto srcBlockStride = uint16_t{};
     auto srcRepeatStride = uint16_t{};
     ParseReduceConfig(config, repeat, dstRepeatStride, srcBlockStride, srcRepeatStride);
-    RecordReduceOpFunc<recordType, TO, TI>(EXTRA_PARAMS, dst, src, repeat, dstRepeatStride, srcBlockStride,
+    RecordReduceOpFunc<recordType, instrName, TO, TI>(EXTRA_PARAMS, dst, src, repeat, dstRepeatStride, srcBlockStride,
         srcRepeatStride, dstRepeatLength, dstBlockNum, srcBlockNum, dstBlockSize, srcBlockSize, dstAlignSize,
         dstDataBitsFactor);
 }
@@ -1206,7 +1215,7 @@ AICORE_FUNC_HEAD void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t d
     record.location.pc = static_cast<uint64_t>(pc);
     recorder.DumpRecord<RecordType::SCATTERVNCHWCONV>(record);
 }
- 
+
 AICORE_FUNC_HEAD void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t dst, ub_addr8_t src,
                                                    uint64_t config, DataType dataType,
                                                    bool dstHighHalf = false, bool srcHighHalf = false)

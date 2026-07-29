@@ -22,7 +22,7 @@ using namespace Sanitizer;
 // #3163
 SANITIZER_REPORT(vrelu, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VRELU>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -30,7 +30,7 @@ SANITIZER_REPORT(vrelu, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 SANITIZER_REPORT(vrelu, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VRELU>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -55,7 +55,7 @@ SANITIZER_REPORT(vrelu, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat,
 // #3167
 SANITIZER_REPORT(vrelu, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VRELU>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -63,7 +63,7 @@ SANITIZER_REPORT(vrelu, __ubuf__ float *dst, __ubuf__ float *src, uint64_t confi
 SANITIZER_REPORT(vrelu, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VRELU>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -88,7 +88,7 @@ SANITIZER_REPORT(vrelu, __ubuf__ float *dst, __ubuf__ float *src0, uint8_t repea
 // #3171
 SANITIZER_REPORT(vrelu, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VRELU>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -96,7 +96,7 @@ SANITIZER_REPORT(vrelu, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, uint64_t c
 SANITIZER_REPORT(vrelu, __ubuf__ int32_t *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VRELU>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else

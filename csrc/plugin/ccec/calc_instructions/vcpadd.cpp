@@ -22,17 +22,17 @@ using namespace Sanitizer;
 // #2918
 SANITIZER_REPORT(vcpadd, __ubuf__ half *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 128, 1, 8, 128, 32);
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCPADD>(EXTRA_PARAMS, dst, src, config, 128, 1, 8, 128, 32);
 }
- 
+
 // #2919
 SANITIZER_REPORT(vcpadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride)
 {
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCPADD>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 128, 1, 8, 128, 32);
 }
- 
+
 // #2920
 SANITIZER_REPORT(vcpadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool repeatStrideMode, bool strideSizeMode)
@@ -43,16 +43,16 @@ SANITIZER_REPORT(vcpadd, __ubuf__ half *dst, __ubuf__ half *src, uint8_t repeat,
 // #2921
 SANITIZER_REPORT(vcpadd, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordReduceOpConfigFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, config, 128, 1, 8, 128, 32);
+    RecordReduceOpConfigFunc<RecordType::REDUCE_OP, InstrName::VCPADD>(EXTRA_PARAMS, dst, src, config, 128, 1, 8, 128, 32);
 }
 // #2922
 SANITIZER_REPORT(vcpadd, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride)
 {
-    RecordReduceOpFunc<RecordType::REDUCE_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordReduceOpFunc<RecordType::REDUCE_OP, InstrName::VCPADD>(EXTRA_PARAMS, dst, src, repeat,
         dstRepeatStride, srcBlockStride, srcRepeatStride, 128, 1, 8, 128, 32);
 }
- 
+
 // #2923
 SANITIZER_REPORT(vcpadd, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat, uint16_t dstRepeatStride,
     uint16_t srcBlockStride, uint16_t srcRepeatStride, bool repeatStrideMode, bool strideSizeMode)

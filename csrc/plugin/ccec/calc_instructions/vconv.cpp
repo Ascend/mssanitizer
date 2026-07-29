@@ -23,97 +23,97 @@ using namespace Sanitizer;
 SANITIZER_REPORT(vconv_bf162f32, __ubuf__ float *dst, __ubuf__ __bf16 *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2584
 SANITIZER_REPORT(vconv_bf162f32, __ubuf__ float *dst, __ubuf__ __bf16 *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2585
 SANITIZER_REPORT(vconv_bf162s32a, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2586
 SANITIZER_REPORT(vconv_bf162s32a, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2587
 SANITIZER_REPORT(vconv_bf162s32c, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2588
 SANITIZER_REPORT(vconv_bf162s32c, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2589
 SANITIZER_REPORT(vconv_bf162s32f, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2590
 SANITIZER_REPORT(vconv_bf162s32f, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2591
 SANITIZER_REPORT(vconv_bf162s32r, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2592
 SANITIZER_REPORT(vconv_bf162s32r, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2593
 SANITIZER_REPORT(vconv_bf162s32z, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2594
 SANITIZER_REPORT(vconv_bf162s32z, __ubuf__ int32_t *dst, __ubuf__ __bf16 *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2595/2599
 SANITIZER_REPORT(vconv_deq, __ubuf__ half *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2596/2598
 SANITIZER_REPORT(vconv_deq, __ubuf__ half *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
@@ -160,58 +160,56 @@ SANITIZER_REPORT(vconv_deqs162b8, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, 
 SANITIZER_REPORT(vconv_deqs162b8h, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2605
 SANITIZER_REPORT(vconv_deqs162b8h, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2606
 SANITIZER_REPORT(vconv_deqs162b8h, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
-    uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride,
-    bool repeatStrideMode, bool strideSizeModek)
+    uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2607
 SANITIZER_REPORT(vconv_deqs162b8h, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2608
 SANITIZER_REPORT(vconv_deqs162b8l, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2609
 SANITIZER_REPORT(vconv_deqs162b8l, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2610
 SANITIZER_REPORT(vconv_deqs162b8l, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
-    uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride,
-    bool repeatStrideMode, bool strideSizeModek)
+    uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2611
 SANITIZER_REPORT(vconv_deqs162b8l, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2612/2616
@@ -220,7 +218,7 @@ SANITIZER_REPORT(vconv_f162f32, __ubuf__ float *dst, __ubuf__ half *src, uint64_
     uint8_t repeat;
     uint16_t dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride;
     ParseUnaryConfigByArch(config, repeat, dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride);
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
@@ -229,7 +227,7 @@ SANITIZER_REPORT(vconv_f162f32, __ubuf__ float *dst, __ubuf__ half *src, uint64_
 SANITIZER_REPORT(vconv_f162f32, __ubuf__ float *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -255,48 +253,48 @@ SANITIZER_REPORT(vconv_f162f32, __ubuf__ float *dst, __ubuf__ half *src, uint8_t
 SANITIZER_REPORT(vconv_f162s16a, __ubuf__ int16_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2618
 SANITIZER_REPORT(vconv_f162s16a, __ubuf__ int16_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2619
 SANITIZER_REPORT(vconv_f162s16c, __ubuf__ int16_t *dst, __ubuf__ half *src, uint8_t repeat,
                  uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2620
 SANITIZER_REPORT(vconv_f162s16c, __ubuf__ int16_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2621
 SANITIZER_REPORT(vconv_f162s16f, __ubuf__ int16_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2622
 SANITIZER_REPORT(vconv_f162s16f, __ubuf__ int16_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2623/2626
 SANITIZER_REPORT(vconv_f162s16r, __ubuf__ int16_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2624
@@ -312,7 +310,7 @@ SANITIZER_REPORT(vconv_f162s16r, __ubuf__ int16_t *dst, __ubuf__ half *src, uint
 SANITIZER_REPORT(vconv_f162s16r, __ubuf__ int16_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -320,20 +318,20 @@ SANITIZER_REPORT(vconv_f162s16r, __ubuf__ int16_t *dst, __ubuf__ half *src, uint
 SANITIZER_REPORT(vconv_f162s16z, __ubuf__ int16_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2628
 SANITIZER_REPORT(vconv_f162s16z, __ubuf__ int16_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2629/2633
 SANITIZER_REPORT(vconv_f162s32a, __ubuf__ int32_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -341,7 +339,7 @@ SANITIZER_REPORT(vconv_f162s32a, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 SANITIZER_REPORT(vconv_f162s32a, __ubuf__ int32_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -366,7 +364,7 @@ SANITIZER_REPORT(vconv_f162s32a, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 // #2634/2638
 SANITIZER_REPORT(vconv_f162s32c, __ubuf__ int32_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -374,7 +372,7 @@ SANITIZER_REPORT(vconv_f162s32c, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 SANITIZER_REPORT(vconv_f162s32c, __ubuf__ int32_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -399,7 +397,7 @@ SANITIZER_REPORT(vconv_f162s32c, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 // #2639/2643
 SANITIZER_REPORT(vconv_f162s32f, __ubuf__ int32_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -407,7 +405,7 @@ SANITIZER_REPORT(vconv_f162s32f, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 SANITIZER_REPORT(vconv_f162s32f, __ubuf__ int32_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -432,7 +430,7 @@ SANITIZER_REPORT(vconv_f162s32f, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 // #2644/2648
 SANITIZER_REPORT(vconv_f162s32r, __ubuf__ int32_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -440,7 +438,7 @@ SANITIZER_REPORT(vconv_f162s32r, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 SANITIZER_REPORT(vconv_f162s32r, __ubuf__ int32_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -465,7 +463,7 @@ SANITIZER_REPORT(vconv_f162s32r, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 // #2649/2653
 SANITIZER_REPORT(vconv_f162s32z, __ubuf__ int32_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -473,7 +471,7 @@ SANITIZER_REPORT(vconv_f162s32z, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 SANITIZER_REPORT(vconv_f162s32z, __ubuf__ int32_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -498,7 +496,7 @@ SANITIZER_REPORT(vconv_f162s32z, __ubuf__ int32_t *dst, __ubuf__ half *src, uint
 // #2654/2657
 SANITIZER_REPORT(vconv_f162s4, __ubuf__ void *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
 }
 
 // #2655
@@ -514,7 +512,7 @@ SANITIZER_REPORT(vconv_f162s4, __ubuf__ void *dst, __ubuf__ half *src, uint8_t r
 SANITIZER_REPORT(vconv_f162s4, __ubuf__ void *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 2, 8, 32, 32);
 }
 
@@ -522,76 +520,76 @@ SANITIZER_REPORT(vconv_f162s4, __ubuf__ void *dst, __ubuf__ half *src, uint8_t r
 SANITIZER_REPORT(vconv_f162s4a, __ubuf__ void *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 2, 8, 32, 32);
 }
 
 // #2659
 SANITIZER_REPORT(vconv_f162s4a, __ubuf__ void *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
 }
 
 // #2660
 SANITIZER_REPORT(vconv_f162s4c, __ubuf__ void *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 2, 8, 32, 32);
 }
 
 // #2661
 SANITIZER_REPORT(vconv_f162s4c, __ubuf__ void *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
 }
 
 // #2662
 SANITIZER_REPORT(vconv_f162s4f, __ubuf__ void *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 2, 8, 32, 32);
 }
 
 // #2663
 SANITIZER_REPORT(vconv_f162s4f, __ubuf__ void *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
 }
 
 // #2664
 SANITIZER_REPORT(vconv_f162s4r, __ubuf__ void *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 2, 8, 32, 32);
 }
 
 // #2665
 SANITIZER_REPORT(vconv_f162s4r, __ubuf__ void *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
 }
 
 // #2666
 SANITIZER_REPORT(vconv_f162s4z, __ubuf__ void *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 2, 8, 32, 32);
 }
 
 // #2667
 SANITIZER_REPORT(vconv_f162s4z, __ubuf__ void *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCONV_DST_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 2, 8, 32, 32);
 }
 
 // #2668/2672
 SANITIZER_REPORT(vconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -599,7 +597,7 @@ SANITIZER_REPORT(vconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64_
 SANITIZER_REPORT(vconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -624,7 +622,7 @@ SANITIZER_REPORT(vconv_f162s8, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_t
 // #2673/2677
 SANITIZER_REPORT(vconv_f162s8a, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -632,7 +630,7 @@ SANITIZER_REPORT(vconv_f162s8a, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64
 SANITIZER_REPORT(vconv_f162s8a, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -657,7 +655,7 @@ SANITIZER_REPORT(vconv_f162s8a, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_
 // #2678/2682
 SANITIZER_REPORT(vconv_f162s8c, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -665,7 +663,7 @@ SANITIZER_REPORT(vconv_f162s8c, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64
 SANITIZER_REPORT(vconv_f162s8c, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -690,7 +688,7 @@ SANITIZER_REPORT(vconv_f162s8c, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_
 // #2683/2687
 SANITIZER_REPORT(vconv_f162s8f, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -698,7 +696,7 @@ SANITIZER_REPORT(vconv_f162s8f, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64
 SANITIZER_REPORT(vconv_f162s8f, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -724,20 +722,20 @@ SANITIZER_REPORT(vconv_f162s8f, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_
 SANITIZER_REPORT(vconv_f162s8r, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
         srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2689
 SANITIZER_REPORT(vconv_f162s8r, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2690/2694
 SANITIZER_REPORT(vconv_f162s8z, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -745,7 +743,7 @@ SANITIZER_REPORT(vconv_f162s8z, __ubuf__ int8_t *dst, __ubuf__ half *src, uint64
 SANITIZER_REPORT(vconv_f162s8z, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -770,7 +768,7 @@ SANITIZER_REPORT(vconv_f162s8z, __ubuf__ int8_t *dst, __ubuf__ half *src, uint8_
 // #2695/2699
 SANITIZER_REPORT(vconv_f162u8, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -778,7 +776,7 @@ SANITIZER_REPORT(vconv_f162u8, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint64
 SANITIZER_REPORT(vconv_f162u8, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
         srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -805,7 +803,7 @@ SANITIZER_REPORT(vconv_f162u8, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8_
 // is not support 910b
 SANITIZER_REPORT(vconv_f162u8a, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -813,7 +811,7 @@ SANITIZER_REPORT(vconv_f162u8a, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint6
 SANITIZER_REPORT(vconv_f162u8a, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
         srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -838,7 +836,7 @@ SANITIZER_REPORT(vconv_f162u8a, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8
 // #2705/2709
 SANITIZER_REPORT(vconv_f162u8c, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -846,7 +844,7 @@ SANITIZER_REPORT(vconv_f162u8c, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint6
 SANITIZER_REPORT(vconv_f162u8c, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -871,7 +869,7 @@ SANITIZER_REPORT(vconv_f162u8c, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8
 // #2710/2714
 SANITIZER_REPORT(vconv_f162u8f, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -879,7 +877,7 @@ SANITIZER_REPORT(vconv_f162u8f, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint6
 SANITIZER_REPORT(vconv_f162u8f, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
         srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -905,20 +903,20 @@ SANITIZER_REPORT(vconv_f162u8f, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8
 SANITIZER_REPORT(vconv_f162u8r, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2716
 SANITIZER_REPORT(vconv_f162u8r, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2717/2721
 SANITIZER_REPORT(vconv_f162u8z, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -926,7 +924,7 @@ SANITIZER_REPORT(vconv_f162u8z, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint6
 SANITIZER_REPORT(vconv_f162u8z, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -952,76 +950,76 @@ SANITIZER_REPORT(vconv_f162u8z, __ubuf__ uint8_t *dst, __ubuf__ half *src, uint8
 SANITIZER_REPORT(vconv_f322bf16a, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2723
 SANITIZER_REPORT(vconv_f322bf16a, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2724
 SANITIZER_REPORT(vconv_f322bf16c, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2725
 SANITIZER_REPORT(vconv_f322bf16c, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2726
 SANITIZER_REPORT(vconv_f322bf16f, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2727
 SANITIZER_REPORT(vconv_f322bf16f, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2728
 SANITIZER_REPORT(vconv_f322bf16r, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2729
 SANITIZER_REPORT(vconv_f322bf16r, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2730
 SANITIZER_REPORT(vconv_f322bf16z, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2731
 SANITIZER_REPORT(vconv_f322bf16z, __ubuf__ __bf16 *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2732/2736
 SANITIZER_REPORT(vconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1029,7 +1027,7 @@ SANITIZER_REPORT(vconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src, uint64_
 SANITIZER_REPORT(vconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -1055,48 +1053,48 @@ SANITIZER_REPORT(vconv_f322f16, __ubuf__ half *dst, __ubuf__ float *src, uint8_t
 SANITIZER_REPORT(vconv_f322f16a, __ubuf__ half *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2738
 SANITIZER_REPORT(vconv_f322f16a, __ubuf__ half *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2739
 SANITIZER_REPORT(vconv_f322f16c, __ubuf__ half *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2740
 SANITIZER_REPORT(vconv_f322f16c, __ubuf__ half *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2741
 SANITIZER_REPORT(vconv_f322f16f, __ubuf__ half *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2742
 SANITIZER_REPORT(vconv_f322f16f, __ubuf__ half *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2743/2747
 SANITIZER_REPORT(vconv_f322f16o, __ubuf__ half *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1104,7 +1102,7 @@ SANITIZER_REPORT(vconv_f322f16o, __ubuf__ half *dst, __ubuf__ float *src, uint64
 SANITIZER_REPORT(vconv_f322f16o, __ubuf__ half *dst, __ubuf__ float *src, uint8_t repeat, uint16_t dstBlockStride,
     uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride,
         srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -1131,146 +1129,146 @@ SANITIZER_REPORT(vconv_f322f16o, __ubuf__ half *dst, __ubuf__ float *src, uint8_
 SANITIZER_REPORT(vconv_f322f16r, __ubuf__ half *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2749
 SANITIZER_REPORT(vconv_f322f16r, __ubuf__ half *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2750
 SANITIZER_REPORT(vconv_f322f16z, __ubuf__ half *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2751
 SANITIZER_REPORT(vconv_f322f16z, __ubuf__ half *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2752
 SANITIZER_REPORT(vconv_f322f32a, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat, dstBlockStride, srcBlockStride,
         dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2753
 SANITIZER_REPORT(vconv_f322f32a, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2754
 SANITIZER_REPORT(vconv_f322f32c, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2755
 SANITIZER_REPORT(vconv_f322f32c, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2756
 SANITIZER_REPORT(vconv_f322f32f, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2757
 SANITIZER_REPORT(vconv_f322f32f, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2758
 SANITIZER_REPORT(vconv_f322f32r, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2759
 SANITIZER_REPORT(vconv_f322f32r, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2760
 SANITIZER_REPORT(vconv_f322f32z, __ubuf__ float *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2761
 SANITIZER_REPORT(vconv_f322f32z, __ubuf__ float *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2762
 SANITIZER_REPORT(vconv_f322s16a, __ubuf__ int16_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2763
 SANITIZER_REPORT(vconv_f322s16a, __ubuf__ int16_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2764
 SANITIZER_REPORT(vconv_f322s16c, __ubuf__ int16_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2765
 SANITIZER_REPORT(vconv_f322s16c, __ubuf__ int16_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2766
 SANITIZER_REPORT(vconv_f322s16f, __ubuf__ int16_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2767
 SANITIZER_REPORT(vconv_f322s16f, __ubuf__ int16_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2768/2772
 SANITIZER_REPORT(vconv_f322s16r, __ubuf__ int16_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1278,7 +1276,7 @@ SANITIZER_REPORT(vconv_f322s16r, __ubuf__ int16_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s16r, __ubuf__ int16_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -1304,7 +1302,7 @@ SANITIZER_REPORT(vconv_f322s16r, __ubuf__ int16_t *dst, __ubuf__ float *src, uin
 // #2773/2777
 SANITIZER_REPORT(vconv_f322s16z, __ubuf__ int16_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1312,7 +1310,7 @@ SANITIZER_REPORT(vconv_f322s16z, __ubuf__ int16_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s16z, __ubuf__ int16_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 #else
@@ -1337,7 +1335,7 @@ SANITIZER_REPORT(vconv_f322s16z, __ubuf__ int16_t *dst, __ubuf__ float *src, uin
 // #2778/2782
 SANITIZER_REPORT(vconv_f322s32a, __ubuf__ int32_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1345,7 +1343,7 @@ SANITIZER_REPORT(vconv_f322s32a, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s32a, __ubuf__ int32_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -1370,7 +1368,7 @@ SANITIZER_REPORT(vconv_f322s32a, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 // #2783/2787
 SANITIZER_REPORT(vconv_f322s32c, __ubuf__ int32_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1378,7 +1376,7 @@ SANITIZER_REPORT(vconv_f322s32c, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s32c, __ubuf__ int32_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -1403,7 +1401,7 @@ SANITIZER_REPORT(vconv_f322s32c, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 // #2788/2792
 SANITIZER_REPORT(vconv_f322s32f, __ubuf__ int32_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1411,7 +1409,7 @@ SANITIZER_REPORT(vconv_f322s32f, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s32f, __ubuf__ int32_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -1437,7 +1435,7 @@ SANITIZER_REPORT(vconv_f322s32f, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 // #2793/2797
 SANITIZER_REPORT(vconv_f322s32r, __ubuf__ int32_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1445,7 +1443,7 @@ SANITIZER_REPORT(vconv_f322s32r, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s32r, __ubuf__ int32_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -1470,7 +1468,7 @@ SANITIZER_REPORT(vconv_f322s32r, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 // #2798/2802
 SANITIZER_REPORT(vconv_f322s32z, __ubuf__ int32_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1478,7 +1476,7 @@ SANITIZER_REPORT(vconv_f322s32z, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s32z, __ubuf__ int32_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -1504,76 +1502,76 @@ SANITIZER_REPORT(vconv_f322s32z, __ubuf__ int32_t *dst, __ubuf__ float *src, uin
 SANITIZER_REPORT(vconv_f322s64a, __ubuf__ int64_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2806
 SANITIZER_REPORT(vconv_f322s64a, __ubuf__ int64_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2809
 SANITIZER_REPORT(vconv_f322s64c, __ubuf__ int64_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2810
 SANITIZER_REPORT(vconv_f322s64c, __ubuf__ int64_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2813
 SANITIZER_REPORT(vconv_f322s64f, __ubuf__ int64_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2814
 SANITIZER_REPORT(vconv_f322s64f, __ubuf__ int64_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2817
 SANITIZER_REPORT(vconv_f322s64r, __ubuf__ int64_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2818
 SANITIZER_REPORT(vconv_f322s64r, __ubuf__ int64_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2821
 SANITIZER_REPORT(vconv_f322s64z, __ubuf__ int64_t *dst, __ubuf__ float *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2822
 SANITIZER_REPORT(vconv_f322s64z, __ubuf__ int64_t *dst, __ubuf__ float *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2823/2826
 SANITIZER_REPORT(vconv_s162f16, __ubuf__ half *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2824
@@ -1589,7 +1587,7 @@ SANITIZER_REPORT(vconv_s162f16, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8
 SANITIZER_REPORT(vconv_s162f16, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
@@ -1597,76 +1595,76 @@ SANITIZER_REPORT(vconv_s162f16, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8
 SANITIZER_REPORT(vconv_s162f16a, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2828
 SANITIZER_REPORT(vconv_s162f16a, __ubuf__ half *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2829
 SANITIZER_REPORT(vconv_s162f16c, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2830
 SANITIZER_REPORT(vconv_s162f16c, __ubuf__ half *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2831
 SANITIZER_REPORT(vconv_s162f16f, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2832
 SANITIZER_REPORT(vconv_s162f16f, __ubuf__ half *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2833
 SANITIZER_REPORT(vconv_s162f16r, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2834
 SANITIZER_REPORT(vconv_s162f16r, __ubuf__ half *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2835
 SANITIZER_REPORT(vconv_s162f16z, __ubuf__ half *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2836
 SANITIZER_REPORT(vconv_s162f16z, __ubuf__ half *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2837/2840
 SANITIZER_REPORT(vconv_s162f32, __ubuf__ float *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2838
@@ -1682,14 +1680,14 @@ SANITIZER_REPORT(vconv_s162f32, __ubuf__ float *dst, __ubuf__ int16_t *src, uint
 SANITIZER_REPORT(vconv_s162f32, __ubuf__ float *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2841/2845
 SANITIZER_REPORT(vconv_s322f32, __ubuf__ float *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1697,7 +1695,7 @@ SANITIZER_REPORT(vconv_s322f32, __ubuf__ float *dst, __ubuf__ int32_t *src, uint
 SANITIZER_REPORT(vconv_s322f32, __ubuf__ float *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 #else
@@ -1723,202 +1721,202 @@ SANITIZER_REPORT(vconv_s322f32, __ubuf__ float *dst, __ubuf__ int32_t *src, uint
 SANITIZER_REPORT(vconv_s322f32a, __ubuf__ float *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2847
 SANITIZER_REPORT(vconv_s322f32a, __ubuf__ float *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2848
 SANITIZER_REPORT(vconv_s322f32c, __ubuf__ float *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2849
 SANITIZER_REPORT(vconv_s322f32c, __ubuf__ float *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2850
 SANITIZER_REPORT(vconv_s322f32f, __ubuf__ float *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2851
 SANITIZER_REPORT(vconv_s322f32f, __ubuf__ float *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2852
 SANITIZER_REPORT(vconv_s322f32r, __ubuf__ float *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2853
 SANITIZER_REPORT(vconv_s322f32r, __ubuf__ float *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2854
 SANITIZER_REPORT(vconv_s322f32z, __ubuf__ float *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 8, 32, 32);
 }
 
 // #2855
 SANITIZER_REPORT(vconv_s322f32z, __ubuf__ float *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 8, 32, 32);
 }
 
 // #2856
 SANITIZER_REPORT(vconv_s322s16, __ubuf__ int16_t *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2857
 SANITIZER_REPORT(vconv_s322s16, __ubuf__ int16_t *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2860
 SANITIZER_REPORT(vconv_s322s64, __ubuf__ int64_t *dst, __ubuf__ int32_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 
 // #2861
 SANITIZER_REPORT(vconv_s322s64, __ubuf__ int64_t *dst, __ubuf__ int32_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 // #2862
 SANITIZER_REPORT(vconv_s42f16, __ubuf__ half *dst, __ubuf__ void *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::VCONV_SRC_S4_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::VCONV_SRC_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 2, 32, 32);
 }
 
 // #2863
 SANITIZER_REPORT(vconv_s42f16, __ubuf__ half *dst, __ubuf__ void *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::VCONV_SRC_S4_OP>(EXTRA_PARAMS, dst, src, config, 8, 2, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::VCONV_SRC_S4_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 2, 32, 32);
 }
 
 // #2866
 SANITIZER_REPORT(vconv_s642f32a, __ubuf__ float *dst, __ubuf__ int64_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2867
 SANITIZER_REPORT(vconv_s642f32a, __ubuf__ float *dst, __ubuf__ int64_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2870
 SANITIZER_REPORT(vconv_s642f32c, __ubuf__ float *dst, __ubuf__ int64_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2871
 SANITIZER_REPORT(vconv_s642f32c, __ubuf__ float *dst, __ubuf__ int64_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2874
 SANITIZER_REPORT(vconv_s642f32f, __ubuf__ float *dst, __ubuf__ int64_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2875
 SANITIZER_REPORT(vconv_s642f32f, __ubuf__ float *dst, __ubuf__ int64_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2878
 SANITIZER_REPORT(vconv_s642f32r, __ubuf__ float *dst, __ubuf__ int64_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2879
 SANITIZER_REPORT(vconv_s642f32r, __ubuf__ float *dst, __ubuf__ int64_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2882
 SANITIZER_REPORT(vconv_s642f32z, __ubuf__ float *dst, __ubuf__ int64_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2883
 SANITIZER_REPORT(vconv_s642f32z, __ubuf__ float *dst, __ubuf__ int64_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2886
 SANITIZER_REPORT(vconv_s642s32, __ubuf__ int32_t *dst, __ubuf__ int64_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2887
 SANITIZER_REPORT(vconv_s642s32, __ubuf__ int32_t *dst, __ubuf__ int64_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2888/2892
 SANITIZER_REPORT(vconv_s82f16, __ubuf__ half *dst, __ubuf__ int8_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1926,7 +1924,7 @@ SANITIZER_REPORT(vconv_s82f16, __ubuf__ half *dst, __ubuf__ int8_t *src, uint64_
 SANITIZER_REPORT(vconv_s82f16, __ubuf__ half *dst, __ubuf__ int8_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -1951,7 +1949,7 @@ SANITIZER_REPORT(vconv_s82f16, __ubuf__ half *dst, __ubuf__ int8_t *src, uint8_t
 // #2893/2897
 SANITIZER_REPORT(vconv_u82f16, __ubuf__ half *dst, __ubuf__ uint8_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 8, 4, 32, 32);
 }
 
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
@@ -1959,7 +1957,7 @@ SANITIZER_REPORT(vconv_u82f16, __ubuf__ half *dst, __ubuf__ uint8_t *src, uint64
 SANITIZER_REPORT(vconv_u82f16, __ubuf__ half *dst, __ubuf__ uint8_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint16_t dstRepeatStride, uint16_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 8, 4, 32, 32);
 }
 #else
@@ -1984,7 +1982,7 @@ SANITIZER_REPORT(vconv_u82f16, __ubuf__ half *dst, __ubuf__ uint8_t *src, uint8_
 // #2898
 SANITIZER_REPORT(vconv_vdeqs162b8, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint64_t config, bool halfBlock)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2899
@@ -1999,7 +1997,7 @@ SANITIZER_REPORT(vconv_vdeqs162b8, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, 
 // #2900
 SANITIZER_REPORT(vconv_vdeqs162b8, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint64_t config, bool halfBlock)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2901
@@ -2015,56 +2013,56 @@ SANITIZER_REPORT(vconv_vdeqs162b8, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src,
 SANITIZER_REPORT(vconv_vdeqs162b8h, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2903
 SANITIZER_REPORT(vconv_vdeqs162b8h, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2904
 SANITIZER_REPORT(vconv_vdeqs162b8h, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2905
 SANITIZER_REPORT(vconv_vdeqs162b8h, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2906
 SANITIZER_REPORT(vconv_vdeqs162b8l, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2907
 SANITIZER_REPORT(vconv_vdeqs162b8l, __ubuf__ int8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 // #2908
 SANITIZER_REPORT(vconv_vdeqs162b8l, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint8_t repeat,
     uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride, uint8_t srcRepeatStride)
 {
-    RecordUnaryOpFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, repeat,
+    RecordUnaryOpFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, repeat,
         dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride, 4, 8, 32, 32);
 }
 
 // #2909
 SANITIZER_REPORT(vconv_vdeqs162b8l, __ubuf__ uint8_t *dst, __ubuf__ int16_t *src, uint64_t config)
 {
-    RecordUnaryOpConfigFunc<RecordType::UNARY_OP>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
+    RecordUnaryOpConfigFunc<RecordType::UNARY_OP, InstrName::VCONV>(EXTRA_PARAMS, dst, src, config, 4, 8, 32, 32);
 }
 
 #endif

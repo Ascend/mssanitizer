@@ -66,7 +66,7 @@ AICORE_FUNC_HEAD void RecordVselConfigFunc(EXTRA_PARAMS_DEC,
     uint8_t selectMode = (config >> VSEL_MODESHIFT) & 0x3;
     RecordCmpMaskLoad<TI0>(EXTRA_PARAMS, selectMode);
     if (selectMode == VSEL_MODE0 || selectMode == VSEL_MODE2) {
-        RecordBinaryOpConfigFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
+        RecordBinaryOpConfigFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, config, 8, 8, 8, 32, 32, 32);
     } else if (selectMode == VSEL_MODE1) {
         uint8_t repeat{};
         uint8_t dstBlockStride{};
@@ -77,7 +77,7 @@ AICORE_FUNC_HEAD void RecordVselConfigFunc(EXTRA_PARAMS_DEC,
         uint8_t src1RepeatStride{};
         ParseBinaryConfig(config, repeat, dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride,
             src0RepeatStride, src1RepeatStride);
-        RecordBinaryOpFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+        RecordBinaryOpFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, repeat,
             dstBlockStride, src0BlockStride, 0, dstRepeatStride, src0RepeatStride, 1, 8, 8, 1, 32, 32, src1BlockSize);
     }
 }
@@ -90,11 +90,11 @@ AICORE_FUNC_HEAD void RecordVselOpFunc(EXTRA_PARAMS_DEC,
 {
     RecordCmpMaskLoad<TI0>(EXTRA_PARAMS, selectMode);
     if (selectMode == VSEL_MODE0 || selectMode == VSEL_MODE2) {
-        RecordBinaryOpFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+        RecordBinaryOpFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, repeat,
             dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
     } else if (selectMode == VSEL_MODE1) {
-        RecordBinaryOpFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+        RecordBinaryOpFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, repeat,
             dstBlockStride, src0BlockStride, 0, dstRepeatStride, src0RepeatStride, 1, 8, 8, 1, 32, 32, src1BlockSize);
     }
 }
@@ -117,7 +117,7 @@ SANITIZER_REPORT(vsel, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ void *s
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     RecordCmpMaskLoad<half>(EXTRA_PARAMS, VSEL_MODE0);
-    RecordBinaryOpFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
@@ -146,7 +146,7 @@ SANITIZER_REPORT(vsel, __ubuf__ half *dst, __ubuf__ half *src0, __ubuf__ half *s
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     RecordCmpMaskLoad<half>(EXTRA_PARAMS, VSEL_MODE0);
-    RecordBinaryOpFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
@@ -187,7 +187,7 @@ SANITIZER_REPORT(vsel, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ void 
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     RecordCmpMaskLoad<float>(EXTRA_PARAMS, VSEL_MODE0);
-    RecordBinaryOpFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
@@ -216,7 +216,7 @@ SANITIZER_REPORT(vsel, __ubuf__ float *dst, __ubuf__ float *src0, __ubuf__ float
     uint8_t src0RepeatStride, uint8_t src1RepeatStride)
 {
     RecordCmpMaskLoad<float>(EXTRA_PARAMS, VSEL_MODE0);
-    RecordBinaryOpFunc<RecordType::VSEL_OP>(EXTRA_PARAMS, dst, src0, src1, repeat,
+    RecordBinaryOpFunc<RecordType::VSEL_OP, InstrName::VSEL>(EXTRA_PARAMS, dst, src0, src1, repeat,
         dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride,
         8, 8, 8, 32, 32, 32);
 }
