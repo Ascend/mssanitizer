@@ -1,4 +1,4 @@
-# MindStudio Sanitizer 安装指南
+# msSanitizer 安装指南
 
 <br>
 
@@ -22,37 +22,59 @@
 
 ### 2.3 源码安装
 
+如需使用最新代码的功能，或对源码进行修改以增强功能，可下载本仓库代码，自行编译、打包工具并完成安装。
+
 #### 2.3.1 环境准备
 
-请按照以下文档进行环境配置：《[算子工具开发环境安装指导](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/dev_env_setup.md)》。
+源码编译统一使用 MindStudio 标准构建环境。
 
-#### 2.3.2 执行编译打包
+- 日常开发或使用已发布镜像，请参考《[MindStudio工具开发环境安装指导](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/dev_env_setup.md)》。
+- 需要从基础操作系统复现环境、执行源码构建验证或单元测试验证时，必须参考《[MindStudio统一构建镜像制作指南](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/docker_image_build_guide.md)》，从openEuler基础镜像现场构建环境镜像。
 
-- 克隆本仓库
+本文档后续的源码编译和单元测试命令，均在上述指定镜像容器或现场构建的环境镜像的容器中执行，CANN 软件包版本、GCC 版本和 Python 版本以统一镜像制作指南为准，本仓库不重复维护。
 
-    ```sh
-    git clone https://gitcode.com/Ascend/mssanitizer.git
-    ```
+镜像构建完成后，必须使用统一镜像制作指南第 7 章给出的 `ctr_in.py` 命令，在交互式终端中启动并进入容器。不得使用普通 `docker run` 创建容器，也不得使用 `docker exec <容器名> bash -c '<命令>'` 替代交互式环境；否则可能跳过 Python、GCC 和 CANN 环境初始化。
 
-- 通过一键式脚本自动完成依赖仓库的下载与构建流程：
+进入 `ctr_in.py` 打开的交互式容器 Shell 后，执行如下命令克隆本仓库：
 
-    ```shell
-    cd mssanitizer
-    python build.py
-    ```
+```bash
+cd ~
+git clone https://gitcode.com/Ascend/mssanitizer.git
+```
 
-#### 2.3.3 安装
+#### 2.3.2 执行编译
 
-##### 2.3.3.1 准备 run 包
+保持在 `ctr_in.py` 打开的同一个交互式容器 Shell 中，在仓库根目录执行以下命令，自动完成依赖下载与构建：
 
-run 包将生成于 output 目录下，执行以下命令确保其具备可执行权限：
+```bash
+cd ~/mssanitizer
+python3 build.py
+```
 
-```shell
-cd output
+构建成功后，安装包将生成在 `artifacts/` 目录下。
+
+#### 2.3.3 执行单元测试（可选）
+
+此步骤非安装必需。如需验证代码基本功能，可执行单元测试：
+
+```bash
+cd ~/mssanitizer
+python3 build.py test
+```
+
+命令返回码为 0，且测试用例均无失败，表示单元测试通过。
+
+#### 2.3.4 安装
+
+##### 2.3.4.1 准备 run 包
+
+执行以下命令确保 run 包具备可执行权限：
+
+```bash
 chmod +x mindstudio-sanitizer_*.run
 ```
 
-##### 2.3.3.2 安装
+##### 2.3.4.2 安装
 
 将 run 包拷贝到运行环境中（本机安装无需拷贝），执行如下安装操作：
 
