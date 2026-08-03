@@ -40,6 +40,29 @@ struct AclLibLoader {
 
 using AclSymbol = VallinaSymbol<AclLibLoader>;
 
+// aclrtSetDevice 成功后上报设备类型（DEVICE_SUMMARY）。
+// 新版 CANN 的 aclrtSetDevice 内部不再经过公开 rtSetDevice，需要在 ACL 层补报。
+void ReportDeviceTypeAfterSetDevice() {
+    // 直接用本文件已加载的 AclSymbol(libascendcl.so) 拿 soc 名，无需额外 dlopen libruntime.so
+    using AclGetSocNameFn = const char *(*)();
+    auto getSocName = AclSymbol::Instance().Get<AclGetSocNameFn>("aclrtGetSocName");
+    if (getSocName == nullptr) {
+        HOOK_LOG("aclrtGetSocName get FAILED");
+        return;
+    }
+    char const *socName = getSocName();
+    if (socName == nullptr || socName[0] == '\0') {
+        HOOK_LOG("get soc name FAILED");
+        return;
+    }
+    auto it = SOC_VERSION_MAP.find(socName);
+    DeviceType deviceType = it == SOC_VERSION_MAP.cend() ? DeviceType::INVALID : it->second;
+    if (it == SOC_VERSION_MAP.cend()) {
+        std::cout << "[mssanitizer] unsupported soc version " << socName << std::endl;
+    }
+    HookReport::Instance().ReportDeviceType(deviceType);
+}
+
 }  // namespace Dummy
 
 aclError aclrtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy)
@@ -55,6 +78,30 @@ aclError aclrtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 aclError aclrtFree(void *devPtr)
 {
     return sanitizerRtFree(devPtr, nullptr, 0);
+}
+
+aclError aclrtFreeWithDevSync(void *devPtr) { return sanitizerRtFreeWithDevSync(devPtr, nullptr, 0); }
+
+aclError aclrtSetDevice(int32_t deviceId) { return sanitizerRtSetDevice(deviceId, nullptr, 0); }
+
+aclError sanitizerRtSetDevice(int32_t deviceId, char const *filename, int lineno) {
+    (void)filename;
+    (void)lineno;
+    auto vallina = AclSymbol::Instance().Get<AclrtSetDevice>("aclrtSetDevice");
+    if (vallina == nullptr) {
+        HOOK_LOG("vallina func get FAILED");
+        return -1;
+    }
+
+    aclError ret = vallina(deviceId);
+    if (ret != 0) {
+        return ret;
+    }
+
+    /// 设备设置成功后上报设备类型，服务端据此初始化 shadow memory 并应用 leak-check 配置
+    ReportDeviceTypeAfterSetDevice();
+
+    return ret;
 }
 
 aclError aclrtMemset(void *devPtr, size_t maxCount, int32_t value, size_t count)
@@ -176,6 +223,28 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno)
 {
     auto vallina = AclSymbol::Instance().Get<AclrtFree>("aclrtFree");
+    if (vallina == nullptr) {
+        HOOK_LOG("vallina func get FAILED");
+        return -1;
+    }
+
+    /// report to sanitizer here
+    uint64_t addr = reinterpret_cast<uint64_t>(devPtr);
+    ReportAddrInfo addrInfo{addr, 0, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+    if (!HookReport::Instance().ReportFree(addrInfo)) {
+        HOOK_LOG("report to saniziter FAILED");
+    }
+
+    aclError ret = vallina(devPtr);
+    if (ret != 0) {
+        return ret;
+    }
+
+    return ret;
+}
+
+aclError sanitizerRtFreeWithDevSync(void *devPtr, char const *filename, int lineno) {
+    auto vallina = AclSymbol::Instance().Get<AclrtFreeWithDevSync>("aclrtFreeWithDevSync");
     if (vallina == nullptr) {
         HOOK_LOG("vallina func get FAILED");
         return -1;

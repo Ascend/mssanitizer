@@ -44,6 +44,8 @@ typedef aclError (*AcldvppMalloc)(void **devPtr, size_t size);
 typedef aclError (*AclMalloc)(void **devPtr, size_t size, aclrtMemMallocPolicy policy);
 typedef aclError (*AclMallocCached)(void **devPtr, size_t size, aclrtMemMallocPolicy policy);
 typedef aclError (*AclrtFree)(void *devPtr);
+typedef aclError (*AclrtFreeWithDevSync)(void *devPtr);
+typedef aclError (*AclrtSetDevice)(int32_t deviceId);
 typedef aclError (*AclrtMemset)(void *devPtr, size_t maxCount, int32_t value, size_t count);
 typedef aclError (*AclrtMemsetAsync)(void *devPtr, size_t maxCount, int32_t value, size_t count, aclrtStream stream);
 typedef aclError (*AclrtMemcpy)(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind);
@@ -58,6 +60,8 @@ aclError acldvppMalloc(void **devPtr, size_t size);
 aclError aclrtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy);
 aclError aclrtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolicy policy);
 aclError aclrtFree(void *devPtr);
+aclError aclrtFreeWithDevSync(void *devPtr);
+aclError aclrtSetDevice(int32_t deviceId);
 aclError aclrtMemset(void *devPtr, size_t maxCount, int32_t value, size_t count);
 aclError aclrtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, size_t count, aclrtStream stream);
 aclError aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind);
@@ -74,6 +78,8 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolicy policy,
                                  char const *filename, int lineno);
 aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
+aclError sanitizerRtFreeWithDevSync(void *devPtr, char const *filename, int lineno);
+aclError sanitizerRtSetDevice(int32_t deviceId, char const *filename, int lineno);
 aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t count,
                            char const *filename, int lineno);
 aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, size_t count, aclrtStream stream,
