@@ -45,7 +45,7 @@ msSanitizer工具包含sanitizer接口和mstx扩展接口两种类型。sanitize
 调用aclrtMalloc接口在Device上分配size大小的线性内存，并通过*devPtr返回已分配内存的指针，并向检测工具上报内存分配信息。实际的内存分配行为和参数含义与aclrtMalloc一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMalloc的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMalloc的详细说明。
 
 **函数原型**
 
@@ -61,13 +61,13 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 |--|--|--|
 |devPtr|输出|指向“Device上已分配内存的指针”的指针。|
 |size|输入|申请内存的大小，单位为Byte，size不能为0。|
-|policy|输入|内存分配规则，类型定义请参见[aclrtMemMallocPolicy](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1349.html)。|
+|policy|输入|内存分配规则，类型定义请参见[aclrtMemMallocPolicy](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1349.html)。|
 |filename|输入|内存分配被调用处的文件名。|
 |lineno|输入|内存分配被调用处的行号。|
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -85,7 +85,7 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 调用aclrtMallocCached接口在Device上申请size大小的线性内存，通过*devPtr返回已分配内存的指针，并向检测工具上报内存分配信息。该接口在任何场景下，申请的内存都支持cache缓存。实际的内存分配行为和参数含义与aclrtMallocCached一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMallocCached的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMallocCached的详细说明。
 
 **函数原型**
 
@@ -101,13 +101,13 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 |--|--|--|
 |devPtr|输出|指向“Device上已分配内存的指针”的指针。|
 |size|输入|申请内存的大小，单位为Byte。size不能为0。|
-|policy|输入|内存分配规则，类型定义请参见[aclrtMemMallocPolicy](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1349.html)。|
+|policy|输入|内存分配规则，类型定义请参见[aclrtMemMallocPolicy](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1349.html)。|
 |filename|输入|内存分配被调用处的文件名。|
 |lineno|输入|内存分配被调用处的行号。|
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -125,7 +125,7 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 调用aclrtFree接口释放Device上的内存，并向检测工具上报内存释放信息。实际的内存释放行为和参数含义与aclrtFree一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtFree的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtFree的详细说明。
 
 **函数原型**
 
@@ -145,7 +145,7 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -163,7 +163,7 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 调用aclrtMemset接口初始化内存，将内存中的内容设置为指定值，并向检测工具上报内存初始化信息。实际的内存初始化行为和参数含义与aclrtMemset一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemset的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemset的详细说明。
 
 **函数原型**
 
@@ -186,7 +186,7 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -204,7 +204,7 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 调用aclrtMemsetAsync接口初始化内存，将内存中的内容设置为指定的值，并向检测工具上报内存初始化信息。此接口为异步接口。实际的内存初始化行为和参数含义与aclrtMemsetAsync一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemsetAsync的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemsetAsync的详细说明。
 
 **函数原型**
 
@@ -228,7 +228,7 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -246,7 +246,7 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 调用aclrtMemcpy接口完成内存复制，并向检测工具上报内存复制信息。实际的内存复制行为和参数含义与aclrtMemcpy一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy的详细说明。
 
 **函数原型**
 
@@ -270,7 +270,7 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -288,7 +288,7 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 调用aclrtMemcpyAsync接口完成内存复制，并向检测工具上报内存复制信息。此接口为异步接口。实际的内存复制行为和参数含义与aclrtMemcpyAsync一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpyAsync的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpyAsync的详细说明。
 
 **函数原型**
 
@@ -313,7 +313,7 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -331,7 +331,7 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 调用aclrtMemcpy2d接口完成矩阵数据内存复制，并向检测工具上报内存复制信息。实际的矩阵数据内存复制行为和参数含义与aclrtMemcpy2d一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2d的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2d的详细说明。
 
 **函数原型**
 
@@ -357,7 +357,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 
@@ -375,7 +375,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 调用aclrtMemcpy2dAsync接口完成矩阵数据内存复制，并向检测工具上报内存复制信息。此接口为异步接口。实际的矩阵数据内存复制行为和参数含义与aclrtMemcpy2dAsync一致。
 
 > [!NOTE]
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2dAsync的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2dAsync的详细说明。
 
 **函数原型**
 
@@ -402,7 +402,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 
 **返回值**
 
-返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1345.html)。
+返回0表示成功，返回其它值表示失败，请参见[aclError](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html)。
 
 **调用示例**
 

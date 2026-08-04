@@ -99,7 +99,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 1. PyTorch图模式（TorchAir）下，仅支持在msSanitizer工具不添加编译选项的情况下进行检测，具体请参见[5. 算子编译选项配置（可选）](#5-算子编译选项配置可选)。
 2. PyTorch图模式（TorchAir）下，支持Ascend IR图执行模式和aclgraph图执行模式，具体请参见《[TorchNPU](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00015.html)》中“PyTorch图模式使用(TorchAir)>reduce-overhead模式功能>reduce-overhead模式配置”章节。
-3. PyTorch框架调用场景，详细信息可参考《[TorchNPU](https://www.hiascend.com/document/detail/zh/Pytorch/latest/ptmoddevg/Frameworkfeatures/docs/zh/framework_feature_guide_pytorch/adaptation_overview_opplugin.md)》中“PyTorch框架特性指南>自定义算子适配开发>基于OpPlugin算子适配开发”章节。具体操作请参见《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测PyTorch接口调用的算子”。
+3. PyTorch框架调用场景，详细信息可参考《[TorchNPU](https://www.hiascend.com/document/detail/zh/Pytorch/2610/devguide/fwfeatures/docs/zh/framework_feature_guide_pytorch/adaptation_overview_opplugin.md)》中“PyTorch框架特性指南>自定义算子适配开发>基于OpPlugin算子适配开发”章节。具体操作请参见《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测PyTorch接口调用的算子”。
 
 ### 4.4 Triton 算子调用场景
 
@@ -194,7 +194,7 @@ mssanitizer --tool=memcheck ./add_npu
 >
 > - 当用户程序运行完成后，界面将会打印异常报告。
 > - 当用户使用PyTorch等框架接入算子时，框架内部可能会通过内存池管理GM内存，而内存池通常会一次性分配大量GM内存，并在运行过程中复用。此时，若用户对算子进行检测并记录GM上所有内存分配和释放的信息，会因为内存池的内存管理方式导致检测信息不准确。因此检测工具提供了手动上报GM内存分配信息的接口，方便用户在算子调用时手动上报该算子应当使用的GM内存范围，详细接口介绍请参见《[MindStudio Sanitizer对外接口使用说明](../api_reference/mssanitizer_api_reference.md)》中的sanitizerReportMalloc和sanitizerReportFree接口。
-> - msSanitizer工具也支持对Atlas A2 训练系列产品/Atlas A2 推理系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3 训练系列产品/Atlas A3 推理系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
+> - msSanitizer工具也支持对Atlas A2 训练系列产品/Atlas A2 推理系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3 训练系列产品/Atlas A3 推理系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/API/ascendcopapi/docs/api/SIMD-API/%E9%AB%98%E9%98%B6API/HCCL%E9%80%9A%E4%BF%A1%E7%B1%BB/HCCL-Kernel%E4%BE%A7%E6%8E%A5%E5%8F%A3/HCCL%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
 > - msSanitizer工具也支持对通算融合类算子的非法读写检测。
 > - 当前Ascend 950 系列产品支持内存检测中GM/UB/L1/L0A/L0B/L0C，其他暂不支持。
 

@@ -72,7 +72,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
         endif()
         ```
 
-4. 启用msSanitizer检测工具时，需要加载NPU侧可执行文件_<kernel\_name>__npu，该文件的获取可参考《Ascend C算子开发指南》中的“Kernel直调算子开发 >[Kernel直调](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/opdevg/Ascendcopdevg/atlas_ascendc_10_0056.html)”章节。
+4. 启用msSanitizer检测工具时，需要加载NPU侧可执行文件_<kernel\_name>__npu，该文件的获取可参考《Ascend C算子开发指南》中的“Kernel直调算子开发 >[Kernel直调](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910/programug/Ascendcopdevg/docs/guide/%E7%BC%96%E7%A8%8B%E6%8C%87%E5%8D%97/%E9%99%84%E5%BD%95/%E5%9F%BA%E4%BA%8E%E6%A0%B7%E4%BE%8B%E5%B7%A5%E7%A8%8B%E5%AE%8C%E6%88%90Kernel%E7%9B%B4%E8%B0%83.md)”章节。
 
 ## 3. msOpGen算子工程编译场景
 
