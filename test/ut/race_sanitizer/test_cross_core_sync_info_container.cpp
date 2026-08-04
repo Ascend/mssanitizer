@@ -148,4 +148,57 @@ TEST(CrossCoreSyncInfoContainer, mstx_cross_set_wait_expect_success)
     ASSERT_EQ(vt[4], 10U);
 }
 
+// AIV上syncID超过15时，硬件会截断高bit位，工具需同步截断以避免死锁误报
+// MIX内核1组: block0=AIV0, block1=AIV1, block2=AIC, vecSubBlockDim=2
+TEST(CrossCoreSyncInfoContainer, aiv0_set_intra_block_with_syncid_over_15_expect_truncated_and_match_aic_wait) {
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // AIV0使用syncID=20(>=16)，硬件截断为4，AIC用syncID=4应能匹配
+    syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 0, vt);
+    std::fill(vt.begin(), vt.end(), 0);
+    bool ret = syncContainer.GetIntraBlockSyncInfo(4, 2, vt);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(vt[0], 1U);
+}
+
+TEST(CrossCoreSyncInfoContainer, aiv0_wait_intra_block_with_syncid_over_15_expect_truncated_and_match_aic_set) {
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // AIC用syncID=4设置，AIV0用syncID=20(>=16)等待，硬件截断为4应能匹配
+    syncContainer.SetBlockSyncInfo(4, FftsSyncMode::MODE4, 2, vt);
+    std::fill(vt.begin(), vt.end(), 0);
+    bool ret = syncContainer.GetIntraBlockSyncInfo(20, 0, vt);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(vt[0], 1U);
+}
+
+TEST(CrossCoreSyncInfoContainer, aiv1_set_intra_block_with_syncid_over_15_expect_truncated_and_match_aic_wait) {
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // AIV1使用syncID=20(>=16)，硬件截断为4，AIV1映射到AIC的syncID=4+16=20，AIC用syncID=20应能匹配
+    syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 1, vt);
+    std::fill(vt.begin(), vt.end(), 0);
+    bool ret = syncContainer.GetIntraBlockSyncInfo(20, 2, vt);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(vt[0], 1U);
+}
+
+TEST(CrossCoreSyncInfoContainer, aiv1_wait_intra_block_with_syncid_over_15_expect_truncated_and_match_aic_set) {
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // AIC用syncID=20设置(映射到AIV1的syncID=4)，AIV1用syncID=20(>=16)等待，硬件截断为4应能匹配
+    syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 2, vt);
+    std::fill(vt.begin(), vt.end(), 0);
+    bool ret = syncContainer.GetIntraBlockSyncInfo(20, 1, vt);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(vt[0], 1U);
+}
 }
