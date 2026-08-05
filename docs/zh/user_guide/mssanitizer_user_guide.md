@@ -357,6 +357,7 @@ SIMT架构下多线程编程时，如果各线程对GM的访问未正确处理�
 > [!NOTE]
 >
 > 当前仅内存检测支持寄存器告警。
+> --trace-non-default-spr-reg=vector功能当前仅支持Atlas A2 训练系列产品/Atlas A2 推理系列产品、Atlas A3 训练系列产品/Atlas A3 推理系列产品。
 
 ##### 6.1.3.10 GM内存安全区越界写入
 
@@ -640,7 +641,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | -v，--version | 查询msSanitizer工具版本。 | - | 否 |
 | -t，--tool | 指定异常检测的子工具。 | memcheck：内存检测（默认）<br>racecheck：竞争检测<br>initcheck：未初始化检测<br>synccheck：同步检测 | 否 |
 | --log-file | 指定检测报告输出到文件。 | {file_name}，如配置为test_log。<br>说明：<br>仅支持数字、大小写字母和- . / _四种符号。<br>为避免日志泄漏风险，建议限制该文件权限，确保只有授权人员才能访问该文件。<br>工具会以覆盖的方式将报告输出到test_log文件。若test_log文件中已有内容，这些内容将会被清空。因此，建议指定一个空文件用于输出报告。 | 否 |
-| --log-level | 指定检测报告输出等级。 | info：输出info/warn/error级别的运行信息。<br>warn：输出warn/error级别的运行信息（默认）。<br>error：输出error级别的运行信息。 | 否 |
+| --log-level | 指定检测报告输出等级。 | info：输出INFO/WARNING/ERROR级别的检测结果。<br>warn（默认）：输出WARNING/ERROR级别的检测结果。<br>error：输出ERROR级别的检测结果。 | 否 |
 | --max-debuglog-size | 指定检测工具调试输出日志中单个文件大小的上限。 | 可设定范围为1~10240之间的整数，单位为MB。<br>默认值为1024。<br>说明：<br>--max-debuglog-size=100就表示单个调试日志的大小上限为100MB。 | 否 |
 | --block-id | 是否启用单block检测功能。 | 可设定范围为0~200之间的整数。<br>启用前<br>内存检测、未初始化检测和同步检测：默认检测所有block。<br>竞争检测：核间默认检测所有block，核内默认检测block 0的流水内及流水间的竞争。<br>启用后<br>内存检测、未初始化检测和同步检测：检测指定block。<br>竞争检测：核间不进行检测，检测指定block的流水内及流水间的竞争。 | 否 |
 | --cache-size | 表示单block的GM内存大小。 | 单block可设定范围为1~8192之间的整数，单位为MB。<br>单block默认值为100MB，表示单block可申请100MB的内存大小。<br>说明：<br>启用单block检测时，--cache-size的最大值为8192MB。不启用单block检测时，--cache-size可设置的最大值为(24*1024 / block数量) 。<br>当--cache-size值不满足需求时，异常检测工具将会打印信息提示用户重新设置--cache-size值，具体请参见《MindStudio Sanitizer常见问题》中的msSanitizer工具提示--cache-size异常。 | 否 |

@@ -695,14 +695,6 @@ void AddressSanitizer::DoMemOpRecord(MemOpRecord const &record, bool reduce)
         return;
     }
 
-    if (!config_.traceNonDefaultSprReg) {
-        msgFunc_(LogLv::INFO, [&action](void) {
-            std::stringstream recordStr;
-            recordStr << action->record_ << std::endl;
-            return DetectionInfo{ToolType::MEMCHECK, recordStr.str()};
-        });
-    }
-
     ErrorMsgList errorTypes = ScopeDoAction(action);
     for (ErrorMsg const &error : errorTypes) {
         if (reduce) {
