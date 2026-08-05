@@ -1806,7 +1806,7 @@ static void ParseRecordDcPreload(const KernelRecord &record, std::vector<SanEven
     SetLocationInfo(event, dcPreloadRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
     event.pipe = PipeType::PIPE_S_CAL;
-    memInfo.memType = MemType::GM;
+    memInfo.memType = AddrSpaceToMemType(dcPreloadRecord.space);
     memInfo.opType = AccessType::READ;
     memInfo.vectorMask = { static_cast<uint64_t>(-1), static_cast<uint64_t>(-1) };
     memInfo.maskMode = MaskMode::MASK_NORM;

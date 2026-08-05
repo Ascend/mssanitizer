@@ -760,6 +760,7 @@ TEST(RecordFormat, format_dc_preload_record_expect_correct_result)
         .location = {12, 34, 0, 111},
         .addr = 0x5F5F5F,
         .offset = 32,
+        .space = AddressSpace::GM,
     };
     std::stringstream ss;
     ss << record;
@@ -767,6 +768,7 @@ TEST(RecordFormat, format_dc_preload_record_expect_correct_result)
     ASSERT_NE(dcPreloadFormat.find("addr:0x5f5f5f"), std::string::npos);
     ASSERT_NE(dcPreloadFormat.find("loc--1-34"), std::string::npos);
     ASSERT_NE(dcPreloadFormat.find("offset:32"), std::string::npos);
+    ASSERT_NE(dcPreloadFormat.find("space:GM"), std::string::npos);
     ASSERT_NE(dcPreloadFormat.find("111"), std::string::npos);
 }
 

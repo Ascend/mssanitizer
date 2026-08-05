@@ -762,6 +762,7 @@ AICORE_FUNC_HEAD void RecordDcPreloadEvent(EXTRA_PARAMS_DEC, AddressSpace space,
     uint64_t blockIdx = GetBlockIdx();
     auto record = DcPreloadRecord{};
     record.offset = offset;
+    record.space = space;
     record.addr = GmAddrSubOffset(memInfo, MemType::GM, src);
     record.location.blockId = blockIdx;
 #if !defined(BUILD_DYNAMIC_PROBE)
