@@ -1621,6 +1621,7 @@ struct DcPreloadRecord {
     Location location;
     uint64_t addr;
     int64_t offset;
+    AddressSpace space;
 };
 
 struct LoadB2Record {

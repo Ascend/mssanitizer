@@ -762,7 +762,12 @@ AICORE_FUNC_HEAD void RecordDcPreloadEvent(EXTRA_PARAMS_DEC, AddressSpace space,
     uint64_t blockIdx = GetBlockIdx();
     auto record = DcPreloadRecord{};
     record.offset = offset;
-    record.addr = GmAddrSubOffset(memInfo, MemType::GM, src);
+    record.space = space;
+    if (space == AddressSpace::GM) {
+        record.addr = GmAddrSubOffset(memInfo, MemType::GM, src);
+    } else {
+        record.addr = src;
+    }
     record.location.blockId = blockIdx;
 #if !defined(BUILD_DYNAMIC_PROBE)
     record.location.fileNo = fileNo;

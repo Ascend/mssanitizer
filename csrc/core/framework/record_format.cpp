@@ -1192,9 +1192,8 @@ std::ostream &operator<<(std::ostream &os, BroadcastRecord const &record)
 
 std::ostream &operator<<(std::ostream &os, DcPreloadRecord const &record)
 {
-    return os << record.location
-              << ", " << "addr:0x" << std::hex << record.addr << std::dec
-              << ";" << "offset:" << record.offset;
+    return os << record.location << ", " << "addr:0x" << std::hex << record.addr << std::dec << ";"
+              << "offset:" << record.offset << ";" << "space:" << record.space;
 }
 
 std::ostream &operator<<(std::ostream &os, ScatterVnchwconvRecord const &record)

@@ -172,7 +172,7 @@ std::vector<UnaryOpRecord> CreateRandomUnaryOpRecords(uint8_t nRecords)
     }
     return records;
 }
- 
+
 std::vector<BinaryOpRecord> CreateRandomBinaryOpRecords(uint8_t nRecords)
 {
     std::vector<BinaryOpRecord> records;
@@ -182,7 +182,7 @@ std::vector<BinaryOpRecord> CreateRandomBinaryOpRecords(uint8_t nRecords)
     }
     return records;
 }
- 
+
 std::vector<ReduceOpRecord> CreateRandomReduceOpRecords(uint8_t nRecords)
 {
     std::vector<ReduceOpRecord> records;
@@ -249,10 +249,8 @@ bool IsEqual(DecompressHeaderRecord const &lhs, DecompressHeaderRecord const &rh
 
 bool IsEqual(DcPreloadRecord const &lhs, DcPreloadRecord const &rhs)
 {
-    return
-        lhs.location == rhs.location &&
-        (lhs.addr == rhs.addr) &&
-        (lhs.offset == rhs.offset);
+    return lhs.location == rhs.location && (lhs.addr == rhs.addr) && (lhs.offset == rhs.offset) &&
+        (lhs.space == rhs.space);
 }
 
 bool IsEqual(BroadcastRecord const &lhs, BroadcastRecord const &rhs)
@@ -570,7 +568,7 @@ bool IsEqual(MovFpRecord const &lhs, MovFpRecord const &rhs)
 bool IsEqual(VecDupRecord const &lhs, VecDupRecord const &rhs, uint8_t bitsSize)
 {
     uint64_t dst = 0;
-    
+
     if (bitsSize == UT_VECTOR_DUP_B16_BITS) {
         dst = rhs.dst & 0x0000FFFF;
     } else {
@@ -731,12 +729,12 @@ uint64_t ExtractConfigFromUnaryOpRecord(const UnaryOpRecord &record)
                        ((static_cast<uint64_t>(record.srcBlockStride) & 0xffff) << srcBlockStrideShift) |
                        ((static_cast<uint64_t>(record.dstRepeatStride) & 0xff) << dstRepeatStrideShift) |
                        ((static_cast<uint64_t>(record.srcRepeatStride) & 0xfff) << srcRepeatStrideShift));
- 
+
 #if defined(__DAV_C220__) || defined(__DAV_C220_VEC__)
     constexpr uint64_t dstRepeatStrideShift2 = 44;
     config = config | ((static_cast<uint64_t>(record.dstRepeatStride) & 0xf00) << dstRepeatStrideShift2);
 #endif
- 
+
     return config;
 }
 
@@ -751,7 +749,7 @@ uint64_t ExtractConfigFromUnaryOpRecordWithOffset(const UnaryOpRecord &record, u
                        ((static_cast<uint64_t>(record.srcRepeatStride) & 0xfff) << srcRepeatStrideShift));
     return config;
 }
- 
+
 uint64_t ExtractConfigFromBinaryOpRecord(const BinaryOpRecord &record)
 {
     constexpr uint64_t repeatShift = 56;
@@ -769,7 +767,7 @@ uint64_t ExtractConfigFromBinaryOpRecord(const BinaryOpRecord &record)
                        ((static_cast<uint64_t>(record.src1RepeatStride) & 0xff) << src1RepeatStrideShift));
     return config;
 }
- 
+
 uint64_t ExtractConfigFromReduceOpRecord(const ReduceOpRecord &record)
 {
     constexpr uint64_t repeatShift = 56;
