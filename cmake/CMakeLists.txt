@@ -18,7 +18,7 @@ get_filename_component(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../ ABSOLUTE)
 if (${CMAKE_INSTALL_PREFIX} STREQUAL "/usr/local" OR ${CMAKE_INSTALL_PREFIX} STREQUAL "/usr" OR NOT DEFINED CMAKE_INSTALL_PREFIX)
   set(CMAKE_INSTALL_PREFIX ${ROOT_DIR}/output CACHE STRING "install prefix" FORCE)
   message(STATUS "No install prefix selected, default to ${CMAKE_INSTALL_PREFIX}")
-endif() 
+endif()
 
 option(BUILD_TESTS "build unit tests" OFF)
 option(FUZZ_TESTS "build fuzz tests" OFF)
@@ -35,7 +35,7 @@ include(ExternalProject)
 
 ExternalProject_Add(build_sanitizer
                     SOURCE_DIR  ${ROOT_DIR}
-                    CMAKE_ARGS  -DBUILD_TESTS=${BUILD_TESTS} 
+                    CMAKE_ARGS  -DBUILD_TESTS=${BUILD_TESTS}
                                 -DFUZZ_TESTS=${FUZZ_TESTS}
                                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                                 -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
@@ -43,6 +43,16 @@ ExternalProject_Add(build_sanitizer
                     INSTALL_COMMAND $(MAKE) install
                     EXCLUDE_FROM_ALL FALSE
                     BUILD_ALWAYS TRUE
+)
+
+# 将内层 compile_commands.json 链接到 build/ 目录，供 clangd 等 IDE 工具使用
+ExternalProject_Add_Step(build_sanitizer symlink_compile_commands
+    COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${CMAKE_CURRENT_BINARY_DIR}/build_sanitizer-prefix/src/build_sanitizer-build/compile_commands.json
+        ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+    DEPENDEES build
+    COMMENT "Symlink compile_commands.json to build/ for clangd IDE support"
 )
 
 # 检查是否可用 python
@@ -57,13 +67,13 @@ endif()
 file(READ "${ROOT_DIR}/package/conf/version.info" FILE_CONTENT)
 if(FILE_CONTENT MATCHES "\\[PACKAGE\\]([^\\[]+)")
     set(TMP_SECTION "${CMAKE_MATCH_1}")
-    
+
     # 提取 name
     if(TMP_SECTION MATCHES "Name=([^\n]+)")
         string(STRIP "${CMAKE_MATCH_1}" NAME)
         message(STATUS "Name: ${NAME}")
     endif()
-    
+
     # 提取 version
     if(TMP_SECTION MATCHES "Version=([^\\n]+)")
         string(STRIP "${CMAKE_MATCH_1}" PACKAGE_VERSION)
@@ -110,6 +120,6 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/package.flag
     DEPENDS ${PACAKGE_SCRIPT_FILES} ${makeselfTool} ${makeselfHeader}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
-add_custom_target(package_sanitizer ALL DEPENDS 
+add_custom_target(package_sanitizer ALL DEPENDS
                                     build_sanitizer
                                     ${CMAKE_CURRENT_BINARY_DIR}/package.flag)
