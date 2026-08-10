@@ -659,6 +659,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | --leak-check | 使能内存泄漏检测。 | yes/no（默认） | 否 |
 | --check-device-heap | 使能Device侧内存检测。 | yes/no（默认） | 否 |
 | --check-cann-heap | 使能CANN软件栈内存检测。 | yes/no（默认） | 否 |
+| --trace-non-default-spr-reg | 追踪使用非默认值寄存器的指令。 | vector <br>说明：当前仅支持vector指令，该功能需要随memcheck功能一同开启，若无memcheck，该功能不生效。 | 否 |
 
 **表3：竞争检测参数说明**
 
@@ -716,7 +717,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 source ${ASCEND_HOME_PATH}/tools/mssanitizer/bin/mssanitizer-bash-completion
 ```
 
-将自动补全脚本拷贝到用户级的 bash 补全目录，登陆 shell 会话时自动补全功能会自动激活：
+将自动补全脚本拷贝到用户级的 bash 补全目录，登录 shell 会话时自动补全功能会自动激活：
 
 ```shell
 # 保证 bash 补全目录已创建
