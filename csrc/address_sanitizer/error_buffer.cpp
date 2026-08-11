@@ -15,6 +15,7 @@
  * ------------------------------------------------------------------------- */
 
 #include "error_buffer.h"
+#include "core/framework/utility/log.h"
 
 namespace Sanitizer {
 
@@ -30,6 +31,15 @@ std::vector<ReducedErrorMsg> ErrorBuffer::GetBuffer()
 
 void ErrorBuffer::Add(const ErrorMsg &error)
 {
+    // 校验 ErrorMsg 是否有效。设备端/回放产生的损坏或未初始化 error（nBadBytes == 0）
+    // 不应上报，避免 "illegal write of size 0" 之类的无意义误报。真实内存错误的 size 必 >= 1。
+    if (error.auxData.nBadBytes == 0) {
+        SAN_WARN_LOG(
+            "Skip Corrupted Or Zeroed Error, type:%u, nBadBytes:0, addr:0x%lx, space:%u, serialNo:%lu, isSimt:%u",
+            static_cast<uint32_t>(error.type), error.auxData.badAddr.addr, static_cast<uint32_t>(error.auxData.space),
+            error.auxData.serialNo, static_cast<uint32_t>(error.auxData.isSimt));
+        return;
+    }
     ReducedErrorMsg reducedError{error, {}, {}, {}};
     if (error.auxData.blockType == BlockType::AIVEC) {
         reducedError.aivBlocks = {static_cast<uint64_t>(error.auxData.coreId)};
