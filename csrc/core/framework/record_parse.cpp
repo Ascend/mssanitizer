@@ -3043,7 +3043,10 @@ static void ParseRecordSetFlag(const KernelRecord &record, std::vector<SanEvent>
     event.eventInfo.syncInfo.opType = SyncType::SET_FLAG;
     event.eventInfo.syncInfo.srcPipe = record.payload.syncRecord.src;
     event.eventInfo.syncInfo.dstPipe = record.payload.syncRecord.dst;
-    event.eventInfo.syncInfo.eventId = static_cast<uint32_t>(record.payload.syncRecord.eventID);
+    // set_flag 的 eventId 硬件仅支持 0~7，超过 7 的高位会被硬件截断（如 8 实际生效为 0），
+    // 解析时按硬件语义截断，保证后续 set/wait 配对与实际硬件行为一致
+    event.eventInfo.syncInfo.eventId = static_cast<uint32_t>(record.payload.syncRecord.eventID) &
+        (static_cast<uint32_t>(EventID::VALID_EVENT_ID_SIZE) - 1U);
     event.eventInfo.syncInfo.memType = MemType::INVALID;
     event.eventInfo.syncInfo.isRetrogress = false;
     event.eventInfo.syncInfo.isGenerated = record.payload.syncRecord.isGenerated;
@@ -3059,7 +3062,10 @@ static void ParseRecordWaitFlag(const KernelRecord &record, std::vector<SanEvent
     event.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
     event.eventInfo.syncInfo.srcPipe = record.payload.syncRecord.src;
     event.eventInfo.syncInfo.dstPipe = record.payload.syncRecord.dst;
-    event.eventInfo.syncInfo.eventId = static_cast<uint32_t>(record.payload.syncRecord.eventID);
+    // wait_flag 的 eventId 硬件仅支持 0~7，超过 7 的高位会被硬件截断（如 8 实际生效为 0），
+    // 解析时按硬件语义截断，保证后续 set/wait 配对与实际硬件行为一致
+    event.eventInfo.syncInfo.eventId = static_cast<uint32_t>(record.payload.syncRecord.eventID) &
+        (static_cast<uint32_t>(EventID::VALID_EVENT_ID_SIZE) - 1U);
     event.eventInfo.syncInfo.memType = MemType::INVALID;
     event.eventInfo.syncInfo.isRetrogress = false;
     event.eventInfo.syncInfo.isGenerated = record.payload.syncRecord.isGenerated;
@@ -4222,7 +4228,10 @@ void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEv
     // 校验数组的两个维度是否超出上限，避免数组越界
     uint8_t srcPipe = static_cast<uint8_t>(event.eventInfo.syncInfo.srcPipe);
     uint8_t dstPipe = static_cast<uint8_t>(event.eventInfo.syncInfo.dstPipe);
-    uint32_t latestEventId = event.eventInfo.syncInfo.eventId;
+    // set_flag/wait_flag 的 eventId 硬件仅支持 0~7，超过 7 的高位会被硬件截断（如 8 实际生效为 0），
+    // 因此这里按硬件语义截断后再校验，避免将合法的同步事件误判为越界而丢弃
+    uint32_t latestEventId =
+        event.eventInfo.syncInfo.eventId & (static_cast<uint32_t>(EventID::VALID_EVENT_ID_SIZE) - 1U);
     if (srcPipe >= static_cast<uint8_t>(PipeType::SIZE) || dstPipe >= static_cast<uint8_t>(PipeType::SIZE)) {
         SAN_ERROR_LOG("The pipe exceeds the maximum limit, src pipe:%u dst pipe:%u.", srcPipe, dstPipe);
         return;
