@@ -73,6 +73,7 @@ repos:
         language: system
         pass_filenames: true
         files: ^csrc/.+\.(c|h|cpp|hpp|cc|hh|cxx|hxx)$
+        exclude: thirdparty
         args:
           - "--config-file=.clang-tidy"
           - "-p"

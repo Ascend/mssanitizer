@@ -67,7 +67,7 @@ typedef enum tagRtError {
     RT_ERROR_MEMORY_ALLOCATION = 0x2,         // memory allocation fail
     RT_ERROR_INVALID_RESOURCE_HANDLE = 0x3,   // invalid handle
     RT_ERROR_INVALID_DEVICE_POINTER = 0x4,    // invalid device point
-    RT_ERROR_INVALID_MEMCPY_DIRECTION = 0x5,  // invalid memory copy dirction
+    RT_ERROR_INVALID_MEMCPY_DIRECTION = 0x5, // invalid memory copy direction
     RT_ERROR_INVALID_DEVICE = 0x6,            // invalid device
     RT_ERROR_NO_DEVICE = 0x7,                 // no valid device
     RT_ERROR_CMD_OCCUPY_FAILURE = 0x8,        // command occpuy failure

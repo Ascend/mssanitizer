@@ -92,6 +92,8 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
                              aclrtMemcpyKind kind, char const *filename, int lineno);
 aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height,
                                   aclrtMemcpyKind kind, aclrtStream stream, char const *filename, int lineno);
+const char *aclrtGetSocNameImpl();
+aclError aclrtSetDeviceImpl(int32_t devId);
 }
 
 #endif  // __HOOKS_ACL_HOOKS_H__
