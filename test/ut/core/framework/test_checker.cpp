@@ -339,3 +339,22 @@ TEST(Checker, error_buffer_skip_zero_size_error_at_choke_point) {
         ASSERT_EQ(func->errorBuffer_.GetBuffer().size(), 1);
     }
 }
+
+TEST(Checker, error_buffer_keep_illegal_free_error) {
+    // ILLEGAL_FREE 无字节大小语义（nBadBytes 保持构造默认值 0），
+    // 不能被 nBadBytes==0 的兜底过滤误丢，否则回放/reduce 下 illegal free/double free 会漏报。
+    std::stringstream ss;
+    std::shared_ptr<Checker> checker = GetNewChecker(ss);
+    if (auto func = std::dynamic_pointer_cast<AddressSanitizer>(
+            checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)])) {
+        ErrorMsg illegalFree{};
+        illegalFree.isError = true;
+        illegalFree.type = MemErrorType::ILLEGAL_FREE;
+        illegalFree.auxData.blockType = BlockType::AIVEC;
+        illegalFree.auxData.coreId = 0;
+        illegalFree.auxData.badAddr.addr = 0x61;
+        illegalFree.auxData.space = AddressSpace::GM;
+        func->errorBuffer_.Add(illegalFree);
+        ASSERT_EQ(func->errorBuffer_.GetBuffer().size(), 1);
+    }
+}
