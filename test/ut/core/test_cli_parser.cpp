@@ -999,7 +999,8 @@ TEST(CliParser, trace_non_default_spr_reg_before_log_level_expect_log_level_info
 }
 
 TEST(CliParser, trace_non_default_spr_reg_with_racecheck_expect_both_enabled) {
-    std::vector<const char *> argv = {"mssanitizer", "--tool=racecheck", "--trace-non-default-spr-reg=vector"};
+    std::vector<const char *> argv = {
+        "mssanitizer", "--tool=memcheck", "--tool=racecheck", "--trace-non-default-spr-reg=vector"};
 
     optind = 1;
     CliParser cliParser;

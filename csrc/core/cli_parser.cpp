@@ -457,10 +457,6 @@ void ParseTraceNonDefaultSprReg(const std::string &param, UserCommand &userComma
     if (param == "vector") {
         userCommand.config.traceNonDefaultSprReg = true;
         SAN_BUFF_INFO_LOG("trace-non-default-spr-reg on");
-        userCommand.logLv = LogLv::INFO;
-        std::cout << "[mssanitizer] --trace-non-default-spr-reg has been set, --log-level automatically sets to INFO"
-                  << std::endl;
-        SAN_BUFF_INFO_LOG("Set log-level param: info");
     } else {
         std::cout << "[mssanitizer] ERROR: --trace-non-default-spr-reg param is invalid, only vector MODE is supported now" << std::endl;
         userCommand.printHelpInfo = true;
@@ -512,50 +508,94 @@ void ParseEnvironVariables(UserCommand &userCommand) {
     }
 }
 
+void CommandPostProcess(UserCommand &userCommand) {
+    // 当命令行没有开启任何--tool，默认开启内存检测
+    if (!userCommand.config.memCheck && !userCommand.config.raceCheck && !userCommand.config.initCheck &&
+        !userCommand.config.syncCheck) {
+        userCommand.config.defaultCheck = true;
+        userCommand.config.memCheck = true;
+        userCommand.config.registerCheck = true;
+        SAN_BUFF_INFO_LOG("Set default mode: memcheck");
+    }
+
+    // 如果只开启子选项，没开启主功能，子选项也不会生效，需要打屏提示用户
+    if (!userCommand.config.memCheck) {
+        // --check-device-heap 和 --check-cann-heap 开启时会打开 --leak-check，所以合并显示，以简化逻辑
+        if (userCommand.config.leakCheck) {
+            std::cout << "[mssanitizer] --leak-check / --check-device-heap / --check-cann-heap are"
+                      << " sub-options for memcheck, you must enable both memcheck and these,"
+                      << " otherwise these options will not work." << std::endl;
+        }
+        if (userCommand.config.checkUnusedMemory) {
+            std::cout << "[mssanitizer] --check-unused-memory is a sub-option for memcheck, you must enable"
+                      << " both memcheck and this, otherwise this option will not work." << std::endl;
+        }
+        if (userCommand.config.traceNonDefaultSprReg) {
+            std::cout << "[mssanitizer] --trace-non-default-spr-reg is a sub-option for memcheck, you must enable"
+                      << " both memcheck and this, otherwise this option will not work." << std::endl;
+        }
+    }
+    if (!userCommand.config.raceCheck && userCommand.config.checkCrossNpuRaces) {
+        std::cout << "[mssanitizer] --check-cross-npu-races is a sub-option for racecheck, you must enable"
+                  << " both racecheck and this, otherwise this option will not work." << std::endl;
+    }
+
+    // 如果开启寄存器追踪功能，需要把检测等级设置为对应的INFO
+    if (userCommand.config.memCheck && userCommand.config.traceNonDefaultSprReg && userCommand.logLv != LogLv::INFO) {
+        userCommand.logLv = LogLv::INFO;
+        SAN_BUFF_INFO_LOG("Set log-level param: info");
+        std::cout << "[mssanitizer] --trace-non-default-spr-reg has been enabled, --log-level automatically"
+                  << " sets to INFO." << std::endl;
+    }
+}
+
 void ShowHelpInfo()
 {
-    std::cout << std::endl <<
-        "Usage: mssanitizer [options] <program> [program-args]" << std::endl <<
-        std::endl <<
-        "Basic Options:" << std::endl <<
-        "  -h, --help                               Show this help message" << std::endl <<
-        "  -v, --version                            Show version information" << std::endl <<
-        "  -t, --tool=<NAME>                        Select sanitizer tool:" << std::endl <<
-        "                                             NAME:memcheck|racecheck|initcheck|synccheck, default: memcheck" << std::endl <<
-        "      --log-file=<FILE>                    Write log messages to FILE" << std::endl <<
-        "      --log-level=<LEVEL>                  Set log level to LEVEL" << std::endl <<
-        "                                             LEVEL:info|warn|error, default: warn" << std::endl <<
-        "      --max-debuglog-size=<SIZE>           Set max debug log file size to SIZE" << std::endl <<
-        "                                             SIZE:1-10240 in MB, default: 1024" << std::endl <<
-        "      --kernel-name=<NAME>                 Only check the kernel with specified NAME" << std::endl <<
-        "      --demangle=<MODE>                    Set demangling MODE for device function names" << std::endl <<
-        "                                             MODE:full|simple|no, default: full" << std::endl <<
-        "      --full-backtrace=<BOOL>              Print full backtrace including Ascend C internal calls" << std::endl <<
-        "                                             BOOL:yes|no, default: no" << std::endl <<
-        std::endl <<
-        "Memcheck Options:" << std::endl <<
-        "      --leak-check=<BOOL>                  Search for memory leaks at exit" << std::endl <<
-        "                                             BOOL:yes|no, default: no" << std::endl <<
-        "      --check-unused-memory=<BOOL>         Search for unused memory allocations" << std::endl <<
-        "                                             BOOL:yes|no, default: no" << std::endl <<
-        "      --check-device-heap=<BOOL>           Enable device heap check" << std::endl <<
-        "                                             BOOL:yes|no, default: no" << std::endl <<
-        "      --check-cann-heap=<BOOL>             Enable CANN heap check" << std::endl <<
-        "                                             BOOL:yes|no, default: no" << std::endl <<
-        "      --block-id=<ID>                      Set block ID to check" << std::endl <<
-        "                                             ID:0-200, default: all" << std::endl <<
-        "      --cache-size=<SIZE>                  Set record buffer SIZE per block" << std::endl <<
-        "                                             SIZE:1-" << MAX_RECORD_BUF_SIZE_EACH_BLOCK <<
-        " in MB, default: 100" << std::endl <<
-        "      --padding=<SIZE>                     Set GM safe zone SIZE for out-of-bounds detection" << std::endl <<
-        "                                             SIZE:32-1024 in bytes, default: 32" << std::endl <<
-        "      --trace-non-default-spr-reg=<MODE>   Set trace MODE for non default register" << std::endl <<
-        "                                             MODE:vector" << std::endl <<
-        std::endl <<
-        "Racecheck Options:" << std::endl <<
-        "      --check-cross-npu-races=<BOOL>       Check races across different NPUs" << std::endl <<
-        "                                             BOOL:yes|no, default: no" << std::endl <<
-        std::endl;
+    std::cout
+        << std::endl
+        << "Usage: mssanitizer [options] <program> [program-args]" << std::endl
+        << std::endl
+        << "Basic Options:" << std::endl
+        << "  -h, --help                               Show this help message" << std::endl
+        << "  -v, --version                            Show version information" << std::endl
+        << "  -t, --tool=<NAME>                        Select sanitizer tool:" << std::endl
+        << "                                             NAME:memcheck|racecheck|initcheck|synccheck, default: memcheck"
+        << std::endl
+        << "      --log-file=<FILE>                    Write log messages to FILE" << std::endl
+        << "      --log-level=<LEVEL>                  Set log level to LEVEL" << std::endl
+        << "                                             LEVEL:info|warn|error, default: warn" << std::endl
+        << "      --max-debuglog-size=<SIZE>           Set max debug log file size to SIZE" << std::endl
+        << "                                             SIZE:1-10240 in MB, default: 1024" << std::endl
+        << "      --block-id=<ID>                      Set block ID to check" << std::endl
+        << "                                             ID:0-200, default: all" << std::endl
+        << "      --cache-size=<SIZE>                  Set record buffer SIZE per block" << std::endl
+        << "                                             SIZE:1-" << MAX_RECORD_BUF_SIZE_EACH_BLOCK
+        << " in MB, default: 100" << std::endl
+        << "      --kernel-name=<NAME>                 Only check the kernel with specified NAME" << std::endl
+        << "      --full-backtrace=<BOOL>              Print full backtrace including Ascend C internal calls"
+        << std::endl
+        << "                                             BOOL:yes|no, default: no" << std::endl
+        << "      --demangle=<MODE>                    Set demangling MODE for device function names" << std::endl
+        << "                                             MODE:full|simple|no, default: full" << std::endl
+        << "      --padding=<SIZE>                     Set GM safe zone SIZE for out-of-bounds detection" << std::endl
+        << "                                             SIZE:32-1024 in bytes, default: 32" << std::endl
+        << std::endl
+        << "Memcheck Options:" << std::endl
+        << "      --leak-check=<BOOL>                  Search for memory leaks at exit" << std::endl
+        << "                                             BOOL:yes|no, default: no" << std::endl
+        << "      --check-unused-memory=<BOOL>         Search for unused memory allocations" << std::endl
+        << "                                             BOOL:yes|no, default: no" << std::endl
+        << "      --check-device-heap=<BOOL>           Enable device heap check" << std::endl
+        << "                                             BOOL:yes|no, default: no" << std::endl
+        << "      --check-cann-heap=<BOOL>             Enable CANN heap check" << std::endl
+        << "                                             BOOL:yes|no, default: no" << std::endl
+        << "      --trace-non-default-spr-reg=<MODE>   Set trace MODE for non default register" << std::endl
+        << "                                             MODE:vector" << std::endl
+        << std::endl
+        << "Racecheck Options:" << std::endl
+        << "      --check-cross-npu-races=<BOOL>       Check races across different NPUs" << std::endl
+        << "                                             BOOL:yes|no, default: no" << std::endl
+        << std::endl;
 }
 
 std::string GetFuncInjectionRevision()
@@ -899,16 +939,8 @@ UserCommand CliParser::Parse(int32_t argc, char **argv) const
     // 解析环境变量中的开关和设置
     ParseEnvironVariables(userCommand);
 
-    /// 如果defaultCheck为false，有3种情况：
-    /// (1) -t只开启raceCheck, (2) -t没开initCheck或memCheck，但是开了内存检测附加功能, (3) 命令行没有参数
-    /// 后2种情况需要开启defaultCheck和memCheck
-    if (userCommand.config.leakCheck || userCommand.config.checkUnusedMemory || userCommand.config.traceNonDefaultSprReg ||
-        (!userCommand.config.defaultCheck && !userCommand.config.raceCheck && !userCommand.config.syncCheck)) {
-        userCommand.config.defaultCheck = true;
-        userCommand.config.memCheck = true;
-        userCommand.config.registerCheck = true;
-        SAN_BUFF_INFO_LOG("Set mode param: memcheck");
-    }
+    // 打开默认功能，子功能失效提示
+    CommandPostProcess(userCommand);
 
     std::vector<std::string> userBinCmd;
     for (; optind < argc; optind++) {

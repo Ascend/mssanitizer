@@ -683,19 +683,13 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
     mssanitizer -t memcheck -t racecheck ./application
     ```
 
-- 若开启了检测功能对应的子选项，则对应的检测功能也会被默认开启。如开启了内存检测对应的泄漏检测子选项，则内存检测功能会被自动开启：
+- 若开启了检测功能对应的子选项，则对应的检测功能也需要开启。否则子选项功能不生效。如开启了竞争检测对应的卡间竞争子选项，则竞争检测功能也需要开启：
 
     ```shell
-    mssanitizer -t racecheck --leak-check=yes ./application
+    mssanitizer -t racecheck --check-cross-npu-races=yes ./application
     ```
 
-    以上命令等价于：
-
-    ```shell
-    mssanitizer -t racecheck -t memcheck --leak-check=yes ./application
-    ```
-
-- 若不指定任何检测功能，则默认启用内存检测：
+- 特殊地，若不指定任何检测功能，则默认启用内存检测：
 
     ```shell
     mssanitizer ./application
@@ -705,6 +699,12 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 
     ```shell
     mssanitizer -t memcheck ./application
+    ```
+
+    因此这种情况下，子选项也会生效：
+
+    ```shell
+    mssanitizer --trace-non-default-spr-reg=vector ./application
     ```
 
 ### 7.4 命令行参数自动补全
