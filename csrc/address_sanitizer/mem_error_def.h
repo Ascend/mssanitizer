@@ -248,6 +248,9 @@ inline std::ostream &operator<<(std::ostream &os, FormatBlockInfo const &formatB
 {
     ReducedErrorMsg const &msg = formatBlockInfo.msg;
     os <<  "======    ";
+    if (msg.errorMsg.auxData.side != MemOpSide::KERNEL) {
+        return os;
+    }
     if (msg.errorMsg.auxData.isSimt && msg.errorMsg.auxData.displayThread) {
         const auto &threadLoc = msg.errorMsg.auxData.threadLoc;
         os <<  "by thread (" << threadLoc.idX << "," << threadLoc.idY << "," << threadLoc.idZ << ") ";
@@ -274,13 +277,23 @@ inline std::ostream &operator<<(std::ostream &os, FormatBlockInfo const &formatB
             os << "aicore(" << BlockIdxList{aicoreBlockList} << ")";
         }
     }
-    return os;
+    return os << " ";
+}
+
+inline bool IsUnknownFileName(std::string const &fileName)
+{
+    return fileName.empty() || fileName == "<unknown>";
 }
 
 inline std::ostream &PrintClassicLocation(std::ostream &os, const ErrorMsg & msg)
 {
-    return os << "======    code in " << msg.auxData.fileName << ":" << msg.auxData.lineNo <<
-                 " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
+    os << "======    code in ";
+    if (IsUnknownFileName(msg.auxData.fileName)) {
+        os << "<unknown>";
+    } else {
+        os << msg.auxData.fileName << ":" << msg.auxData.lineNo;
+    }
+    return os << " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
 }
 
 inline std::ostream &PrintLocationInfo(std::ostream &os, const ErrorMsg &msg)
@@ -332,7 +345,7 @@ inline std::ostream &PrintOutOfBounds(std::ostream &out, const ReducedErrorMsg &
         "======    at " << msg.auxData.badAddr << " on " << msg.auxData.space << " when writing data" <<
         FormatKernelName{msg} << std::endl <<
         FormatBlockInfo{reducedMsg, hasSubBlocks} <<
-        " on device "<< RuntimeContext::Instance().GetDeviceId() << std::endl;
+        "on device "<< RuntimeContext::Instance().GetDeviceId() << std::endl;
     return PrintLocationInfo(out, msg);
 }
 
@@ -346,7 +359,7 @@ inline std::ostream &PrintIllegalAddrWrite(std::ostream &out, const ReducedError
         "======    at " << msg.auxData.badAddr << " on " << msg.auxData.space <<
         FormatKernelName{msg} << std::endl <<
         FormatBlockInfo{reducedMsg, hasSubBlocks} <<
-        " on device "<< RuntimeContext::Instance().GetDeviceId() << std::endl;
+        "on device "<< RuntimeContext::Instance().GetDeviceId() << std::endl;
     return PrintLocationInfo(out, msg);
 }
 
@@ -360,7 +373,7 @@ inline std::ostream &PrintIllegalAddrRead(std::ostream &out, const ReducedErrorM
         "======    at " << msg.auxData.badAddr << " on " << msg.auxData.space <<
         FormatKernelName{msg} << std::endl <<
         FormatBlockInfo{reducedMsg, hasSubBlocks} <<
-        " on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
+        "on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
     return PrintLocationInfo(out, msg);
 }
 
@@ -374,7 +387,7 @@ inline std::ostream &PrintMisalignedAccess(std::ostream &out, const ReducedError
         "======    at " << msg.auxData.badAddr << " on " << msg.auxData.space <<
         FormatKernelName{msg} << std::endl <<
         FormatBlockInfo{reducedMsg, hasSubBlocks} <<
-        " on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
+        "on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
     return PrintLocationInfo(out, msg);
 }
 
@@ -384,8 +397,13 @@ inline std::ostream &PrintIllegalFree(std::ostream &out, const ReducedErrorMsg &
     out <<
         "====== ERROR: illegal free() " << std::endl <<
         "======    at " << msg.auxData.badAddr << " on GM" << std::endl <<
-        "======    code in " << msg.auxData.fileName << ":" << msg.auxData.lineNo <<
-        " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
+        "======    code in ";
+    if (IsUnknownFileName(msg.auxData.fileName)) {
+        out << "<unknown>";
+    } else {
+        out << msg.auxData.fileName << ":" << msg.auxData.lineNo;
+    }
+    out << " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
     return out;
 }
 
@@ -399,8 +417,13 @@ inline std::ostream &PrintMemLeak(std::ostream &out, const ReducedErrorMsg &redu
         out << " by module " << msg.auxData.moduleId;
     }
     out << std::endl <<
-        "======      allocated in " << msg.auxData.fileName << ":" << msg.auxData.lineNo <<
-        " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
+        "======      allocated in ";
+    if (IsUnknownFileName(msg.auxData.fileName)) {
+        out << "<unknown>";
+    } else {
+        out << msg.auxData.fileName << ":" << msg.auxData.lineNo;
+    }
+    out << " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
     return out;
 }
 
@@ -409,8 +432,13 @@ inline std::ostream &PrintUnusedMem(std::ostream &out, const ReducedErrorMsg &re
     ErrorMsg const &msg = reducedMsg.errorMsg;
     out << "====== WARNING: Unused memory of " << msg.auxData.nBadBytes << " byte(s)" << std::endl <<
         "======    at " << msg.auxData.badAddr << " on GM" << std::endl <<
-        "======    code in " << msg.auxData.fileName << ":" << msg.auxData.lineNo <<
-        " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
+        "======    code in ";
+    if (IsUnknownFileName(msg.auxData.fileName)) {
+        out << "<unknown>";
+    } else {
+        out << msg.auxData.fileName << ":" << msg.auxData.lineNo;
+    }
+    out << " (serialNo:" << msg.auxData.serialNo << ")" << std::endl;
     return out;
 }
 
@@ -424,7 +452,7 @@ inline std::ostream &PrintUninitializedRead(std::ostream &out, const ReducedErro
         "======    at " << msg.auxData.badAddr << " on " << msg.auxData.space <<
         FormatKernelName{msg} << std::endl <<
         FormatBlockInfo{reducedMsg, hasSubBlocks} <<
-        " on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
+        "on device " << RuntimeContext::Instance().GetDeviceId() << std::endl;
     return PrintLocationInfo(out, msg);
 }
 

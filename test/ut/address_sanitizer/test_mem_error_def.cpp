@@ -90,56 +90,62 @@ TEST(MemErrorDef, format_discrete_block_idx_list_of_size_3_expect_return_idxes_s
 TEST(MemErrorDef, format_block_info_with_aivec_block_idxes_expect_return_only_aivec_blocks)
 {
     ReducedErrorMsg msg{ErrorMsg{}, {1, 3, 4}, {}, {}};
+    msg.errorMsg.auxData.side = MemOpSide::KERNEL;
     std::stringstream oss;
     oss << FormatBlockInfo{msg, true};
-    ASSERT_EQ(oss.str(), "======    in block aiv(1,3-4)");
+    ASSERT_EQ(oss.str(), "======    in block aiv(1,3-4) ");
 }
 
 TEST(MemErrorDef, format_block_info_with_aicube_block_idxes_expect_return_only_aicube_blocks)
 {
     ReducedErrorMsg msg{ErrorMsg{}, {}, {2, 4, 5}, {}};
+    msg.errorMsg.auxData.side = MemOpSide::KERNEL;
     std::stringstream oss;
     oss << FormatBlockInfo{msg, true};
-    ASSERT_EQ(oss.str(), "======    in block aic(2,4-5)");
+    ASSERT_EQ(oss.str(), "======    in block aic(2,4-5) ");
 }
 
 TEST(MemErrorDef, format_block_info_with_both_aivec_and_aicube_block_idxes_expect_return_both_blocks)
 {
     ReducedErrorMsg msg{ErrorMsg{}, {1, 3, 4}, {2, 4, 5}, {}};
+    msg.errorMsg.auxData.side = MemOpSide::KERNEL;
     std::stringstream oss;
     oss << FormatBlockInfo{msg, true};
-    ASSERT_EQ(oss.str(), "======    in block aiv(1,3-4),aic(2,4-5)");
+    ASSERT_EQ(oss.str(), "======    in block aiv(1,3-4),aic(2,4-5) ");
 }
 
 TEST(MemErrorDef, format_simt_block_info_expect_return_thread_info_blocks)
 {
     ErrorMsg errorMsg{};
+    errorMsg.auxData.side = MemOpSide::KERNEL;
     errorMsg.auxData.isSimt = true;
     errorMsg.auxData.displayThread = true;
     errorMsg.auxData.threadLoc = {30, 20, 5};
     ReducedErrorMsg msg{errorMsg, {1, 3, 4}, {2, 4, 5}, {}};
     std::stringstream oss;
     oss << FormatBlockInfo{msg, true};
-    ASSERT_EQ(oss.str(), "======    by thread (30,20,5) in block aiv(1,3-4),aic(2,4-5)");
+    ASSERT_EQ(oss.str(), "======    by thread (30,20,5) in block aiv(1,3-4),aic(2,4-5) ");
 }
 
 TEST(MemErrorDef, format_simt_block_info_expect_return_no_thread_info_blocks)
 {
     ErrorMsg errorMsg{};
+    errorMsg.auxData.side = MemOpSide::KERNEL;
     errorMsg.auxData.isSimt = false;
     errorMsg.auxData.threadLoc = {30, 20, 5};
     ReducedErrorMsg msg{errorMsg, {1, 3, 4}, {2, 4, 5}, {}};
     std::stringstream oss;
     oss << FormatBlockInfo{msg, true};
-    ASSERT_EQ(oss.str(), "======    in block aiv(1,3-4),aic(2,4-5)");
+    ASSERT_EQ(oss.str(), "======    in block aiv(1,3-4),aic(2,4-5) ");
 }
 
 TEST(MemErrorDef, format_block_info_with_aicore_block_idxes_expect_return_aicore_blocks)
 {
     ReducedErrorMsg msg{ErrorMsg{}, {}, {}, {2, 4, 5}};
+    msg.errorMsg.auxData.side = MemOpSide::KERNEL;
     std::stringstream oss;
     oss << FormatBlockInfo{msg, false};
-    ASSERT_EQ(oss.str(), "======    in block aicore(2,4-5)");
+    ASSERT_EQ(oss.str(), "======    in block aicore(2,4-5) ");
 }
 
 TEST(MemErrorDef, set_type_expect_success_and_equal_to_origin)

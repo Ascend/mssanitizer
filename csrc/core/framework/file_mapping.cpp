@@ -134,7 +134,7 @@ namespace Sanitizer {
 FileInfo FileMapping::Query(uint64_t fileNo) const
 {
     typename FileMapType::const_iterator it = fileMap_.find(fileNo);
-    return it == fileMap_.cend() ? FileInfo{-1, "unknown"} : it->second;
+    return it == fileMap_.cend() ? FileInfo{-1, "<unknown>"} : it->second;
 }
 
 void FileMapping::Load(std::vector<char> const& buffer)

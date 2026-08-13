@@ -34,8 +34,14 @@ namespace Sanitizer {
 inline std::ostream &PrintClassicLocation(std::ostream &os, uint64_t fileNo, uint64_t lineNo,
     uint64_t serialNo)
 {
-    return os << "at " << FileMapping::Instance().Query(fileNo).fileName << ":" << lineNo <<
-                 " (serialNo:" << serialNo << ")" << std::endl;
+    os << "at ";
+    FileInfo fileInfo = FileMapping::Instance().Query(fileNo);
+    if (fileInfo.fileIdx == -1 || fileInfo.fileName.empty()) {
+        os << "<unknown>";
+    } else {
+        os << fileInfo.fileName << ":" << lineNo;
+    }
+    return os << " (serialNo:" << serialNo << ")" << std::endl;
 }
 
 inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event, uint64_t serialNo,
