@@ -249,7 +249,8 @@ ErrorMsgList ShadowMemory::LoadNBytes(MemOpRecordForShadow memOpRecordForShadow,
     return msgList;
 }
 
-ErrorMsgList ShadowMemory::StoreNBytes(MemOpRecordForShadow memOpRecordForShadow, bool memCheck)
+ErrorMsgList ShadowMemory::StoreNBytes(MemOpRecordForShadow memOpRecordForShadow, bool memCheck,
+    bool outOfBoundCheck)
 {
     ErrorMsgList msgList;
     AddressSpace space = memOpRecordForShadow.dstSpace;
@@ -265,7 +266,7 @@ ErrorMsgList ShadowMemory::StoreNBytes(MemOpRecordForShadow memOpRecordForShadow
 
     uint64_t nBadBytesForOverlap = 0U;
     Range1D range = memmap->GetRange(addr, size);
-    StoreNBytesInRange(range, space, coreId, nBadBytesForOverlap);
+    StoreNBytesInRange(range, space, coreId, nBadBytesForOverlap, outOfBoundCheck);
 
     if (!memCheck) { return msgList; }
 
@@ -279,7 +280,8 @@ ErrorMsgList ShadowMemory::StoreNBytes(MemOpRecordForShadow memOpRecordForShadow
 
 void ShadowMemory::StoreNBytesInRange(Range1D &range, AddressSpace space,
                                       uint8_t coreId,
-                                      uint64_t &nBadBytesForOverlap)
+                                      uint64_t &nBadBytesForOverlap,
+                                      bool outOfBoundCheck)
 {
     uint64_t unifiedSize = 1UL;
     for (Range1D::Iterator it = range.Begin(); it < range.End(); it += unifiedSize) {
@@ -306,9 +308,12 @@ void ShadowMemory::StoreNBytesInRange(Range1D &range, AddressSpace space,
             if (this->atomicEnabled_) {
                 continue;
             }
-            nBadBytesForOverlap += unifiedSize;
-            bits = SetMemStatus(bits, MemStatus::ERROR);
-            unifiedRange.Set(bits);
+            // 未开启踩踏检测（outOfBoundCheck=false）时仍维护内存"已使用"状态，但跳过核间踩踏的 overlap 统计与报错
+            if (outOfBoundCheck) {
+                nBadBytesForOverlap += unifiedSize;
+                bits = SetMemStatus(bits, MemStatus::ERROR);
+                unifiedRange.Set(bits);
+            }
         }
     }
 }

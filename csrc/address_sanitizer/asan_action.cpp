@@ -183,9 +183,11 @@ ErrorMsgList AsanStore::doAction(ShadowMemory& shadowMemory, BoundsCheck &bounds
     }
 
     // 写事件有两个条件需要进入 shadowmemory，一个是初始化检测，一个是多核踩踏
+    // outOfBoundCheck 关闭时仍需进入以维护内存已使用状态，仅跳过踩踏检测，防止未使用内存告警误报
     if ((config.initCheck || (config.memCheck && record_.dstSpace == AddressSpace::GM)) && !ignoreShadowMemory) {
         MemOpRecordForShadow memOpRecordForShadow(record_);
-        ErrorMsgList storeErrors = shadowMemory.StoreNBytes(memOpRecordForShadow, config.memCheck);
+        ErrorMsgList storeErrors = shadowMemory.StoreNBytes(memOpRecordForShadow, config.memCheck,
+            config.outOfBoundCheck);
         for (auto &msg : storeErrors) {
             FillErrorLocInfo(record_, msg);
         }

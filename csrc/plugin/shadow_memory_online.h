@@ -601,7 +601,7 @@ template<>
 AICORE_FUNC_HEAD void ShadowMemoryOnline::AssignErrorInfo<KernelErrorType::THREAD_OVERLAP>(
     ShadowMemoryOnline::ByteStatus_t oldValue, uint16_t threadId, ShadowMemoryOnline::AuxInfo &auxInfo)
 {
-    if (!DoMemCheck(memInfo_)) { return; }
+    if (!DoOutOfBoundCheck(memInfo_)) { return; }
     uint16_t oldThreadId = MemoryByteStatusParser<ByteStatus_t>::ExtractThreadId(oldValue);
     auto &overLapError = auxInfo.errorInfo[overLapErrorIdx];
     overLapError.errorType = KernelErrorType::THREAD_OVERLAP;

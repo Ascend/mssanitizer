@@ -80,7 +80,8 @@ public:
 
     // for SMs n-bytewise-operation
     ErrorMsgList LoadNBytes(MemOpRecordForShadow memOpRecordForShadow, bool initCheck);
-    ErrorMsgList StoreNBytes(MemOpRecordForShadow memOpRecordForShadow, bool memCheck);
+    ErrorMsgList StoreNBytes(MemOpRecordForShadow memOpRecordForShadow, bool memCheck,
+        bool outOfBoundCheck);
 
     // for SMs range setting
     void MakeMemUndefined(uint64_t addr, uint64_t size) const;
@@ -116,7 +117,8 @@ private:
     ErrorMsg MakeBadBytesMsg(MemErrorType error, AddressSpace space, uint64_t addr, uint64_t nbytes,
         bool isSimt = false, uint64_t mainScalarPc = 0, bool displayThread = true) const;
 
-    void StoreNBytesInRange(Range1D &range, AddressSpace space, uint8_t coreId, uint64_t &nBadBytesForOverlap);
+    void StoreNBytesInRange(Range1D &range, AddressSpace space, uint8_t coreId, uint64_t &nBadBytesForOverlap,
+        bool outOfBoundCheck);
 
     std::unique_ptr<PM> l0a_;
     std::unique_ptr<PM> l0b_;

@@ -66,6 +66,7 @@ struct Config {
     bool checkUnusedMemory;
     bool checkCrossNpuRaces;
     bool isPrintFullStack{false};
+    bool outOfBoundCheck{false};          // 是否开启核间踩踏，--log-level=error 时不使能
     bool traceNonDefaultSprReg{false};
     int16_t checkBlockId = -1;            // -1代表默认检查所有核的记录
     uint32_t cacheSize = 100;             // 默认大小为100M

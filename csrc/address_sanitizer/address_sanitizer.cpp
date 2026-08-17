@@ -556,16 +556,34 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
             CheckNonDefaultReg(event);
         }
         preSerialNo_ = event.serialNo;
-
-        pipelineReplayer_.Do(event);
     }
 
-    if (pipelineReplayer_.IsFinished()) {
-        std::vector<MemOpRecord> records;
-        ConvertEventsToRecords(replayedEvents_, records);
-        for (MemOpRecord const &r : records) {
-            this->DoMemOpRecord(r, true);
+    // 未初始化检测需要感知同步事件，通过流水线回放还原真实执行顺序，避免跨核/跨block初始化误报，故初始化检测场景需要pipeline回放
+    // 纯内存检测（越界/对齐/踩踏）不依赖执行顺序，不走回放以降低开销
+    if (config_.initCheck) {
+        for (auto &event : events) {
+            pipelineReplayer_.Do(event);
         }
+        if (pipelineReplayer_.IsFinished()) {
+            std::vector<MemOpRecord> records;
+            ConvertEventsToRecords(replayedEvents_, records);
+            for (MemOpRecord const &r : records) {
+                this->DoMemOpRecord(r, true);
+            }
+            ReportAfterKernelFinish();
+        }
+        return;
+    }
+
+    // 纯内存检测不依赖同步事件感知执行顺序，按block到达顺序增量处理
+    std::vector<MemOpRecord> records;
+    ConvertEventsToRecords(events, records);
+    for (MemOpRecord const &r : records) {
+        this->DoMemOpRecord(r, true);
+    }
+
+    if (record.version == RecordVersion::KERNEL_RECORD &&
+        record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
         ReportAfterKernelFinish();
     }
 }

@@ -942,6 +942,9 @@ UserCommand CliParser::Parse(int32_t argc, char **argv) const
     // 打开默认功能，子功能失效提示
     CommandPostProcess(userCommand);
 
+    // --log-level=error 时仅输出 ERROR 级别告警，不使能核间踩踏检测
+    userCommand.config.outOfBoundCheck = userCommand.logLv != LogLv::ERROR;
+
     std::vector<std::string> userBinCmd;
     for (; optind < argc; optind++) {
         // 对写入日志的算子可执行文件(non-option argument)设置黑名单，只针对日志，不影响执行

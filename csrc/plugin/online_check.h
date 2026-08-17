@@ -282,7 +282,7 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510) && defined(SIMT_MODE)
     /// 3. 线程间内存踩踏检测和竞争检测，设计前提：SIMT每个线程访问的GM空间相互隔离无交叉，原子类操作的地址除外
     /// 4. SIMD和SIMT间未初始化检测，与踩踏和竞争同时开启时，复用原逻辑；单独开启时，仅记录第一条读/写
-    if (DoMemCheck(memInfo_) || DoRaceCheck(memInfo_) || DoInitCheck(memInfo_)) {
+    if (DoOutOfBoundCheck(memInfo_) || DoRaceCheck(memInfo_) || DoInitCheck(memInfo_)) {
         ShadowMemoryOnline::AuxInfo auxInfo{};
         ShadowMemoryCheck(addrInfo, auxInfo);
         errorDesc.l1StartAddr = auxInfo.l1StartAddr;

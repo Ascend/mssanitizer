@@ -362,6 +362,12 @@ AICORE_FUNC_HEAD bool DoMemCheck(__gm__ uint8_t *memInfo)
     return head->checkParms.memcheck;
 }
 
+AICORE_FUNC_HEAD bool DoOutOfBoundCheck(__gm__ uint8_t *memInfo)
+{
+    auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
+    return head->checkParms.memcheck && head->checkParms.outOfBoundCheck;
+}
+
 AICORE_FUNC_HEAD bool DoInitCheck(__gm__ uint8_t *memInfo) {
     auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
     return head->checkParms.initcheck;

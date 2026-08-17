@@ -75,7 +75,7 @@ TEST(ShadowMemory, store_nbytes_aligned_ub_expect_get_success)
     sm.Init(it->second);
     ASSERT_TRUE(sm.IsReady());
     MemOpRecordForShadow memOpRecordForShadow(AddressSpace::UB, TEST_ALIGNED_ADDR, TEST_ALIGNED_ADDR, 0);
-    ErrorMsgList errors = sm.StoreNBytes(memOpRecordForShadow, true);
+    ErrorMsgList errors = sm.StoreNBytes(memOpRecordForShadow, true, true);
     ASSERT_EQ(errors.size(), 0);
 }
 
@@ -119,7 +119,7 @@ TEST(ShadowMemory, malloc_but_do_not_free_expect_get_mem_leak_error)
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
     sm.Init(it->second);
     ASSERT_TRUE(sm.IsReady());
-    
+
     MemOpRecord record{};
     record.serialNo = 0;
     record.type = MemOpType::MALLOC;
@@ -156,7 +156,7 @@ TEST(ShadowMemory, malloc_mems_far_away_expect_no_interaction)
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
     sm.Init(it->second);
     ASSERT_TRUE(sm.IsReady());
-    
+
     MemOpRecord record{};
     record.serialNo = 0;
     record.type = MemOpType::MALLOC;
@@ -180,7 +180,7 @@ TEST(ShadowMemory, malloc_mems_far_away_expect_no_interaction)
 
     Sanitizer::MemOpRecordForShadow readMemOp(AddressSpace::GM, record.dstAddr, record.memSize, 1);
 
-    errorMsgs = sm.StoreNBytes(readMemOp, true);
+    errorMsgs = sm.StoreNBytes(readMemOp, true, true);
     ASSERT_EQ(errorMsgs.size(), 0);
 }
 
@@ -368,7 +368,7 @@ TEST(ShadowMemory, unreg_unknown_heap_expect_illegal_free_error)
     record.type = MemOpType::FREE;
     record.infoSrc = MemInfoSrc::MSTX_HEAP;
     strncpy(record.fileName, "test.cpp", sizeof(record.fileName) - 1);
-    
+
     uint64_t size;
     ErrorMsg error = sm.FreeHeapBlock(record, size);
     ASSERT_TRUE(error.isError);
@@ -425,7 +425,7 @@ TEST(ShadowMemory, free_partial_regions_then_free_heap_expect_success)
     record.infoSrc = MemInfoSrc::MSTX_REGION;
     record.memSize = 1000;
     sm.AddHeapBlock(record);
-    
+
     record.dstAddr += record.memSize;
     sm.AddHeapBlock(record);
 
@@ -534,7 +534,7 @@ TEST(ShadowMemory, complex_heap_region_operations_with_multiple_scenarios)
     record.type = MemOpType::MALLOC;
     record.infoSrc = MemInfoSrc::MSTX_HEAP;
     strncpy(record.fileName, "complex_test.cpp", sizeof(record.fileName) - 1);
-    
+
     uint64_t size;
     ErrorMsg error;
 
@@ -550,7 +550,7 @@ TEST(ShadowMemory, complex_heap_region_operations_with_multiple_scenarios)
     record.infoSrc = MemInfoSrc::MSTX_REGION;
     record.rootAddr = 0x10000;
     record.dstAddr = 0x10000;
-    
+
     for (int i = 0; i < 5; i++) {
         record.memSize = 100 + i * 50;
         sm.AddHeapBlock(record);
@@ -572,7 +572,7 @@ TEST(ShadowMemory, complex_heap_region_operations_with_multiple_scenarios)
     record.infoSrc = MemInfoSrc::MSTX_REGION;
     record.rootAddr = 0x11000; // Second heap
     record.dstAddr = 0x11000;
-    
+
     for (int i = 0; i < 3; i++) {
         record.memSize = 200 + i * 100;
         sm.AddHeapBlock(record);
@@ -602,12 +602,12 @@ TEST(ShadowMemory, complex_heap_region_operations_with_multiple_scenarios)
     record.infoSrc = MemInfoSrc::MSTX_REGION;
     record.rootAddr = 0x12000;
     record.dstAddr = 0x12000;
-    
+
     for (int i = 0; i < 4; i++) {
         record.memSize = 150 + i * 25;
         sm.AddHeapBlock(record);
         record.dstAddr += record.memSize;
-        
+
         // Free every other region immediately
         if (i % 2 == 1) {
             record.type = MemOpType::FREE;
@@ -620,7 +620,7 @@ TEST(ShadowMemory, complex_heap_region_operations_with_multiple_scenarios)
     // Phase 9: Final cleanup
     record.infoSrc = MemInfoSrc::MSTX_HEAP;
     record.type = MemOpType::FREE;
-    
+
     // Free remaining heaps
     std::vector<uint64_t> heapAddresses = {0x10000, 0x11000, 0x12000, 0x13000, 0x14000};
     for (auto addr : heapAddresses) {
@@ -647,7 +647,7 @@ TEST(ShadowMemory, extensive_memory_operations_with_edge_cases)
     MemOpRecord record{};
     record.dstSpace = AddressSpace::GM;
     strncpy(record.fileName, "edge_case_test.cpp", sizeof(record.fileName) - 1);
-    
+
     uint64_t size;
     ErrorMsg error;
 
@@ -669,7 +669,7 @@ TEST(ShadowMemory, extensive_memory_operations_with_edge_cases)
     record.infoSrc = MemInfoSrc::MSTX_REGION;
     record.rootAddr = 0x60000;
     record.dstAddr = 0x60000;
-    
+
     for (int i = 0; i < 20; i++) {
         record.memSize = 10 + i * 5; // Growing sizes
         sm.AddHeapBlock(record);
@@ -780,21 +780,21 @@ TEST(ShadowMemory, concurrent_stress_simulation)
     MemOpRecord record{};
     record.dstSpace = AddressSpace::GM;
     strncpy(record.fileName, "stress_test.cpp", sizeof(record.fileName) - 1);
-    
+
     uint64_t size;
     ErrorMsg error;
 
     // Simulate complex application behavior with many allocations
     const int NUM_ITERATIONS = 50;
     const int MAX_HEAPS = 20;
-    
+
     std::vector<uint64_t> activeHeaps;
     std::vector<std::pair<uint64_t, uint64_t>> activeRegions; // <heap_addr, region_addr>
 
     for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
         // Randomly decide operation type
         int opType = iter % 10;
-        
+
         if (opType < 6 || activeHeaps.empty()) { // 60% allocate new heap or if no heaps
             // Allocate new heap
             record.type = MemOpType::MALLOC;
@@ -802,15 +802,15 @@ TEST(ShadowMemory, concurrent_stress_simulation)
             record.dstAddr = 0x100000 + iter * 0x1000;
             record.memSize = 1000 + (iter % 10) * 100;
             record.rootAddr = record.dstAddr;
-            
+
             sm.AddHeapBlock(record);
             activeHeaps.push_back(record.dstAddr);
-            
+
             // Also allocate some regions within this heap
             int numRegions = iter % 5 + 1;
             record.infoSrc = MemInfoSrc::MSTX_REGION;
             uint64_t regionAddr = record.dstAddr;
-            
+
             for (int r = 0; r < numRegions; r++) {
                 record.memSize = 50 + (r % 3) * 25;
                 sm.AddHeapBlock(record);
@@ -822,16 +822,16 @@ TEST(ShadowMemory, concurrent_stress_simulation)
         else if (opType < 8) { // 20% free random heap
             int heapIndex = iter % activeHeaps.size();
             uint64_t heapAddr = activeHeaps[heapIndex];
-            
+
             record.type = MemOpType::FREE;
             record.infoSrc = MemInfoSrc::MSTX_HEAP;
             record.dstAddr = heapAddr;
-            
+
             error = sm.FreeHeapBlock(record, size);
             if (!error.isError) {
                 // Remove from active heaps
                 activeHeaps.erase(activeHeaps.begin() + heapIndex);
-                
+
                 // Also remove associated regions
                 auto it = activeRegions.begin();
                 while (it != activeRegions.end()) {
@@ -847,18 +847,18 @@ TEST(ShadowMemory, concurrent_stress_simulation)
             if (!activeRegions.empty()) {
                 int regionIndex = iter % activeRegions.size();
                 auto region = activeRegions[regionIndex];
-                
+
                 record.type = MemOpType::FREE;
                 record.infoSrc = MemInfoSrc::MSTX_REGION;
                 record.dstAddr = region.second;
-                
+
                 error = sm.FreeHeapBlock(record, size);
                 if (!error.isError) {
                     activeRegions.erase(activeRegions.begin() + regionIndex);
                 }
             }
         }
-        
+
         // Every 10 iterations, verify some operations
         if (iter % 10 == 9) {
             // Try to free a non-existent address
@@ -867,7 +867,7 @@ TEST(ShadowMemory, concurrent_stress_simulation)
             record.dstAddr = 0x99900000 + iter;
             error = sm.FreeHeapBlock(record, size);
             // Expected to fail, that's fine
-            
+
             // Verify one of the active heaps can be freed properly
             if (!activeHeaps.empty()) {
                 record.dstAddr = activeHeaps[0];
@@ -876,7 +876,7 @@ TEST(ShadowMemory, concurrent_stress_simulation)
                     // Update our tracking
                     uint64_t freedHeap = activeHeaps[0];
                     activeHeaps.erase(activeHeaps.begin());
-                    
+
                     // Remove associated regions
                     auto it = activeRegions.begin();
                     while (it != activeRegions.end()) {
@@ -918,21 +918,21 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
     MemOpRecord record{};
     record.dstSpace = AddressSpace::GM;
     strncpy(record.fileName, "stress_test.cpp", sizeof(record.fileName) - 1);
-    
+
     uint64_t size;
     ErrorMsg error;
 
     // Simulate complex application behavior with many allocations
     const int NUM_ITERATIONS = 50;
     const int MAX_HEAPS = 20;
-    
+
     std::vector<uint64_t> activeHeaps;
     std::vector<std::pair<uint64_t, uint64_t>> activeRegions; // <heap_addr, region_addr>
 
     for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
         // Randomly decide operation type
         int opType = iter % 10;
-        
+
         if (opType < 6 || activeHeaps.empty()) { // 60% allocate new heap or if no heaps
             // Allocate new heap
             record.type = MemOpType::MALLOC;
@@ -940,15 +940,15 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
             record.dstAddr = 0x100000 + iter * 0x1000;
             record.memSize = 1000 + (iter % 10) * 100;
             record.rootAddr = record.dstAddr;
-            
+
             sm.AddHeapBlock(record);
             activeHeaps.push_back(record.dstAddr);
-            
+
             // Also allocate some regions within this heap
             int numRegions = iter % 5 + 1;
             record.infoSrc = MemInfoSrc::MSTX_REGION;
             uint64_t regionAddr = record.dstAddr;
-            
+
             for (int r = 0; r < numRegions; r++) {
                 record.memSize = 50 + (r % 3) * 25;
                 sm.AddHeapBlock(record);
@@ -960,16 +960,16 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
         else if (opType < 8) { // 20% free random heap
             int heapIndex = iter % activeHeaps.size();
             uint64_t heapAddr = activeHeaps[heapIndex];
-            
+
             record.type = MemOpType::FREE;
             record.infoSrc = MemInfoSrc::MSTX_HEAP;
             record.dstAddr = heapAddr;
-            
+
             error = sm.FreeHeapBlock(record, size);
             if (!error.isError) {
                 // Remove from active heaps
                 activeHeaps.erase(activeHeaps.begin() + heapIndex);
-                
+
                 // Also remove associated regions
                 auto it = activeRegions.begin();
                 while (it != activeRegions.end()) {
@@ -985,18 +985,18 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
             if (!activeRegions.empty()) {
                 int regionIndex = iter % activeRegions.size();
                 auto region = activeRegions[regionIndex];
-                
+
                 record.type = MemOpType::FREE;
                 record.infoSrc = MemInfoSrc::MSTX_REGION;
                 record.dstAddr = region.second;
-                
+
                 error = sm.FreeHeapBlock(record, size);
                 if (!error.isError) {
                     activeRegions.erase(activeRegions.begin() + regionIndex);
                 }
             }
         }
-        
+
         // Every 10 iterations, verify some operations
         if (iter % 10 == 9) {
             // Try to free a non-existent address
@@ -1005,7 +1005,7 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
             record.dstAddr = 0x99900000 + iter;
             error = sm.FreeHeapBlock(record, size);
             // Expected to fail, that's fine
-            
+
             // Verify one of the active heaps can be freed properly
             if (!activeHeaps.empty()) {
                 record.dstAddr = activeHeaps[0];
@@ -1014,7 +1014,7 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
                     // Update our tracking
                     uint64_t freedHeap = activeHeaps[0];
                     activeHeaps.erase(activeHeaps.begin());
-                    
+
                     // Remove associated regions
                     auto it = activeRegions.begin();
                     while (it != activeRegions.end()) {

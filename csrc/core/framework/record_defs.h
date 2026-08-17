@@ -758,6 +758,7 @@ struct CheckParmsInfo {
     int16_t checkBlockId = CHECK_ALL_BLOCK;           // 检查的blockId, 默认检测所有核的记录
     bool defaultcheck{};                              // 是否开启内存/未初始化/软件栈检测
     bool memcheck{};                                  // 是否开启内存检测
+    bool outOfBoundCheck{};                           // 是否开启核间踩踏检测，--log-level=error 时不使能
     bool racecheck{};                                 // 是否开启竞争检测
     bool initcheck{};                                 // 是否开启未初始化检测
     bool synccheck{};                                 // 是否开启同步检测
