@@ -226,3 +226,46 @@ TEST(UString, simplify_valid_function_name_with_namespace_in_parameters_expect_g
     ASSERT_TRUE(SimplifyDemangledName(name, simplified));
     ASSERT_EQ(simplified, "illegal_read_and_write_kernel");
 }
+
+TEST(UString, format_name_for_log_empty_expect_empty_string) { ASSERT_EQ(FormatNameForLog(""), ""); }
+
+TEST(UString, format_name_for_log_printable_text_expect_hash_only) {
+    // 文本型名称也只输出哈希, 不再原样打印, 避免日志暴露原始 name
+    ASSERT_EQ(FormatNameForLog("torch_ipc_42"), "hash=e6444933");
+}
+
+TEST(UString, format_name_for_log_text_with_bad_bytes_expect_hash_only) {
+    std::string name = "torch_123";
+    name += static_cast<char>(0x02);
+    name += "abc";
+    ASSERT_EQ(FormatNameForLog(name), "hash=d8919ddc");
+}
+
+TEST(UString, format_name_for_log_binary_input_expect_hash_only) {
+    // 二进制型名称(如 IPC 句柄): 输出 FNV-1a 32 位哈希, 不再带 bin/长度前缀
+    std::string input;
+    input += static_cast<char>(0x01);
+    input += static_cast<char>(0x02);
+    input += static_cast<char>(0x03);
+    input += static_cast<char>(0x04);
+    ASSERT_EQ(FormatNameForLog(input), "hash=5734a87d");
+}
+
+TEST(UString, format_name_for_log_user_ipc_handle_blob_expect_hash_only) {
+    // 复现线上日志中的 50 字节二进制 IPC 句柄, 修复前为乱码, 此前修复为 200 字符的 \\xHH 串,
+    // 现在只输出哈希
+    const unsigned char raw[] = {0x01, 0x01, 0x01, 0x01, 0x09, 0x01, 0x07, 0x01, 0x34, 0x06, 0x1b, 0x01, 0xe7, 0x55,
+        0x01, 0x01, 0x01, 0x01, 0x01, 0x40, 0x02, 0x01, 0x4f, 0x80, 0x01, 0x01, 0x20, 0x19, 0x01, 0x01, 0x01, 0x01,
+        0x35, 0x01, 0x01, 0x01, 0x07, 0x01, 0x09, 0x01, 0xad, 0x91, 0x9f, 0x99, 0xef, 0x95, 0x80, 0x80, 0x80, 0x80};
+    std::string input(reinterpret_cast<const char *>(raw), sizeof(raw));
+    ASSERT_EQ(FormatNameForLog(input), "hash=5020ab2f");
+}
+
+TEST(UString, format_name_for_log_deterministic_expect_same_input_same_output) {
+    std::string input;
+    for (int i = 0; i < 64; ++i) {
+        input += static_cast<char>(0x80);
+    }
+    ASSERT_EQ(FormatNameForLog(input), "hash=e5f96ac5");
+    ASSERT_EQ(FormatNameForLog(input), FormatNameForLog(input));
+}

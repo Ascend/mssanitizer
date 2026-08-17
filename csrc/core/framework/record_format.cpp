@@ -18,6 +18,7 @@
 #include "record_format.h"
 #include "file_mapping.h"
 #include "record_defs.h"
+#include "utility/ustring.h"
 
 #include <functional>
 #include <ios>
@@ -1765,14 +1766,14 @@ std::ostream &operator<<(std::ostream &os, IPCMemRecord const &record)
         case IPCOperationType::SET_INFO:
             os << "addr:0x" << std::hex << record.setInfo.addr << ", "
                << "size:" << record.setInfo.size << ", "
-               << "name:" << record.setInfo.name;
+               << "name:" << Utility::FormatNameForLog(std::string(record.setInfo.name));
             break;
         case IPCOperationType::DESTROY_INFO:
-            os << "name:" << std::hex << record.destroyInfo.name;
+            os << "name:" << Utility::FormatNameForLog(std::string(record.destroyInfo.name));
             break;
         case IPCOperationType::MAP_INFO:
             os << "addr:0x" << std::hex << record.mapInfo.addr << ", "
-               << "name:" << record.mapInfo.name;
+               << "name:" << Utility::FormatNameForLog(std::string(record.mapInfo.name));
             break;
         case IPCOperationType::UNMAP_INFO:
             os << "addr:0x" << std::hex << record.unmapInfo.addr;

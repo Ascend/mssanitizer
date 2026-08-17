@@ -119,6 +119,10 @@ inline bool EndWith(std::string const &str, std::string const &target)
 
 std::string ReplaceInvalidChar(const std::string &input);
 
+// 为日志打印格式化共享内存名称: 直接输出 32 位 FNV-1a 哈希, 形如 hash=5020ab2f,
+// 既避免二进制 name 造成的乱码, 也避免长串 \\xHH 转义污染日志; 同一 name 哈希值确定, 便于跨日志行关联
+std::string FormatNameForLog(const std::string &input);
+
 inline bool StoiConverter(const std::string &numString, int &num, int radix = 10)
 {
     try {

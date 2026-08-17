@@ -164,7 +164,7 @@ void HandleGMAddrOutOfBoundRecord(Checker &checker, GMAddrOutOfBoundRecord const
 
 std::string ProcessIPCSetEvent(IPCMemRecord const &record, std::mutex &mux)
 {
-    std::string setInfoNameLog = Utility::ReplaceInvalidChar(std::string(record.setInfo.name));
+    std::string setInfoNameLog = Utility::FormatNameForLog(std::string(record.setInfo.name));
     std::lock_guard<std::mutex> lk(mux);
     IPCResponse resp{IPCOperationType::SET_INFO, ResponseStatus::FAIL};
     auto it = Command::sharedMemInfoMp.find(record.setInfo.name);
@@ -186,8 +186,9 @@ std::string ProcessIPCDestroyEvent(IPCMemRecord const &record, ThreadManager &th
     IPCResponse resp{IPCOperationType::DESTROY_INFO, ResponseStatus::FAIL};
     auto it = Command::sharedMemInfoMp.find(record.destroyInfo.name);
     if (it == Command::sharedMemInfoMp.end()) {
+        std::string destroyInfoNameLog = Utility::FormatNameForLog(std::string(record.destroyInfo.name));
         SAN_WARN_LOG("Error occurs when destroying shared memory, as its name (%s) does not existed.",
-            record.destroyInfo.name);
+            destroyInfoNameLog.c_str());
     } else {
         auto &shareeMemInfoList = it->second.second;
         for (auto &p : shareeMemInfoList) {
@@ -214,8 +215,9 @@ std::string ProcessIPCMapEvent(IPCMemRecord const &record, ThreadManager &thread
         std::lock_guard<std::mutex> lk(mux);
         auto it2 = Command::sharedMemInfoMp.find(record.mapInfo.name);
         if (it2 == Command::sharedMemInfoMp.end()) {
-            SAN_WARN_LOG("Error occurs when opening shared memory, as its name (%s) does not existed.",
-                record.mapInfo.name);
+            std::string mapInfoNameLog = Utility::FormatNameForLog(std::string(record.mapInfo.name));
+            SAN_WARN_LOG(
+                "Error occurs when opening shared memory, as its name (%s) does not existed.", mapInfoNameLog.c_str());
         } else {
             GMType size = it2->second.first.size;
             ShareeMemInfo shareeMemInfo{record.mapInfo.addr, size};
@@ -241,7 +243,7 @@ std::string ProcessIPCUnmapEvent(IPCMemRecord const &record, ThreadManager &thre
         std::lock_guard<std::mutex> lk(mux);
         auto itShared = Command::sharedMemInfoMp.find(it->second);
         if (itShared == Command::sharedMemInfoMp.end()) {
-            std::string sharedMemoryLog = Utility::ReplaceInvalidChar(it->second);
+            std::string sharedMemoryLog = Utility::FormatNameForLog(it->second);
             SAN_INFO_LOG("Shared memory (%s) has already been destroyed.", sharedMemoryLog.c_str());
         } else {
             auto curTid = std::this_thread::get_id();
