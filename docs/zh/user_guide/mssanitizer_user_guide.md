@@ -116,6 +116,7 @@ mssanitizer --tool=memcheck ./add_npu
 | --- | --- |
 | `TRITON_ALWAYS_COMPILE=1` | 强制重新编译 Triton 算子，避免使用缓存的旧版本 |
 | `PYTORCH_NO_NPU_MEMORY_CACHING=1` | 禁用 PyTorch 的 NPU 内存池机制，防止其干扰内存检测结果 |
+| `TRITON_ENABLE_SANITIZER=1` | 使能检测工具 |
 
 > [!NOTE]
 > Triton 场景会使用 PyTorch 创建 Tensor，PyTorch 框架内默认以内存池的方式管理 GM 内存，会对内存检测产生干扰，因此必须关闭内存缓存以保证检测的有效性。

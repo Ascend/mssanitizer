@@ -204,9 +204,14 @@
 ### 4.1 前提条件
 
 - 参考[triton-ascend仓](https://gitcode.com/Ascend/triton-ascend)，完成Triton及Triton-Ascend插件的安装和配置。
-- 为了防止未重新编译的算子造成影响，建议您启用以下环境变量：
+
+- 打开以下环境变量，使能 Triton 算子异常检测功能：
 
     ```sh
+    # 开启异常检测
+    export TRITON_ENABLE_SANITIZER=1
+
+    # 强制算子重新编译，使异常检测生效
     export TRITON_ALWAYS_COMPILE=1
     ```
 
