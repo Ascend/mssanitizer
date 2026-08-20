@@ -118,9 +118,12 @@ struct MemOpInfo {
     uint32_t blockStride;
     uint32_t repeatTimes;
     uint32_t repeatStride;
+    // 最近的 dcci 指令的距离，仅对标量读写有效。对于读指令记录前面最近的一条 dcci，对于写指令记录后面最近
+    // 的一条 dcci。0 表示未找到，> 0 表示有效距离
     // 对齐大小，由内存检测引入
     uint16_t alignSize;
     bool ignoreIllegalCheck;
+    uint32_t dcciDistance;
     // FIX_L0C_TO_UB/FIX_L0C_TO_L1 跨核写入时，标注目标核信息，跨核检测时替代 loc.coreId/blockType
     uint32_t dstCoreId = 0;
     BlockType dstBlockType = BlockType::AIVEC;
@@ -371,6 +374,7 @@ struct ErrorEvent {
 // 竞争检测信息展示单元
 struct RaceDispInfo {
     ErrorEvent p1, p2;
+    bool isMissDcci;
     bool isOnlineError{false};
 
     bool IsSameSimt(const RaceDispInfo &other) const {
@@ -433,7 +437,8 @@ struct RegisterDispInfo {
 struct ErrorEventHash {
     size_t operator () (const RaceDispInfo &it) const
     {
-        return std::hash<uint64_t>()(it.p1.addr) ^ std::hash<uint64_t>()(it.p2.addr) ^
+        return std::hash<bool>()(it.isMissDcci) ^
+            std::hash<uint64_t>()(it.p1.addr) ^ std::hash<uint64_t>()(it.p2.addr) ^
             std::hash<uint64_t>()(it.p1.fileNo) ^ std::hash<uint64_t>()(it.p2.fileNo) ^
             std::hash<uint64_t>()(it.p1.lineNo) ^ std::hash<uint64_t>()(it.p2.lineNo) ^
             std::hash<uint64_t>()(it.p1.pc) ^ std::hash<uint64_t>()(it.p2.pc) ^
@@ -446,7 +451,8 @@ struct ErrorEventHash {
 struct ErrorEventEqual {
     bool operator () (const RaceDispInfo &rd1, const RaceDispInfo &rd2) const noexcept
     {
-        return (rd1.p1 == rd2.p1 && rd1.p2 == rd2.p2) || (rd1.p1 == rd2.p2 && rd1.p2 == rd2.p1);
+        return rd1.isMissDcci == rd2.isMissDcci &&
+            ((rd1.p1 == rd2.p1 && rd1.p2 == rd2.p2) || (rd1.p1 == rd2.p2 && rd1.p2 == rd2.p1));
     }
 };
 

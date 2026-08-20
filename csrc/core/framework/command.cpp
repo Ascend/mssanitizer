@@ -22,6 +22,7 @@
 #include <sstream>
 #include <experimental/filesystem>
 
+#include "core/framework/config_manager.h"
 #include "core/framework/device_manager.h"
 #include "core/framework/kernel_binary_manager.h"
 #include "core/framework/kernel_manager.h"
@@ -418,6 +419,11 @@ void HandleIpcMemRecord(Sanitizer::Checker &checker, Sanitizer::IPCMemRecord con
     std::stringstream ss;
     ss << record <<", deviceId:"<<RuntimeContext::Instance().GetDeviceId();
     SAN_INFO_LOG("%s", ss.str().c_str());
+}
+
+Command::Command(Config const &config, bool enableDebugLog, const LogLv &lv, const std::string &logFile)
+    : config_{config}, enableDebugLog_{enableDebugLog}, loglv_(lv), logFile_(logFile) {
+    ConfigManager::Instance().Set(config);
 }
 
 void Command::Exec(const ParamList &execParams)

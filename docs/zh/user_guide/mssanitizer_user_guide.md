@@ -667,6 +667,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | 参数名称 | 参数描述 | 参数取值 | 必选 |
 | --- | --- | --- | --- |
 | --check-cross-npu-races | 使能卡间竞争检测。 | yes/no（默认） | 否 |
+| --check-dcci | 使能dcci缺失检测。 | yes/no（默认） | 否 |
 
 > [!NOTE]
 >

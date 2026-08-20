@@ -193,8 +193,9 @@ enum class RecordType : uint32_t {
     STI_ATOMIC,
     ST_DEV,
     LD_DEV,
+    DCCI,
 
-     /// data_move
+    /// data_move
     DMA_MOV = 100,
     MOV_ALIGN,
     MOV_ALIGN_V2,
@@ -581,6 +582,18 @@ enum class AccessType: uint8_t {
     MEMCPY_BLOCKS,
 };
 
+enum class DcciEntireType : uint8_t {
+    SINGLE_CACHE_LINE = 0,
+    ENTIRE_DATA_CACHE,
+};
+
+enum class DcciDstType : uint8_t {
+    CACHE_LINE_ALL = 0,
+    CACHE_LINE_UB,
+    CACHE_LINE_OUT,
+    CACHE_LINE_ATOMIC,
+};
+
 /// 设备信息
 struct DeviceInfoSummary {
     DeviceType device;
@@ -763,6 +776,7 @@ struct CheckParmsInfo {
     bool initcheck{};                                 // 是否开启未初始化检测
     bool synccheck{};                                 // 是否开启同步检测
     bool registerCheck{};                             // 是否开启寄存器检测
+    bool dcciCheck{};
     uint32_t gmBufferGuardSize = GM_BUFFER_GUARD_DFT_SIZE;  // GM 内存地址buffer安全区长度，单位字节
 };
 
@@ -982,6 +996,14 @@ struct RedRecord {
     Location location;
     uint8_t isAtom;
     DetailedDataType detailedDataType;
+};
+
+struct DcciRecord {
+    Location location;
+    uint64_t addr;
+    AddressSpace space;
+    DcciEntireType entire;
+    DcciDstType type;
 };
 
 struct DmaMovRecord {
@@ -2116,6 +2138,7 @@ struct KernelRecord {
         RegisterSetRecord registerSetRecord;
         SimtEmptyRecord simtEmptyRecord;
         MainScalarEmptyRecord mainScalarEmptyRecord;
+        DcciRecord dcciRecord;
     } payload;
 };
 

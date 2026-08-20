@@ -18,7 +18,9 @@
 #define PLUGIN_RECORD_MOVE_INSTRUCTIONS_H
 
 #include <utility>
+#include "core/framework/record_defs.h"
 #include "kernel_pub_func.h"
+#include "sanitizer_report.h"
 #include "utils.h"
 #include "recorder.h"
 #include "addr_process.h"
@@ -1793,6 +1795,30 @@ AICORE_FUNC_HEAD void RecordDmaMovL1FbEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<RecordType::MOV_CBUF_TO_FB>(record);
+}
+
+AICORE_FUNC_HEAD void RecordDcciEvent(
+    EXTRA_PARAMS_DEC, uint64_t addr, AddressSpace space, DcciEntireType entire, DcciDstType type) {
+    if (InvalidMemInfo(memInfo)) {
+        return;
+    }
+
+    uint64_t blockIdx = GetBlockIdx();
+    DcciRecord record{};
+    record.addr = addr;
+    record.space = space;
+    record.entire = entire;
+    record.type = type;
+
+#if !defined(BUILD_DYNAMIC_PROBE)
+    record.location.fileNo = fileNo;
+    record.location.lineNo = lineNo;
+#endif
+    record.location.pc = static_cast<uint64_t>(pc);
+    record.location.blockId = blockIdx;
+
+    Recorder recorder(memInfo, blockIdx);
+    recorder.DumpRecord<RecordType::DCCI>(record);
 }
 
 }  // namespace Sanitizer

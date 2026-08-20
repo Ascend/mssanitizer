@@ -174,7 +174,8 @@ using RecordTypeMap = TypeMap<
     TypePair<RecordType::SET_FPC, RegisterSetRecord>,
     TypePair<RecordType::SET_QUANT_PRE, RegisterSetRecord>,
     TypePair<RecordType::SET_QUANT_POST, RegisterSetRecord>,
-    TypePair<RecordType::SET_LRELU_ALPHA, RegisterSetRecord>
+    TypePair<RecordType::SET_LRELU_ALPHA, RegisterSetRecord>,
+    TypePair<RecordType::DCCI, DcciRecord>
 >;
 
 template<RecordType recordType>

@@ -65,6 +65,7 @@ struct Config {
     bool leakCheck;
     bool checkUnusedMemory;
     bool checkCrossNpuRaces;
+    bool checkDcci;
     bool isPrintFullStack{false};
     bool outOfBoundCheck{false};          // 是否开启核间踩踏，--log-level=error 时不使能
     bool traceNonDefaultSprReg{false};

@@ -898,6 +898,21 @@ TEST(CliParser, set_check_cross_npu_races_no_expect_get_check_cross_npu_races_fa
     ASSERT_FALSE(cmd.config.checkCrossNpuRaces);
 }
 
+TEST(CliParser, set_check_dcci_yes_expect_get_check_dcci_true) {
+    std::vector<const char *> argv = {"mssanitizer", "--check-dcci=yes"};
+
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_TRUE(cmd.config.checkDcci);
+}
+
+TEST(CliParser, set_check_dcci_no_expect_get_check_dcci_false) {
+    std::vector<const char *> argv = {"mssanitizer", "--check-dcci=no"};
+
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_FALSE(cmd.config.checkDcci);
+}
 TEST(CliParser, set_trace_non_default_spr_reg_vector_expect_trace_enabled_and_log_level_info)
 {
     std::vector<const char*> argv = {

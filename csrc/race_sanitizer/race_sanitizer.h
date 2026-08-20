@@ -19,6 +19,10 @@
 #define RACE_SANITIZER_RACE_SANITIZER_H
 
 #include <array>
+#include <deque>
+#include <memory>
+#include <queue>
+
 #include "core/framework/sanitizer_base.h"
 #include "alg_framework/race_alg_base.h"
 
@@ -54,14 +58,23 @@ private:
     bool IsTargetEvent(const SanEvent &event, BlockType targetBlockType);
 
     void MergeSimtErrors();
+    void DoImpl(const SanitizerRecord &record, const std::vector<SanEvent> &events);
+    void PopWindowRecord(std::deque<KernelRecord> &aheadDcci, std::deque<KernelRecord> &afterDccis);
+    uint32_t NearestDcciDistance(KernelRecord const &kernelRecord, SanEvent const &event,
+        std::deque<KernelRecord> &aheadDcci, std::deque<KernelRecord> &afterDccis) const;
+    bool DoesDcciHaveEffect(SanEvent const &event, DcciRecord const &dcciRecord) const;
+
     // 最多支持检测开启5个检测算法
     static constexpr uint32_t MAX_RACE_ALG_NUM = 5U;
+    // recordWindow_ 的大小
+    static constexpr std::size_t MAX_WINDOW_SIZE = 4;
     std::array<std::shared_ptr<RaceAlgBase>, MAX_RACE_ALG_NUM> raceAlgs_;
     int16_t checkBlockId_ = CHECK_ALL_BLOCK;
     const uint8_t defaultCheckBlockId_ = 0U;
     MSG_FUNC msgFunc_;
     DeviceType deviceType_ = DeviceType::INVALID;
     std::shared_ptr<std::vector<RaceDispInfo>> simtErrors_;
+    std::queue<std::pair<SanitizerRecord, std::vector<SanEvent>>> recordWindow_;
 };
 }
 #endif

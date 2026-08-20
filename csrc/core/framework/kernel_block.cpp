@@ -489,7 +489,10 @@ const std::map<RecordType, std::function<bool(uint8_t const *, KernelRecord &, u
     }},
     {RecordType::SIMT_CALL, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
         return ParseRecordByType(record, kernelRecord.payload.mainScalarEmptyRecord, offset);
-    }}
+    }},
+    {RecordType::DCCI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+        return ParseRecordByType(record, kernelRecord.payload.dcciRecord, offset);
+    }},
 };
 
 bool ParseRecord(RecordType recordType, uint8_t const *record, KernelRecord &kernelRecord, uint64_t &recordSize)

@@ -59,6 +59,7 @@ enum class OptVal : int32_t {
     DEMANGLE_MODE,
     CHECK_CROSS_NPU_RACES,
     GM_BUFFER_GUARD_SIZE,
+    CHECK_DCCI,
     TRACE_NON_DEFAULT_SPR_REG,
 };
 
@@ -88,6 +89,7 @@ std::vector<option> GetLongOptArray()
         {"demangle", required_argument, nullptr, static_cast<int32_t>(OptVal::DEMANGLE_MODE)},
         {"check-cross-npu-races", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES)},
         {"padding", required_argument, nullptr, static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE)},
+        {"check-dcci", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_DCCI)},
         {"trace-non-default-spr-reg", required_argument, nullptr, static_cast<int32_t>(OptVal::TRACE_NON_DEFAULT_SPR_REG)},
         {nullptr, 0, nullptr, 0},
     };
@@ -452,6 +454,17 @@ void ParseGMBufferGuardSize(const std::string &param, UserCommand &userCommand)
     userCommand.config.gmBufferGuardSize = userSize;
 }
 
+void ParseCheckDcci(const std::string &param, UserCommand &userCommand) {
+    if (param == "yes") {
+        userCommand.config.checkDcci = true;
+    } else if (param == "no") {
+    } else {
+        std::cout << "[mssanitizer] ERROR: --check-dcci param is invalid" << std::endl;
+        userCommand.printHelpInfo = true;
+        return;
+    }
+}
+
 void ParseTraceNonDefaultSprReg(const std::string &param, UserCommand &userCommand)
 {
     if (param == "vector") {
@@ -485,6 +498,7 @@ std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
         {static_cast<int32_t>(OptVal::DEMANGLE_MODE), ParseDemangleMode},
         {static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES), ParseCheckCrossNpuRaces},
         {static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE), ParseGMBufferGuardSize},
+        {static_cast<int32_t>(OptVal::CHECK_DCCI), ParseCheckDcci},
         {static_cast<int32_t>(OptVal::TRACE_NON_DEFAULT_SPR_REG), ParseTraceNonDefaultSprReg},
     };
 
@@ -535,9 +549,15 @@ void CommandPostProcess(UserCommand &userCommand) {
                       << " both memcheck and this, otherwise this option will not work." << std::endl;
         }
     }
-    if (!userCommand.config.raceCheck && userCommand.config.checkCrossNpuRaces) {
-        std::cout << "[mssanitizer] --check-cross-npu-races is a sub-option for racecheck, you must enable"
-                  << " both racecheck and this, otherwise this option will not work." << std::endl;
+    if (!userCommand.config.raceCheck) {
+        if (userCommand.config.checkCrossNpuRaces) {
+            std::cout << "[mssanitizer] --check-cross-npu-races is a sub-option for racecheck, you must enable"
+                      << " both racecheck and this, otherwise this option will not work." << std::endl;
+        }
+        if (userCommand.config.checkDcci) {
+            std::cout << "[mssanitizer] --check-dcci is a sub-option for racecheck, you must enable"
+                      << " both racecheck and this, otherwise this option will not work." << std::endl;
+        }
     }
 
     // 如果开启寄存器追踪功能，需要把检测等级设置为对应的INFO
@@ -595,6 +615,8 @@ void ShowHelpInfo()
         << "Racecheck Options:" << std::endl
         << "      --check-cross-npu-races=<BOOL>       Check races across different NPUs" << std::endl
         << "                                             BOOL:yes|no, default: no" << std::endl
+        << "      --check-dcci=<BOOL>                  Check for missing DCCIs leading to unexpected value read from "
+        << "another block" << std::endl
         << std::endl;
 }
 

@@ -31,11 +31,10 @@
 
 namespace Sanitizer {
 
-
-inline RaceDispInfo FillRaceDispInfo(const MemEvent &event1, const MemEvent &event2,
-    uint64_t event1DynamicErrIdx, uint64_t event2DynamicErrIdx)
-{
+inline RaceDispInfo FillRaceDispInfo(bool isMissDcci, const MemEvent &event1, const MemEvent &event2,
+    uint64_t event1DynamicErrIdx, uint64_t event2DynamicErrIdx) {
     auto info = RaceDispInfo{};
+    info.isMissDcci = isMissDcci;
     info.p1.Init(event1, event1DynamicErrIdx);
     info.p2.Init(event2, event2DynamicErrIdx);
     return info;
@@ -79,7 +78,7 @@ public:
     using AddrRangeVec = std::vector<std::pair<uint64_t, uint64_t>>;
     void RunAlgorithm();
     // 扫描线算法，事件拆分为开始和结束，按地址排序，再进行检测
-    void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx) const;
+    void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const;
     void PushEvent(const MemEvent& event);
     void Init(KernelType kernelType, DeviceType deviceType, RaceCheckType checkType);
     void Init(uint32_t blockNum);
@@ -107,6 +106,7 @@ private:
     bool IsCrossNpuRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     /// 判断两个事件是否需要进行核间竞争检测（过滤同block、不同物理UB等情况）
     bool NeedCrossCoreCheck(const MemEvent &event1, const MemEvent &event2) const;
+    bool IsMissDcciEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
 
     using CheckTypeFunc = bool (MemEventChecker::*)(EventIdxInfo&, EventIdxInfo&) const;
     void CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx, CheckTypeFunc checkTypeFunc,

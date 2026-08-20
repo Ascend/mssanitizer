@@ -199,6 +199,10 @@ std::vector<BindStub> bindStubs{
     {InstrType::SCALAR_RED_F32, "__sanitizer_report_scalar_red_f32", {0}},
     /// load_store.cpp end
 
+    /// dcci.cpp start
+    {InstrType::DCCI, "__sanitizer_report_dcci", {0, 1, 2}},
+    /// dcci.cpp end
+
     /// dc_preload.cpp start
     {InstrType::DC_PRELOAD, "__sanitizer_report_dc_preload", {0, 1}},
     {InstrType::DC_PRELOADI, "__sanitizer_report_dc_preloadi", {0, 1}},

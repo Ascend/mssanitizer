@@ -56,6 +56,7 @@ static const std::map<RecordType, std::string> RECORD_TYPE_MAP = {
     {RecordType::STI_ATOMIC,                  "STI_ATOMIC"},
     {RecordType::ST_DEV,                      "ST_DEV"},
     {RecordType::LD_DEV,                      "LD_DEV"},
+    {RecordType::DCCI,                        "DCCI"},
     {RecordType::DMA_MOV,                     "DMA_MOV"},
     {RecordType::DMA_MOV_CONV_RELU,           "DMA_MOV_CONV_RELU"},
     {RecordType::DMA_MOV_DEPTH_WISE,          "DMA_MOV_DEPTH_WISE"},
@@ -429,6 +430,26 @@ std::ostream &operator<<(std::ostream &os, CompareOp cmpOp)
     };
 
     return FormatEnum(os, CMP_OP_MAP, cmpOp, "CompareOp");
+}
+
+std::ostream &operator<<(std::ostream &os, DcciEntireType dcciEntireType) {
+    static const std::map<DcciEntireType, std::string> DCCI_ENTIRE_TYPE_MAP = {
+        {DcciEntireType::SINGLE_CACHE_LINE, "SINGLE_CACHE_LINE"},
+        {DcciEntireType::ENTIRE_DATA_CACHE, "ENTIRE_DATA_CACHE"},
+    };
+
+    return FormatEnum(os, DCCI_ENTIRE_TYPE_MAP, dcciEntireType, "DcciEntireType");
+}
+
+std::ostream &operator<<(std::ostream &os, DcciDstType dcciDstType) {
+    static const std::map<DcciDstType, std::string> DCCI_DST_TYPE_MAP = {
+        {DcciDstType::CACHE_LINE_ALL, "CACHE_LINE_ALL"},
+        {DcciDstType::CACHE_LINE_UB, "CACHE_LINE_UB"},
+        {DcciDstType::CACHE_LINE_OUT, "CACHE_LINE_OUT"},
+        {DcciDstType::CACHE_LINE_ATOMIC, "CACHE_LINE_ATOMIC"},
+    };
+
+    return FormatEnum(os, DCCI_DST_TYPE_MAP, dcciDstType, "DcciDstType");
 }
 
 std::ostream &operator<<(std::ostream &os, DeviceInfoSummary const &summary)
@@ -1544,6 +1565,7 @@ static const std::map<RecordType, KernelRecordStreamFunc> KERNEL_RECORD_FORMAT_M
     {RecordType::STI_ATOMIC,    [](std::ostream &os, KernelRecord const &r) { os << r.payload.loadStoreRecord; }},
     {RecordType::LD_DEV,        [](std::ostream &os, KernelRecord const &r) { os << r.payload.loadStoreRecord; }},
     {RecordType::ST_DEV,        [](std::ostream &os, KernelRecord const &r) { os << r.payload.loadStoreRecord; }},
+    {RecordType::DCCI,          [](std::ostream &os, KernelRecord const &r) { os << r.payload.dcciRecord; }},
     {RecordType::DMA_MOV,       [](std::ostream &os, KernelRecord const &r) { os << r.payload.dmaMovRecord; }},
     {RecordType::DMA_MOV_CONV_RELU,
         [](std::ostream &os, KernelRecord const &r) { os << r.payload.dmaMovConvReluRecord; }},
@@ -1876,6 +1898,12 @@ std::ostream &operator<<(std::ostream &os, RegisterSetRecord const &record)
 std::ostream &operator<<(std::ostream &os, SimtEmptyRecord const &record)
 {
     return os << record.location << ", " << record.threadLoc;
+}
+
+std::ostream &operator<<(std::ostream &os, DcciRecord const &record) {
+    return os << record.location << ", "
+              << "addr:0x" << std::hex << record.addr << std::dec << ";" << "space:" << record.space << ";"
+              << "entire:" << record.entire << ";" << "type:" << record.type;
 }
 
 std::ostream &operator<<(std::ostream &os, MainScalarEmptyRecord const &record)

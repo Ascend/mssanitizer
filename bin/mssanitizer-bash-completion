@@ -5,6 +5,7 @@ function _mssanitizer_complete_arguments() {
     local log_level_arguments=("info" "warn" "error")
     local switch_arguments=("yes" "no")
     local demangle_arguments=("full" "simple" "no")
+    local trace_spr_arguments=("vector")
 
     local option=$1
     local argument=$2
@@ -23,11 +24,14 @@ function _mssanitizer_complete_arguments() {
             COMPREPLY=()
             ;;
         --leak-check | --check-unused-memory | --check-device-heap | --check-cann-heap | --check-cross-npu-races | \
-            --full-backtrace)
+            --full-backtrace | --check-dcci)
             COMPREPLY=($(compgen -W "${switch_arguments[*]}" -- "${argument}"))
             ;;
         --demangle)
             COMPREPLY=($(compgen -W "${demangle_arguments[*]}" -- "${argument}"))
+            ;;
+        --trace-non-default-spr-reg)
+            COMPREPLY=($(compgen -W "${trace_spr_arguments[*]}" -- "${argument}"))
             ;;
         *)
             _command
@@ -56,10 +60,12 @@ _mssanitizer() {
                   "--check-device-heap"
                   "--check-cann-heap"
                   "--check-cross-npu-races"
+                  "--check-dcci"
                   "--block-id"
                   "--cache-size"
                   "--full-backtrace"
                   "--demangle"
+                  "--trace-non-default-spr-reg"
                   )
 
     # Complete based on the current word
@@ -82,5 +88,5 @@ _mssanitizer() {
 if [ "$(type -t _init_completion)" == function ]; then
     complete -F _mssanitizer mssanitizer
 else
-    echo "Registeration of msSanitizer bash completion failed. Please install bash-completion package first."
+    echo "Registration of msSanitizer bash completion failed. Please install bash-completion package first."
 fi

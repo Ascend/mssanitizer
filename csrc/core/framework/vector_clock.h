@@ -36,6 +36,8 @@ public:
     static void UpdateVectorTime(const VectorTime &in, VectorTime &out);
     // 比较t1和t2是否存在并发关系
     static bool IsNotHappensBefore(const VectorTime &t1, const VectorTime &t2, uint32_t t1Pipe, uint32_t t2Pipe);
+    // 判断 t1 是否发生在 t2 之前
+    static bool IsHappensBefore(const VectorTime &t1, const VectorTime &t2, uint32_t t1Pipe, uint32_t t2Pipe);
 
     // 测试接口
     static uint32_t GetLogicTime(const VectorTime &t, uint32_t pipe);
