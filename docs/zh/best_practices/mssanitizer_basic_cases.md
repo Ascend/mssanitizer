@@ -65,7 +65,7 @@
 
 > [!NOTE]
 >
-> - 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
+> - 此样例工程不支持昇腾A3系列产品。
 > - 下载代码样例时，需执行以下命令指定分支版本。
 >
 > ```shell
@@ -129,7 +129,7 @@
 > [!NOTE]
 >
 > - 此样例工程仅支持Python3.9，若要在其他Python版本上运行，需要修改`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation`目录下`run_op_plugin.sh`文件中的Python版本。
-> - 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
+> - 此样例工程不支持昇腾A3系列产品。
 > - 下载代码样例时，需执行以下命令指定分支版本。
 >
 > ```shell
@@ -204,13 +204,12 @@
 ### 4.1 前提条件
 
 - 参考[triton-ascend仓](https://gitcode.com/Ascend/triton-ascend)，完成Triton及Triton-Ascend插件的安装和配置。
-
 - 打开以下环境变量，使能 Triton 算子异常检测功能：
 
     ```sh
     # 开启异常检测
     export TRITON_ENABLE_SANITIZER=1
-
+ 
     # 强制算子重新编译，使异常检测生效
     export TRITON_ALWAYS_COMPILE=1
     ```

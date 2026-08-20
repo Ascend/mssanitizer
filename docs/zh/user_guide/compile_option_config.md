@@ -23,7 +23,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
     ```
 
     > [!NOTE]
-    > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品和Ascend 950 系列产品。
+    > 此样例工程不支持昇腾A3系列产品和昇腾950PR&950DT系列产品。
 
 2. 进行算子代码编译，需添加以下编译选项：
 

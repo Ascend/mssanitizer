@@ -511,7 +511,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 
     >[!NOTE]
     > 
-    > 此样例工程不支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
+    > 此样例工程不支持昇腾A3系列产品。
 
 - 在`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt`路径下新增库文件`libms_tools_ext.so`，地址为：`${INSTALL_DIR}/lib64/libms_tools_ext.so`。
 
