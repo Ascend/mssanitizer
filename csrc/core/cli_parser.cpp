@@ -73,7 +73,7 @@ std::vector<option> GetLongOptArray()
 {
     std::vector<option> longOpts = {
         {"help", no_argument, nullptr, 'h'},
-        {"version", no_argument, nullptr, 'v'},
+        {"version", no_argument, nullptr, 'V'},
         {"tool", required_argument, nullptr, 't'},
         {"log-level", required_argument, nullptr, static_cast<int32_t>(OptVal::LOG_LEVEL)},
         {"log-file", required_argument, nullptr, static_cast<int32_t>(OptVal::LOG_FILE)},
@@ -104,7 +104,8 @@ std::string GetShortOptString(const std::vector<option> &longOptArray)
         if (opt.name == nullptr) {
             break;
         }
-        if ((opt.flag == nullptr) && (opt.val >= 'a') && (opt.val <= 'z')) {
+        if ((opt.flag == nullptr) &&
+            ((opt.val >= 'a' && opt.val <= 'z') || (opt.val >= 'A' && opt.val <= 'Z'))) {
             shortOpt.append(1, static_cast<char>(opt.val));
             if (opt.has_arg == optional_argument) {
                 shortOpt.append(2, ':'); // 可不跟参数使用2个冒号，如 "a::"
@@ -115,6 +116,8 @@ std::string GetShortOptString(const std::vector<option> &longOptArray)
             }
         }
     }
+    // Keep -v as a hidden compatibility alias for -V.
+    shortOpt.append(1, 'v');
     return shortOpt;
 }
 
@@ -321,6 +324,12 @@ void ParseVersion(const std::string &param, UserCommand &userCommand)
     userCommand.printVersionInfo = true;
 }
 
+void ParseDeprecatedVersion(const std::string &param, UserCommand &userCommand)
+{
+    std::cerr << "WARNING: '-v' is deprecated; use '-V' instead." << std::endl;
+    ParseVersion(param, userCommand);
+}
+
 void ParseFullBacktrace(const std::string &param, UserCommand &userCommand)
 {
     if (param == "yes") {
@@ -482,7 +491,8 @@ std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
     static std::unordered_map<int32_t, ParseHandler> handlers = {
         {'?', ParseUnrecognized},
         {'h', ParseHelp},
-        {'v', ParseVersion},
+        {'V', ParseVersion},
+        {'v', ParseDeprecatedVersion},
         {'t', ParseTool},
         {static_cast<int32_t>(OptVal::CHECK_DEVICE_HEAP), ParseCheckDeviceHeap},
         {static_cast<int32_t>(OptVal::CHECK_CANN_HEAP), ParseCheckCannHeap},
@@ -572,57 +582,52 @@ void CommandPostProcess(UserCommand &userCommand) {
 void ShowHelpInfo()
 {
     std::cout
-        << std::endl
-        << "Usage: mssanitizer [options] <program> [program-args]" << std::endl
-        << std::endl
-        << "Basic Options:" << std::endl
-        << "  -h, --help                               Show this help message" << std::endl
-        << "  -v, --version                            Show version information" << std::endl
-        << "  -t, --tool=<NAME>                        Select sanitizer tool:" << std::endl
-        << "                                             NAME:memcheck|racecheck|initcheck|synccheck, default: memcheck"
-        << std::endl
-        << "      --log-file=<FILE>                    Write log messages to FILE" << std::endl
-        << "      --log-level=<LEVEL>                  Set log level to LEVEL" << std::endl
-        << "                                             LEVEL:info|warn|error, default: warn" << std::endl
-        << "      --max-debuglog-size=<SIZE>           Set max debug log file size to SIZE" << std::endl
-        << "                                             SIZE:1-10240 in MB, default: 1024" << std::endl
-        << "      --block-id=<ID>                      Set block ID to check" << std::endl
-        << "                                             ID:0-200, default: all" << std::endl
-        << "      --cache-size=<SIZE>                  Set record buffer SIZE per block" << std::endl
-        << "                                             SIZE:1-" << MAX_RECORD_BUF_SIZE_EACH_BLOCK
-        << " in MB, default: 100" << std::endl
-        << "      --kernel-name=<NAME>                 Only check the kernel with specified NAME" << std::endl
-        << "      --full-backtrace=<BOOL>              Print full backtrace including Ascend C internal calls"
-        << std::endl
-        << "                                             BOOL:yes|no, default: no" << std::endl
-        << "      --demangle=<MODE>                    Set demangling MODE for device function names" << std::endl
-        << "                                             MODE:full|simple|no, default: full" << std::endl
-        << "      --padding=<SIZE>                     Set GM safe zone SIZE for out-of-bounds detection" << std::endl
-        << "                                             SIZE:32-1024 in bytes, default: 32" << std::endl
-        << std::endl
-        << "Memcheck Options:" << std::endl
-        << "      --leak-check=<BOOL>                  Search for memory leaks at exit" << std::endl
-        << "                                             BOOL:yes|no, default: no" << std::endl
-        << "      --check-unused-memory=<BOOL>         Search for unused memory allocations" << std::endl
-        << "                                             BOOL:yes|no, default: no" << std::endl
-        << "      --check-device-heap=<BOOL>           Enable device heap check" << std::endl
-        << "                                             BOOL:yes|no, default: no" << std::endl
-        << "      --check-cann-heap=<BOOL>             Enable CANN heap check" << std::endl
-        << "                                             BOOL:yes|no, default: no" << std::endl
-        << "      --trace-non-default-spr-reg=<MODE>   Set trace MODE for non default register" << std::endl
-        << "                                             MODE:vector" << std::endl
-        << std::endl
-        << "Racecheck Options:" << std::endl
-        << "      --check-cross-npu-races=<BOOL>       Check races across different NPUs" << std::endl
-        << "                                             BOOL:yes|no, default: no" << std::endl
-        << "      --check-dcci=<BOOL>                  Check for missing DCCIs leading to unexpected value read from "
-        << "another block" << std::endl
-        << std::endl;
+        << "Description:\n"
+        << "  Run a program under MindStudio Sanitizer to detect memory, race,\n"
+        << "  initialization, and synchronization errors on Ascend devices.\n\n"
+        << "Usage:\n"
+        << "  mssanitizer [options] [--] <program> [program-args]\n\n"
+        << "Required arguments:\n"
+        << "      <program>                                        Program executable to run.\n\n"
+        << "Optional arguments:\n"
+        << "      [program-args]                                   Arguments passed to the program.\n"
+        << "  -h, --help                                           Show this help message.\n"
+        << "  -V, --version                                        Show version information.\n"
+        << "  -t, --tool {memcheck,racecheck,initcheck,synccheck}  Select the sanitizer tool [default: memcheck]\n"
+        << "      --log-file <FILE>                                Write log messages to a file.\n"
+        << "      --log-level {info,warn,error}                    Set the log level [default: warn]\n"
+        << "      --max-debuglog-size <N>                          Maximum debug log file size in MB (1-10240) [default: 1024]\n"
+        << "      --block-id <ID>                                  Block ID to check (0-200) [default: all]\n"
+        << "      --cache-size <N>                                 Record buffer size per block in MB (1-"
+        << MAX_RECORD_BUF_SIZE_EACH_BLOCK << ") [default: 100]\n"
+        << "      --kernel-name <NAME>                             Check only the specified kernel.\n"
+        << "      --full-backtrace {yes,no}                        Print Ascend C internal calls in backtraces [default: no]\n"
+        << "      --demangle {full,simple,no}                      Demangle device function names [default: full]\n"
+        << "      --padding <N>                                    GM safe-zone size in bytes (32-1024) [default: 32]\n"
+        << "      --leak-check {yes,no}                            Search for memory leaks at exit [default: no]\n"
+        << "      --check-unused-memory {yes,no}                   Search for unused memory allocations [default: no]\n"
+        << "      --check-device-heap {yes,no}                     Enable device heap checks [default: no]\n"
+        << "      --check-cann-heap {yes,no}                       Enable CANN heap checks [default: no]\n"
+        << "      --trace-non-default-spr-reg {vector}             Trace non-default vector register values.\n"
+        << "      --check-cross-npu-races {yes,no}                 Check races across different NPUs [default: no]\n\n"
+        << "Examples:\n"
+        << "  # Run the default memcheck tool.\n"
+        << "  mssanitizer ./my_program\n\n"
+        << "  # Run racecheck and pass arguments to the target program.\n"
+        << "  mssanitizer --tool racecheck -- ./my_program --program-option\n\n"
+        << "  # Check for memory leaks and save logs to a file.\n"
+        << "  mssanitizer --leak-check yes --log-file ./mssanitizer.log -- ./my_program\n\n"
+        << "Output:\n"
+        << "  Diagnostics are written to standard output, or to <FILE> when\n"
+        << "  --log-file is specified.\n\n"
+        << "Troubleshooting:\n"
+        << "  - \"no program specified\": provide an executable after the options.\n"
+        << "  - \"unrecognized command\": use -- before program options that begin with '-'.\n";
 }
 
 std::string GetFuncInjectionRevision()
 {
-    std::string revision = "<unknown>";
+    std::string revision;
 
     Path exePath;
     if (!GetSelfExePath(exePath)) {
@@ -651,12 +656,27 @@ std::string GetFuncInjectionRevision()
     return revision;
 }
 
+bool IsValidDependencyRevision(std::string const &revision)
+{
+    return !revision.empty() && revision != "<unknown>" && revision != "unknown";
+}
+
 void ShowVersion()
 {
-    std::cout << std::endl <<
-        "revision:" << std::endl <<
-        "  mssanitizer " << __PACKAGE_VERSION__ << "-" << __MSSANITIZER_COMMIT_REVISION__ << std::endl <<
-        "  msopscommon " << GetFuncInjectionRevision() << std::endl;
+    std::string const injectionRevision = GetFuncInjectionRevision();
+    std::cout
+        << "mssanitizer " << __PACKAGE_VERSION__ << " (" << __MSSANITIZER_COMMIT_REVISION__ << ")\n"
+        << "Copyright (C) 2026 Huawei Technologies Co., Ltd.\n"
+        << "License: Mulan PSL v2.\n\n"
+        << "Build Info:\n"
+        << "  Date : " << __MSSANITIZER_BUILD_DATE__ << "\n"
+        << "  Repo : https://gitcode.com/Ascend/mssanitizer";
+    if (IsValidDependencyRevision(injectionRevision)) {
+        std::cout
+            << "\nDependencies:\n"
+            << "  msopscommon : " << injectionRevision;
+    }
+    std::cout << std::endl;
 }
 
 bool FindExeInPath(std::string const &exeName, Path const &dirPath, Path &exePath)

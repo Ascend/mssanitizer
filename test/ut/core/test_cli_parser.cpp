@@ -93,6 +93,37 @@ TEST(CliParser, pass_version_parameter_expect_get_print_version_info)
     ASSERT_TRUE(cmd.printVersionInfo);
 }
 
+TEST(CliParser, pass_short_version_parameter_expect_get_print_version_info)
+{
+    std::vector<const char*> argv = {
+        "asan",
+        "-V"
+    };
+
+    /// Reset getopt states
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    ASSERT_TRUE(cmd.printVersionInfo);
+}
+
+TEST(CliParser, pass_deprecated_short_version_parameter_expect_get_print_version_info_and_warning)
+{
+    std::vector<const char*> argv = {
+        "asan",
+        "-v"
+    };
+
+    /// Reset getopt states
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStderr();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char**>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStderr();
+    ASSERT_TRUE(cmd.printVersionInfo);
+    ASSERT_EQ(capture, "WARNING: '-v' is deprecated; use '-V' instead.\n");
+}
+
 TEST(CliParser, pass_version_parameter_expect_show_version_info)
 {
     std::vector<const char*> argv = {

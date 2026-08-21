@@ -37,6 +37,10 @@ execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
   OUTPUT_VARIABLE MSSANITIZER_COMMIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE)
 add_definitions(-D__MSSANITIZER_COMMIT_REVISION__="${MSSANITIZER_COMMIT_REVISION}")
 
+# 记录配置时的 UTC 构建时间，供版本信息输出使用
+string(TIMESTAMP MSSANITIZER_BUILD_DATE "%Y-%m-%dT%H:%M:%SZ" UTC)
+add_definitions(-D__MSSANITIZER_BUILD_DATE__="${MSSANITIZER_BUILD_DATE}")
+
 # 从version.info获取版本信息
 file(READ "${ROOT_DIR}/package/conf/version.info" FILE_CONTENT)
 if(FILE_CONTENT MATCHES "\\[PACKAGE\\]([^\\[]+)")
