@@ -11,9 +11,9 @@
 
 ## 支持的产品范围
 
-- Ascend 950PR/Ascend 950DT
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品
+- 昇腾950PR&950DT系列产品
+- 昇腾A3系列产品
+- 昇腾A2系列产品
 
 ## 目录结构
 
@@ -34,7 +34,7 @@
 
 **注入异常**：在 `main()` 中通过 `aclrtMalloc` 分配 `devY` 后**不调用 `aclrtMemset`** 初始化。算子内核中 `DataCopy` 读取 `devY` 时，访问到未初始化的 GM 内存，触发告警。
 
-```
+```text
 main() 中：
 aclrtMalloc((void**)&devY, bufBytes, ...);
 // devX 做了 aclrtMemset，但 devY 有意不做
@@ -49,7 +49,7 @@ AscendC::DataCopy(yLocal, yGm, blockLength);  // 读取未初始化的 GM
 
 **注入异常**：分配了 `yLocal` 的 UB 空间，但**未通过 `DataCopy` 写入任何数据**。在 `Add` 计算中直接读取未初始化的 `yLocal`，触发 UB 上的未初始化告警。
 
-```
+```text
 kernel 中：
 AscendC::DataCopy(xLocal, xGm, blockLength);   // xLocal 已初始化
 // yLocal 已分配但未写入任何数据
@@ -83,7 +83,7 @@ make -j96
 | 选项 | 可选值 | 说明 |
 |------|--------|------|
 | `CMAKE_ASC_RUN_MODE` | `npu`（默认）、`cpu`、`sim` | 运行模式：NPU 运行、CPU调试、NPU仿真 |
-| `CMAKE_ASC_ARCHITECTURES` | `dav-2201`（默认）、`dav-3510` | NPU 架构：dav-2201 对应 Atlas A2/A3 系列产品，dav-3510 对应 Ascend 950PR/Ascend 950DT |
+| `CMAKE_ASC_ARCHITECTURES` | `dav-2201`（默认）、`dav-3510` | NPU 架构：dav-2201 对应昇腾A2系列产品/昇腾A3系列产品，dav-3510 对应昇腾950PR&950DT系列产品 |
 
 > **注意：** 切换编译模式前需清理 cmake 缓存，可在 build 目录下执行 `rm CMakeCache.txt` 后重新 cmake。
 

@@ -8,7 +8,7 @@
 
 - 流水间与核间场景需要 1 个 mssanitizer 支持的 NPU。
 - 卡间场景需要至少 2 个支持 P2P 访问的 NPU，并要求 CANN 提供 `aclrtMemP2PMap` 接口。
-- `dav-2201` 适用于 Atlas A2/A3 系列产品，`dav-3510` 适用于 Ascend 950PR/Ascend 950DT。
+- `dav-2201` 适用于昇腾A2系列产品/昇腾A3系列产品，`dav-3510` 适用于昇腾950PR&950DT系列产品。
 
 ## 目录结构
 

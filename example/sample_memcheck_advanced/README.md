@@ -8,7 +8,7 @@
 
 - 多核踩踏、三类 L1 异常和 UB 非对齐访问需要 1 个 mssanitizer 支持的 NPU。
 - 非法释放、内存泄漏和分配未使用场景需要 CANN heap 检测能力。
-- `dav-2201` 适用于 Atlas A2/A3 系列产品，`dav-3510` 适用于 Ascend 950PR/Ascend 950DT。
+- `dav-2201` 适用于昇腾A2系列产品/昇腾A3系列产品，`dav-3510` 对应昇腾950PR&950DT系列产品。
 - 三个 L1 kernel 使用 `__cube__`，保证 GM 与 L1 间的数据搬运在 AI Cube Core 上实际执行。
 
 ## 目录结构
