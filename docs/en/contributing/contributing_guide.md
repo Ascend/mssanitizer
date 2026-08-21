@@ -4,7 +4,7 @@
 
 ## 1. Contribution Process and Specifications
 
-Before the development, familiarize yourself with the contribution process and specifications. For details, see [Contribution Process and Specifications](https://gitcode.com/Ascend/msot/blob/master/docs/en/common/contribute_workflow.md).
+Before the development, familiarize yourself with the contribution process and specifications. For details, see [Contribution Process and Specifications](https://gitcode.com/Ascend/msot/blob/26.1.0/docs/en/common/contribute_workflow.md).
 
 ## 2. Developer Guide
 
@@ -14,4 +14,4 @@ For details about the overall architecture, code framework, and core design idea
 
 ### 2.2 Development Environment, Building, and Testing
 
-For details about how to set up the development environment, build code, and test code, see [msSanitizer Developer Guide](../development_guide/develop_guide.md).
+For details about how to set up the development environment, build code, and test code, see the [msSanitizer Developer Guide](../development_guide/develop_guide.md).

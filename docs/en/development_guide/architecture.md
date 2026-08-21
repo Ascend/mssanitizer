@@ -50,14 +50,14 @@ msSanitizer is an exception detection tool designed for Ascend AI Processors. It
 | **Operator integration mode**| Cover the runtime interface differences in different operator integration modes to ensure availability.|
 | **Easy extension of check algorithms**| Use a plugin-based architecture for check algorithm management to support more exception types in the future.|
 | **Check duration**| Minimize the check duration to ensure availability in large-operator, network-wide, and multi-device check scenarios.|
-| **Usability of command-line options**| Design options clearly and intuitively to ensure good human-machine interaction experience.|
+| **Usability of CLI options**| Design options clearly and intuitively to ensure good human-machine interaction experience.|
 | **Multi-instance running of tools**| Enable multiple tool instances to run concurrently and independently on a single host without conflicts.|
 
 ### 2.2 Key Element Design
 
 | Key Element| Design Objectives Involved|
 |---------|-------------|
-| **Implementation model**| Check accuracy: Ensure accuracy in instruction behavior abstraction and algorithm implementation.<br>Algorithm scalability: Algorithm modules need to be properly abstracted.<br>Algorithm parallelism: multi-card parallelism, inter-algorithm parallelism, and intra-algorithm parallelism|
+| **Implementation model**| Check accuracy: Ensure accuracy in instruction behavior abstraction and algorithm implementation.<br>Algorithm scalability: Algorithm modules need to be properly abstracted.<br>Algorithm parallelism: multi-device parallelism, inter-algorithm parallelism, and intra-algorithm parallelism|
 | **Interaction model**| Operator integration mode: Access different memory information through different integration methods.<br>Command line usability: Clear and intuitive option design|
 | **Concurrency model**| Multi-instance running: Ensure that functions of different tools are independent and do not conflict with each other.|
 
@@ -93,23 +93,23 @@ Module functions
 
 | Module| Function| Key Input/Output|
 |-----|------|-------------|
-| **Framework module**| Process control: command line parsing, process startup, and inter-process communication| Input: user command line options; output: check configuration and process control|
-| **Runtime module**| Information collection: Hook runtime interfaces to collect user process behavior data.| Input: runtime API calls; output: operation information|
-| **Processor module**| Exception analysis: Run the check algorithm to generate a check report.| Input: runtime information; output: exception check result|
-| **Check plugin module**| Compilation instrumentation: Collaborate with the compiler to insert check stub functions.| Input: instrumentation policy query; output: stub function implementation|
+| **Framework module**| Process control: CLI parsing, process startup, and inter-process communication| Input: user CLI options. Output: check configuration and process control|
+| **Runtime module**| Information collection: Hook runtime interfaces to collect user process behavior data.| Input: runtime API calls. Output: operation information|
+| **Processor module**| Exception analysis: Run the check algorithm to generate a check report.| Input: runtime information. Output: exception check result|
+| **Check plugin module**| Compilation instrumentation: Collaborate with the compiler to insert check stub functions.| Input: instrumentation policy query. Output: stub function implementation|
 
 ### 3.3 Software Units
 
 | Software Unit| Description| External Interface| Internal Interface| Relationship|
 |---------|------|---------|---------|---------|
-| Framework module| Overall tool process control| Tool command line| Communication server| Provide command lines for users to invoke; transfer data between the communication server and the runtime module; use the information input interface of the information processing module.|
-| Runtime module| Collect and upload runtime data.| None| Communication client| Transfer data between the communication client and the framework module; use the dynamic instrumentation plugin to complete the dynamic instrumentation process.|
+| Framework module| Overall tool process control| Tool CLI| Communication server| Provide CLI commands for users to invoke, transfer data between the communication server and the runtime module, and use the information input interface of the information processing module.|
+| Runtime module| Collect and upload runtime data.| None| Communication client| Transfer data between the communication client and the framework module, and use the dynamic instrumentation plugin to complete the dynamic instrumentation process.|
 | Processor module| Perform exception check and output the result.| Exception output| Information input interface| Implement the exception output and information input interfaces to receive data transferred by the framework.|
 | Check plugin module| Collaborate with the compiler to complete instrumentation.| Instrumentation query interface and instruction stub implementation| Dynamic instrumentation plugin| Implement the instrumentation query interface for the compiler to query, implement the instruction stub to link to static instrumentation, and implement the dynamic instrumentation plugin for the runtime module to invoke.|
 
 ---
 
-## 4. System Context
+## 4 System Context
 
 The following figure shows the interaction between msSanitizer and external systems.
 
@@ -135,9 +135,9 @@ graph TB
     sanitizer -.->|Return the check result.| user
 ```
 
-**Core interaction process**
+**Core Interaction Process**
 
-1. The user calls msSanitizer through the command line and passes the operator program to be checked.
+1. The user calls msSanitizer through the CLI and passes the operator program to be checked.
 2. msSanitizer starts the operator program and hooks the runtime interface.
 3. The compiler inserts static instrumentation (through the check plugin) in the compilation phase.
 4. The runtime module collects behavior data and reports it in the execution phase.
@@ -145,13 +145,13 @@ graph TB
 
 ---
 
-## 5. Detailed Design of Modules
+## 5 Detailed Design of Modules
 
 ### 5.1 Framework
 
 #### 5.1.1 Function Description
 
-The framework module is the entry of the tool and controls the entire process from command line startup to the end of the check. The core functions include:
+The framework module is the entry of the tool and controls the entire process from CLI startup to the end of the check. The core functions include:
 
 1. Command line option parsing and verification
 2. `LD_PRELOAD` environment variable setting and user program startup
@@ -164,7 +164,7 @@ The framework module is the entry of the tool and controls the entire process fr
 ```mermaid
 classDiagram
     class CliParser {
-        +Interpretor(int32_t, char**) void
+        +Interpreter(int32_t, char**) void
         -Parse(int32_t, char**) UserCommand
     }
     class Command {
@@ -224,7 +224,7 @@ classDiagram
 
 #### 5.1.3 Processing Procedure
 
-1. Parse command line options to obtain the check tool enabling mode, user binary path, and startup command.
+1. Parse CLI options to obtain the check tool enabling mode, user binary path, and startup command.
 2. Select the corresponding instrumentation function library based on the enabling mode and configure the `LD_PRELOAD` environment variable.
 3. Fork a child process, start the user program through `execvpe`, and use the runtime instrumentation function library configured by `LD_PRELOAD` to replace symbols.
 4. Send the enabling mode to the user process.
@@ -284,7 +284,7 @@ The following deliverables are provided based on different scenarios:
 
 1. Provide inter-process communication capabilities to obtain configurations and report information to the tool.
 2. Provide the interface hook capability (implemented by using the function with the same name and `LD_PRELOAD`).
-3. Provide the capability of obtaining and reporting device information (such as the card number and chip model).
+3. Provide the capability of obtaining and reporting device information (such as the device number and chip model).
 4. Provide the capability of managing the operator kernel context and reporting information (such as blockDim, operator binary, and kernel name).
 5. Provide the management capability for information recording memory.
 6. Provide the `kernelLaunch` parameter concatenation capability and enable the instrumentation function on the kernel.
@@ -340,19 +340,19 @@ classDiagram
 
 #### 5.2.4 Processing Procedure
 
-**Communication process:**
+**Communication Process:**
 
 1. Trigger the communication interface for the first time, initialize the socket channel, and connect to the server to obtain the check mode.
 2. Obtain device information and send it back to the server for the check tool to initialize.
 3. Transmit the protocol header and body through the socket channel based on the communication protocol.
 
-**Operator instrumentation recording and reporting process:**
+**Operator Instrumentation Recording and Reporting Process:**
 
 1. Intercept the `rtKernelLaunch` series interfaces and call `__sanitizer_init` to pre-allocate GM memory.
 2. Transfer the pre-allocated GM memory pointer to the device, and record the operation information by the kernel function runtime.
 3. After the kernel function is executed, copy the GM records to the host, parse them one by one, and report them to the check tool.
 
-**mstx interface process:**
+**msTX Interface Process:**
 
 ```mermaid
 flowchart TD
@@ -361,10 +361,10 @@ flowchart TD
     C --> D[Create a memory pool.]
     C --> H[Perform secondary memory allocation.]
     D --> E[Call the runtime API to allocate memory.]
-    D --> F[Call the mstx API to register the memory pool.]
+    D --> F[Call the msTX API to register the memory pool.]
     E --> E1[Report the runtime memory space information.]
     F --> F1[Report the memory pool registration information.]
-    H --> I[Call the mstx API to register secondary memory allocation.]
+    H --> I[Call the msTX API to register secondary memory allocation.]
     I --> J[Report secondary allocation information.]
     E1 --> K[Process event information.]
     F1 --> K
@@ -404,7 +404,7 @@ classDiagram
     Probes ..> DynamicBind : Stub binding registration
 ```
 
-**Dynamic instrumentation sequence:**
+**Dynamic Instrumentation Sequence:**
 
 ```mermaid
 sequenceDiagram
@@ -438,7 +438,7 @@ sequenceDiagram
 1. Manage check algorithms and implement algorithm registration and creation through `SanitizerFactory`/`RegisteSanitizer`.
 2. Distribute check records. `Checker` distributes runtime records to each check tool.
 3. Provide parallel processing capabilities between check tools. Each `ToolType` corresponds to an independent consumer thread.
-4. Preprocess instrumentation records and convert raw instruction records into unified descriptions..
+4. Preprocess instrumentation records and convert raw instruction records into unified descriptions.
 5. Provide memory check algorithms (for illegal read/write, unaligned access, memory leak, and illegal release).
 6. Provide race check algorithms (for inter-core, inter-pipeline, and intra-pipeline races).
 7. Provide uninitialization check algorithms.
@@ -585,7 +585,7 @@ Memory check supports the following exception types.
 | Unused memory| The memory is allocated but not used.| GM |
 | Uninitialization| Uninitialized memory values are read.| GM, UB, L1, L0{ABC}, Private|
 
-**Core class relationships**
+**Core Class Relationships**
 
 ```mermaid
 classDiagram
@@ -649,7 +649,7 @@ classDiagram
     AsanAction ..> BoundsCheck : Usage
 ```
 
-**ShadowMemory LoadNBytes process**
+**ShadowMemory LoadNBytes Process**
 
 ```mermaid
 flowchart TD
@@ -670,7 +670,7 @@ flowchart TD
     D --> L
 ```
 
-**Memory check context switching**
+**Memory Check Context Switching**
 
 In multi-operator calling scenarios, `AddressSanitizer` maintains two `BoundsCheck` instances (`SCOPE_RUNTIME` and `SCOPE_DFX`) and switches the context between runtime instructions and DFX instructions.
 
@@ -938,11 +938,11 @@ The device-side check makes full use of the scalar computing resources and is di
 2. **Out-of-bounds check**: Perform the check while processing data. Traverse TensorInfo to determine whether the memory access is within the valid range.
 3. **Check result report**: Write the result to the GM and report it to the tool after the kernel execution is complete.
 
-Precautions: The scalar provides limited compute capability; performance implications must be considered. The C++ standard library containers are not supported. Intermediate results must be persisted in GM.
+Precautions: The scalar provides limited compute capability. Performance implications must be considered. The C++ standard library containers are not supported. Intermediate results must be persisted in GM.
 
 ---
 
-## 6. Module Interaction
+## 6 Module Interaction
 
 ### 6.1 Logical View
 
@@ -996,27 +996,27 @@ flowchart TD
 
 ## 7 Interface Design
 
-### 7.1 Command Line Interfaces
+### 7.1 CLI Interfaces
 
 <a id="command-line-interface-desc"></a>
 
-**Main command options**
+**Main Command Options**
 
 | Command| Description|
 |-----|---------|
 | `-h, --help` | Displays the help information about the tool.|
 | `-v, --version` | Queries the version information|
-| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`.Separate multiple tools with a pipe ( `\|`) to enable them simultaneously (e.g., `memcheck\|racecheck`). By default, all tools are enabled.| 
+| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`.Separate multiple tools with a pipe ( `\`) to enable them simultaneously (for example, `memcheck \ racecheck`). By default, all tools are enabled.|
 | `--log-file <file>` | Saves log information to a specified file. If no file is specified, the log information is printed.|
 | `--log-level <level>` | Specifies the print level. The default value is `warn`.|
 | `--max-debuglog-size <size>` | Specifies the size of a single debug log file.|
 | `--kernel-name <string>` | Specifies the name of the kernel to be checked (only in graph offload mode). By default, all kernels are checked.|
 | `--block-id <uint>` | Specifies the core to be checked. When this option is enabled, cross-core check is suppressed. By default, all cores are checked.|
-| `--cache-size <uint>` | Specifies the amount of cache resources allocated to each core, in MB. The default value is `100`.|
+| `--cache-size <uint>` | Specifies the amount of cache resources allocated to each core, in MB. The default value is 100.|
 | `--full-backtrace <yes\|no>` | Enables complete call stack printing.|
 | `--demangle <mode>` | Specifies the symbol name restoration mode.|
 
-**Memory check sub-options**
+**Memory Check Sub-Options**
 
 | Command| Description|
 |-----|---------|
@@ -1080,7 +1080,7 @@ sequenceDiagram
             runtime->>framework: PacketType::KERNEL_BINARY
             runtime->>framework: char[]
         else Send the host memory operation record.
-            runtime->>framework: PacketType::HOST_RECORD
+            runtime->>framework: PacketType::MEMORY_RECORD
             runtime->>framework: HostMemRecord
         else Send the kernel memory operation record.
             runtime->>framework: PacketType::KERNEL_RECORD
@@ -1095,7 +1095,7 @@ sequenceDiagram
     end
 ```
 
-**Core protocol structure**
+**Core Protocol Structure**
 
 ```c++
 struct Config {
@@ -1123,7 +1123,7 @@ enum class PacketType : uint32_t {
     KERNEL_SUMMARY,
     KERNEL_BINARY,
     LOG_STRING,
-    HOST_RECORD = 1000,
+    MEMORY_RECORD = 1000,
     KERNEL_RECORD,
     IPC_RECORD,
     SANITIZER_RECORD,
@@ -1164,7 +1164,7 @@ struct HostMemRecord {
 
 <a id="runtime-injection-interface-list"></a>
 
-**HAL interfaces**
+**HAL Interfaces**
 
 | Interface| Description|
 |-----|------|
@@ -1174,21 +1174,21 @@ struct HostMemRecord {
 | `drvMemcpy(DVdeviceptr, size_t, DVdeviceptr, size_t)` | Records and reports memory copy information.|
 | `halMemCpyAsync(DVdeviceptr, size_t, DVdeviceptr, size_t, uint64_t *)` | Records and reports asynchronous memory copy information.|
 
-**ACL interfaces**
+**ACL Interfaces**
 
 | Interface| Description|
 |-----|------|
-| `aclrtMalloc / aclrtMallocCached / acldvppMalloc` | Records and reports memory allocation information.|
+| `aclrtMalloc`/`aclrtMallocCached`/`acldvppMalloc` | Records and reports memory allocation information. |
 | `aclrtFree` | Records and reports memory release information.|
-| `aclrtMemset / aclrtMemsetAsync` | Records and reports memory initialization information.|
-| `aclrtMemcpy / aclrtMemcpyAsync` | Records and reports memory copy information.|
-| `aclrtMemcpy2d / aclrtMemcpy2dAsync` | Records and reports 2D memory copy information.|
+| `aclrtMemset`/`aclrtMemsetAsync` | Records and reports memory initialization information.|
+| `aclrtMemcpy`/`aclrtMemcpyAsync` | Records and reports memory copy information.|
+| `aclrtMemcpy2d`/`aclrtMemcpy2dAsync` | Records and reports 2D memory copy information.|
 
 ### 7.5 Check Plugin Interfaces
 
 <a id="sanitizer-plugin-strategy-query"></a>
 
-**Instrumentation policies**
+**Instrumentation Policies**
 
 ```c++
 #define NO_INSTRUMENTATION 0       // No instrumentation
@@ -1197,7 +1197,7 @@ struct HostMemRecord {
 #define FUNC_SUBSTITUTION 3        // In-place replacement by instrumentation
 ```
 
-**Policy query interface**
+**Policy Query Interface**
 
 ```c++
 extern "C" uint32_t NeedReport(const char *decoratedName);
@@ -1205,7 +1205,7 @@ extern "C" uint32_t NeedReport(const char *decoratedName);
 
 <a id="sanitizer-plugin-intrinsics-interface-desc"></a>
 
-**Instruction instrumentation interface mode**
+**Instruction Instrumentation Interface Mode**
 
 ```c++
 // Original instruction
@@ -1218,7 +1218,7 @@ void __sanitizer_report_post_someInstruction(__gm__ uint8_t *memInfo, locationIn
 void __sanitizer_report_inplace_someInstruction(__gm__ uint8_t *memInfo, locationInfo..., instructionParams...);
 ```
 
-**Extensible MSTX instruction stub interface**
+**Extensible msTX Instruction Stub Interface**
 
 ```c++
 void __mstx_dfx_report_stub(uint32_t interfaceId, uint32_t bufferLens, void *buffer);
@@ -1228,7 +1228,7 @@ void __mstx_dfx_report_stub(uint32_t interfaceId, uint32_t bufferLens, void *buf
 
 <a id="sanitizer-interface-data-desc"></a>
 
-**Check algorithm base class interface**
+**Check Algorithm Base Class Interface**
 
 ```c++
 class SanitizerBase {
@@ -1245,7 +1245,7 @@ public:
 };
 ```
 
-**Algorithm factory and registration interface**
+**Algorithm Factory and Registration Interface**
 
 ```c++
 class SanitizerFactory {
@@ -1353,12 +1353,12 @@ using MsgHandleFunc = std::function<void(std::string, MsgResponseFunc&)>;
 void RegisterMsgHandler(const MsgHandleFunc &func);
 ```
 
-**Multi-client read/write management**
+**Multi-Client Read/Write Management**
 
 - Clients are numbered from 0 based on the connection sequence, and the type is `std::size_t`.
 - The server read/write interface must provide a `ClientId` to identify the target client.
 
-**Concurrency security considerations**
+**Concurrency Security Considerations**
 
 The message callback function of the framework module is concurrently called in multiple client sub-threads. The serial and parallel boundaries must be clearly defined. The solutions for main side effects include:
 
@@ -1403,9 +1403,9 @@ mssanitizer/
 └── README.md
 ```
 
-**Build products**
+**Build Products**
 
-| **Product**| Description|
+| Product| Description|
 |-----|------|
 | `mssanitizer.bin` | Executable file of the main program|
 | `libascend_san.so` | Shared library for checks|
@@ -1440,7 +1440,7 @@ mssanitizer/
 
 | Interface Document| Section Link|
 |---------|---------|
-| Tool command line options| [7.1 Command Line Interfaces](#71-command-line-interfaces)|
+| Tool CLI options| [7.1 CLI Interfaces](#71-cli-interfaces) |
 | Inter-process communication interfaces| [7.2 Inter-process Communication Interfaces](#72-inter-process-communication-interfaces)|
 | Communication protocol| [7.3 Communication Protocols](#73-communication-protocols)|
 | Runtime module interfaces| [7.4 Runtime Module Interfaces](#74-runtime-module-interfaces)|

@@ -6,7 +6,7 @@
 
 **API Overview**
 
-The msSanitizer tool contains two types of APIs: sanitizer APIs and mstx APIs. The sanitizer APIs are used to check the CANN software stack and correspond to the ACL APIs. These APIs additionally report the code file and line number of the API called to the tool. The header file of the sanitizer APIs needs to be imported and the dynamic library needs to be linked. For details, see "Checking the Memory of the CANN Software Stack" > "Importing the API Header File and Linking the Dynamic Library" in [MindStudio Sanitizer Typical Cases](../best_practices/basic_cases.md). The mstx APIs are used to report custom memory pool information for more accurate check. For details, see [MSTX Functions](#mstx-functions).
+The msSanitizer tool contains two types of APIs: sanitizer APIs and msTX APIs. The sanitizer APIs are used to check the CANN software stack and correspond to the ACL APIs. These APIs additionally report the code file and line number of the API called to the tool. The header file of the sanitizer APIs needs to be imported and the dynamic library needs to be linked. For details, see "Checking the Memory of the CANN Software Stack" > "Importing the API Header File and Linking the Dynamic Library" in [MindStudio Sanitizer Typical Cases](../best_practices/mssanitizer_basic_cases.md). The msTX APIs are used to report custom memory pool information for more accurate check. For details, see [msTX Functions](#mstx-functions).
 
 **Table 1** msSanitizer APIs
 
@@ -24,12 +24,13 @@ The msSanitizer tool contains two types of APIs: sanitizer APIs and mstx APIs. T
 |[sanitizerRtMemcpy2dAsync](#sanitizerrtmemcpy2dasync)|Calls `aclrtMemcpy2dAsync` to copy the matrix data memory and reports the memory copy information to the check tool. This API is asynchronous. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy2dAsync`.|
 |[sanitizerReportMalloc](#sanitizerreportmalloc)|Manually reports the GM allocation information.|
 |[sanitizerReportFree](#sanitizerreportfree)|Manually reports the GM release information.|
-|[MSTX Functions](#mstx-functions)|The mstx APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified.|
+|[msTX Functions](#mstx-functions)|The msTX APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified.|
 |mstxDomainCreateA|Creates a domain.|
 |mstxMemHeapRegister|Registers a memory pool.|
 |mstxMemHeapUnregister|Deregisters a memory pool.|
 |mstxMemRegionsRegister|Registers the secondary memory pool allocation.|
 |mstxMemRegionsUnregister|Deregisters the secondary memory pool allocation.|
+|mstxMemPermissionsAssign|Reports memory permissions.|
 
 ## Sanitizer APIs
 
@@ -43,8 +44,8 @@ The msSanitizer tool contains two types of APIs: sanitizer APIs and mstx APIs. T
 
 Calls `aclrtMalloc` to allocate `size` bytes linear memory on the device, returns the pointer to the allocated memory by using `*devPtr`, and reports the memory allocation information to the check tool. The actual memory allocation behavior and parameter meanings are the same as those of `aclrtMalloc`.
 
->[!NOTE]NOTE
->For details about `aclrtMalloc`, see "ACL API Reference (C)"> "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMalloc`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -54,23 +55,23 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 2** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
 |devPtr|Output|Pointer to the "pointer to the allocated device memory".|
 |size|Input|Allocated memory size, in bytes. Must not be `0`.|
-|policy|Input|Memory allocation policy.|
+|policy|Input|Memory allocation policy. For the type definition, see [aclrtMemMallocPolicy](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1349.html).|
 |filename|Input|Name of the file where memory allocation is called.|
 |lineno|Input|Number of the line where memory allocation is called.|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -83,8 +84,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMallocCached` to allocate `size` bytes linear memory on the device, returns the pointer to the allocated memory by using `*devPtr`, and reports the memory allocation information to the check tool. In any scenario, the allocated memory supports cache. The actual memory allocation behavior and parameter meanings are the same as those of `aclrtMallocCached`.
 
-> [!NOTE]NOTE       
-> For details about `aclrtMallocCached`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMallocCached`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -94,23 +95,23 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 3** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
 |devPtr|Output|Pointer to the "pointer to the allocated device memory".|
 |size|Input|Allocated memory size, in bytes. Must not be `0`.|
-|policy|Input|Memory allocation policy.|
+|policy|Input|Memory allocation policy. For the type definition, see [aclrtMemMallocPolicy](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1349.html).|
 |filename|Input|Name of the file where memory allocation is called.|
 |lineno|Input|Number of the line where memory allocation is called.|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -123,8 +124,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtFree` to release the memory on the device and reports the memory release information to the check tool. The actual memory release behavior and parameter meanings are the same as those of `aclrtFree`.
 
->[!NOTE]NOTE
->For details about `aclrtFree`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtFree`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -134,21 +135,21 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 4** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
-|devPtr|Input|Pointer to memory to be released.|
-|filename|Input|Name of the file where memory release is called.|
-|lineno|Input|Number of the line where memory release is called.|
+|devPtr|Input|Pointer to memory to be released|
+|filename|Input|Name of the file where memory release is called|
+|lineno|Input|Number of the line where memory release is called|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -161,8 +162,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemset` to initialize the memory, sets the content in the memory to a specified value, and reports the memory initialization information to the check tool. The actual memory initialization behavior and parameter meanings are the same as those of `aclrtMemset`.
 
->[!NOTE]NOTE
->For details about `aclrtMemset`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMemset`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -172,24 +173,24 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 5** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
-|devPtr|Input|Pointer to the start address of the memory.|
-|maxCount|Input|Maximum memory size, in bytes.|
-|value|Input|Specified value of the initialized memory.|
-|count|Input|Memory size to set, in bytes.|
-|filename|Input|Name of the file where memory initialization is called.|
-|lineno|Input|Number of the line where memory initialization is called.|
+|devPtr|Input|Pointer to the start address of the memory|
+|maxCount|Input|Maximum memory size, in bytes|
+|value|Input|Specified value of the initialized memory|
+|count|Input|Memory size to set, in bytes|
+|filename|Input|Name of the file where memory initialization is called|
+|lineno|Input|Number of the line where memory initialization is called|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -202,8 +203,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemsetAsync` to initialize the memory, sets the content in the memory to a specified value, and reports the memory initialization information to the check tool. This API is asynchronous. The actual memory initialization behavior and parameter meanings are the same as those of `aclrtMemsetAsync`.
 
->[!NOTE]NOTE
->For details about `aclrtMemsetAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMemsetAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -213,25 +214,25 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 6** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
-|devPtr|Input|Pointer to the start address of the memory.|
-|maxCount|Input|Maximum memory size, in bytes.|
-|value|Input|Specified value of the initialized memory.|
-|count|Input|Size of the initialized memory, in bytes.|
-|stream|Input|Specified stream.|
-|filename|Input|Name of the file where memory initialization is called.|
-|lineno|Input|Number of the line where memory initialization is called.|
+|devPtr|Input|Pointer to the start address of the memory|
+|maxCount|Input|Maximum memory size, in bytes|
+|value|Input|Specified value of the initialized memory|
+|count|Input|Size of the initialized memory, in bytes|
+|stream|Input|Stream specified for executing the memory copy task|
+|filename|Input|Name of the file where memory initialization is called|
+|lineno|Input|Number of the line where memory initialization is called|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -244,8 +245,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpy` to copy the memory and reports the memory copy information to the check tool. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpy`, see "ACL API Reference (C)"> "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMemcpy`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -255,7 +256,7 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 7** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
@@ -263,17 +264,17 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 |destMax|Input|Maximum memory size in bytes in the destination address.|
 |src|Input|Pointer to the source memory address.|
 |count|Input|Size in bytes to copy.|
-|kind|Input|(Reserved) The system determines whether to copy data from the source address to the destination address based on the pointers to the source and destination memory addresses. If not, an error is reported.|
+|kind|Input|Memory copy type. It is a reserved parameter, and the configured enumeration values are invalid. The system determines whether to copy data from the source address to the destination address based on the pointers to the source and destination memory addresses. If not, an error is reported.|
 |filename|Input|Name of the file where memory copy is called.|
 |lineno|Input|Number of the line where memory copy is called.|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -286,8 +287,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpyAsync` to copy the memory and reports the memory copy information to the check tool. This API is asynchronous. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpyAsync`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpyAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMemcpyAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -297,7 +298,7 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 8** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
@@ -305,18 +306,18 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 |destMax|Input|Maximum memory size in bytes in the destination address.|
 |src|Input|Pointer to the source memory address.|
 |count|Input|Size in bytes to copy.|
-|kind|Input|(Reserved) The system determines whether to copy data from the source address to the destination address based on the pointers to the source and destination memory addresses. If not, an error is reported.|
-|stream|Input|Stream specified by the current memory copy behavior.|
+|kind|Input|Memory copy type. It is a reserved parameter, and the configured enumeration values are invalid. The system determines whether to copy data from the source address to the destination address based on the pointers to the source and destination memory addresses. If not, an error is reported.|
+|stream|Input|Stream specified for executing the memory copy task.|
 |filename|Input|Name of the file where memory copy is called.|
 |lineno|Input|Number of the line where memory copy is called.|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -329,8 +330,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpy2d` to copy the matrix data memory and reports the memory copy information to the check tool. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy2d`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpy2d`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMemcpy2d`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -340,7 +341,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 9** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
@@ -350,17 +351,17 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 |spitch|Input|Address distance between two adjacent columns of vectors in the source memory.|
 |width|Input|Matrix width to be copied.|
 |height|Input|Matrix height to be copied. The maximum height can be set to `5242880` (5 × 1024 × 1024). Otherwise, a failure is returned.|
-|kind|Input|Memory copy kind.|
+|kind|Input|Memory copy type. It is a reserved parameter, and the configured enumeration values are invalid. The system determines whether to copy data from the source address to the destination address based on the pointers to the source and destination memory addresses. If not, an error is reported.|
 |filename|Input|Name of the file where matrix data memory copy is called.|
 |lineno|Input|Number of the line where matrix data memory copy is called.|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -373,8 +374,8 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 
 Calls `aclrtMemcpy2dAsync` to copy the matrix data memory and reports the memory copy information to the check tool. This API is asynchronous. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy2dAsync`.
 
->[!NOTE]NOTE
->For details about `aclrtMemcpy2dAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html).
+> [!NOTE]
+> For details about `aclrtMemcpy2dAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
 
@@ -384,7 +385,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 10** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
@@ -394,18 +395,18 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 |spitch|Input|Address distance between two adjacent columns of vectors in the source memory.|
 |width|Input|Matrix width to be copied.|
 |height|Input|Matrix height to be copied. The maximum height can be set to `5242880` (5 × 1024 × 1024). Otherwise, a failure is returned.|
-|kind|Input|Memory copy kind.|
-|stream|Input|Stream specified by the current matrix data memory copy behavior.|
+|kind|Input|Memory copy type. It is a reserved parameter, and the configured enumeration values are invalid. The system determines whether to copy data from the source address to the destination address based on the pointers to the source and destination memory addresses. If not, an error is reported.|
+|stream|Input|Stream specified for executing the memory copy task.|
 |filename|Input|Name of the file where matrix data memory copy is called.|
 |lineno|Input|Number of the line where matrix data memory copy is called.|
 
 **Returns**
 
-`0` on success; else, failure.
+Returns `0` on success and other values on failure. For details, see [aclError](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1345.html).
 
 **Example**
 
-For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/basic_cases.md).
+For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "Troubleshooting Procedure" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md).
 
 <br>
 <br>
@@ -424,17 +425,17 @@ Manually reports the GM allocation information.
 void sanitizerReportMalloc(void *ptr, uint64_t size);
 ```
 
-> [!NOTE]NOTE     
+> [!NOTE]
 > This API is the encapsulated `__sanitizer_report_malloc`. `__sanitizer_report_malloc` is a weak function and takes effect only when the user program is started by the check tool.
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 11** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
-|ptr|Input|Allocated memory address.|
-|size|Input|Allocated memory size.|
+|ptr|Input|Allocated memory address|
+|size|Input|Allocated memory size|
 
 **Returns**
 
@@ -444,7 +445,6 @@ None
 
 None
 
-<br>
 <br>
 
 ### sanitizerReportFree
@@ -461,16 +461,16 @@ Manually reports the GM release information.
 void sanitizerReportFree(void *ptr);
 ```
 
->[!NOTE]NOTE  
->This API is the encapsulation of `__sanitizer_report_free`. `__sanitizer_report_free` is a weak function and takes effect only when the user program is started by the check tool.
+> [!NOTE]
+> This API is the encapsulation of `__sanitizer_report_free`. `__sanitizer_report_free` is a weak function and takes effect only when the user program is started by the check tool.
 
 **Parameters**
 
-**Table 1** Parameter description
+**Table 12** Parameter description
 
 |Parameter|Input/Output|Description|
 |--|--|--|
-|ptr|Input|Address of released memory.|
+|ptr|Input|Address of released memory|
 
 **Returns**
 
@@ -480,74 +480,75 @@ None
 
 None
 
-## MSTX Functions
+## msTX Functions
 
-**MSTX API Overview**
+### msTX API Overview
 
-The mstx APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the MSTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/26.1.0/docs/en/api_reference/README.md) to implement more accurate memory check.
+The msTX APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the msTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/26.1.0/docs/en/api_reference/README.md) to implement more accurate memory check.
 
-> [!NOTE]NOTE
-> 
-> The MSTX APIs are not supported in the kernel launch symbol scenario described in "Exception Check Function Introduction" > "Function Description" > "Application Scenarios" > "Kernel Launch Operator Development" in [MindStudio Sanitizer User Guide](../user_guide/mssanitizer_user_guide.md).
+> [!NOTE]
+> The msTX APIs are not supported in the kernel launch symbol scenario described in "Exception Check Function Introduction" > "Function Description" > "Application Scenarios" > "Kernel Launch Operator Development" in the [MindStudio Sanitizer User Guide](../user_guide/mssanitizer_user_guide.md).
 
-**MSTX APIs**
+### msTX APIs
 
-[Table 1](#table111) describes the MSTX APIs called by the msSanitizer. For details, see *MSTX APIs*.
+[Table 13](#table111) describes the msTX APIs called by msSanitizer. For details, see [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/26.1.0/docs/en/api_reference/README.md).
 
-**Table 1** MSTX APIs called by the msSanitizer<a name="table111"></a>
+**Table 13** msTX APIs called by msSanitizer<a name="table111"></a>
 
 |API|Description|
 |--|--|
-|mstxDomainCreateA|Creates an MSTX domain.|
+|mstxDomainCreateA|Creates an msTX domain.|
 |mstxMemHeapRegister|Registers a memory pool. Before calling this API to register a memory pool, ensure that the memory has been allocated in advance.|
 |mstxMemRegionsRegister|Registers secondary memory pool allocation. Ensure that the memory of RegionsRegister is within the range registered by `mstxMemHeapRegister`. Otherwise, the tool displays a message indicating that out-of-bounds read/write occurs.|
 |mstxMemRegionsUnregister|Deregisters secondary memory pool allocation.|
 |mstxMemHeapUnregister|Deregisters the regions associated with a memory pool when the memory pool is deregistered.|
+|mstxMemPermissionsAssign|Reports memory read/write attributes. When mssanitizer is used to start the operator program, if the operator performs read or write operations that do not conform to the memory attributes, illegal access errors can be detected.|
 
-**MSTX API Usage**
+### msTX API Usage
 
-- By default, the msSanitizer tool enables the MSTX APIs, allowing you to customize the memory space address and size for operators to identify operator memory issues quickly.
-- Currently, MSTX APIs can be used in two ways: library files and header files. The following uses the code in [AclNNInvocation](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation) as an example:
+- By default, the msSanitizer tool enables the msTX APIs, allowing you to customize the memory space address and size for operators to identify operator memory issues quickly.
+- Currently, msTX APIs can be used in two ways: library files and header files. The following uses the code in [AclNNInvocation](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation) as an example:
 
-    >[!NOTE]NOTE 
+    > [!NOTE]
+    >
     > This sample project does not support Atlas A3 training products and Atlas A3 inference products.
 
-- Add the library file **libms_tools_ext.so** to the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt` directory. The address is `${INSTALL_DIR}/lib64/libms_tools_ext.so`.
-    
-    ```c  
+- Add the library file `libms_tools_ext.so` to the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt` directory. The address is `${INSTALL_DIR}/lib64/libms_tools_ext.so`.
+
+    ```cmake
         # Header path
         include_directories(
              ...
             ${CUST_PKG_PATH}/include
         )
         ...
-        target_link_libraries( 
+        target_link_libraries(
             ...
             dl
         )
 
     ```
 
-- In the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp` directory, build and link the user program to the DL library. The address of the corresponding header file **ms_tools_ext.h** is `${INSTALL_DIR}/include/mstx`.
-    
+- In the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp` directory, build and link the user program to the DL library. The address of the corresponding header file `ms_tools_ext.h` is `${INSTALL_DIR}/include/mstx`.
+
     ```c
     ...
     #include "mstx/ms_tools_ext.h"
     ...
     ```
 
-    > [!NOTE]NOTE       
+    > [!NOTE]
     > Replace `${INSTALL_DIR}` with the file storage path after the CANN software is installed. For example, if the installation is performed as the root user, the default file storage path after the installation is `/usr/local/Ascend/cann`.
 
-**Example**
+#### Memory Pool Registration Example
 
-```c
-mstxMemVirtualRangeDesc_t rangeDesc = {};
+```c++
+    mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = deviceId;       // Device ID
-    rangeDesc.ptr = gm;                  // Start address of the registered memory pool CM
+    rangeDesc.ptr = gm;                  // Start address of the registered memory pool GM
     rangeDesc.size = 1024;               // Memory pool size
-    heapDesc.typeSpecificDesc = &rangeDesc;
     mstxMemHeapDesc_t heapDesc{};
+    heapDesc.typeSpecificDesc = &rangeDesc;
     mstxMemHeapHandle_t memPool = mstxMemHeapRegister(globalDomain, &heapDesc); // Memory pool registration
     mstxMemVirtualRangeDesc_t rangesDesc[1] = {};                // Number of regions contained in the secondary allocation
     mstxMemRegionHandle_t regionHandles[1] = {};
@@ -570,4 +571,33 @@ mstxMemVirtualRangeDesc_t rangeDesc = {};
     refsDesc.refArray = regionRef;
     mstxMemRegionsUnregister(globalDomain, &refsDesc);                   // Secondary allocation deregistration
     mstxMemHeapUnregister(globalDomain, memPool);                        // Memory pool deregistration
+```
+
+#### Memory Permission Setting Example
+
+```c++
+mstxMemRegionsRegisterBatch_t regions{};
+mstxMemVirtualRangeDesc_t ranges[2]; // Prepare an array to store the information of 2 virtual memory ranges
+mstxMemRegionHandle_t handles[2]; // Prepare an array to receive the returned memory range handles
+ranges[0].ptr = gm1; // Memory address
+ranges[0].size = 100; // Memory length
+ranges[1].ptr = gm2;
+ranges[1].size = 200;
+regions.regionType = MSTX_MEM_TYPE_VIRTUAL_ADDRESS;
+regions.regionCount = 2;
+regions.regionDescArray = ranges;
+regions.regionHandleArrayOut = handles;
+mstxMemRegionsRegister(globalDomain, &regions); // Register memory range information
+
+mstxMemPermissionsAssignBatch_t assignBatch{};
+mstxMemPermissionsAssignRegionsDesc_t assignRegion[2]; // Prepare an array to store the permission attributes of 2 memory ranges
+assignRegion[0].flags = MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ; // Set the first memory range to read-only
+assignRegion[0].region.refType = MSTX_MEM_REGION_REF_TYPE_HANDLE;
+assignRegion[0].region.handle = handles[0]; // Set the attributes of the first memory range by handle
+assignRegion[1].flags = MSTX_MEM_PERMISSIONS_REGION_FLAGS_WRITE; // Set the second memory range to write-only
+assignRegion[1].region.refType = MSTX_MEM_REGION_REF_TYPE_HANDLE;
+assignRegion[1].region.handle = handles[1]; // Set the attributes of the second memory range by handle
+assignBatch.regionCount = 2;
+assignBatch.regionDescArray = assignRegion;
+mstxMemPermissionsAssign(globalDomain, &assignBatch); // Set memory range attributes
 ```

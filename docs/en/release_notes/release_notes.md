@@ -11,7 +11,7 @@
 
 ### Related Product Versions
 
-| msSanitizer Version| CANN Version| Python version| JSON Version|SecureC Version| Makeself Version| llvm-project Version
+| msSanitizer Version| CANN Version| Python Version| JSON Version|SecureC Version| Makeself Version| llvm-project Version |
 |----------|-----------------|----------|----------|----------|----------|----------|
 | 26.0.0 | 9.0.0 or later is recommended.| Python 3.11 or later is recommended.| v3.12.0 or later| v1.1.16 or later| release-2.5.0 or later| 19.1.7 |
 | 8.3.0 | 8.2.RC1 or later| Python 3.11 or later is recommended.| v3.12.0 or later| v1.1.16 or later| release-2.5.0 or later| 19.1.7 |
@@ -42,25 +42,25 @@ Function:
 - UI:
 
 1. Added support for displaying kernel information during check. Upon completion of check, the user will be prompted to indicate whether any exceptions were detected.
-2. Added the `--demangle` command line option to control the display format of function names in the user interface.
+2. Added the `--demangle` CLI option to control the display format of function names in the user interface.
 3. Added support for obtaining the real-time register status at the start and checking the default register values at the end of the program.
 
 - Scalability:
 
-1. Added the MSTX interface on the kernel for reporting inter-core barrier and `set_flag`/`wait_flag` semantics.
-2. Exposed kernel-side MSTX interface via `sanitizer_report.h` header, enabling user-defined integration.
-3. Removed the restriction on binding regions and heaps in the memory pool information reporting interface of MSTX, allowing direct region registration.
+1. Added the msTX interface on the kernel for reporting inter-core barrier and `set_flag`/`wait_flag` semantics.
+2. Exposed kernel-side msTX interface via `sanitizer_report.h` header, enabling user-defined integration.
+3. Removed the restriction on binding regions and heaps in the memory pool information reporting interface of msTX, allowing direct region registration.
 
 Build and release:
 
 1. Added the debug compilation function to support VS Code breakpoint debugging.
-2. Changed the minimum permission required by the root user on folders during installation to `700`.
+2. Changed the minimum permission required by the root user on folders during installation to 700.
 3. Resolved the issue of UT compilation failures in the later GCC 11.x version.
 4. Adapted to the GCC 12.x changes in the CANN image.
 5. Optimized the download of UT dependencies, increasing the speed by 10 times and completely resolving the issue of occasional failures.
 6. Enabled the debug compilation mode by default for UT compilation.
 7. Standardized the installation package names.
-8. Added the **sanitizer_report.h** header file to the package.
+8. Added the `sanitizer_report.h` header file to the package.
 
 Document description:
 
@@ -75,7 +75,7 @@ None
 1. Resolved the issue where SIMT LDK/STK failed to persist to drives through instructions.
 2. Resolved the issue where file paths were not standardized before use and the sequence of including header files was incorrect.
 3. Resolved the issue with SIMT UB range modeling, which may cause the tool to miss reporting UB out-of-bounds errors.
-4. Changed the name of the command line option for call stack backtracking to comply with industry conventions.
+4. Changed the name of the CLI option for call stack backtracking to comply with industry conventions.
 5. Resolved the issue where the address space of the `load store` instruction was invalid.
 6. Resolved the issue with ND NZ API preprocessing, which may cause false positives of memory out-of-bounds errors.
 7. Resolved the issue where the internal implementation of AscendC APIs was not masked in the abnormal call stack for race and synchronization checks.

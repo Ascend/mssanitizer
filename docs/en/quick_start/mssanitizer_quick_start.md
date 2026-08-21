@@ -4,36 +4,39 @@
 
 ## 1. Overview
 
-msSanitizer is an exception check tool based on Ascend AI Processors. It provides memory check, race check, uninitialization check, and synchronization check in single-operator development scenarios.
-This document demonstrates the core functions of msSanitizer based on the simple addition operator developed in the introductory tutorial. It helps beginners intuitively experience the efficiency and convenience the tool brings to the operator development process.
-<br>
+msSanitizer is an exception check tool based on Ascend AI Processors. It provides memory check, race check, uninitialization check, and synchronization check in single-operator development scenarios. This document demonstrates the core functions of msSanitizer based on the simple addition operator developed in the introductory tutorial. It helps beginners intuitively experience the efficiency and convenience the tool brings to the operator development process.
 
-### 1.1 Recommendations
-
-This document assumes that you have completed all operations in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a>. If you have not done so, complete that guide first for a better learning experience.
-
-### 1.2 Environment Setup
-
-Strictly follow the <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/installation_guide.md" target="_blank">Ascend AI Operator Development Toolchain Learning Environment Installation Guide</a> to complete the environment installation and workspace configuration.
-Even if you have a similar environment, perform the steps in the guide again to ensure that all dependent components and environment variables are complete and consistent.
+This document assumes that you have completed all operations in <a href="https://gitcode.com/Ascend/msot/blob/26.1.0/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a>. If you have not done so, complete that guide first for a better learning experience.
 
 ## 2. Procedure
 
-### 2.1 [Environment] Pre-checking the Runtime Environment
+### 2.1 [Environment] Preparing the Mandatory Environment (Prerequisite ⚠️)
 
-#### 2.1.1 Verifying Installation of Python Dependencies
+🛑 **This section is a mandatory prerequisite! Skipping it will cause many failures in the subsequent operations.**  
+This tutorial **supports only** standard CANN container environments. It is not compatible with bare-metal servers, virtual machines, or other non-standard container deployments.
 
-Run the following command. If `All is OK` is displayed, the required Python packages and their versions meet the specifications:
+#### 2.1.1 Installing the CANN Container Environment
 
-```shell
-python3 -c "import numpy, sympy, scipy, attrs, psutil, decorator; from packaging import version; assert version.parse(numpy.__version__) <= version.parse('1.26.4'); print('All is OK')"
+✅ **Strictly follow the following guide to complete the environment installation:**  
+👉 **<a href="https://gitcode.com/Ascend/msot/blob/26.1.0/docs/en/quick_start/installation_guide.md" target="_blank">Ascend AI Operator Development Toolchain Learning Environment Installation Guide</a>**
+
+> ⏱️ **Estimated time in an environment with external network access: about 3 minutes**  
+> After installation, you will get a standard container environment with all operator tools, sample code, and dependent libraries preinstalled.
+
+#### 2.1.2 Running the Environment Self-Check Script (Must Pass!)
+
+Before the hands-on experience, **copy the entire script**, paste it into the terminal, and run it. You can continue only when all output displays [PASS]:
+
+```bash
+# 1. Check the container environment
+[ -f /.dockerenv ] && [ -n "$ASCEND_HOME_PATH" ] && [ -n "$ATB_HOME_PATH" ] && echo -e "\033[32m[PASS] CANN container environment OK \033[0m" || echo -e "\033[31m[FAIL] Non-standard container or not in the container\033[0m"
+# 2. Check the sample code repository
+[ -d ~/ot_demo/msot/example/quick_start ] && echo -e "\033[32m[PASS] Sample code repository OK\033[0m" || echo -e "\033[31m[FAIL] Code repository missing\033[0m"
 ```
-
-If an error occurs, refer to [Section 1.2](#12-environment-setup) for correct installation.
 
 ### 2.2 [Prerequisite] Completing Operator Project Preparation
 
-Follow the instructions in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete Sections 2.1 and 2.3.
+Follow Section 2.3 in <a href="https://gitcode.com/Ascend/msot/blob/26.1.0/docs/en/quick_start/op_tool_quick_start.md#23-developing-and-building-the-operator-project-msopgen" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete the operator project preparation.
 
 ### 2.3 [Check] msSanitizer
 
@@ -43,15 +46,15 @@ The msSanitizer tool is used to detect serious runtime defects such as memory ov
 
 To enable the check capabilities, you need to insert the sanitizer compilation options to the first line of the `CMakeLists.txt` file on the kernel and inject the check stub code.
 
-```shell
+```bash
 cd ~/ot_demo/workspace/src/AddCustom
-\cp -f op_kernel/CMakeLists.txt op_kernel/CMakeLists.txt.orig.bak
-sed -i "1i\\add_ops_compile_options(ALL OPTIONS -sanitizer)" op_kernel/CMakeLists.txt
+\cp -f op_kernel/CMakeLists.txt op_kernel/CMakeLists.txt.bak
+printf '%s\n' "if(COMMAND add_ops_compile_options)" "  add_ops_compile_options(ALL OPTIONS -sanitizer)" "elseif(COMMAND npu_op_kernel_options)" "  npu_op_kernel_options(ascendc_kernels ALL OPTIONS -sanitizer)" "endif()" | cat - op_kernel/CMakeLists.txt > tmp && mv -f tmp op_kernel/CMakeLists.txt;
 ```
 
 #### 2.3.2 Constructing a Memory Overwriting Error
 
-Modify the CopyOut function in `op_kernel/add_custom.cpp` as follows (change the length of the copied `DataCopy` memory from `TILE_LENGTH` to 2 * `TILE_LENGTH`):
+Modify the CopyOut function in `op_kernel/add_custom.cpp` as follows (double the length of the copied `DataCopy` memory to trigger an illegal read):
 
 ```diff
 - AscendC::DataCopy(zGm[progress * this->tileLength], zLocal, this->tileLength);
@@ -60,16 +63,29 @@ Modify the CopyOut function in `op_kernel/add_custom.cpp` as follows (change the
 
 #### 2.3.3 Rebuilding and Deploying
 
-```shell
+```bash
 bash ./build.sh
 MY_OP_PKG=$(find ./build_out -maxdepth 1 -name "custom_opp_*.run" | head -1) && bash $MY_OP_PKG
 ```
 
+> [!NOTE]
+> If the following warning appears during redeployment, the environment variable `ASCEND_CUSTOM_OPP_PATH` is set to an incorrect value or contains multiple colon-separated paths:
+>
+> ```text
+> [ERROR] environment variable ASCEND_CUSTOM_OPP_PATH=/home/gitcode/samples/operator/ascendc/0_introduction/12_matmulleakyrelu_frameworklaunch/CustomOp/build_out/test/vendors/customize: is set and has multiple path in it (colon inside), which will cause the custom op installed incorrectly. Please use the --install-path option to specify an installation path instead.
+> ```
+>
+> In this case, delete the environment variable manually and then redeploy:
+>
+> ```bash
+> unset ASCEND_CUSTOM_OPP_PATH
+> ```
+
 #### 2.3.4 Performing a Memory Check
 
-```shell
+```bash
 cd ~/ot_demo/workspace/src/caller
-mssanitizer --tool=memcheck bash run.sh
+mssanitizer --tool=memcheck -- bash run.sh
 ```
 
 The tool outputs an error report similar to the following:
@@ -89,9 +105,9 @@ The tool outputs an error report similar to the following:
 
 #### 2.3.5 Performing a Race Check
 
-```shell
+```bash
 cd ~/ot_demo/workspace/src/caller
-mssanitizer --tool=racecheck bash run.sh
+mssanitizer --tool=racecheck -- bash run.sh
 ```
 
 The tool outputs the following error report:
@@ -109,9 +125,9 @@ The tool outputs the following error report:
 
 #### 2.3.6 Performing an Uninitialization Check
 
-```shell
+```bash
 cd ~/ot_demo/workspace/src/caller
-mssanitizer --tool=initcheck bash run.sh
+mssanitizer --tool=initcheck -- bash run.sh
 ```
 
 The tool outputs the following error report:
@@ -133,7 +149,8 @@ The tool outputs the following error report:
 
 Run the following commands:
 
-```shell
+```bash
 cd ~/ot_demo/workspace/src/AddCustom
-\cp -f op_kernel/CMakeLists.txt.orig.bak op_kernel/CMakeLists.txt
+\cp -f ~/ot_demo/msot/example/quick_start/msopgen/code/op_kernel/add_custom.cpp ~/ot_demo/workspace/src/AddCustom/op_kernel/
+\cp -f op_kernel/CMakeLists.txt.bak op_kernel/CMakeLists.txt
 ```
