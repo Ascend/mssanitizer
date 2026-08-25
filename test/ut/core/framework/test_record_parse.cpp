@@ -4755,4 +4755,106 @@ TEST_F(TestRecordParse, parse_shadow_memory_record_and_expect_success)
     ASSERT_EQ(bufferRecord->size, 10);
 }
 
+// 复现 Ascend 950 上 MTE2<->MTE3 使用 eventid>=8 的 set_flag/wait_flag 同步时，
+// 工具错误丢弃 wait_flag 导致流水内 pipe_barrier 未生成的误报问题
+TEST_F(TestRecordParse, parse_high_event_id_cross_pipe_sync_expect_get_inner_pipe_event_success) {
+    RecordParse::ResetSyncInPipeInfo();
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+
+    // Ascend 950 芯片上 set_flag/wait_flag 支持更大的 eventId 空间
+    RuntimeContext::Instance().deviceSummary_.device = DeviceType::ASCEND_950DT_950x;
+
+    // 第一对 set_flag/wait_flag：MTE2 -> MTE3, eventid 8
+    record.recordType = RecordType::SET_FLAG;
+    record.payload.syncRecord.location.blockId = 0;
+    record.payload.syncRecord.src = PipeType::PIPE_MTE2;
+    record.payload.syncRecord.dst = PipeType::PIPE_MTE3;
+    record.payload.syncRecord.eventID = 8;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+    record.recordType = RecordType::WAIT_FLAG;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+
+    // 第二对 set_flag/wait_flag：MTE3 -> MTE2, eventid 9
+    record.recordType = RecordType::SET_FLAG;
+    record.payload.syncRecord.src = PipeType::PIPE_MTE3;
+    record.payload.syncRecord.dst = PipeType::PIPE_MTE2;
+    record.payload.syncRecord.eventID = 9;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+    record.recordType = RecordType::WAIT_FLAG;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+
+    // 解析时 eventId 应按硬件语义截断到 0~7：8 -> 0, 9 -> 1
+    ASSERT_EQ(events[1].eventInfo.syncInfo.eventId, 0U);
+    ASSERT_EQ(events[3].eventInfo.syncInfo.eventId, 1U);
+
+    // 应当生成 MTE2 的流水内 pipe_barrier
+    bool findMte2Barrier = false;
+    for (const auto &event : events) {
+        if (event.type == EventType::SYNC_EVENT && event.pipe == PipeType::PIPE_MTE2 &&
+            event.eventInfo.syncInfo.opType == SyncType::PIPE_BARRIER) {
+            findMte2Barrier = true;
+            break;
+        }
+    }
+    ASSERT_TRUE(findMte2Barrier);
+    RecordParse::ResetSyncInPipeInfo();
+}
+
+// Ascend 950 上 set_flag/wait_flag 使用 eventid=32（边界值）时，也应能生成流水内 pipe_barrier
+TEST_F(TestRecordParse, parse_max_event_id_cross_pipe_sync_expect_get_inner_pipe_event_success) {
+    RecordParse::ResetSyncInPipeInfo();
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+
+    // Ascend 950 芯片上 set_flag/wait_flag 支持更大的 eventId 空间
+    RuntimeContext::Instance().deviceSummary_.device = DeviceType::ASCEND_950DT_950x;
+
+    // 第一对 set_flag/wait_flag：MTE2 -> MTE3, eventid 32
+    record.recordType = RecordType::SET_FLAG;
+    record.payload.syncRecord.location.blockId = 0;
+    record.payload.syncRecord.src = PipeType::PIPE_MTE2;
+    record.payload.syncRecord.dst = PipeType::PIPE_MTE3;
+    record.payload.syncRecord.eventID = 32;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+    record.recordType = RecordType::WAIT_FLAG;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+
+    // 第二对 set_flag/wait_flag：MTE3 -> MTE2, eventid 32
+    record.recordType = RecordType::SET_FLAG;
+    record.payload.syncRecord.src = PipeType::PIPE_MTE3;
+    record.payload.syncRecord.dst = PipeType::PIPE_MTE2;
+    record.payload.syncRecord.eventID = 32;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+    record.recordType = RecordType::WAIT_FLAG;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+
+    // 解析时 eventId 应按硬件语义截断到 0~7：32 -> 0
+    ASSERT_EQ(events[1].eventInfo.syncInfo.eventId, 0U);
+    ASSERT_EQ(events[3].eventInfo.syncInfo.eventId, 0U);
+
+    // 应当生成 MTE2 的流水内 pipe_barrier
+    bool findMte2Barrier = false;
+    for (const auto &event : events) {
+        if (event.type == EventType::SYNC_EVENT && event.pipe == PipeType::PIPE_MTE2 &&
+            event.eventInfo.syncInfo.opType == SyncType::PIPE_BARRIER) {
+            findMte2Barrier = true;
+            break;
+        }
+    }
+    ASSERT_TRUE(findMte2Barrier);
+    RecordParse::ResetSyncInPipeInfo();
+}
 }
