@@ -15,6 +15,7 @@
  * ------------------------------------------------------------------------- */
 
 #include "error_buffer.h"
+#include "core/framework/utility/log.h"
 
 namespace Sanitizer {
 
@@ -27,9 +28,32 @@ std::vector<ReducedErrorMsg> ErrorBuffer::GetBuffer()
     return errorList;
 }
 
+namespace {
+// 仅“具备字节大小语义”的错误类型才要求 nBadBytes >= 1。
+// ILLEGAL_FREE 等类型本身无 size 语义（PrintIllegalFree 不使用 nBadBytes），其 nBadBytes 保持
+// 构造默认值 0，不能据此判为损坏/未初始化 error 而丢弃，否则回放/reduce 下 illegal free/double free 会静默漏报。
+bool HasBadByteSemantics(const MemErrorType type) {
+    switch (type) {
+    case MemErrorType::ILLEGAL_FREE:
+    case MemErrorType::INTERNAL_ERROR:
+        return false;
+    default:
+        return true;
+    }
+}
+}
 
 void ErrorBuffer::Add(const ErrorMsg &error)
 {
+    // 校验 ErrorMsg 是否有效。设备端/回放产生的损坏或未初始化 error（nBadBytes == 0）
+    // 不应上报，避免 "illegal write of size 0" 之类的无意义误报。真实内存错误的 size 必 >= 1。
+    if (HasBadByteSemantics(error.type) && error.auxData.nBadBytes == 0) {
+        SAN_WARN_LOG(
+            "Skip Corrupted Or Zeroed Error, type:%u, nBadBytes:0, addr:0x%lx, space:%u, serialNo:%lu, isSimt:%u",
+            static_cast<uint32_t>(error.type), error.auxData.badAddr.addr, static_cast<uint32_t>(error.auxData.space),
+            error.auxData.serialNo, static_cast<uint32_t>(error.auxData.isSimt));
+        return;
+    }
     ReducedErrorMsg reducedError{error, {}, {}, {}};
     if (error.auxData.blockType == BlockType::AIVEC) {
         reducedError.aivBlocks = {static_cast<uint64_t>(error.auxData.coreId)};

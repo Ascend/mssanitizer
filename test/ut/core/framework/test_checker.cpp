@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
- 
 #include <gtest/gtest.h>
 #include <any>
 #include <mutex>
@@ -27,7 +26,7 @@
 #include "platform_config.h"
 #include "securec.h"
 #include "utility/log.h"
- 
+
 using namespace Sanitizer;
 
 TEST(Checker, set_invalid_device_type_expect_run_checker_success)
@@ -308,6 +307,52 @@ TEST(Checker, test_online_mem_check_expect_got_error)
         checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)])) {
         ASSERT_EQ(func->errorBuffer_.GetBuffer().size(), 1);
         auto errorMsg = func->errorBuffer_.GetBuffer()[0];
+        ASSERT_EQ(func->errorBuffer_.GetBuffer().size(), 1);
+    }
+}
+
+TEST(Checker, error_buffer_skip_zero_size_error_at_choke_point) {
+    // 兜底：ErrorBuffer::Add 是所有 error 报告的唯一汇聚点，这里统一过滤 nBadBytes==0 的
+    // 损坏/未初始化 error（覆盖 onlineError 之外的 DoMemOpRecord/align/bounds 等所有路径），
+    // 防止 "illegal write of size 0" 之类的无意义误报。
+    std::stringstream ss;
+    std::shared_ptr<Checker> checker = GetNewChecker(ss);
+    if (auto func = std::dynamic_pointer_cast<AddressSanitizer>(
+            checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)])) {
+        // 1) 损坏/未初始化 error（nBadBytes==0）应被跳过
+        ErrorMsg zeroError{};
+        zeroError.auxData.blockType = BlockType::AIVEC;
+        zeroError.auxData.coreId = 0;
+        func->errorBuffer_.Add(zeroError);
+        ASSERT_TRUE(func->errorBuffer_.GetBuffer().empty());
+
+        // 2) 有效 error（nBadBytes>0）正常入桶并归并 aiv
+        ErrorMsg validError{};
+        validError.isError = true;
+        validError.type = MemErrorType::ILLEGAL_ADDR_WRITE;
+        validError.auxData.blockType = BlockType::AIVEC;
+        validError.auxData.coreId = 0;
+        validError.auxData.nBadBytes = 4;
+        func->errorBuffer_.Add(validError);
+        ASSERT_EQ(func->errorBuffer_.GetBuffer().size(), 1);
+    }
+}
+
+TEST(Checker, error_buffer_keep_illegal_free_error) {
+    // ILLEGAL_FREE 无字节大小语义（nBadBytes 保持构造默认值 0），
+    // 不能被 nBadBytes==0 的兜底过滤误丢，否则回放/reduce 下 illegal free/double free 会漏报。
+    std::stringstream ss;
+    std::shared_ptr<Checker> checker = GetNewChecker(ss);
+    if (auto func = std::dynamic_pointer_cast<AddressSanitizer>(
+            checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)])) {
+        ErrorMsg illegalFree{};
+        illegalFree.isError = true;
+        illegalFree.type = MemErrorType::ILLEGAL_FREE;
+        illegalFree.auxData.blockType = BlockType::AIVEC;
+        illegalFree.auxData.coreId = 0;
+        illegalFree.auxData.badAddr.addr = 0x61;
+        illegalFree.auxData.space = AddressSpace::GM;
+        func->errorBuffer_.Add(illegalFree);
         ASSERT_EQ(func->errorBuffer_.GetBuffer().size(), 1);
     }
 }

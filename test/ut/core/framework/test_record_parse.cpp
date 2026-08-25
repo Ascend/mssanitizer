@@ -1387,6 +1387,7 @@ TEST_F(TestRecordParse, parse_dc_preload_record_and_export_success)
     record.recordType = RecordType::DC_PRELOAD;
     record.payload.dcPreloadRecord.addr = 0x12;
     record.payload.dcPreloadRecord.offset = 32;
+    record.payload.dcPreloadRecord.space = AddressSpace::GM;
     record.payload.dcPreloadRecord.location.fileNo = 7;
     record.payload.dcPreloadRecord.location.lineNo = 8;
 

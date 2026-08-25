@@ -27,6 +27,7 @@ DcPreloadRecord CreateDcPreloadRecord()
 {
     DcPreloadRecord record{};
     record.addr = 0x12c0c0013000; // GM地址
+    record.space = AddressSpace::GM;
     record.location.fileNo = RandInt(0, 0x100000);
     record.location.lineNo = RandInt(0, 0x1000);
 
