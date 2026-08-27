@@ -2898,6 +2898,152 @@ TEST_F(TestRecordParse, parse_mstx_signal_wait_record_expect_get_correct_events)
     ASSERT_EQ(events[0].eventInfo.mstxSignalWait.cmpValue, mstxSignalWait.cmpValue);
 }
 
+TEST_F(TestRecordParse, parse_mstx_data_copy_pad_record_expect_get_correct_events)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_DATA_COPY_PAD;
+    record.payload.mstxRecord.bufferLens = sizeof(MstxDataCopyPadDesc);
+    record.payload.mstxRecord.location.blockId = 7;
+    record.payload.mstxRecord.error = false;
+
+    auto &mstxDataCopyPad = record.payload.mstxRecord.interface.mstxDataCopyPadDesc;
+    mstxDataCopyPad.dst.space = AddressSpace::UB;
+    mstxDataCopyPad.dst.addr = 0x2000;
+    mstxDataCopyPad.dst.size = 256;
+    mstxDataCopyPad.dst.dataBits = 8;
+    mstxDataCopyPad.src.space = AddressSpace::GM;
+    mstxDataCopyPad.src.addr = 0x1000;
+    mstxDataCopyPad.src.size = 256;
+    mstxDataCopyPad.src.dataBits = 8;
+    mstxDataCopyPad.lenBurst = 48;
+    mstxDataCopyPad.nBurst = 3;
+    mstxDataCopyPad.srcGap = 0;
+    mstxDataCopyPad.dstGap = 0;
+    mstxDataCopyPad.leftPad = 0;
+    mstxDataCopyPad.rightPad = 16;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+    ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[0].loc.coreId, 7);
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
+        8, 0x1000, 48, 1, 1, 3, 48, 0};
+    ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
+    ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
+    ASSERT_EQ(events[1].pipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[1].loc.coreId, 7);
+    // Normal模式每个数据块右侧填充16字节，3个数据块共3*Ceil32(48+16)=192字节
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
+        8, 0x2000, 64, 1, 1, 3, 64, 0};
+    ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
+}
+
+TEST_F(TestRecordParse, parse_mstx_data_copy_pad_v2_normal_mode_record_expect_get_correct_events)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_DATA_COPY_PAD_V2;
+    record.payload.mstxRecord.bufferLens = sizeof(MstxDataCopyPadV2Desc);
+    record.payload.mstxRecord.location.blockId = 7;
+    record.payload.mstxRecord.error = false;
+
+    auto &mstxDataCopyPadV2 = record.payload.mstxRecord.interface.mstxDataCopyPadV2Desc;
+    mstxDataCopyPadV2.dst.space = AddressSpace::UB;
+    mstxDataCopyPadV2.dst.addr = 0x2000;
+    mstxDataCopyPadV2.dst.size = 256;
+    mstxDataCopyPadV2.dst.dataBits = 8;
+    mstxDataCopyPadV2.src.space = AddressSpace::GM;
+    mstxDataCopyPadV2.src.addr = 0x1000;
+    mstxDataCopyPadV2.src.size = 256;
+    mstxDataCopyPadV2.src.dataBits = 8;
+    mstxDataCopyPadV2.padMode = PaddingMode::NORMAL;
+    mstxDataCopyPadV2.lenBurst = 48;
+    mstxDataCopyPadV2.nBurst = 3;
+    mstxDataCopyPadV2.srcGap = 0;
+    mstxDataCopyPadV2.dstGap = 0;
+    mstxDataCopyPadV2.leftPad = 0;
+    mstxDataCopyPadV2.rightPad = 16;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+    ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[0].loc.coreId, 7);
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
+        8, 0x1000, 48, 1, 1, 3, 48, 0};
+    ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
+    ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
+    ASSERT_EQ(events[1].pipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[1].loc.coreId, 7);
+    // Normal模式每个数据块右侧填充16字节，3个数据块共3*Ceil32(48+16)=192字节
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
+        8, 0x2000, 64, 1, 1, 3, 64, 0};
+    ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
+}
+
+TEST_F(TestRecordParse, parse_mstx_data_copy_pad_v2_compact_mode_record_expect_get_correct_events)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_DATA_COPY_PAD_V2;
+    record.payload.mstxRecord.bufferLens = sizeof(MstxDataCopyPadV2Desc);
+    record.payload.mstxRecord.location.blockId = 7;
+    record.payload.mstxRecord.error = false;
+
+    auto &mstxDataCopyPadV2 = record.payload.mstxRecord.interface.mstxDataCopyPadV2Desc;
+    mstxDataCopyPadV2.dst.space = AddressSpace::UB;
+    mstxDataCopyPadV2.dst.addr = 0x2000;
+    mstxDataCopyPadV2.dst.size = 256;
+    mstxDataCopyPadV2.dst.dataBits = 8;
+    mstxDataCopyPadV2.src.space = AddressSpace::GM;
+    mstxDataCopyPadV2.src.addr = 0x1000;
+    mstxDataCopyPadV2.src.size = 256;
+    mstxDataCopyPadV2.src.dataBits = 8;
+    mstxDataCopyPadV2.padMode = PaddingMode::COMPACT;
+    mstxDataCopyPadV2.lenBurst = 48;
+    mstxDataCopyPadV2.nBurst = 3;
+    mstxDataCopyPadV2.srcGap = 0;
+    mstxDataCopyPadV2.dstGap = 0;
+    mstxDataCopyPadV2.leftPad = 0;
+    mstxDataCopyPadV2.rightPad = 16;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+    ASSERT_EQ(events[0].type, EventType::MEM_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[0].loc.coreId, 7);
+    MemOpInfo memOpInfo = {MemType::GM, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
+        8, 0x1000, 48, 1, 1, 3, 48, 0};
+    ASSERT_EQ(events[0].eventInfo.memInfo, memOpInfo);
+    ASSERT_EQ(events[1].type, EventType::MEM_EVENT);
+    ASSERT_EQ(events[1].pipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[1].loc.coreId, 7);
+    // Compact模式3个数据块合并为一个连续区域，仅末尾填充16字节，总长Ceil32(3*48+16)=160字节
+    memOpInfo = {MemType::UB, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
+        8, 0x2000, 160, 1, 1, 1, 0, 0};
+    ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
+}
+
 TEST_F(TestRecordParse, parse_wait_flag_and_hwait_flag_end_to_end_in_pipe_record_expect_success)
 {
     std::vector<SanEvent> events;

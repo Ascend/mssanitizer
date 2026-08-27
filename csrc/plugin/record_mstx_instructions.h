@@ -174,6 +174,8 @@ AICORE_FUNC_HEAD void RecordMstxEvent(EXTRA_PARAMS_DEC, uint32_t interfaceId, ui
         RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxDataCopyDesc, bufferLens, buffer);
     } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_DATA_COPY_PAD) {
         RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxDataCopyPadDesc, bufferLens, buffer);
+    } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_DATA_COPY_PAD_V2) {
+        RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxDataCopyPadV2Desc, bufferLens, buffer);
     } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_CROSS_CORE_BARRIER) {
         RecordMstxPlainRecord(recorder, mstxRecord, &MstxRecord::Interface::mstxCrossCoreBarrier, bufferLens, buffer);
     } else if (static_cast<InterfaceType>(interfaceId) == InterfaceType::MSTX_CROSS_CORE_SET_FLAG) {

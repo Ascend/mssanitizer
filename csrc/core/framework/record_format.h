@@ -171,6 +171,7 @@ std::ostream &operator<<(std::ostream &os, MstxVecUnaryDesc const &record);
 std::ostream &operator<<(std::ostream &os, MstxVecBinaryDesc const &record);
 std::ostream &operator<<(std::ostream &os, MstxDataCopyDesc const &record);
 std::ostream &operator<<(std::ostream &os, MstxDataCopyPadDesc const &record);
+std::ostream &operator<<(std::ostream &os, MstxDataCopyPadV2Desc const &record);
 std::ostream &operator<<(std::ostream &os, MstxRecord const &record);
 std::ostream &operator<<(std::ostream &os, ScatterVnchwconvRecord const &record);
 std::ostream &operator<<(std::ostream &os, SimtLoadStoreRecord const &record);

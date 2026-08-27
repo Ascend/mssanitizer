@@ -46,6 +46,7 @@ enum class InterfaceType : uint32_t {
 
     MSTX_DATA_COPY = 4001,
     MSTX_DATA_COPY_PAD,
+    MSTX_DATA_COPY_PAD_V2,
     MSTX_WITH_TENSOR,
 };
 
@@ -185,6 +186,24 @@ struct MstxDataCopyPadDesc {
     char name[MSTX_API_NAME_LENGTH];
 };
 
+enum class PaddingMode : uint8_t {
+    NORMAL = 0,
+    COMPACT,
+};
+
+struct MstxDataCopyPadV2Desc {
+    MstxTensorDesc dst;
+    MstxTensorDesc src;
+    PaddingMode padMode;
+    uint32_t lenBurst;
+    uint32_t nBurst;
+    uint32_t srcGap;
+    uint32_t dstGap;
+    uint32_t leftPad;
+    uint32_t rightPad;
+    char name[MSTX_API_NAME_LENGTH];
+};
+
 template<typename RecordT>
 struct InterfaceTypeTraits {};
 
@@ -204,6 +223,7 @@ INTERFACE_TYPE_TRAITS_SPEC(MstxVecUnaryDesc, InterfaceType::MSTX_VEC_UNARY_OP);
 INTERFACE_TYPE_TRAITS_SPEC(MstxVecBinaryDesc, InterfaceType::MSTX_VEC_BINARY_OP);
 INTERFACE_TYPE_TRAITS_SPEC(MstxDataCopyDesc, InterfaceType::MSTX_DATA_COPY);
 INTERFACE_TYPE_TRAITS_SPEC(MstxDataCopyPadDesc, InterfaceType::MSTX_DATA_COPY_PAD);
+INTERFACE_TYPE_TRAITS_SPEC(MstxDataCopyPadV2Desc, InterfaceType::MSTX_DATA_COPY_PAD_V2);
 
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
 

@@ -677,8 +677,8 @@ static void ParseRecordDmaMovDn2nzDav(const KernelRecord &record, std::vector<Sa
     }
 }
 
-static void ParseRecordMovAlignImpl(const KernelRecord &record, std::vector<SanEvent> &events, bool alignCheck)
-{
+static void ParseRecordMovAlignImpl(
+    const KernelRecord &record, std::vector<SanEvent> &events, bool alignCheck, bool compactMode = false) {
     SanEvent event;
     auto& memInfo = event.eventInfo.memInfo;
     auto& movAlignRecord = record.payload.movAlignRecord;
@@ -718,15 +718,23 @@ static void ParseRecordMovAlignImpl(const KernelRecord &record, std::vector<SanE
 
     uint64_t paddingSize = (movAlignRecord.leftPaddingNum + movAlignRecord.rightPaddingNum) *
         FormatConverter::GetDataSizeByType(movAlignRecord.dataType);
-    uint64_t ubWriteSize = CeilByAlignSize<UB_ALIGN_SIZE>(movAlignRecord.lenBurst + paddingSize);
     memInfo.memType = movAlignRecord.dstMemType;
     memInfo.opType = AccessType::WRITE;
     memInfo.addr = movAlignRecord.dst;
-    // 往 UB 写时，包含原始数据 + padding 数据 + dummy 数据
-    memInfo.blockNum = memInfo.memType == MemType::GM ? movAlignRecord.lenBurst : ubWriteSize;
-    memInfo.repeatStride = memInfo.memType == MemType::GM ?
-        movAlignRecord.lenBurst + movAlignRecord.dstGap :
-        ubWriteSize + movAlignRecord.dstGap * UB_ALIGN_SIZE;
+    // Compact模式将全部数据块合并成一个连续数据块，仅在最后一个数据块右侧填充，dstStride无效
+    if (compactMode) {
+        uint64_t compactSize = static_cast<uint64_t>(movAlignRecord.nBurst) * movAlignRecord.lenBurst + paddingSize;
+        memInfo.repeatTimes = 1U;
+        memInfo.repeatStride = 0U;
+        memInfo.blockNum = memInfo.memType == MemType::GM ? compactSize : CeilByAlignSize<UB_ALIGN_SIZE>(compactSize);
+    } else {
+        uint64_t ubWriteSize = CeilByAlignSize<UB_ALIGN_SIZE>(movAlignRecord.lenBurst + paddingSize);
+        memInfo.repeatTimes = movAlignRecord.nBurst;
+        // 往 UB 写时，包含原始数据 + padding 数据 + dummy 数据
+        memInfo.blockNum = memInfo.memType == MemType::GM ? movAlignRecord.lenBurst : ubWriteSize;
+        memInfo.repeatStride = memInfo.memType == MemType::GM ? movAlignRecord.lenBurst + movAlignRecord.dstGap
+                                                              : ubWriteSize + movAlignRecord.dstGap * UB_ALIGN_SIZE;
+    }
     if (alignCheck) {
         AlignChecker::Instance().CheckAlign(event, record.recordType);
     }
@@ -3612,6 +3620,34 @@ static void ParseRecordMstxDataCopyPad(const KernelRecord &record, std::vector<S
     ParseRecordMovAlignImpl(equivalence, events, false);
 }
 
+static void ParseRecordMstxDataCopyPadV2(const KernelRecord &record, std::vector<SanEvent> &events) {
+    auto &mstxRecord = record.payload.mstxRecord;
+    auto &mstxDataCopyPadV2 = mstxRecord.interface.mstxDataCopyPadV2Desc;
+
+    KernelRecord equivalence;
+    equivalence.recordType = RecordType::MOV_ALIGN;
+    equivalence.blockType = record.blockType;
+    equivalence.serialNo = record.serialNo;
+    MovAlignRecord &movAlignRecord = equivalence.payload.movAlignRecord;
+    movAlignRecord.dst = mstxDataCopyPadV2.dst.addr;
+    movAlignRecord.src = mstxDataCopyPadV2.src.addr;
+    movAlignRecord.location = mstxRecord.location;
+    movAlignRecord.srcGap = mstxDataCopyPadV2.srcGap;
+    movAlignRecord.dstGap = mstxDataCopyPadV2.dstGap;
+    movAlignRecord.lenBurst = mstxDataCopyPadV2.lenBurst;
+    movAlignRecord.nBurst = mstxDataCopyPadV2.nBurst;
+    movAlignRecord.dstMemType = AddrSpaceToMemType(mstxDataCopyPadV2.dst.space);
+    movAlignRecord.srcMemType = AddrSpaceToMemType(mstxDataCopyPadV2.src.space);
+    if (!FormatConverter::GetDataTypeByDataBits(mstxDataCopyPadV2.dst.dataBits, movAlignRecord.dataType)) {
+        SAN_ERROR_LOG(
+            "Get data type by data bits failed. dataBits: %d\n", static_cast<int>(mstxDataCopyPadV2.dst.dataBits));
+    }
+    movAlignRecord.leftPaddingNum = mstxDataCopyPadV2.leftPad;
+    movAlignRecord.rightPaddingNum = mstxDataCopyPadV2.rightPad;
+
+    ParseRecordMovAlignImpl(equivalence, events, false, mstxDataCopyPadV2.padMode == PaddingMode::COMPACT);
+}
+
 static void ParseRecordMstxStub(const KernelRecord &record, std::vector<SanEvent> &events)
 {
     SanEvent event;
@@ -3682,6 +3718,8 @@ static void ParseRecordMstxStub(const KernelRecord &record, std::vector<SanEvent
         ParseRecordMstxDataCopy(record, events);
     } else if (mstxRecord.interfaceType == InterfaceType::MSTX_DATA_COPY_PAD) {
         ParseRecordMstxDataCopyPad(record, events);
+    } else if (mstxRecord.interfaceType == InterfaceType::MSTX_DATA_COPY_PAD_V2) {
+        ParseRecordMstxDataCopyPadV2(record, events);
     }
 }
 

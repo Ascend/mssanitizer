@@ -615,6 +615,9 @@ void AddressSanitizer::DoWithLocalTensor(const MstxRecord &record, const std::ve
     } else if (record.interfaceType == InterfaceType::MSTX_DATA_COPY_PAD) {
         AddLocalTensorBound(boundsCheckR, record.interface.mstxDataCopyPadDesc.src);
         AddLocalTensorBound(boundsCheckW, record.interface.mstxDataCopyPadDesc.dst);
+    } else if (record.interfaceType == InterfaceType::MSTX_DATA_COPY_PAD_V2) {
+        AddLocalTensorBound(boundsCheckR, record.interface.mstxDataCopyPadV2Desc.src);
+        AddLocalTensorBound(boundsCheckW, record.interface.mstxDataCopyPadV2Desc.dst);
     }
 
     for (MemOpRecord const& r : records) {

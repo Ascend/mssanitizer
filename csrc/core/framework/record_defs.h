@@ -966,6 +966,7 @@ struct MstxRecord {
         MstxVecBinaryDesc mstxVecBinaryDesc;
         MstxDataCopyDesc mstxDataCopyDesc;
         MstxDataCopyPadDesc mstxDataCopyPadDesc;
+        MstxDataCopyPadV2Desc mstxDataCopyPadV2Desc;
         MstxCrossCoreBarrier mstxCrossCoreBarrier;
         MstxCrossCoreSetFlag mstxCrossCoreSetFlag;
         MstxCrossCoreWaitFlag mstxCrossCoreWaitFlag;
