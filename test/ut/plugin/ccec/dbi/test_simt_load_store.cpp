@@ -34,6 +34,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
+    head.simtInfo.ubDynamicSize = 0x10000; // 显式指定 UB 大小，保持 UB 访问(addr>=0x10000)越界，符合原期望
     head.checkParms.defaultcheck = true;
     head.checkParms.memcheck = true;
     head.supportSimt = true;
@@ -102,6 +103,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
+    head.simtInfo.ubDynamicSize = 0x10000; // 显式指定 UB 大小，保持 UB 访问(addr>=0x10000)越界，符合原期望
     head.checkParms.defaultcheck = true;
     head.checkParms.memcheck = true;
     head.supportSimt = true;
@@ -143,6 +145,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_atom_with_initcheck_expect_get_success
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
+    head.simtInfo.ubDynamicSize = 0x10000; // 显式指定 UB 大小，保持 UB 访问(addr>=0x10000)越界，符合原期望
     head.checkParms.defaultcheck = true;
     head.checkParms.memcheck = true;
     head.supportSimt = true;
