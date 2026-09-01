@@ -2,18 +2,23 @@
 	path = thirdparty/securec
 	url = https://gitcode.com/openeuler/libboundscheck.git
 	branch = master
+	ignore = all
 [submodule "thirdparty/json"]
 	path = thirdparty/json
 	url = https://gitcode.com/GitHub_Trending/js/json.git
+	ignore = all
 [submodule "thirdparty/makeself"]
 	path = thirdparty/makeself
 	url = https://gitcode.com/cann-src-third-party/makeself.git
 	branch = v2.5.0.x
+	ignore = all
 [submodule "thirdparty/llvm-project"]
 	path = thirdparty/llvm-project
 	url = https://gitcode.com/GitHub_Trending/ll/llvm-project.git
-        branch = refs/tags/llvmorg-19.1.7
+    branch = refs/tags/llvmorg-19.1.7
+	ignore = all
 [submodule "msopscommon"]
 	path = msopscommon
 	url = https://gitcode.com/Ascend/msopcom.git
 	branch = master
+	ignore = all

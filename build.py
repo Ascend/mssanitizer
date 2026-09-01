@@ -105,10 +105,19 @@ class BuildManager:
     def run(self):
         os.chdir(self.project_root)
 
+        extra_options = {}
+        for option in self.parsed_arguments.extra:
+            key, _, value = option.partition('=')
+            extra_options[key] = value
+            logging.info("--extra: %s = %s", key, value)
         # 在非 local 场景下按需更新依赖；在 local 场景下仅使用本地已有代码，不更新依赖。
         if 'local' not in self.parsed_arguments.command:
             from download_dependencies import DependencyManager
             DependencyManager(self.parsed_arguments).run()
+
+        if extra_options.get('only_down_deps') == 'true':
+            logging.info("only_down_deps=true, exiting after dependency download.")
+            return
 
         if 'test' in self.parsed_arguments.command:
             # -------------------- 单元测试 --------------------
@@ -116,7 +125,7 @@ class BuildManager:
             unit_test_build_dir.mkdir(exist_ok=True)
             os.chdir(unit_test_build_dir)
 
-            self._execute_command(["cmake", "..", "-DBUILD_TESTS=ON", "-DCMAKE_BUILD_TYPE=Debug"])
+            self._execute_command(["cmake", "..", "-DBUILD_TESTS=ON", "-DCMAKE_BUILD_TYPE=Debug","-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"])
             self._execute_command(["make", "-j", str(self.build_jobs), "mssanitizer_test"])
 
             test_binary_dir = unit_test_build_dir / "test" / "ut"
@@ -127,7 +136,7 @@ class BuildManager:
             product_build_dir.mkdir(exist_ok=True)
             os.chdir(product_build_dir)
 
-            self._execute_command(["cmake", "../cmake"])
+            self._execute_command(["cmake", "../cmake","-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"])
             self._execute_command(["make", "-j", str(self.build_jobs)])
 
             self._archive_artifacts()

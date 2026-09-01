@@ -1,8 +1,16 @@
+#build outputs
 build
 build_fuzz
 build_ut
 output
-.vscode
+artifacts
+#python
+__pycache__
+#others
 .codemate
 cmake-build-debug
 AGENTS.md
+.devcontainer/.host-gitconfig
+thirdparty
+# Pre-commit tools
+gitleaks
