@@ -673,6 +673,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 >
 > - --check-device-heap或--check-cann-heap使能后，将不会对Kernel内进行检测。
 > - Device侧内存检测和CANN软件栈内存检测不能同时使能，若同时使能会提示"CANNOT enable both --check-cann-heap and --check-device-heap"。
+> - --check-dcci使能后，竞争检测将只会使能“dcci缺失检测”子功能，不会再进行主功能“数据竞争检测”。
 > - 使用msSanitizer工具提供的API头文件重新编译的待检测程序只能用于Ascend CL系列接口的泄漏检测，无法用于Device接口的检测。
 
 ### 7.3 检测功能组合规则
@@ -751,5 +752,6 @@ error  info   warn
 1. msSanitizer工具不支持对多线程算子及使用掩码的向量类计算指令的检测。
 2. 启用 `--check-device-heap` 或 `--check-cann-heap` 后，将不再对 Kernel 内部进行检测。
 3. Device 侧内存检测与 CANN 软件栈内存检测不可同时启用；若同时启用，将报错：“CANNOT enable both --check-cann-heap and --check-device-heap”。
-4. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 Ascend CL 接口的内存泄漏检测，不支持 Device 接口检测。
-5. msSanitizer工具当前只支持对 blockDim 小于 100 的算子进行检测。
+4. 启用 `--check-dcci` 后，竞争检测将只分析 dcci 缺失，不会展示除 dcci 缺失以外的其他竞争检测结果。
+5. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 Ascend CL 接口的内存泄漏检测，不支持 Device 接口检测。
+6. msSanitizer工具当前只支持对 blockDim 小于 100 的算子进行检测。

@@ -252,33 +252,30 @@ void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent
     KernelRecord const &kernelRecord = record.payload.kernelRecord;
     recordWindow_.push({record, events});
 
-    static std::deque<KernelRecord> aheadDccis;
-    static std::deque<KernelRecord> afterDccis;
-
     // clear queue
     if (kernelRecord.recordType == RecordType::BLOCK_FINISH || kernelRecord.recordType == RecordType::KERNEL_FINISH ||
         kernelRecord.recordType == RecordType::FINISH) {
         while (!recordWindow_.empty()) {
-            PopWindowRecord(aheadDccis, afterDccis);
+            PopWindowRecord(aheadDccis_, afterDccis_);
         }
-        aheadDccis.clear();
-        afterDccis.clear();
+        aheadDccis_.clear();
+        afterDccis_.clear();
         return;
     }
 
     if (kernelRecord.recordType == RecordType::DCCI) {
-        afterDccis.push_back(kernelRecord);
+        afterDccis_.push_back(kernelRecord);
     }
 
     if (recordWindow_.size() > MAX_WINDOW_SIZE) {
-        PopWindowRecord(aheadDccis, afterDccis);
+        PopWindowRecord(aheadDccis_, afterDccis_);
     }
 }
 
-void RaceSanitizer::PopWindowRecord(std::deque<KernelRecord> &aheadDccis, std::deque<KernelRecord> &afterDccis) {
+void RaceSanitizer::PopWindowRecord(std::deque<KernelRecord> &aheadDccis_, std::deque<KernelRecord> &afterDccis_) {
     auto &front = recordWindow_.front();
     if (front.first.payload.kernelRecord.recordType == RecordType::DCCI) {
-        aheadDccis.push_back(front.first.payload.kernelRecord);
+        aheadDccis_.push_back(front.first.payload.kernelRecord);
     } else {
         // update DCCI distance in events
         for (auto &event : front.second) {
@@ -289,36 +286,36 @@ void RaceSanitizer::PopWindowRecord(std::deque<KernelRecord> &aheadDccis, std::d
                 continue;
             }
             event.eventInfo.memInfo.dcciDistance =
-                NearestDcciDistance(front.first.payload.kernelRecord, event, aheadDccis, afterDccis);
+                NearestDcciDistance(front.first.payload.kernelRecord, event, aheadDccis_, afterDccis_);
         }
     }
 
     DoImpl(front.first, front.second);
 
-    if (!aheadDccis.empty() &&
-        aheadDccis.front().serialNo + MAX_WINDOW_SIZE < front.first.payload.kernelRecord.serialNo) {
-        aheadDccis.pop_front();
+    if (!aheadDccis_.empty() &&
+        aheadDccis_.front().serialNo + MAX_WINDOW_SIZE < front.first.payload.kernelRecord.serialNo) {
+        aheadDccis_.pop_front();
     }
-    if (!afterDccis.empty() && afterDccis.front().serialNo == front.first.payload.kernelRecord.serialNo) {
-        afterDccis.pop_front();
+    if (!afterDccis_.empty() && afterDccis_.front().serialNo == front.first.payload.kernelRecord.serialNo) {
+        afterDccis_.pop_front();
     }
     recordWindow_.pop();
 }
 
 uint32_t RaceSanitizer::NearestDcciDistance(KernelRecord const &kernelRecord, SanEvent const &event,
-    std::deque<KernelRecord> &aheadDccis, std::deque<KernelRecord> &afterDccis) const {
+    std::deque<KernelRecord> &aheadDccis_, std::deque<KernelRecord> &afterDccis_) const {
     if (event.eventInfo.memInfo.opType != AccessType::READ && event.eventInfo.memInfo.opType != AccessType::WRITE) {
         return 0;
     }
 
     if (event.eventInfo.memInfo.opType == AccessType::READ) {
-        for (auto it = aheadDccis.crbegin(); it != aheadDccis.crend(); ++it) {
+        for (auto it = aheadDccis_.crbegin(); it != aheadDccis_.crend(); ++it) {
             if (DoesDcciHaveEffect(event, it->payload.dcciRecord)) {
                 return kernelRecord.serialNo - it->serialNo;
             }
         }
     } else {
-        for (auto it = afterDccis.cbegin(); it != afterDccis.cend(); ++it) {
+        for (auto it = afterDccis_.cbegin(); it != afterDccis_.cend(); ++it) {
             if (DoesDcciHaveEffect(event, it->payload.dcciRecord)) {
                 return it->serialNo - kernelRecord.serialNo;
             }

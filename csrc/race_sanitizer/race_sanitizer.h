@@ -75,6 +75,8 @@ private:
     DeviceType deviceType_ = DeviceType::INVALID;
     std::shared_ptr<std::vector<RaceDispInfo>> simtErrors_;
     std::queue<std::pair<SanitizerRecord, std::vector<SanEvent>>> recordWindow_;
+    std::deque<KernelRecord> aheadDccis_;
+    std::deque<KernelRecord> afterDccis_;
 };
 }
 #endif

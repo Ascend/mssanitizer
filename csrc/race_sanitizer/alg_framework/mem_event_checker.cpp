@@ -413,6 +413,11 @@ bool MemEventChecker::IsMissDcciEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxI
         return false;
     }
 
+    // DCCI 仅适用于 GM，其他地址不需要 DCCI
+    if (event1.memInfo.memType != MemType::GM && event2.memInfo.memType != MemType::GM) {
+        return false;
+    }
+
     // 两个事件至少要有一个是标量读写
     if (event1.pipe != PipeType::PIPE_S_CAL && event2.pipe != PipeType::PIPE_S_CAL) {
         return false;
@@ -514,20 +519,22 @@ void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, Race
             memType = curEvent.dynamicMemInfo.memType;
         }
         if (metaData.isStart) {
-            // 检查与历史写事件的冲突
-            CheckExistRaceEvents(historyWriteEventsIdxMap[memType],
-                                 checkFuncIter->second, curEventIdx, raceMemEventsIdx);
             if (ConfigManager::Instance().Get().checkDcci) {
                 CheckExistRaceEvents(historyWriteEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent, curEventIdx,
                     missDcciMemEventsIdx);
+            } else {
+                // 检查与历史写事件的冲突
+                CheckExistRaceEvents(
+                    historyWriteEventsIdxMap[memType], checkFuncIter->second, curEventIdx, raceMemEventsIdx);
             }
             if (opType == AccessType::WRITE) {
-                // 检查与历史读事件的冲突
-                CheckExistRaceEvents(historyReadEventsIdxMap[memType],
-                                     checkFuncIter->second, curEventIdx, raceMemEventsIdx);
                 if (ConfigManager::Instance().Get().checkDcci) {
                     CheckExistRaceEvents(historyReadEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent,
                         curEventIdx, missDcciMemEventsIdx);
+                } else {
+                    // 检查与历史读事件的冲突
+                    CheckExistRaceEvents(
+                        historyReadEventsIdxMap[memType], checkFuncIter->second, curEventIdx, raceMemEventsIdx);
                 }
                 historyWriteEventsIdxMap[memType].insert(curEventIdx);
             } else {

@@ -450,7 +450,13 @@ AICORE_FUNC_HEAD void Recorder::GetRegister(T Register::*reg, T &value) const
 
 AICORE_FUNC_HEAD void Recorder::SetMstxFuseScope(bool inMstxFuseScope) const
 {
-    if (memInfoSimdBlock_ == nullptr) {
+    if (memInfo_ == nullptr || memInfoSimdBlock_ == nullptr) {
+        return;
+    }
+
+    // skip scope fuse if dcci check is enabled
+    __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo_);
+    if (globalHead->checkParms.dcciCheck) {
         return;
     }
 

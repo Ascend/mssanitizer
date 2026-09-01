@@ -660,8 +660,55 @@ TEST(MemEventChecker, scalar_read_with_multi_cross_core_write_missing_dcci_expec
     MemEventChecker::RaceMemEventsIdx raceMemEvents;
     MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
     checker.ScanlineAlgorithm(raceMemEvents, missDcciEventsIdx);
-    ASSERT_EQ(raceMemEvents.size(), 3U);
+    ASSERT_EQ(raceMemEvents.size(), 0U);
     ASSERT_EQ(missDcciEventsIdx.size(), 2U);
+
+    ConfigManager::Instance().Get().checkDcci = false;
+}
+
+TEST(MemEventChecker, ub_events_should_not_trigger_missing_dcci)
+{
+    ConfigManager::Instance().Get().checkDcci = true;
+
+    constexpr uint64_t addr = 0x1000UL;
+    SanEvent event;
+    event.eventInfo.memInfo.memType = MemType::UB;
+    event.eventInfo.memInfo.addr = addr;
+    event.eventInfo.memInfo.blockNum = 1U;
+    event.eventInfo.memInfo.blockSize = 4U;
+    event.eventInfo.memInfo.blockStride = 1U;
+    event.eventInfo.memInfo.repeatTimes = 1U;
+    event.eventInfo.memInfo.repeatStride = 1U;
+    event.eventInfo.memInfo.dcciDistance = 0U;
+    MemEvent eWrite(event);
+    MemEvent eRead(event);
+
+    uint8_t blockDim = 10U;
+    VectorTime tWrite;
+    eWrite.loc.coreId = 1U;
+    tWrite.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
+    tWrite[static_cast<uint8_t>(PipeType::PIPE_S_CAL) + eWrite.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)];
+    eWrite.vt = tWrite;
+    eWrite.pipe = PipeType::PIPE_S_CAL;
+    eWrite.memInfo.opType = AccessType::WRITE;
+
+    VectorTime tRead;
+    eRead.loc.coreId = 0U;
+    tRead.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
+    tRead[static_cast<uint8_t>(PipeType::PIPE_S_CAL) + eRead.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)];
+    eRead.vt = tRead;
+    eRead.pipe = PipeType::PIPE_S_CAL;
+    eRead.memInfo.opType = AccessType::READ;
+
+    MemEventChecker checker;
+    checker.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, RaceCheckType::CROSS_BLOCK_CHECK);
+    checker.PushEvent(eWrite);
+    checker.PushEvent(eRead);
+    MemEventChecker::RaceMemEventsIdx raceMemEvents;
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEvents, missDcciEventsIdx);
+    // UB 上的跨核标量读写不需要 DCCI，不应产生 missing DCCI 告警
+    ASSERT_EQ(missDcciEventsIdx.size(), 0U);
 
     ConfigManager::Instance().Get().checkDcci = false;
 }
