@@ -194,6 +194,7 @@ const std::unordered_map<std::string, DeviceType> SOC_VERSION_MAP = {
     {"Ascend910_9382", DeviceType::ASCEND_910B2},
     {"Ascend910_9372", DeviceType::ASCEND_910B3},
     {"Ascend910_9362", DeviceType::ASCEND_910B4},
+    {"Ascend910_9363", DeviceType::ASCEND_910B4},
     {"Ascend950DT_950x", DeviceType::ASCEND_950DT_950x},
     {"Ascend950DT_950y", DeviceType::ASCEND_950DT_950y},
     {"Ascend950DT_9571", DeviceType::ASCEND_950DT_9571},
