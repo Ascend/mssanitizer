@@ -1520,7 +1520,8 @@ struct LoadL12DRecord {
     uint16_t kStartPosition;
     uint16_t mStep;
     uint16_t kStep;
-    uint16_t srcStride;
+    // srcStride 为有符号步长，为负时表示反向遍历(如 0xFFFF == -1)；dstStride 在手册中为无符号
+    int16_t srcStride;
     uint16_t dstStride;
     MemType dstMemType;
     TransposeMode transposeMode;

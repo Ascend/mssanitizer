@@ -22,6 +22,7 @@
 #include <utility>
 #include <sstream>
 #include <cstdint>
+#include <cstdlib>
 #include <algorithm>
 #include "record_format.h"
 #include "constant.h"
@@ -1617,6 +1618,21 @@ static void HandleTransposeCase(MemOpInfo &memInfo, const LoadL12DRecord &loadL1
     }
 }
 
+// stride 为 int16 有符号步长，为负时表示反向遍历(如 0xFFFF == -1)。下游 MemSeries 只支持正向递增，
+// 因此当 stride<0 时，将基地址前移到最低地址并改用 |stride| 正向建模，保证建模出的地址集合与
+// 带符号步长的遍历一致(原遍历仅方向相反，集合相同)。
+// @return: 重定位后的基地址下溢为负时为 false，表示无效地址；成功时通过 addr 返回重定位后的基地址
+static bool RebaseReverseStride(uint64_t &addr, uint32_t repeatTimes, uint32_t blockSize, int16_t stride) {
+    if (stride < 0) {
+        int64_t rebased = static_cast<int64_t>(addr) + static_cast<int64_t>(stride) * (repeatTimes - 1) * blockSize;
+        if (rebased < 0) {
+            return false;
+        }
+        addr = static_cast<uint64_t>(rebased);
+    }
+    return true;
+}
+
 static void ParseRecordLoadL12D(const KernelRecord &record, std::vector<SanEvent> &events)
 {
     SanEvent event;
@@ -1631,13 +1647,21 @@ static void ParseRecordLoadL12D(const KernelRecord &record, std::vector<SanEvent
         return;
     }
 
-    memInfo.addr = loadL12DRecord.src + (loadL12DRecord.kStartPosition * loadL12DRecord.srcStride +
-        loadL12DRecord.mStartPosition) * MATRIX_FRACTAL_SIZE;
+    // srcStride 已解析为 int16 有符号步长，可为负(反向遍历)
+    int64_t baseOffset = (static_cast<int64_t>(loadL12DRecord.kStartPosition) * std::abs(loadL12DRecord.srcStride) +
+                             loadL12DRecord.mStartPosition) *
+        MATRIX_FRACTAL_SIZE;
+    uint64_t baseAddr = static_cast<uint64_t>(static_cast<int64_t>(loadL12DRecord.src) + baseOffset);
+    if (!RebaseReverseStride(baseAddr, loadL12DRecord.kStep, MATRIX_FRACTAL_SIZE, loadL12DRecord.srcStride)) {
+        SAN_ERROR_LOG("Parse RecordLoadL12D failed, invalid addr");
+        return;
+    }
+    memInfo.addr = baseAddr;
     memInfo.blockNum = loadL12DRecord.mStep;
     memInfo.blockSize = MATRIX_FRACTAL_SIZE;
     memInfo.blockStride = 1;
     memInfo.repeatTimes = loadL12DRecord.kStep;
-    memInfo.repeatStride = loadL12DRecord.srcStride;
+    memInfo.repeatStride = std::abs(loadL12DRecord.srcStride);
     AlignChecker::Instance().CheckAlign(event, record.recordType);
     events.emplace_back(event);
 

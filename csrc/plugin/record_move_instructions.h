@@ -432,7 +432,7 @@ AICORE_FUNC_HEAD void RecordLoadL12DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
     record.kStartPosition = (config0 >> 16) & 0xFFFF;
     record.mStep = (config0 >> 32) & 0xFF;
     record.kStep = (config0 >> 40) & 0xFF;
-    record.srcStride = config1 & 0xFFFF;
+    record.srcStride = static_cast<int16_t>(config1 & 0xFFFF);
     record.dstStride = (config1 >> 16) & 0xFFFF;
     record.detailedDataType = detailedDataType;
     record.transposeMode = transposeMode;
@@ -976,7 +976,8 @@ AICORE_FUNC_HEAD void RecordLoad3DEvent(EXTRA_PARAMS_DEC,
     record.dstMemType = dstMemType;
     record.dataType = dataType;
 
-    uint64_t fmatrixConfig = 0, rpt = 0;
+    uint64_t fmatrixConfig = 0;
+    uint64_t rpt = 0;
     record.matrixMode = (config1 >> 47U) & 0x1;
     if (record.matrixMode == 0) {
         recorder.GetRegister(&Register::fmatrix, fmatrixConfig);
@@ -1047,7 +1048,8 @@ AICORE_FUNC_HEAD void RecordLoad3DV2Event(EXTRA_PARAMS_DEC,
     record.dstMemType = dstMemType;
     record.dataType = dataType;
 
-    uint64_t fmatrixConfig = 0, rpt = 0;
+    uint64_t fmatrixConfig = 0;
+    uint64_t rpt = 0;
     record.matrixMode = (config1 >> 47U) & 0x1;
     if (record.matrixMode == 0) {
         recorder.GetRegister(&Register::sprFmatrix, fmatrixConfig);

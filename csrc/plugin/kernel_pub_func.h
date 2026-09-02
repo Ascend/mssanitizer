@@ -226,7 +226,8 @@ AICORE_FUNC_HEAD void CopyRecordToGm(__gm__ Record *gmRecord, Record const *stac
     __gm__  uint32_t* gmBlockHead = reinterpret_cast<__gm__  uint32_t*>(gmRecord);
     uint32_t const *stackBlockHead = reinterpret_cast<uint32_t const*>(stackRecord);
     for (uint16_t i = 0; i < iterations; i++) {
-        *gmBlockHead++ = *stackBlockHead++;
+        // stackRecord 为刚填充完成的记录，此处复制的是结构体字节，非未初始化读取
+        *gmBlockHead++ = *stackBlockHead++; // NOLINT(clang-analyzer-core.uninitialized.Assign)
     }
 
     __gm__  uint8_t* gmBlockTail = reinterpret_cast<__gm__ uint8_t*>(gmBlockHead);

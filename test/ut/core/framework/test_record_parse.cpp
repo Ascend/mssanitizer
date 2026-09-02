@@ -994,6 +994,82 @@ TEST_F(TestRecordParse, parse_load_2d_sparse_record_with_repeat_is_zero_and_expe
     ASSERT_EQ(events.size(), 0);
 }
 
+TEST_F(TestRecordParse, parse_load_l1_2d_record_with_negative_src_stride_and_expect_success) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::LOAD_L1_2D;
+    record.payload.loadL12DRecord.dst = 0x20000;
+    record.payload.loadL12DRecord.src = 0x10000;
+    record.payload.loadL12DRecord.mStartPosition = 0;
+    record.payload.loadL12DRecord.kStartPosition = 0;
+    record.payload.loadL12DRecord.mStep = 4;
+    record.payload.loadL12DRecord.kStep = 5;
+    record.payload.loadL12DRecord.srcStride = -1;
+    record.payload.loadL12DRecord.dstStride = 3;
+    record.payload.loadL12DRecord.dstMemType = MemType::L0A;
+    record.payload.loadL12DRecord.transposeMode = TransposeMode::DISABLE;
+    record.payload.loadL12DRecord.detailedDataType = DetailedDataType::Default;
+    record.payload.loadL12DRecord.location.blockId = 9;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+
+    // READ: 源地址向负方向遍历，基址重定位到最低地址 (src - |stride| * (kStep-1) * 512)，
+    // repeatStride 使用 |srcStride| 正向建模，保证地址集合与带符号步长的遍历一致
+    const MemOpInfo &readInfo = events[0].eventInfo.memInfo;
+    ASSERT_EQ(readInfo.memType, MemType::L1);
+    ASSERT_EQ(readInfo.opType, AccessType::READ);
+    ASSERT_EQ(readInfo.addr, 0x10000 - 1 * (5 - 1) * 512); // 0xF800
+    ASSERT_EQ(readInfo.blockNum, 4);
+    ASSERT_EQ(readInfo.blockSize, 512);
+    ASSERT_EQ(readInfo.blockStride, 1);
+    ASSERT_EQ(readInfo.repeatTimes, 5);
+    ASSERT_EQ(readInfo.repeatStride, 1);
+
+    // WRITE: 目标地址不受负步长影响
+    const MemOpInfo &writeInfo = events[1].eventInfo.memInfo;
+    ASSERT_EQ(writeInfo.memType, MemType::L0A);
+    ASSERT_EQ(writeInfo.opType, AccessType::WRITE);
+    ASSERT_EQ(writeInfo.addr, 0x20000);
+    ASSERT_EQ(writeInfo.blockNum, 4);
+    ASSERT_EQ(writeInfo.blockSize, 512);
+    ASSERT_EQ(writeInfo.blockStride, 1);
+    ASSERT_EQ(writeInfo.repeatTimes, 5);
+    ASSERT_EQ(writeInfo.repeatStride, 3);
+}
+
+TEST_F(TestRecordParse, parse_load_l1_2d_record_with_negative_src_stride_underflow_and_expect_no_event) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    // src 过小，负步长重定位后基址下溢为负，应打印错误并直接返回，不产生任何事件
+    record.recordType = RecordType::LOAD_L1_2D;
+    record.payload.loadL12DRecord.dst = 0x20000;
+    record.payload.loadL12DRecord.src = 0x100;
+    record.payload.loadL12DRecord.mStartPosition = 0;
+    record.payload.loadL12DRecord.kStartPosition = 0;
+    record.payload.loadL12DRecord.mStep = 4;
+    record.payload.loadL12DRecord.kStep = 5;
+    record.payload.loadL12DRecord.srcStride = -1;
+    record.payload.loadL12DRecord.dstStride = 3;
+    record.payload.loadL12DRecord.dstMemType = MemType::L0A;
+    record.payload.loadL12DRecord.transposeMode = TransposeMode::DISABLE;
+    record.payload.loadL12DRecord.detailedDataType = DetailedDataType::Default;
+    record.payload.loadL12DRecord.location.blockId = 9;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 0);
+}
+
 TEST_F(TestRecordParse, parse_load_2d_to_cb_transpose_b4_record_and_expect_success)
 {
     std::vector<SanEvent> events;
