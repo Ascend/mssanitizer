@@ -78,6 +78,7 @@ export PYTORCH_NO_NPU_MEMORY_CACHING=1
 ```
 
 > [!NOTE]
+> 
 > In a Triton operator invocation scenario, PyTorch is also used to create tensors. You also need to set this environment variable and `TRITON_ALWAYS_COMPILE=1` to ensure the validity of the check.
 
 ## 5. Difference Between Detection Ranges With and Without Compilation Options
@@ -100,6 +101,7 @@ The following table compares the detection capabilities of the two methods:
 You are advised to first quickly locate the abnormal operator without adding compilation options, and then add compilation options to perform full check on the abnormal operator.
 
 > [!NOTE]
+> 
 > When compilation options are not added, the optimization level of the operator must be `O2`, and the `-q` option must be added in the operator linking phase to retain the symbol relocation information. Otherwise, the check function may fail. This method does not apply to Atlas inference products and is applicable only to operator kernel invocation scenarios.
 
 ## 6. Recommended Usage Order of the Four Detection Tools
@@ -182,6 +184,7 @@ You need to uninstall the installed msSanitizer tool.
    ```
 
    > [!NOTE]
+   > 
    > If the environment does not allow network access, download the script in a networked environment first and copy it to the target device. If the command does not respond, or connection failures, SSL certificate errors, or other issues occur, see [FAQ](https://www.hiascend.com/developer/blog/details/02176213671719317003).
 
 2. Run the uninstall command:

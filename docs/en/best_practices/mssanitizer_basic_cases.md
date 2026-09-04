@@ -19,6 +19,7 @@
     After the one-click script building and running is complete, the NPU-side executable file `_<kernel_name>_npu_` is generated in the project directory.
 
     > [!NOTE]
+    > 
     > If the `acl/acl.h` header file cannot be found during compilation, manually add the corresponding header file path to the `cmake/npu/CMakeLists.txt` file:
     >
     > ```cmake
@@ -83,6 +84,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/26.1.0/docs/en/user_guide/msopgen_user_guide.md).
 
     > [!NOTE]
+    > 
     > In the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp` directory of the sample project, modify the `op_kernel/CMakeLists.txt` file and add the `-sanitizer` option to the kernel implementation to support the check function.
     >
     > ```cmake
@@ -149,6 +151,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/26.1.0/docs/en/user_guide/msopgen_user_guide.md).
 
     > [!NOTE]
+    > 
     > Edit the `CMakeLists.txt` file in the sample project directory `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp/op_kernel` and add the compilation option `-sanitizer`.
     >
     > ```cmake

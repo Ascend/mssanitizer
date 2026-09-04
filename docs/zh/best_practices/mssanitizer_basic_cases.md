@@ -19,6 +19,7 @@
     一键式编译运行脚本完成后，在工程目录下生成NPU侧可执行文件`_<kernel_name>_npu_`。
 
     > [!NOTE]
+    > 
     > 若编译过程中出现 acl/acl.h 头文件找不到的问题，则可以手动在对应的cmake/npu/CMakeLists.txt中增加对应头文件路径：
     >
     > ```cmake
@@ -83,6 +84,7 @@
 2. 请参考《[MindStudio Ops Generator工具用户指南](https://gitcode.com/Ascend/msopgen/blob/26.1.0/docs/zh/user_guide/msopgen_user_guide.md)》中的“算子编译部署”章节，完成算子的编译部署。
 
     > [!NOTE]
+    > 
     > 在样例工程的`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp`目录下，修改在op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能
     >
     > ```cmake
@@ -149,6 +151,7 @@
 2. 参考《[MindStudio Ops Generator工具用户指南](https://gitcode.com/Ascend/msopgen/blob/26.1.0/docs/zh/user_guide/msopgen_user_guide.md)》中的“算子编译部署”章节，完成算子的编译部署。
 
     > [!NOTE]
+    > 
     > 编辑样例工程目录`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp/op_kernel`下的CMakeLists.txt文件，增加编译选项-sanitizer。
     >
     > ```cmake

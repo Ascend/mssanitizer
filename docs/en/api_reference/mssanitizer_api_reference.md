@@ -125,6 +125,7 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 Calls `aclrtFree` to release the memory on the device and reports the memory release information to the check tool. The actual memory release behavior and parameter meanings are the same as those of `aclrtFree`.
 
 > [!NOTE]
+> 
 > For details about `aclrtFree`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
@@ -163,6 +164,7 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 Calls `aclrtMemset` to initialize the memory, sets the content in the memory to a specified value, and reports the memory initialization information to the check tool. The actual memory initialization behavior and parameter meanings are the same as those of `aclrtMemset`.
 
 > [!NOTE]
+> 
 > For details about `aclrtMemset`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
@@ -204,6 +206,7 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 Calls `aclrtMemsetAsync` to initialize the memory, sets the content in the memory to a specified value, and reports the memory initialization information to the check tool. This API is asynchronous. The actual memory initialization behavior and parameter meanings are the same as those of `aclrtMemsetAsync`.
 
 > [!NOTE]
+> 
 > For details about `aclrtMemsetAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
@@ -246,6 +249,7 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 Calls `aclrtMemcpy` to copy the memory and reports the memory copy information to the check tool. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy`.
 
 > [!NOTE]
+> 
 > For details about `aclrtMemcpy`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
@@ -288,6 +292,7 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 Calls `aclrtMemcpyAsync` to copy the memory and reports the memory copy information to the check tool. This API is asynchronous. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpyAsync`.
 
 > [!NOTE]
+> 
 > For details about `aclrtMemcpyAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
@@ -331,6 +336,7 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 Calls `aclrtMemcpy2d` to copy the matrix data memory and reports the memory copy information to the check tool. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy2d`.
 
 > [!NOTE]
+> 
 > For details about `aclrtMemcpy2d`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
@@ -375,6 +381,7 @@ For details, see step 4 in "Checking the Memory of the CANN Software Stack" > "T
 Calls `aclrtMemcpy2dAsync` to copy the matrix data memory and reports the memory copy information to the check tool. This API is asynchronous. The actual memory copy behavior and parameter meanings are the same as those of `aclrtMemcpy2dAsync`.
 
 > [!NOTE]
+> 
 > For details about `aclrtMemcpy2dAsync`, see "ACL API Reference (C)" > "Runtime Management" > "Memory Management" in the [Application Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_0094.html).
 
 **Prototype**
@@ -426,6 +433,7 @@ void sanitizerReportMalloc(void *ptr, uint64_t size);
 ```
 
 > [!NOTE]
+> 
 > This API is the encapsulated `__sanitizer_report_malloc`. `__sanitizer_report_malloc` is a weak function and takes effect only when the user program is started by the check tool.
 
 **Parameters**
@@ -462,6 +470,7 @@ void sanitizerReportFree(void *ptr);
 ```
 
 > [!NOTE]
+> 
 > This API is the encapsulation of `__sanitizer_report_free`. `__sanitizer_report_free` is a weak function and takes effect only when the user program is started by the check tool.
 
 **Parameters**
@@ -487,6 +496,7 @@ None
 The msTX APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the msTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/26.1.0/docs/en/api_reference/README.md) to implement more accurate memory check.
 
 > [!NOTE]
+> 
 > The msTX APIs are not supported in the kernel launch symbol scenario described in "Exception Check Function Introduction" > "Function Description" > "Application Scenarios" > "Kernel Launch Operator Development" in the [MindStudio Sanitizer User Guide](../user_guide/mssanitizer_user_guide.md).
 
 ### msTX APIs
@@ -538,6 +548,7 @@ The msTX APIs are a set of extension APIs provided by MindStudio to allow you to
     ```
 
     > [!NOTE]
+    > 
     > Replace `${INSTALL_DIR}` with the file storage path after the CANN software is installed. For example, if the installation is performed as the root user, the default file storage path after the installation is `/usr/local/Ascend/cann`.
 
 #### Memory Pool Registration Example

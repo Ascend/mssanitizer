@@ -6,7 +6,7 @@
 
 This tool is integrated into CANN. If CANN is already installed and you do not need to update this tool, you can use it directly without following this document for installation.
 
-If CANN is not yet installed in your environment, see [CANN Quick Install](https://www.hiascend.com/cann/download) to install the Ascend NPU driver and CANN software (including the Toolkit and ops packages), and configure the environment variables.
+If CANN is not yet installed in your environment, see [CANN Quick Install](https://www.hiascend.com/en/cann/download) to install the Ascend NPU driver and CANN software (including the Toolkit and ops packages), and configure the environment variables.
 
 To upgrade this tool separately or use the latest version, you can install it in one of the following ways: [Online Installation](#21-online-installation), [Offline Installation](#22-offline-installation), [Source Code Installation](#23-source-code-installation).
 
@@ -14,11 +14,11 @@ To upgrade this tool separately or use the latest version, you can install it in
 
 ### 2.1 Online Installation
 
-If your device has internet access, you can automatically download and install the tool with a single command. Go to the MindStudio [Download](https://www.hiascend.com/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Online Installation" as the installation method. The system then guides you through the remaining steps.
+If your device has internet access, you can automatically download and install the tool with a single command. Go to the MindStudio [Download](https://www.hiascend.com/en/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Online Installation" as the installation method. The system then guides you through the remaining steps.
 
 ### 2.2 Offline Installation
 
-For devices in an enterprise intranet or other environments without internet access, first download the complete offline installation package on a machine with internet access, and then transfer it to the target device for installation. Go to the MindStudio [Download](https://www.hiascend.com/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Offline Installation" to obtain the installation package and instructions.
+For devices in an enterprise intranet or other environments without internet access, first download the complete offline installation package on a machine with internet access, and then transfer it to the target device for installation. Go to the MindStudio [Download](https://www.hiascend.com/en/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Offline Installation" to obtain the installation package and instructions.
 
 ### 2.3 Source Code Installation
 
@@ -119,7 +119,7 @@ Simply run the installation command. The tool automatically uninstalls the old v
 - Uninstall the old version first (see Section 4).
 - Then install the new version by following the methods in Section 2.
 
-You can run the `mssanitizer --version` command to view the version information about the current environment and then select the version to upgrade. When upgrading the version, pay attention to the version matching relationships. For details, see [Release Notes](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/26.1.0/release_notes.md).
+You can run the `mssanitizer --version` command to view the version information about the current environment and then select the version to upgrade. When upgrading the version, pay attention to the version matching relationships. For details, see [Release Notes](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/26.1.0/release_notes_en.md).
 
 ## 6. FAQ
 

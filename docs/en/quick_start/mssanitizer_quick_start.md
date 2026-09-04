@@ -69,6 +69,7 @@ MY_OP_PKG=$(find ./build_out -maxdepth 1 -name "custom_opp_*.run" | head -1) && 
 ```
 
 > [!NOTE]
+> 
 > If the following warning appears during redeployment, the environment variable `ASCEND_CUSTOM_OPP_PATH` is set to an incorrect value or contains multiple colon-separated paths:
 >
 > ```text

@@ -78,6 +78,7 @@ export PYTORCH_NO_NPU_MEMORY_CACHING=1
 ```
 
 > [!NOTE]
+> 
 > Triton算子调用场景同样会使用PyTorch创建Tensor，也需设置此环境变量和`TRITON_ALWAYS_COMPILE=1`以保证检测有效性。
 
 ## 不添加编译选项与添加编译选项的检测范围有何区别
@@ -100,6 +101,7 @@ export PYTORCH_NO_NPU_MEMORY_CACHING=1
 建议先用不添加编译选项的方式快速定位异常算子，再添加编译选项对异常算子进行全量检测。
 
 > [!NOTE]
+> 
 > 不添加编译选项时算子的优化等级需为O2，并保证算子链接阶段增加`-q`选项保留符号重定位信息，否则检测功能可能失效。该方式不适用于Atlas推理系列产品，且仅适用于算子内核调用场景。
 
 ## 四种检测工具的使用顺序建议
@@ -182,6 +184,7 @@ make -j$(nproc)
    ```
 
    > [!NOTE]
+   > 
    > 若环境不允许联网，请先在可联网的环境下载该脚本后拷贝到目标设备。若执行命令无响应或出现连接失败、SSL证书错误等问题，请参见[FAQ](https://www.hiascend.com/developer/blog/details/02176213671719317003)。
 
 2. 执行卸载：

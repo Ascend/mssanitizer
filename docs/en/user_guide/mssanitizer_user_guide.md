@@ -75,6 +75,7 @@ mssanitizer --tool=memcheck ./add_npu
 ```
 
 > [!NOTE]
+> 
 > When the custom operators are launched through `<<<>>>` and integrated by torch, the GM is managed in memory pool mode by default, which may cause inaccurate out-of-bounds check results. Therefore, you need to set the following environment variable to disable the memory pool before the check to obtain more accurate check results:
 >
 > ```shell
@@ -118,6 +119,7 @@ To ensure check accuracy and avoid cache interference, set the following environ
 | `PYTORCH_NO_NPU_MEMORY_CACHING=1` | Disables the NPU memory pool mechanism of PyTorch to prevent it from interfering with the memory check result.|
 
 > [!NOTE]
+> 
 > In a Triton scenario, PyTorch is used to create tensors. In the PyTorch framework, the GM is managed in memory pool mode by default, which interferes with memory check. Therefore, the memory cache must be disabled to ensure the validity of the check.
 
 For details, see section "Detecting Triton Operators" in [Basic Scenario Cases](../best_practices/mssanitizer_basic_cases.md).

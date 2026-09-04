@@ -68,7 +68,8 @@ bash ./build.sh
 MY_OP_PKG=$(find ./build_out -maxdepth 1 -name "custom_opp_*.run" | head -1) && bash $MY_OP_PKG
 ```
 
-> [!NOTE]说明
+> [!NOTE]
+> 
 > 如果重新部署时出现如下告警，则说明环境变量 ASCEND_CUSTOM_OPP_PATH 值不正确或包含多个以冒号间隔的路径：
 >
 > ```text

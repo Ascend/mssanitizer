@@ -99,7 +99,9 @@ python download_dependencies.py test
 #### 4.2.2 Running UT
 
 > [!NOTE]
+> 
 > **CMake entry description for UT**
+> 
 > The UT build uses `CMakeLists.txt` in the root directory (that is, `cmake ..` instead of `cmake ../cmake`) of the project. Only the test and dependency are built, and the .run packaging process is not included.
 
 ```shell

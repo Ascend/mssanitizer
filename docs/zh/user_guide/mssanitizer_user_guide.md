@@ -75,6 +75,7 @@ mssanitizer --tool=memcheck ./add_npu
 ```
 
 > [!NOTE]
+> 
 > 在`<<<>>>`自定义算子接入torch场景时，默认使用内存池的方式管理GM内存，可能会导致越界检测结果不准确。因此，在检测前需要额外设置如下环境变量关闭内存池，从而获得更精确的检测结果。
 >
 > ```shell
@@ -118,6 +119,7 @@ mssanitizer --tool=memcheck ./add_npu
 | `PYTORCH_NO_NPU_MEMORY_CACHING=1` | 禁用 PyTorch 的 NPU 内存池机制，防止其干扰内存检测结果 |
 
 > [!NOTE]
+> 
 > Triton 场景会使用 PyTorch 创建 Tensor，PyTorch 框架内默认以内存池的方式管理 GM 内存，会对内存检测产生干扰，因此必须关闭内存缓存以保证检测的有效性。
 
 详细使用示例可参考《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中的"检测 Triton 算子"章节。
