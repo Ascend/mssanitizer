@@ -75,6 +75,7 @@ mssanitizer --tool=memcheck ./add_npu
 ```
 
 > [!NOTE]
+> 
 > 在`<<<>>>`自定义算子接入torch场景时，默认使用内存池的方式管理GM内存，可能会导致越界检测结果不准确。因此，在检测前需要额外设置如下环境变量关闭内存池，从而获得更精确的检测结果。
 >
 > ```shell
@@ -119,6 +120,7 @@ mssanitizer --tool=memcheck ./add_npu
 | `TRITON_ENABLE_SANITIZER=1` | 使能检测工具 |
 
 > [!NOTE]
+> 
 > Triton 场景会使用 PyTorch 创建 Tensor，PyTorch 框架内默认以内存池的方式管理 GM 内存，会对内存检测产生干扰，因此必须关闭内存缓存以保证检测的有效性。
 
 详细使用示例可参考《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中的"检测 Triton 算子"章节。
@@ -639,13 +641,13 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 
 | 参数名称 | 参数描述 | 参数取值 | 必选 |
 | --- | --- | --- | --- |
-| -v，--version | 查询msSanitizer工具版本。 | - | 否 |
+| -V，--version | 查询msSanitizer工具版本信息。<br>-V：作为标准版本参数。<br>-v：作为兼容参数，不影响旧脚本，但不在出现在帮助信息中。| - | 否 |
 | -t，--tool | 指定异常检测的子工具。 | memcheck：内存检测（默认）<br>racecheck：竞争检测<br>initcheck：未初始化检测<br>synccheck：同步检测 | 否 |
 | --log-file | 指定检测报告输出到文件。 | {file_name}，如配置为test_log。<br>说明：<br>仅支持数字、大小写字母和- . / _四种符号。<br>为避免日志泄漏风险，建议限制该文件权限，确保只有授权人员才能访问该文件。<br>工具会以覆盖的方式将报告输出到test_log文件。若test_log文件中已有内容，这些内容将会被清空。因此，建议指定一个空文件用于输出报告。 | 否 |
 | --log-level | 指定检测报告输出等级。 | info：输出INFO/WARNING/ERROR级别的检测结果。<br>warn（默认）：输出WARNING/ERROR级别的检测结果。<br>error：输出ERROR级别的检测结果。 | 否 |
 | --max-debuglog-size | 指定检测工具调试输出日志中单个文件大小的上限。 | 可设定范围为1~10240之间的整数，单位为MB。<br>默认值为1024。<br>说明：<br>--max-debuglog-size=100就表示单个调试日志的大小上限为100MB。 | 否 |
-| --block-id | 是否启用单block检测功能。 | 可设定范围为0~200之间的整数。<br>启用前<br>内存检测、未初始化检测和同步检测：默认检测所有block。<br>竞争检测：核间默认检测所有block，核内默认检测block 0的流水内及流水间的竞争。<br>启用后<br>内存检测、未初始化检测和同步检测：检测指定block。<br>竞争检测：核间不进行检测，检测指定block的流水内及流水间的竞争。 | 否 |
-| --cache-size | 表示单block的GM内存大小。 | 单block可设定范围为1~8192之间的整数，单位为MB。<br>单block默认值为100MB，表示单block可申请100MB的内存大小。<br>说明：<br>启用单block检测时，--cache-size的最大值为8192MB。不启用单block检测时，--cache-size可设置的最大值为(24*1024 / block数量) 。<br>当--cache-size值不满足需求时，异常检测工具将会打印信息提示用户重新设置--cache-size值，具体请参见《MindStudio Sanitizer常见问题》中的msSanitizer工具提示--cache-size异常。 | 否 |
+| --block-id | 是否启用单block检测功能。 | 可设定范围为0~200之间的整数。<br>启用前：<br>内存检测、未初始化检测和同步检测：默认检测所有block。<br>竞争检测：核间默认检测所有block，核内默认检测block 0的流水内及流水间的竞争。<br>启用后：<br>内存检测、未初始化检测和同步检测：检测指定block。<br>竞争检测：核间不进行检测，检测指定block的流水内及流水间的竞争。 | 否 |
+| --cache-size | 表示单block的GM内存大小。 | 单block可设定范围为1~8192之间的整数，单位为MB。<br>单block默认值为100MB，表示单block可申请100MB的内存大小。<br>说明：<br>启用单block检测时，--cache-size的最大值为8192MB。不启用单block检测时，--cache-size可设置的最大值为(24*1024 / block数量)。<br>当--cache-size值不满足需求时，异常检测工具将会打印信息提示用户重新设置--cache-size值，具体请参见《MindStudio Sanitizer常见问题》中的msSanitizer工具提示--cache-size异常。 | 否 |
 | --kernel-name | 指定要检测的算子名称。 | 支持使用算子名中的部分字符串来进行模糊匹配。如果不指定，则系统默认会对整个程序执行期间所调度的所有算子进行检测。<br>例如，需要同时检测名为"abcd"和"bcd"的算子时，可以通过配置--kernel-name="bc"来实现这一需求，系统会自动识别并检测所有包含"bc"字符串的算子。 | 否 |
 | --full-backtrace | 显示 AscendC API 内的调用栈回溯。 | yes：显示完整的调用栈回溯。<br>no（默认）：不显示 AscendC API 内的调用栈。 | 否 |
 | --demangle | 设置输出中函数名显示的 demangle 模式。 | full（默认）：显示完整的 demangle 后的函数名。<br>simple：仅显示函数名，不包含返回值、参数列表。<br>no：显示未 demangle 的函数名。 | 否 |
