@@ -329,7 +329,7 @@ ReturnType CrossNpuRaceAlgImpl::ProcessBlockSyncEvent(const SanEvent& event)
         VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
         crossCoreSyncInfoContainer.SetBlockSyncInfo(event.eventInfo.fftsSyncInfo.flagId,
             static_cast<FftsSyncMode>(event.eventInfo.fftsSyncInfo.mode), blockIndex,
-            vc_[curPipe], event.eventInfo.fftsSyncInfo.vecSubBlockDim);
+            vc_[curPipe], event.eventInfo.fftsSyncInfo.vecSubBlockDim, event.loc, event.serialNo);
         return ReturnType::PROCESS_OK;
     } else if (event.eventInfo.fftsSyncInfo.opType == SyncType::WAIT_FLAG_DEV) {
         if (crossCoreSyncInfoContainer.GetBlockSyncInfo(event.eventInfo.fftsSyncInfo.flagId,
@@ -449,6 +449,25 @@ void CrossNpuRaceAlgImpl::CacheMstxCrossSet(const SanEvent& event)
             iter->second++;                     // 次数+1
         } else {
             mstxSetCrossMap[key] = 1;          // 初始值设置为1
+        }
+    }
+}
+
+std::vector<CrossCoreSyncWarnInfo> CrossNpuRaceAlgImpl::GetFlagIdWarnInfo() const {
+    std::vector<CrossCoreSyncWarnInfo> warnInfos;
+    for (const auto &deviceKernels : crossCoreSyncInfoContainer_) {
+        for (const auto &container : deviceKernels) {
+            const auto &warnInfo = container.GetFlagIdWarnInfo();
+            warnInfos.insert(warnInfos.end(), warnInfo.begin(), warnInfo.end());
+        }
+    }
+    return warnInfos;
+}
+
+void CrossNpuRaceAlgImpl::ClearFlagIdWarnInfo() {
+    for (auto &deviceKernels : crossCoreSyncInfoContainer_) {
+        for (auto &container : deviceKernels) {
+            container.ClearFlagIdWarnInfo();
         }
     }
 }

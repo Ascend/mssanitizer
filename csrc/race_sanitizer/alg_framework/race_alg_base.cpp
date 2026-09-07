@@ -31,7 +31,7 @@ ReturnType RaceAlgBase::ProcessBlockSyncEvent(const SanEvent &event, RaceCheckTy
         memChecker_.SetVecSubBlockDim(event.eventInfo.fftsSyncInfo.vecSubBlockDim);
         crossCoreSyncInfoContainer_.SetBlockSyncInfo(event.eventInfo.fftsSyncInfo.flagId,
             static_cast<FftsSyncMode>(event.eventInfo.fftsSyncInfo.mode), blockIndex,
-            vc_[curPipe], event.eventInfo.fftsSyncInfo.vecSubBlockDim);
+            vc_[curPipe], event.eventInfo.fftsSyncInfo.vecSubBlockDim, event.loc, event.serialNo);
         return ReturnType::PROCESS_OK;
     } else if (event.eventInfo.fftsSyncInfo.opType == SyncType::WAIT_FLAG_DEV) {
         if (crossCoreSyncInfoContainer_.GetBlockSyncInfo(event.eventInfo.fftsSyncInfo.flagId, blockIndex,
@@ -119,5 +119,12 @@ ReturnType RaceAlgBase::ProcessGetRlsBufSyncEvent(const SanEvent& event, RaceChe
     }
     return ReturnType::PROCESS_OK;
 }
+
+const std::vector<CrossCoreSyncWarnInfo> &RaceAlgBase::GetFlagIdWarnInfo() const
+{
+    return crossCoreSyncInfoContainer_.GetFlagIdWarnInfo();
+}
+
+void RaceAlgBase::ClearFlagIdWarnInfo() { crossCoreSyncInfoContainer_.ClearFlagIdWarnInfo(); }
 
 }

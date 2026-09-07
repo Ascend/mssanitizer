@@ -40,6 +40,7 @@ public:
 
 private:
     void RaceSanitizerRecord(std::shared_ptr<std::vector<RaceDispInfo>> p) const;
+    void ReportFlagIdWarnInfo(const std::vector<CrossCoreSyncWarnInfo> &warnInfos) const;
 
 private:
     MSG_FUNC msgFunc_;

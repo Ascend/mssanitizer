@@ -43,6 +43,10 @@ public:
     std::shared_ptr<std::vector<RaceDispInfo>> GetResult() const;
     bool IsFinished() const;
 
+    // 获取/清空 mode4 场景 flag_id 非法告警信息（聚合所有设备/内核的告警）
+    std::vector<CrossCoreSyncWarnInfo> GetFlagIdWarnInfo() const;
+    void ClearFlagIdWarnInfo();
+
 private:
     ReturnType ProcessSanitizerControlEvent(const SanEvent& event);
     ReturnType ProcessEvent(const SanEvent& event);

@@ -25,6 +25,7 @@ void CrossCoreSyncInfoContainer::Init(uint32_t blockNum, KernelType kernelType)
     kernelType_ = kernelType;
     blockSyncEvent_.resize(blockNum);
     blockSoftSyncInfo_.resize(blockNum);
+    flagIdWarnInfo_.clear();
 }
 
 bool IsAIC(uint32_t blockIndex, KernelType kernelType)
@@ -177,14 +178,17 @@ void CrossCoreSyncInfoContainer::SetMode2SyncInfo(uint8_t flagId, uint32_t block
 }
 
 // mode4:AIV0->AIC, AIV1->AIC或AIC->AIV0, AIC->AIV1, AIV0/AIV1可单独触发AIC等待
-void CrossCoreSyncInfoContainer::SetMode4SyncInfo(uint8_t syncId, uint32_t blockIdx, const VectorTime &vectorTime, uint8_t vecSubBlockDim)
+void CrossCoreSyncInfoContainer::SetMode4SyncInfo(uint8_t syncId, uint32_t blockIdx, const VectorTime &vectorTime,
+    uint8_t vecSubBlockDim, const LocInfo &loc, uint64_t serialNo)
 {
     if (vecSubBlockDim == 0) {
         SAN_WARN_LOG("Set SyncInfo Mode 4 failed due to VecSubBlockDim error");
         return;
     }
     // AIV上syncID超过15时属于不合法范围，硬件会截断高bit位，工具需同步截断以避免死锁误报
+    // 同时收集参数异常告警，检测结束时主动提示用户AIV核flag_id参数非法
     if (!IsAIC(blockIdx, kernelType_) && syncId >= 16) {
+        AddFlagIdWarnInfo(syncId, loc, serialNo);
         syncId = syncId & 0xF;
     }
     blockSyncEvent_[blockIdx][syncId].setVec4.push(vectorTime);
@@ -232,7 +236,7 @@ void CrossCoreSyncInfoContainer::SetMode4SyncInfo(uint8_t syncId, uint32_t block
 }
 
 void CrossCoreSyncInfoContainer::SetBlockSyncInfo(uint8_t flagId, FftsSyncMode mode, uint32_t blockIdx,
-    const VectorTime &vectorTime, uint8_t vecSubBlockDim)
+    const VectorTime &vectorTime, uint8_t vecSubBlockDim, const LocInfo &loc, uint64_t serialNo)
 {
 
     if (flagId > MAX_FLAG_ID) {
@@ -249,9 +253,31 @@ void CrossCoreSyncInfoContainer::SetBlockSyncInfo(uint8_t flagId, FftsSyncMode m
     } else if (mode == FftsSyncMode::MODE2) {
         SetMode2SyncInfo(flagId, blockIdx, vectorTime, vecSubBlockDim);
     } else if (mode == FftsSyncMode::MODE4) {
-        SetMode4SyncInfo(flagId, blockIdx, vectorTime, vecSubBlockDim);
+        SetMode4SyncInfo(flagId, blockIdx, vectorTime, vecSubBlockDim, loc, serialNo);
     }
 }
+
+void CrossCoreSyncInfoContainer::AddFlagIdWarnInfo(uint8_t flagId, const LocInfo &loc, uint64_t serialNo)
+{
+    CrossCoreSyncWarnInfo warnInfo{};
+    warnInfo.flagId = flagId;
+    warnInfo.baseEvent.serialNo = serialNo;
+    warnInfo.baseEvent.deviceId = loc.deviceId;
+    warnInfo.baseEvent.kernelIdx = loc.kernelIdx;
+    warnInfo.baseEvent.coreId = loc.coreId;
+    warnInfo.baseEvent.blockType = loc.blockType;
+    warnInfo.baseEvent.pc = loc.pc;
+    warnInfo.baseEvent.fileNo = loc.fileNo;
+    warnInfo.baseEvent.lineNo = loc.lineNo;
+    flagIdWarnInfo_.emplace_back(warnInfo);
+}
+
+const std::vector<CrossCoreSyncWarnInfo> &CrossCoreSyncInfoContainer::GetFlagIdWarnInfo() const
+{
+    return flagIdWarnInfo_;
+}
+
+void CrossCoreSyncInfoContainer::ClearFlagIdWarnInfo() { flagIdWarnInfo_.clear(); }
 
 bool CrossCoreSyncInfoContainer::GetBlockSyncInfo(uint8_t flagId, uint32_t blockIdx, VectorTime &vectorTime)
 {

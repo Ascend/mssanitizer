@@ -17,6 +17,8 @@
 
 #include "race_sanitizer.h"
 #include <sstream>
+#include <algorithm>
+#include <set>
 #include "core/framework/config_manager.h"
 #include "core/framework/platform_config.h"
 #include "core/framework/runtime_context.h"
@@ -237,6 +239,17 @@ void RaceSanitizer::DoImpl(const SanitizerRecord &record, const std::vector<SanE
         RaceSanitizerRecord(simtErrors_);
         simtErrors_->clear();
     }
+
+    // 收集并上报 mode4 场景 flag_id 非法告警
+    std::vector<CrossCoreSyncWarnInfo> allWarnInfos;
+    for (const auto &it : raceAlgs_) {
+        if (it->IsFinished()) {
+            const auto &warnInfos = it->GetFlagIdWarnInfo();
+            allWarnInfos.insert(allWarnInfos.end(), warnInfos.begin(), warnInfos.end());
+            it->ClearFlagIdWarnInfo();
+        }
+    }
+    ReportFlagIdWarnInfo(allWarnInfos);
 }
 
 void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
@@ -350,6 +363,11 @@ bool RaceSanitizer::DoesDcciHaveEffect(SanEvent const &event, DcciRecord const &
     }
     // check if on same cache line
     return event.eventInfo.memInfo.addr / cacheLineSize == dcciRecord.addr / cacheLineSize;
+}
+
+void RaceSanitizer::ReportFlagIdWarnInfo(const std::vector<CrossCoreSyncWarnInfo> &warnInfos) {
+    // 去重、缓存调用栈与打屏上报统一走公共函数
+    ReportFlagIdWarnInfos(warnInfos, RuntimeContext::Instance().kernelSummary_.kernelName, msgFunc_);
 }
 
 void RaceSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockType blockType, uint64_t serialNo)

@@ -163,7 +163,8 @@ ReturnType PipelineReplayer::ProcessBlockSyncEvent(const SanEvent& event)
 
     if (fftsInfo.opType == SyncType::FFTS_SYNC) {
         crossCoreSyncInfoContainer_.SetBlockSyncInfo(fftsInfo.flagId,
-            static_cast<FftsSyncMode>(fftsInfo.mode), blockIndex, vt, fftsInfo.vecSubBlockDim);
+            static_cast<FftsSyncMode>(fftsInfo.mode), blockIndex, vt, fftsInfo.vecSubBlockDim, event.loc,
+            event.serialNo);
         return ReturnType::PROCESS_OK;
     } else if (fftsInfo.opType == SyncType::WAIT_FLAG_DEV) {
         if (crossCoreSyncInfoContainer_.GetBlockSyncInfo(fftsInfo.flagId, blockIndex, vt)) {

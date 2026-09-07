@@ -14,6 +14,8 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
+#include <algorithm>
+#include <set>
 #include "core/framework/kernel_manager.h"
 #include "core/framework/record_defs.h"
 #include "core/framework/sanitizer_base.h"
@@ -40,6 +42,8 @@ void CrossNpuRaceSanitizer::Do(const SanitizerRecord &record, const std::vector<
 
     if (raceAlg_.IsFinished()) {
         RaceSanitizerRecord(raceAlg_.GetResult());
+        ReportFlagIdWarnInfo(raceAlg_.GetFlagIdWarnInfo());
+        raceAlg_.ClearFlagIdWarnInfo();
     }
 }
 
@@ -95,6 +99,24 @@ bool CrossNpuRaceSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
 {
     raceAlg_.SetKernelInfo(kernelInfo);
     return true;
+}
+
+void CrossNpuRaceSanitizer::ReportFlagIdWarnInfo(const std::vector<CrossCoreSyncWarnInfo> &warnInfos) const {
+    if (warnInfos.empty()) {
+        return;
+    }
+
+    // 当前 NPU 间检测时限定相同的 kernelName 间，因此任意取一个告警用于获取 kernelName
+    ErrorEvent const &event = warnInfos[0].baseEvent;
+    KernelSummary kernelSummary{};
+    if (!KernelManager::Instance().Get(event.deviceId, event.kernelIdx, kernelSummary)) {
+        SAN_ERROR_LOG("Get kernelSummary failed in ReportFlagIdWarnInfo. deviceId: %u, kernelIdx: %u", event.deviceId,
+            event.kernelIdx);
+        return;
+    }
+
+    // 去重、缓存调用栈与打屏上报统一走公共函数
+    ReportFlagIdWarnInfos(warnInfos, kernelSummary.kernelName, msgFunc_);
 }
 
 } // namespace Sanitizer

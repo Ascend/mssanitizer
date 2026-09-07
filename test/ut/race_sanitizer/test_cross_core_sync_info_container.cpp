@@ -22,6 +22,19 @@ using namespace Sanitizer;
 
 namespace SanitizerTest {
 
+LocInfo BuildAivLoc() {
+    LocInfo loc{};
+    loc.fileNo = 1;
+    loc.lineNo = 10;
+    loc.pc = 0x1234;
+    loc.deviceIdx = 0;
+    loc.kernelIdx = 0;
+    loc.deviceId = 0;
+    loc.coreId = 25;
+    loc.blockType = BlockType::AIVEC;
+    return loc;
+}
+
 TEST(CrossCoreSyncInfoContainer, set_ffts_mode0_and_wait_flag_dev_expect_success)
 {
     CrossCoreSyncInfoContainer syncContainer;
@@ -200,5 +213,64 @@ TEST(CrossCoreSyncInfoContainer, aiv1_wait_intra_block_with_syncid_over_15_expec
     bool ret = syncContainer.GetIntraBlockSyncInfo(20, 1, vt);
     ASSERT_TRUE(ret);
     ASSERT_EQ(vt[0], 1U);
+}
+
+// AIV 核 mode4 场景使用非法 flag_id(>=16) 应触发告警，且不影响硬件截断逻辑
+TEST(CrossCoreSyncInfoContainer, aiv_set_mode4_with_invalid_flag_id_expect_warn)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 0, vt, 2, BuildAivLoc(), 100);
+    const auto &warnInfos = syncContainer.GetFlagIdWarnInfo();
+    ASSERT_EQ(warnInfos.size(), 1U);
+    ASSERT_EQ(warnInfos[0].flagId, 20U);
+    ASSERT_EQ(warnInfos[0].baseEvent.serialNo, 100U);
+    ASSERT_EQ(warnInfos[0].baseEvent.deviceId, 0U);
+    ASSERT_EQ(warnInfos[0].baseEvent.coreId, 25U);
+    ASSERT_EQ(warnInfos[0].baseEvent.blockType, BlockType::AIVEC);
+    ASSERT_EQ(warnInfos[0].baseEvent.pc, 0x1234U);
+    // 告警收集不影响硬件截断逻辑
+    std::fill(vt.begin(), vt.end(), 0);
+    bool ret = syncContainer.GetIntraBlockSyncInfo(4, 2, vt);
+    ASSERT_TRUE(ret);
+}
+
+// AIV 核 mode4 场景使用合法 flag_id(0-15) 不应触发告警
+TEST(CrossCoreSyncInfoContainer, aiv_set_mode4_with_valid_flag_id_expect_no_warn)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    syncContainer.SetBlockSyncInfo(5, FftsSyncMode::MODE4, 0, vt, 2, BuildAivLoc(), 100);
+    ASSERT_TRUE(syncContainer.GetFlagIdWarnInfo().empty());
+}
+
+// AIC 核 mode4 场景使用合法 flag_id(16-31) 不应触发告警
+TEST(CrossCoreSyncInfoContainer, aic_set_mode4_with_valid_flag_id_expect_no_warn)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // blockIdx=2 为 AIC，使用 flagId=20(16-31) 合法
+    syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 2, vt, 2, BuildAivLoc(), 100);
+    ASSERT_TRUE(syncContainer.GetFlagIdWarnInfo().empty());
+}
+
+// 多条非法 flag_id 应记录多条告警，ClearFlagIdWarnInfo 可清空
+TEST(CrossCoreSyncInfoContainer, flag_id_warn_info_clear_expect_empty)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(3, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 0, vt, 2, BuildAivLoc(), 100);
+    syncContainer.SetBlockSyncInfo(18, FftsSyncMode::MODE4, 1, vt, 2, BuildAivLoc(), 101);
+    ASSERT_EQ(syncContainer.GetFlagIdWarnInfo().size(), 2U);
+    syncContainer.ClearFlagIdWarnInfo();
+    ASSERT_TRUE(syncContainer.GetFlagIdWarnInfo().empty());
 }
 }

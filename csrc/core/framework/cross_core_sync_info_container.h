@@ -90,10 +90,14 @@ public:
     void Init(uint32_t blockNum, KernelType kernelType);
     // 设置同步向量时钟
     void SetBlockSyncInfo(uint8_t flagId, FftsSyncMode mode, uint32_t blockIdx, const VectorTime &vectorTime,
-                          uint8_t vecSubBlockDim = 2);
+                          uint8_t vecSubBlockDim = 2, const LocInfo &loc = {}, uint64_t serialNo = 0);
     // 获取同步向量时钟并更新本地时钟
     bool GetBlockSyncInfo(uint8_t flagId, uint32_t blockIdx, VectorTime &vectorTime);
     bool GetIntraBlockSyncInfo(uint8_t flagId, uint32_t blockIdx, VectorTime &vectorTime);
+
+    // 获取/清空 mode4 场景 flag_id 非法告警信息
+    const std::vector<CrossCoreSyncWarnInfo> &GetFlagIdWarnInfo() const;
+    void ClearFlagIdWarnInfo();
 
     // 设置同步向量时钟-软同步
     void SetBlockSoftSyncInfo(int32_t eventID, uint32_t blockIdx, const VectorTime& vectorTime);
@@ -116,9 +120,11 @@ private:
     void SetMode2SyncInfo(uint8_t flagId, uint32_t blockIdx, const VectorTime &vectorTime,
                           uint8_t vecSubBlockDim = 2);
     void SetMode4SyncInfo(uint8_t flagId, uint32_t blockIdx, const VectorTime &vectorTime,
-                          uint8_t vecSubBlockDim = 2);
+                          uint8_t vecSubBlockDim = 2, const LocInfo &loc = {}, uint64_t serialNo = 0);
     template<BlockType blockType>
     void UpdateSyncInfoInMode0(uint8_t flagId);
+    // 记录 AIV 核 mode4 场景 flag_id 非法告警
+    void AddFlagIdWarnInfo(uint8_t flagId, const LocInfo &loc, uint64_t serialNo);
 private:
     uint32_t maxBlockNum_ = 0;
     KernelType kernelType_{};
@@ -128,6 +134,8 @@ private:
     /// map-value: queue<VectorTime>
     std::map<std::pair<uint64_t, uint64_t>, std::queue<VectorTime>> mstxCrossSetMap_;
     SemCores semCores_;
+    /// mode4 场景 AIV 核 flag_id 非法告警信息列表
+    std::vector<CrossCoreSyncWarnInfo> flagIdWarnInfo_;
 };
 
 }

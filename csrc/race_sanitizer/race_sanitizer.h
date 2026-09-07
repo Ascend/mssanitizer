@@ -52,6 +52,8 @@ private:
     // 核间竞争检测
     void AllBlockRaceCheck(const std::vector<SanEvent> &events);
     void RaceSanitizerRecord(std::shared_ptr<std::vector<RaceDispInfo>> p);
+    // 上报 mode4 场景 flag_id 非法告警
+    void ReportFlagIdWarnInfo(const std::vector<CrossCoreSyncWarnInfo> &warnInfos);
     // 检查记录是否是指定的核
     inline bool IsTargetBlockId(uint32_t blockId);
     // 检查记录是否是需要的指令记录

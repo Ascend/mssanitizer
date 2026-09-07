@@ -426,6 +426,22 @@ struct SyncDispInfo {
     }
 };
 
+// flag_id 合法性告警信息展示单元（核间同步 mode4 场景）
+// 用于记录 AIV 核使用非法 flag_id(>=16) 时的告警信息，供检测结束时主动提示用户
+struct CrossCoreSyncWarnInfo {
+    ErrorEvent baseEvent;
+    uint8_t flagId;
+
+    bool operator == (const CrossCoreSyncWarnInfo &other) const
+    {
+        return (flagId == other.flagId &&
+                baseEvent.serialNo == other.baseEvent.serialNo &&
+                baseEvent.pc == other.baseEvent.pc &&
+                baseEvent.coreId == other.baseEvent.coreId &&
+                baseEvent.deviceId == other.baseEvent.deviceId);
+    }
+};
+
 struct RegisterDispInfo {
     ErrorEvent baseEvent;
     std::string kernelName = "UNKNOWN KERNEL";

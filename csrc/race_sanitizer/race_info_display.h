@@ -21,7 +21,13 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <algorithm>
+#include <set>
+#include <sstream>
+#include <functional>
 #include "core/framework/event_def.h"
+#include "core/framework/config.h"
+#include "core/framework/utility/types.h"
 #include "core/framework/call_stack.h"
 #include "core/framework/kernel_manager.h"
 #include "core/framework/record_defs.h"
@@ -32,9 +38,9 @@
 namespace Sanitizer {
 
 inline std::ostream &PrintClassicLocation(std::ostream &os, uint64_t fileNo, uint64_t lineNo,
-    uint64_t serialNo)
+    uint64_t serialNo, const std::string &prefix = "")
 {
-    os << "at ";
+    os << prefix << "at ";
     FileInfo fileInfo = FileMapping::Instance().Query(fileNo);
     if (fileInfo.fileIdx == -1 || fileInfo.fileName.empty()) {
         os << "<unknown>";
@@ -45,10 +51,10 @@ inline std::ostream &PrintClassicLocation(std::ostream &os, uint64_t fileNo, uin
 }
 
 inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event, uint64_t serialNo,
-    bool isOnlineError = false)
+    bool isOnlineError = false, const std::string &prefix = "")
 {
     if (event.pc == 0UL) {
-        return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo);
+        return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo, prefix);
     }
 
     CallStack::Stack stack;
@@ -64,9 +70,9 @@ inline std::ostream &PrintLocationInfo(std::ostream &os, ErrorEvent const &event
             std::make_move_iterator(mainScalarStack.end()));
     }
     if (stack.empty()) {
-        return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo);
+        return PrintClassicLocation(os, event.fileNo, event.lineNo, serialNo, prefix);
     }
-    os << "at pc current 0x" << std::hex << event.pc << std::dec;
+    os << prefix << "at pc current 0x" << std::hex << event.pc << std::dec;
     if (!isOnlineError) os << " (serialNo:" << serialNo << ")";
     os << std::endl;
     return CallStack::Instance().FormatCallStack(os, stack);
@@ -162,6 +168,54 @@ inline std::ostream &operator << (std::ostream &os, RaceDispInfo const &raceInfo
         return FormatMissDcciInfo(os, raceInfo);
     } else {
         return FormatRaceInfo(os, raceInfo);
+    }
+}
+
+// mode4 场景 AIV 核 flag_id 参数非法告警打印
+inline std::ostream &operator << (std::ostream &os, CrossCoreSyncWarnInfo const &warnInfo) {
+    ErrorEvent const &event = warnInfo.baseEvent;
+    os << "====== WARNING: Invalid flag_id " << static_cast<uint32_t>(warnInfo.flagId)
+       << RaceFormatKernelName{event.deviceId, event.kernelIdx} << ":" << std::endl
+       << "======    in block " << event.blockType << "(" << event.coreId << ")"
+       << " on device " << event.deviceId << std::endl;
+    // 位置/调用栈各行为保证与上一行 "in block ..." 对齐（统一 "======    " 前缀）
+    PrintLocationInfo(os, event, event.serialNo, false, "======    ");
+    return os;
+}
+
+// mode4 场景 flag_id 非法告警统一上报（核内/跨NPU 检测共用）
+// 同一 mode4 同步事件可能被多个检测算法处理，先按 (flagId, serialNo, pc, coreId, deviceId) 去重，最后通过 msgFunc 回调打屏输出。
+inline void ReportFlagIdWarnInfos(const std::vector<CrossCoreSyncWarnInfo> &warnInfos,
+    const std::string &kernelName,
+    const std::function<void(const LogLv &lv, Generator<DetectionInfo> &&gen)> &msgFunc)
+{
+    if (warnInfos.empty()) {
+        return;
+    }
+
+    std::vector<CrossCoreSyncWarnInfo> uniqueWarnInfos;
+    for (const auto &info : warnInfos) {
+        if (std::find(uniqueWarnInfos.begin(), uniqueWarnInfos.end(), info) == uniqueWarnInfos.end()) {
+            uniqueWarnInfos.push_back(info);
+        }
+    }
+    if (uniqueWarnInfos.empty()) {
+        return;
+    }
+
+    // build pc stack map cache
+    std::set<uint64_t> pcOffsets;
+    for (const auto &info : uniqueWarnInfos) {
+        pcOffsets.insert(info.baseEvent.pc);
+    }
+    CallStack::Instance().CachePcOffsets(kernelName, pcOffsets);
+
+    for (const auto &it : uniqueWarnInfos) {
+        msgFunc(LogLv::WARN, [&it](void) {
+            std::stringstream ss;
+            ss << it << std::endl;
+            return DetectionInfo{ToolType::RACECHECK, ss.str()};
+        });
     }
 }
 }

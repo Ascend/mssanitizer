@@ -53,6 +53,8 @@ public:
     virtual void CacheMstxCrossSet(const SanEvent& event) final;
     virtual ReturnType ProcessMstxCrossSyncEvent(const SanEvent& event) final;
     virtual ReturnType ProcessGetRlsBufSyncEvent(const SanEvent& event, RaceCheckType checkType) final;
+    const std::vector<CrossCoreSyncWarnInfo> &GetFlagIdWarnInfo() const;
+    void ClearFlagIdWarnInfo();
 
 protected:
     EventContainer eventContainer_;
