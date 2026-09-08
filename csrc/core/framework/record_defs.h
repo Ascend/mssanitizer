@@ -308,6 +308,7 @@ enum class RecordType : uint32_t {
     GET_BUFI_V,
     RLS_BUF_V,
     RLS_BUFI_V,
+    DSB,
     SIMT_START = 39999,
     SIMT_LDG = 40000,
     SIMT_STG,
@@ -1418,6 +1419,21 @@ struct PipeBarrierRecord {
     PipeType pipe;
 };
 
+/// DSB指令等待的内存域，对应硬件mem_dsb_t枚举
+enum class MemDsbType : uint8_t {
+    ALL = 0, // DSB_ALL，等待所有内存域的内存访问完成
+    DDR = 1, // DSB_DDR，等待DDR访问完成
+    UB = 2, // DSB_UB，等待UB访问完成
+    SEQ = 3, // DSB_SEQ，等待标量顺序执行
+};
+
+/// DSB为pipe_s上的内存屏障指令，memDomain标明该屏障等待的内存域，供竞争检测建立对应域的标量内存排序
+struct DsbRecord {
+    Location location;
+    PipeType pipe;
+    MemDsbType memDomain;
+};
+
 struct FftsSyncRecord {
     Location location;
     PipeType dst;
@@ -2099,6 +2115,7 @@ struct KernelRecord {
         HardSyncRecord hardSyncRecord;
         SoftSyncRecord softSyncRecord;
         PipeBarrierRecord pipeBarrierRecord;
+        DsbRecord dsbRecord;
         Load2DRecord load2DRecord;
         LoadL12DRecord loadL12DRecord;
         LoadL1Mx2DRecord loadL1Mx2DRecord;

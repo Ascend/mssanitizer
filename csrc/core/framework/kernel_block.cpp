@@ -66,6 +66,7 @@ inline bool ParseMemErrorType(uint8_t const *ptr, KernelErrorRecord &errorRecord
     return true;
 }
 
+// clang-format off
 const std::map<RecordType, std::function<bool(uint8_t const *, KernelRecord &, uint64_t &)>> RECORD_TYPE_FUNC_MAP = {
     {RecordType::LOAD, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
         return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
@@ -493,7 +494,11 @@ const std::map<RecordType, std::function<bool(uint8_t const *, KernelRecord &, u
     {RecordType::DCCI, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
         return ParseRecordByType(record, kernelRecord.payload.dcciRecord, offset);
     }},
+    {RecordType::DSB, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
+        return ParseRecordByType(record, kernelRecord.payload.dsbRecord, offset);
+    }},
 };
+// clang-format on
 
 bool ParseRecord(RecordType recordType, uint8_t const *record, KernelRecord &kernelRecord, uint64_t &recordSize)
 {

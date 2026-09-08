@@ -160,6 +160,32 @@ AICORE_FUNC_HEAD void RecordPipeBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe)
     recorder.DumpRecord<RecordType::PIPE_BARRIER>(record);
 }
 
+// DSB为pipe_s上的内存屏障指令，将该指令记录为RecordType::DSB屏障，供竞争检测建立标量流内存排序。
+// memDomain为等待的内存域(mem_dsb_t: ALL/DDR/UB/SEQ)，记录在DsbRecord中供算法细分排序范围。
+AICORE_FUNC_HEAD void RecordDsbBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t memDomain) {
+    if (MemInfoIsInvalid(memInfo)) {
+        return;
+    }
+
+    if (!DoRaceCheck(memInfo) && !DoSyncCheck(memInfo) && !DoInitCheck(memInfo)) {
+        return;
+    }
+
+    uint64_t blockIdx = GetBlockIdx();
+    DsbRecord record;
+#if !defined(BUILD_DYNAMIC_PROBE)
+    record.location.fileNo = fileNo;
+    record.location.lineNo = lineNo;
+#endif
+    record.location.pc = static_cast<uint64_t>(pc);
+    record.location.blockId = blockIdx;
+    record.pipe = static_cast<PipeType>(pipe);
+    record.memDomain = static_cast<MemDsbType>(memDomain);
+
+    Recorder recorder(memInfo, blockIdx);
+    recorder.DumpRecord<RecordType::DSB>(record);
+}
+
 template<RecordType recordType>
 AICORE_FUNC_HEAD void RecordFftsSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t config)
 {

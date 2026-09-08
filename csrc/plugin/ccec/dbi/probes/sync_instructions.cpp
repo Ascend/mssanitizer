@@ -151,6 +151,11 @@ SANITIZER_REPORT(pipe_barrier, pipe_t pipe)
     RecordPipeBarrierEvent(EXTRA_PARAMS, pipe);
 }
 
+SANITIZER_REPORT(dsb, uint64_t dsbType) {
+    uint64_t memDomain = dsbType & 0xFF;
+    RecordDsbBarrierEvent(EXTRA_PARAMS, static_cast<pipe_t>(PipeType::PIPE_S), memDomain);
+}
+
 SANITIZER_REPORT(set_cross_core_v, uint64_t config)
 {
     pipe_t pipe = static_cast<pipe_t>(PipeType::PIPE_V);

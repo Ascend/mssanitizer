@@ -5198,4 +5198,181 @@ TEST_F(TestRecordParse, parse_max_event_id_cross_pipe_sync_expect_get_inner_pipe
     ASSERT_TRUE(findMte2Barrier);
     RecordParse::ResetSyncInPipeInfo();
 }
+
+// DSB_ALL(mode=0)为全量标量内存屏障，应复用PIPE_ALL机制展开为各流水的内部屏障+SET_FLAG/WAIT_FLAG同步对
+TEST_F(TestRecordParse, parse_dsb_all_record_expands_to_pipe_all_sync_and_expect_success) {
+    RecordParse::ResetSyncInPipeInfo();
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::DSB;
+    record.payload.dsbRecord.location.blockId = 7;
+    record.payload.dsbRecord.pipe = PipeType::PIPE_S;
+    record.payload.dsbRecord.memDomain = MemDsbType::ALL;
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    // PIPE_V..PIPE_S_CAL共11条流水，每条展开为内部屏障+SET_FLAG/WAIT_FLAG对，共33条事件；
+    // 末条WAIT_FLAG(src=PIPE_S_CAL,dst=PIPE_S)触发"PIPE_S等待其它流"分支，
+    // 经DfsSrcGraph对PIPE_S_CAL补1条流水内屏障，共34条
+    const size_t pipeNum = static_cast<size_t>(PipeType::SIZE) - static_cast<size_t>(PipeType::PIPE_V);
+    ASSERT_EQ(events.size(), pipeNum * 3 + 1);
+    ASSERT_EQ(events[0].loc.coreId, 7);
+
+    // 首条流水PIPE_V的展开事件：内部屏障、SET_FLAG、WAIT_FLAG
+    ASSERT_EQ(events[0].type, EventType::SYNC_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_TRUE(events[0].eventInfo.syncInfo.isGenerated);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.opType, SyncType::SET_FLAG);
+    ASSERT_EQ(events[1].pipe, PipeType::PIPE_V);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.srcPipe, PipeType::PIPE_V);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.eventId, 11U);
+    ASSERT_EQ(events[2].eventInfo.syncInfo.opType, SyncType::WAIT_FLAG);
+    ASSERT_EQ(events[2].pipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[2].eventInfo.syncInfo.srcPipe, PipeType::PIPE_V);
+    ASSERT_EQ(events[2].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+
+    // 末条流水PIPE_S_CAL（标量访存执行流）的WAIT_FLAG同样同步到PIPE_S
+    ASSERT_EQ(events[pipeNum * 3 - 1].eventInfo.syncInfo.opType, SyncType::WAIT_FLAG);
+    ASSERT_EQ(events[pipeNum * 3 - 1].pipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[pipeNum * 3 - 1].eventInfo.syncInfo.srcPipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[pipeNum * 3 - 1].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+    // 附加事件：PIPE_S等待PIPE_S_CAL ⇒ 对PIPE_S_CAL追加流水内屏障
+    ASSERT_EQ(events.back().eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_EQ(events.back().pipe, PipeType::PIPE_S_CAL);
+    RecordParse::ResetSyncInPipeInfo();
+}
+
+// DSB_UB(mode=2)等待UB域完成。SIMT线程在aiv上执行，aiv的竞争检测相关访存基本与UB相关，
+// 当前按PIPE_ALL机制全量展开（与DSB_ALL一致），覆盖各流水（含MTE搬运UB）的建序需求
+TEST_F(TestRecordParse, parse_dsb_ub_record_expands_to_pipe_all_sync_and_expect_success) {
+    RecordParse::ResetSyncInPipeInfo();
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::DSB;
+    record.payload.dsbRecord.location.blockId = 7;
+    record.payload.dsbRecord.pipe = PipeType::PIPE_S;
+    record.payload.dsbRecord.memDomain = MemDsbType::UB;
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    // 展开结构同DSB_ALL：33条事件 + WAIT(src=PIPE_S_CAL,dst=PIPE_S)触发的1条PIPE_S_CAL流水内屏障，共34条
+    const size_t pipeNum = static_cast<size_t>(PipeType::SIZE) - static_cast<size_t>(PipeType::PIPE_V);
+    ASSERT_EQ(events.size(), pipeNum * 3 + 1);
+    // 每条流水内部屏障+SET_FLAG/WAIT_FLAG对，同步到PIPE_S
+    ASSERT_EQ(events[0].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_V);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.opType, SyncType::SET_FLAG);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.srcPipe, PipeType::PIPE_V);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[pipeNum * 3 - 1].eventInfo.syncInfo.opType, SyncType::WAIT_FLAG);
+    ASSERT_EQ(events[pipeNum * 3 - 1].eventInfo.syncInfo.srcPipe, PipeType::PIPE_S_CAL);
+    ASSERT_EQ(events[pipeNum * 3 - 1].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+    ASSERT_EQ(events.back().eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_EQ(events.back().pipe, PipeType::PIPE_S_CAL);
+    RecordParse::ResetSyncInPipeInfo();
+}
+
+// DSB_DDR(mode=1)等待GM/DDR域完成，建模为PIPE_S阻塞等待可访问GM的流水(MTE2/MTE3/FIXPIPE)完成：
+// 每条流水展开为内部屏障+SET_FLAG/WAIT_FLAG对共9条；末条WAIT(src=FIX,dst=PIPE_S)触发
+// "PIPE_S等待其它流"分支，经DfsSrcGraph对FIX补1条流水内屏障，共10条
+TEST_F(TestRecordParse, parse_dsb_ddr_record_expands_to_gm_pipes_sync_and_expect_success) {
+    RecordParse::ResetSyncInPipeInfo();
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::DSB;
+    record.payload.dsbRecord.location.blockId = 7;
+    record.payload.dsbRecord.pipe = PipeType::PIPE_S;
+    record.payload.dsbRecord.memDomain = MemDsbType::DDR;
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    // 2条GM流水(MTE2/MTE3)各展开(内屏障+SET+WAIT)共6条，+1条附加MTE3流水内屏障，共7条
+    ASSERT_EQ(events.size(), 7);
+    ASSERT_EQ(events[0].loc.coreId, 7);
+
+    // MTE2流水：内部屏障、SET_FLAG、WAIT_FLAG，均同步到PIPE_S
+    ASSERT_EQ(events[0].type, EventType::SYNC_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_TRUE(events[0].eventInfo.syncInfo.isGenerated);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.opType, SyncType::SET_FLAG);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.srcPipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[1].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[2].eventInfo.syncInfo.opType, SyncType::WAIT_FLAG);
+    ASSERT_EQ(events[2].pipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[2].eventInfo.syncInfo.srcPipe, PipeType::PIPE_MTE2);
+    ASSERT_EQ(events[2].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+
+    // MTE3流水
+    ASSERT_EQ(events[3].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_EQ(events[3].pipe, PipeType::PIPE_MTE3);
+    ASSERT_EQ(events[4].eventInfo.syncInfo.srcPipe, PipeType::PIPE_MTE3);
+    ASSERT_EQ(events[4].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[5].eventInfo.syncInfo.srcPipe, PipeType::PIPE_MTE3);
+    ASSERT_EQ(events[5].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[5].pipe, PipeType::PIPE_S);
+    // 附加事件：PIPE_S等待PIPE_MTE3 ⇒ 对PIPE_MTE3追加流水内屏障
+    ASSERT_EQ(events.back().eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_EQ(events.back().pipe, PipeType::PIPE_MTE3);
+    RecordParse::ResetSyncInPipeInfo();
+}
+
+// DSB_UB(mode=2)在AICUBE(aic)上生成时，其访存常涉及L0/L1/L2等而非纯UB，不满足aiv上的UB全量展开假设，
+// 应退回单条保守处理：记录为携带UB域信息的单条DSB内部屏障事件，避免AICUBE上掩蔽真实竞争导致漏报
+TEST_F(TestRecordParse, parse_dsb_ub_record_on_aicube_generates_single_barrier_and_expect_success) {
+    RecordParse::ResetSyncInPipeInfo();
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::DSB;
+    record.payload.dsbRecord.location.blockId = 7;
+    record.payload.dsbRecord.pipe = PipeType::PIPE_S;
+    record.payload.dsbRecord.memDomain = MemDsbType::UB;
+    record.blockType = BlockType::AICUBE;
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 1);
+    ASSERT_EQ(events[0].type, EventType::SYNC_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.opType, SyncType::DSB);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::UB);
+    RecordParse::ResetSyncInPipeInfo();
+}
+
+// DSB_SEQ(mode=3)为标量顺序屏障，不限定单一内存域，记录为memType=INVALID的单条DSB事件
+TEST_F(TestRecordParse, parse_dsb_seq_record_generates_single_barrier_and_expect_success) {
+    RecordParse::ResetSyncInPipeInfo();
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    record.recordType = RecordType::DSB;
+    record.payload.dsbRecord.location.blockId = 7;
+    record.payload.dsbRecord.pipe = PipeType::PIPE_S;
+    record.payload.dsbRecord.memDomain = MemDsbType::SEQ;
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 1);
+    ASSERT_EQ(events[0].type, EventType::SYNC_EVENT);
+    ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.opType, SyncType::DSB);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::INVALID);
+    RecordParse::ResetSyncInPipeInfo();
+}
 }

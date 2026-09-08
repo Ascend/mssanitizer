@@ -117,6 +117,24 @@ void CreatePipeAllSyncEvent(const KernelRecord &record, std::vector<SanEvent> &e
     }
 }
 
+// DSB_DDR等待GM/DDR域的访问完成，PIPE_S需阻塞等待可访问GM的流水完成。
+// 对涉及GM往返的流水（MTE2读GM、MTE3写GM、FIXPIPE涉及L2/GM）逐个
+// 展开内部屏障 + 与PIPE_S的SET_FLAG/WAIT_FLAG同步，使PIPE_S等到这些流水的GM访问完成。
+template <typename Payload>
+void CreatePipeDdrSyncEvent(const KernelRecord &record, std::vector<SanEvent> &events, const Payload &payload) {
+    for (auto pipe : {PipeType::PIPE_MTE2, PipeType::PIPE_MTE3}) {
+        // 流水线内同步
+        SanEvent barrierEvent = CreateInnerPipeSyncEvent(record, pipe, payload);
+        events.emplace_back(barrierEvent);
+
+        // 流水线间同步：该流水完成时向PIPE_S置位并等待，模拟PIPE_S阻塞等待GM访问完成
+        SanEvent setEvent = CreateCrossPipeSyncEvent(SyncType::SET_FLAG, pipe, PipeType::PIPE_S, record, payload);
+        SanEvent waitEvent = CreateCrossPipeSyncEvent(SyncType::WAIT_FLAG, pipe, PipeType::PIPE_S, record, payload);
+        events.emplace_back(setEvent);
+        events.emplace_back(waitEvent);
+    }
+}
+
 /* unit-flag用于CUBE指令（如MMAD）和MTE指令（如MOV_L0C_TO_OUT）之间的同步
  *   相较于set_flag/wait_flag这种指令级别的同步：
  *     PIPE_M     |___________2048B___________|
@@ -3305,6 +3323,35 @@ static void ParseRecordPipeBarrier(const KernelRecord &record, std::vector<SanEv
     }
 }
 
+// DSB为pipe_s上的内存屏障指令，等待其之前发出的内存访问完成，
+// 在竞争检测中作为标量流屏障，建立先于DSB的内存访问与后续内存访问之间的happens-before关系。
+static void ParseRecordDsb(const KernelRecord &record, std::vector<SanEvent> &events) {
+    auto &dsbRecord = record.payload.dsbRecord;
+    // DSB_ALL(mode=0)为全量标量内存屏障，复用PIPE_ALL机制向各非标量pipe展开内部屏障，并插入与PIPE_S的
+    // SET_FLAG/WAIT_FLAG同步，使屏障后经各流水发射的访问继承屏障前的标量时钟，建立全量内存域排序。
+    // DSB_UB(mode=2)仅等待UB域完成。SIMT线程在AIVEC上执行，AIVEC的竞争检测相关访存基本都与UB相关，
+    // 这里有一个DSB指令由编译器生成且只在AIVEC上生成的假设，因此按PIPE_ALL机制全量展开；
+    // 若DSB实际生成在AICUBE上（其访存常涉及L0/L1/L2等而非纯UB），则退回单条保守处理，避免掩盖真实竞争导致漏报。
+    if (dsbRecord.memDomain == MemDsbType::ALL ||
+        (dsbRecord.memDomain == MemDsbType::UB && record.blockType == BlockType::AIVEC)) {
+        CreatePipeAllSyncEvent(record, events, record.payload.dsbRecord);
+        return;
+    }
+
+    // DSB_DDR(mode=1)等待GM/DDR域的内存访问完成，建模为PIPE_S阻塞等待可访问GM的流水完成。
+    // 在aic上通常需与MTE2/MTE3/FIXPIPE等涉及GM往返的流水做PIPE_S的pipe间同步。
+    if (dsbRecord.memDomain == MemDsbType::DDR && record.blockType == BlockType::AIVEC) {
+        CreatePipeDdrSyncEvent(record, events, record.payload.dsbRecord);
+        return;
+    }
+
+    // 其它mode暂只记录为单条DSB内部屏障事件
+    SanEvent barrierEvent = CreateInnerPipeSyncEvent(record, dsbRecord.pipe, record.payload.dsbRecord);
+    barrierEvent.eventInfo.syncInfo.opType = SyncType::DSB;
+    barrierEvent.eventInfo.syncInfo.memType = DsbToMemType(dsbRecord.memDomain);
+    events.emplace_back(barrierEvent);
+}
+
 std::map<uint16_t, bool>& GetMapAtomicMode()
 {
 // 原子写模式开启期间的标志位
@@ -4201,6 +4248,7 @@ const std::unordered_map<RecordType, ParseFunc> g_parseFuncs = {
     {RecordType::HSET_FLAGI, ParseRecordHsetFlag},
     {RecordType::HWAIT_FLAGI, ParseRecordHwaitFlag},
     {RecordType::PIPE_BARRIER, ParseRecordPipeBarrier},
+    {RecordType::DSB, ParseRecordDsb},
     {RecordType::SET_ATOMIC, ParseRecordSetAtomic},
     {RecordType::SCALAR_RED, ParseRedAndAtomRecord},
     {RecordType::SCALAR_ATOM, ParseRedAndAtomRecord},

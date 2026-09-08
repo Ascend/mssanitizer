@@ -75,6 +75,7 @@ enum class SyncType : uint8_t {
     WAIT_INTRA_BLOCK,
     HSET_FLAG,
     HWAIT_FLAG,
+    DSB,
 };
 
 enum class RaceCheckType: uint8_t {
@@ -201,6 +202,20 @@ struct DynamicOpInfo {
 };
 
 using VectorTime = std::vector<uint32_t>;
+
+inline MemType DsbToMemType(MemDsbType memDomain) {
+    switch (memDomain) {
+    case MemDsbType::DDR:
+        return MemType::GM;
+    case MemDsbType::UB:
+        return MemType::UB;
+    case MemDsbType::ALL:
+    case MemDsbType::SEQ:
+    default:
+        // ALL/SEQ不限定单一内存域
+        return MemType::INVALID;
+    }
+}
 
 inline MemType AddrSpaceToMemType(AddressSpace addrSpace)
 {

@@ -69,16 +69,9 @@ void RecordPreProcess::UpdateMergeInfo(const KernelRecord &kernelRecord)
 
 bool IsRealSyncType(RecordType type)
 {
-    return (
-            (type == RecordType::SET_FLAG) ||
-            (type == RecordType::WAIT_FLAG) ||
-            (type == RecordType::HSET_FLAG) ||
-            (type == RecordType::HWAIT_FLAG) ||
-            (type == RecordType::PIPE_BARRIER) ||
-            (type == RecordType::FFTS_SYNC) ||
-            (type == RecordType::WAIT_FLAG_DEV) ||
-            (type == RecordType::SET_ATOMIC)
-        );
+    return ((type == RecordType::SET_FLAG) || (type == RecordType::WAIT_FLAG) || (type == RecordType::HSET_FLAG) ||
+        (type == RecordType::HWAIT_FLAG) || (type == RecordType::PIPE_BARRIER) || (type == RecordType::DSB) ||
+        (type == RecordType::FFTS_SYNC) || (type == RecordType::WAIT_FLAG_DEV) || (type == RecordType::SET_ATOMIC));
 }
 
 bool IsMstxWaitRecord(const KernelRecord &kernelRecord)

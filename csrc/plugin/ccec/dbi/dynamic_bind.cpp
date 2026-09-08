@@ -370,6 +370,7 @@ std::vector<BindStub> bindStubs{
     {InstrType::WAIT_INTRA_BLOCK_V, "__sanitizer_report_wait_intra_block_v", {0}},
     {InstrType::WAIT_INTRA_BLOCKI_V, "__sanitizer_report_wait_intra_blocki_v", {0}},
     {InstrType::PIPE_BARRIER, "__sanitizer_report_pipe_barrier", {0}},
+    {InstrType::DSB, "__sanitizer_report_dsb", {0}},
     /// sync_instructions.cpp end
 
     /// registers_instructions.cpp start
