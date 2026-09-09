@@ -73,7 +73,7 @@ class ShadowMemory {
 public:
     ShadowMemory();
 
-    bool Init(ChipInfo deviceChipInfo);
+    bool Init(DeviceType deviceType, ChipInfo deviceChipInfo);
     bool IsReady() const;
     void ResetChipMemory() noexcept;
     void ResetPrivateMemory() noexcept;
@@ -132,6 +132,7 @@ private:
     UnusedHeap unusedHeap_{};
     ChipInfo chipInfo_{};
     bool atomicEnabled_{false};
+    DeviceType deviceType_{DeviceType::INVALID};
 };
 }
 

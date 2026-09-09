@@ -70,8 +70,9 @@ inline uint8_t SetCoreId(uint8_t byte, uint8_t coreId)
 
 ShadowMemory::ShadowMemory(void) : gm_{MakeUnique<GmPM>(GM_DEFAULT_VALUE)} { }
 
-bool ShadowMemory::Init(ChipInfo deviceChipInfo)
+bool ShadowMemory::Init(DeviceType deviceType, ChipInfo deviceChipInfo)
 {
+    deviceType_ = deviceType;
     chipInfo_ = deviceChipInfo;
     l0a_ = std::unique_ptr<PM>(new PM(chipInfo_.l0aSize, CHIPMEM_DEFAULT_VALUE));
     l0b_ = std::unique_ptr<PM>(new PM(chipInfo_.l0bSize, CHIPMEM_DEFAULT_VALUE));
@@ -222,6 +223,11 @@ ErrorMsgList ShadowMemory::LoadNBytes(MemOpRecordForShadow memOpRecordForShadow,
     uint64_t addr = memOpRecordForShadow.dstAddr;
     uint64_t size = memOpRecordForShadow.memSize;
     if (SkipSpace(space)) {
+        return msgList;
+    }
+
+    // 当前 SIMD VF 指令无法插桩，向量对 UB 的写无法进入 shadow，对应初始化动作无法感知会始终上报告警，暂时关闭对应场景的检测
+    if (initCheck && space == AddressSpace::UB && IsAscend95(deviceType_)) {
         return msgList;
     }
 

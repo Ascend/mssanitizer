@@ -33,7 +33,7 @@ TEST(ShadowMemory, init_sm_expect_ready)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 }
 
@@ -43,7 +43,7 @@ TEST(ShadowMemory, load_nbytes_on_uninitialized_expect_get_uninitialized_read_er
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
     MemOpRecordForShadow memOpRecordForShadow(AddressSpace::PRIVATE, TEST_ADDR, TEST_ADDR, 0);
     ErrorMsgList errors = sm.LoadNBytes(memOpRecordForShadow, true);
@@ -60,7 +60,7 @@ TEST(ShadowMemory, load_nbytes_aligned_ub_expect_get_success)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
     MemOpRecordForShadow memOpRecordForShadow(AddressSpace::UB, TEST_ALIGNED_ADDR, TEST_ALIGNED_ADDR, 0);
     ErrorMsgList errors = sm.LoadNBytes(memOpRecordForShadow, false);
@@ -72,11 +72,58 @@ TEST(ShadowMemory, store_nbytes_aligned_ub_expect_get_success)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
     MemOpRecordForShadow memOpRecordForShadow(AddressSpace::UB, TEST_ALIGNED_ADDR, TEST_ALIGNED_ADDR, 0);
     ErrorMsgList errors = sm.StoreNBytes(memOpRecordForShadow, true, true);
     ASSERT_EQ(errors.size(), 0);
+}
+
+// 非 A5(Ascend910) 设备上，UB 空间的未初始化读仍应被 initcheck 检出
+TEST(ShadowMemory, load_nbytes_uninitialized_ub_expect_get_uninitialized_read_error)
+{
+    ShadowMemory sm;
+    auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
+    ASSERT_NE(it, CHIP_INFO_MAP.cend());
+    sm.Init(it->first, it->second);
+    ASSERT_TRUE(sm.IsReady());
+    MemOpRecordForShadow memOpRecordForShadow(AddressSpace::UB, TEST_ALIGNED_ADDR, TEST_ALIGNED_ADDR, 0);
+    ErrorMsgList errors = sm.LoadNBytes(memOpRecordForShadow, true);
+    ASSERT_EQ(errors.size(), 1);
+    ASSERT_TRUE(errors[0].isError);
+    ASSERT_EQ(errors[0].type, MemErrorType::UNINITIALIZED_READ);
+    ASSERT_EQ(errors[0].auxData.nBadBytes, TEST_ALIGNED_ADDR);
+}
+
+// A5(Ascend95) 设备上，SIMD VF 对 UB 的写无法进入 shadow，对应初始化动作不可感知，
+// UB 未初始化读会被暂时抑制不报（正向用例：修复误报，LoadNBytes 应返回空）
+TEST(ShadowMemory, load_nbytes_uninitialized_ub_on_ascend95_expect_no_error)
+{
+    ShadowMemory sm;
+    auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_950PR_950z);
+    ASSERT_NE(it, CHIP_INFO_MAP.cend());
+    sm.Init(it->first, it->second);
+    ASSERT_TRUE(sm.IsReady());
+    MemOpRecordForShadow memOpRecordForShadow(AddressSpace::UB, TEST_ALIGNED_ADDR, TEST_ALIGNED_ADDR, 0);
+    ErrorMsgList errors = sm.LoadNBytes(memOpRecordForShadow, true);
+    ASSERT_EQ(errors.size(), 0);
+}
+
+// 抑制仅针对 A5 的 UB 空间：A5 设备上 PRIVATE 空间的未初始化读仍应被检出，防止过度抑制
+TEST(ShadowMemory, load_nbytes_on_uninitialized_private_on_ascend95_expect_get_uninitialized_read_error)
+{
+    ShadowMemory sm;
+    auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_950PR_950z);
+    ASSERT_NE(it, CHIP_INFO_MAP.cend());
+    sm.Init(it->first, it->second);
+    ASSERT_TRUE(sm.IsReady());
+    MemOpRecordForShadow memOpRecordForShadow(AddressSpace::PRIVATE, TEST_ADDR, TEST_ADDR, 0);
+    ErrorMsgList errors = sm.LoadNBytes(memOpRecordForShadow, true);
+    ASSERT_EQ(errors.size(), 1);
+    ASSERT_TRUE(errors[0].isError);
+    ASSERT_EQ(errors[0].type, MemErrorType::UNINITIALIZED_READ);
+    ASSERT_EQ(errors[0].auxData.badAddr.addr, TEST_ADDR);
+    ASSERT_EQ(errors[0].auxData.nBadBytes, TEST_ADDR);
 }
 
 TEST(ShadowMemory, free_out_of_bounds_and_double_free_expect_get_illegal_free_error)
@@ -84,7 +131,7 @@ TEST(ShadowMemory, free_out_of_bounds_and_double_free_expect_get_illegal_free_er
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -117,7 +164,7 @@ TEST(ShadowMemory, malloc_but_do_not_free_expect_get_mem_leak_error)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -154,7 +201,7 @@ TEST(ShadowMemory, malloc_mems_far_away_expect_no_interaction)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B3);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -189,7 +236,7 @@ TEST(ShadowMemory, reg_heap_but_do_not_unreg_heap_expect_get_illegal_free_error)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     // malloc heap 1
@@ -236,7 +283,7 @@ TEST(ShadowMemory, reg_heap_and_reg_reiongs_but_do_not_unreg_regions_expect_get_
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     // malloc heap 1
@@ -293,7 +340,7 @@ TEST(ShadowMemory, reg_heap_and_reg_regions_then_unreg_heap_expect_get_illegal_f
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B2);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
     MemOpRecord record{};
     record.dstAddr = 0x2000;
@@ -358,7 +405,7 @@ TEST(ShadowMemory, unreg_unknown_heap_expect_illegal_free_error)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -381,7 +428,7 @@ TEST(ShadowMemory, double_free_heap_expect_error)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -409,7 +456,7 @@ TEST(ShadowMemory, free_partial_regions_then_free_heap_expect_success)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B2);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -445,7 +492,7 @@ TEST(ShadowMemory, free_region_before_free_heap_expect_illegal_free)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -484,7 +531,7 @@ TEST(ShadowMemory, multiple_heaps_interleaved_operations)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B2);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -526,7 +573,7 @@ TEST(ShadowMemory, complex_heap_region_operations_with_multiple_scenarios)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -641,7 +688,7 @@ TEST(ShadowMemory, extensive_memory_operations_with_edge_cases)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B2);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -774,7 +821,7 @@ TEST(ShadowMemory, concurrent_stress_simulation)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};
@@ -912,7 +959,7 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
     ShadowMemory sm;
     auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910B1);
     ASSERT_NE(it, CHIP_INFO_MAP.cend());
-    sm.Init(it->second);
+    sm.Init(it->first, it->second);
     ASSERT_TRUE(sm.IsReady());
 
     MemOpRecord record{};

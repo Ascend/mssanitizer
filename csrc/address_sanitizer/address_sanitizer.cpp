@@ -265,7 +265,7 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
     ChipInfo chipInfo = it->second;
     boundsCheckRuntime_.Init(chipInfo);
     boundsCheckDfx_.Init(chipInfo);
-    return shadowMemory_->Init(chipInfo);
+    return shadowMemory_->Init(deviceInfo.device, chipInfo);
 }
 
 bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
