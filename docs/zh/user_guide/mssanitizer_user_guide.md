@@ -482,6 +482,7 @@ mssanitizer --tool=initcheck application   # application为用户程序
 > - 由于硬件限制，某些指令仅支持以Block形式进行数据搬运。当参与计算的实际数据量不是Block大小的整数倍时，可能会不可避免地带入部分无效数据（即“脏数据”），这可能导致工具报告初始化异常，用户需自行判断这些“脏数据”是否会影响计算结果。
 > - 未初始化检测结果准确的前提是不存在数据竞争，因为初始化的本质是“先写后读”，如果存在内存读写竞争，则未初始化检测结果可能不准确。因此建议先处理完竞争问题，再进行未初始化检测。
 > - 当前仅支持昇腾A2系列产品、昇腾A3系列产品以及昇腾950PR&950DT系列产品。
+> - 昇腾950PR&950DT系列产品不支持UB地址空间未初始化检测。
 
 #### 6.3.3 未初始化异常报告解读
 
@@ -510,7 +511,7 @@ mssanitizer --tool=initcheck application   # application为用户程序
 
 如果存在多余的SetFlag指令，当有两个及两个以上多余的SetFlag指令存在时，同步检测将同时触发匹配异常和冗余异常。
 
-对于昇腾950PR&950DT系列产品，simt单元还存在线程间同步指令__syncthreads()，作用是同步block内的所有线程，到达同步点后再执行后续指令。因此禁止用户指定部分线程执行__syncthreads()，同步检测功能会识别此类行为并上报错误信息，提醒用户存在同步异常。
+对于昇腾950PR&950DT系列产品，SIMT单元还存在线程间同步指令__syncthreads()，作用是同步block内的所有线程，到达同步点后再执行后续指令。因此禁止用户指定部分线程执行__syncthreads()，同步检测功能会识别此类行为并上报错误信息，提醒用户存在同步异常。
 
 > [!NOTE]
 >
@@ -609,7 +610,7 @@ mssanitizer --tool=synccheck application   # application为用户程序
 
 ##### 6.4.3.4 线程同步检测
 
-若昇腾950PR&950DT系列产品simt单元未正确使用__syncthreads()同步指令，将触发线程同步检测告警，工具会打印出所有未达到同步点的线程信息。
+若昇腾950PR&950DT系列产品SIMT单元未正确使用__syncthreads()同步指令，将触发线程同步检测告警，工具会打印出所有未达到同步点的线程信息。
 
 ```text
 ====== ERROR: Sync error detected. Divergent thread(s) in vec_add
@@ -676,7 +677,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 > - --check-device-heap或--check-cann-heap使能后，将不会对Kernel内进行检测。
 > - Device侧内存检测和CANN软件栈内存检测不能同时使能，若同时使能会提示"CANNOT enable both --check-cann-heap and --check-device-heap"。
 > - --check-dcci使能后，竞争检测将只会使能“dcci缺失检测”子功能，不会再进行主功能“数据竞争检测”。
-> - 使用msSanitizer工具提供的API头文件重新编译的待检测程序只能用于Ascend CL系列接口的泄漏检测，无法用于Device接口的检测。
+> - 使用msSanitizer工具提供的API头文件重新编译的待检测程序只能用于AscendCL系列接口的泄漏检测，无法用于Device接口的检测。
 
 ### 7.3 检测功能组合规则
 
@@ -755,5 +756,5 @@ error  info   warn
 2. 启用 `--check-device-heap` 或 `--check-cann-heap` 后，将不再对 Kernel 内部进行检测。
 3. Device 侧内存检测与 CANN 软件栈内存检测不可同时启用；若同时启用，将报错：“CANNOT enable both --check-cann-heap and --check-device-heap”。
 4. 启用 `--check-dcci` 后，竞争检测将只分析 dcci 缺失，不会展示除 dcci 缺失以外的其他竞争检测结果。
-5. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 Ascend CL 接口的内存泄漏检测，不支持 Device 接口检测。
+5. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 AscendCL 接口的内存泄漏检测，不支持 Device 接口检测。
 6. msSanitizer工具当前只支持对 blockDim 小于 100 的算子进行检测。
