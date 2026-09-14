@@ -567,6 +567,80 @@ std::string GetProgParseRslt(mode_t mode) {
     std::string capture = testing::internal::GetCapturedStdout();
     return capture;
 }
+
+std::string GetProgParseRsltWithArgs(const std::vector<std::string>& extraArgs, mode_t mode = 0755) {
+    std::string tempFile = "./sanitizer_test";
+    TempFileGuard guard(tempFile);
+    ChangeMode(tempFile, mode);
+
+    std::vector<const char*> argv = {
+        "asan"
+    };
+    for (const auto& arg : extraArgs) {
+        argv.push_back(arg.c_str());
+    }
+    argv.push_back(tempFile.c_str());
+
+    /// Reset getopt states
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    cliParser.Interpretor(argv.size(), const_cast<char**>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    return capture;
+}
+}
+
+const char *INIT_CHECK_BLOCK_ID_CONFLICT_ERROR = "ERROR: CANNOT specify both '--tool=initcheck' and '--block-id=<id>'";
+
+TEST(CliParser, enable_initcheck_and_block_id_expect_conflict_error)
+{
+    std::vector<std::string> args = {
+        "--tool=initcheck",
+        "--block-id=1"
+    };
+    std::string capture = GetProgParseRsltWithArgs(args);
+    ASSERT_NE(capture.find(INIT_CHECK_BLOCK_ID_CONFLICT_ERROR), std::string::npos) << capture;
+}
+
+TEST(CliParser, enable_initcheck_without_block_id_expect_no_conflict_error)
+{
+    std::vector<std::string> args = {
+        "--tool=initcheck"
+    };
+    std::string capture = GetProgParseRsltWithArgs(args);
+    ASSERT_EQ(capture.find(INIT_CHECK_BLOCK_ID_CONFLICT_ERROR), std::string::npos) << capture;
+}
+
+TEST(CliParser, enable_block_id_without_initcheck_expect_no_conflict_error)
+{
+    std::vector<std::string> args = {
+        "--block-id=1"
+    };
+    std::string capture = GetProgParseRsltWithArgs(args);
+    ASSERT_EQ(capture.find(INIT_CHECK_BLOCK_ID_CONFLICT_ERROR), std::string::npos) << capture;
+}
+
+TEST(CliParser, enable_initcheck_and_zero_block_id_expect_conflict_error)
+{
+    std::vector<std::string> args = {
+        "--tool=initcheck",
+        "--block-id=0"
+    };
+    std::string capture = GetProgParseRsltWithArgs(args);
+    ASSERT_NE(capture.find(INIT_CHECK_BLOCK_ID_CONFLICT_ERROR), std::string::npos) << capture;
+}
+
+TEST(CliParser, enable_initcheck_with_other_tools_and_block_id_expect_conflict_error)
+{
+    std::vector<std::string> args = {
+        "--tool=initcheck",
+        "--tool=memcheck",
+        "--tool=racecheck",
+        "--block-id=1"
+    };
+    std::string capture = GetProgParseRsltWithArgs(args);
+    ASSERT_NE(capture.find(INIT_CHECK_BLOCK_ID_CONFLICT_ERROR), std::string::npos) << capture;
 }
 
 TEST(CliParser, pass_prog_with_good_perms_expect_no_error)

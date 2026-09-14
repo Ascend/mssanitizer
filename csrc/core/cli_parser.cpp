@@ -779,7 +779,11 @@ bool CheckUserCommand(UserCommand const &userCommand, std::string &msg)
         return false;
     }
     if (userCommand.config.checkCannHeap && userCommand.config.checkDeviceHeap) {
-        msg = "ERROR: CANNOT enable both --check-cann-heap and --check-device-heap";
+        msg = "ERROR: CANNOT specify both '--check-cann-heap=yes' and '--check-device-heap=yes'";
+        return false;
+    }
+    if (userCommand.config.initCheck && userCommand.config.checkBlockId != -1) {
+        msg = "ERROR: CANNOT specify both '--tool=initcheck' and '--block-id=<id>'";
         return false;
     }
 

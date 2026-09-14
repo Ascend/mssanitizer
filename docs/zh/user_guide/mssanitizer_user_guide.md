@@ -75,7 +75,7 @@ mssanitizer --tool=memcheck ./add_npu
 ```
 
 > [!NOTE]
-> 
+>
 > 在`<<<>>>`自定义算子接入torch场景时，默认使用内存池的方式管理GM内存，可能会导致越界检测结果不准确。因此，在检测前需要额外设置如下环境变量关闭内存池，从而获得更精确的检测结果。
 >
 > ```shell
@@ -120,7 +120,7 @@ mssanitizer --tool=memcheck ./add_npu
 | `TRITON_ENABLE_SANITIZER=1` | 使能检测工具 |
 
 > [!NOTE]
-> 
+>
 > Triton 场景会使用 PyTorch 创建 Tensor，PyTorch 框架内默认以内存池的方式管理 GM 内存，会对内存检测产生干扰，因此必须关闭内存缓存以保证检测的有效性。
 
 详细使用示例可参考《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中的"检测 Triton 算子"章节。
@@ -157,7 +157,7 @@ mssanitizer --tool=memcheck ./add_npu
 >
 > 异常报告具有以下级别：
 >
-> - **WARNING**：此级别被定义为不确定性的风险，可能出现的异常现象由实际情况决定，如多核踩踏、内存分配未使用等。其中，多核踩踏风险涉及多个核对同一块内存的操作，高阶用户可以通过核间同步的手段来规避此风险，初级用户遇到此类异常，应该将其视为危险源。目前，多核踩踏的WARNING级别的报告仅能识别atomic类的核间同步信息。
+> - **WARNING**：此级别被定义为不确定性的风险，可能出现的异常现象由实际情况决定，如多核踩踏、内存分配未使用等。其中，多核踩踏风险涉及多个核对同一块内存的操作，可以通过核间同步的手段来规避此风险，因此需要结合竞争检测判断风险是否解除——若多核踩踏对应的地址同时存在竞争告警，则确实存在多核踩踏风险；若不存在竞争，则说明存在核间同步来规避风险，可忽略该WARNING。目前，多核踩踏的WARNING级别的报告仅能识别atomic类的核间同步信息。
 > - **ERROR**：最高严重级别的异常，涉及针对内存操作的确定性错误，如非法读写、内存泄漏、非对齐访问、内存未初始化、竞争异常等。强烈建议用户检查此严重级别的异常。
 
 ### 6.1 内存检测
@@ -647,7 +647,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | --log-file | 指定检测报告输出到文件。 | {file_name}，如配置为test_log。<br>说明：<br>仅支持数字、大小写字母和- . / _四种符号。<br>为避免日志泄漏风险，建议限制该文件权限，确保只有授权人员才能访问该文件。<br>工具会以覆盖的方式将报告输出到test_log文件。若test_log文件中已有内容，这些内容将会被清空。因此，建议指定一个空文件用于输出报告。 | 否 |
 | --log-level | 指定检测报告输出等级。 | info：输出INFO/WARNING/ERROR级别的检测结果。<br>warn（默认）：输出WARNING/ERROR级别的检测结果。<br>error：输出ERROR级别的检测结果。 | 否 |
 | --max-debuglog-size | 指定检测工具调试输出日志中单个文件大小的上限。 | 可设定范围为1~10240之间的整数，单位为MB。<br>默认值为1024。<br>说明：<br>--max-debuglog-size=100就表示单个调试日志的大小上限为100MB。 | 否 |
-| --block-id | 是否启用单block检测功能。 | 可设定范围为0~200之间的整数。<br>启用前：<br>内存检测、未初始化检测和同步检测：默认检测所有block。<br>竞争检测：核间默认检测所有block，核内默认检测block 0的流水内及流水间的竞争。<br>启用后：<br>内存检测、未初始化检测和同步检测：检测指定block。<br>竞争检测：核间不进行检测，检测指定block的流水内及流水间的竞争。 | 否 |
+| --block-id | 是否启用单block检测功能。 | 可设定范围为0~200之间的整数。<br>不支持与未初始化检测同时开启。<br>启用前：<br>内存检测、未初始化检测和同步检测：默认检测所有block。<br>竞争检测：核间默认检测所有block，核内默认检测block 0的流水内及流水间的竞争。<br>启用后：<br>内存检测和同步检测：检测指定block。<br>竞争检测：核间不进行检测，检测指定block的流水内及流水间的竞争。 | 否 |
 | --cache-size | 表示单block的GM内存大小。 | 单block可设定范围为1~8192之间的整数，单位为MB。<br>单block默认值为100MB，表示单block可申请100MB的内存大小。<br>说明：<br>启用单block检测时，--cache-size的最大值为8192MB。不启用单block检测时，--cache-size可设置的最大值为(24*1024 / block数量)。<br>当--cache-size值不满足需求时，异常检测工具将会打印信息提示用户重新设置--cache-size值，具体请参见《MindStudio Sanitizer常见问题》中的msSanitizer工具提示--cache-size异常。 | 否 |
 | --kernel-name | 指定要检测的算子名称。 | 支持使用算子名中的部分字符串来进行模糊匹配。如果不指定，则系统默认会对整个程序执行期间所调度的所有算子进行检测。<br>例如，需要同时检测名为"abcd"和"bcd"的算子时，可以通过配置--kernel-name="bc"来实现这一需求，系统会自动识别并检测所有包含"bc"字符串的算子。 | 否 |
 | --full-backtrace | 显示 AscendC API 内的调用栈回溯。 | yes：显示完整的调用栈回溯。<br>no（默认）：不显示 AscendC API 内的调用栈。 | 否 |
@@ -675,7 +675,8 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 > [!NOTE]
 >
 > - --check-device-heap或--check-cann-heap使能后，将不会对Kernel内进行检测。
-> - Device侧内存检测和CANN软件栈内存检测不能同时使能，若同时使能会提示"CANNOT enable both --check-cann-heap and --check-device-heap"。
+> - Device侧内存检测和CANN软件栈内存检测不能同时使能，若同时使能会提示`CANNOT specify both '--check-cann-heap=yes' and '--check-device-heap=yes'`。
+> - 未初始化检测必须检测所有block，不支持启用单block检测功能；若同时启用，会报错`CANNOT specify both '--tool=initcheck' and '--block-id=<id>'`。
 > - --check-dcci使能后，竞争检测将只会使能“dcci缺失检测”子功能，不会再进行主功能“数据竞争检测”。
 > - 使用msSanitizer工具提供的API头文件重新编译的待检测程序只能用于AscendCL系列接口的泄漏检测，无法用于Device接口的检测。
 
@@ -754,7 +755,8 @@ error  info   warn
 
 1. msSanitizer工具不支持对多线程算子及使用掩码的向量类计算指令的检测。
 2. 启用 `--check-device-heap` 或 `--check-cann-heap` 后，将不再对 Kernel 内部进行检测。
-3. Device 侧内存检测与 CANN 软件栈内存检测不可同时启用；若同时启用，将报错：“CANNOT enable both --check-cann-heap and --check-device-heap”。
-4. 启用 `--check-dcci` 后，竞争检测将只分析 dcci 缺失，不会展示除 dcci 缺失以外的其他竞争检测结果。
-5. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 AscendCL 接口的内存泄漏检测，不支持 Device 接口检测。
-6. msSanitizer工具当前只支持对 blockDim 小于 100 的算子进行检测。
+3. Device 侧内存检测与 CANN 软件栈内存检测不可同时启用；若同时启用，会报错`CANNOT specify both '--check-cann-heap=yes' and '--check-device-heap=yes'`。
+4. 未初始化检测必须检测所有block，不支持启用单block检测功能；若同时启用，会报错`CANNOT specify both '--tool=initcheck' and '--block-id=<id>'`。
+5. 启用 `--check-dcci` 后，竞争检测将只分析 dcci 缺失，不会展示除 dcci 缺失以外的其他竞争检测结果。
+6. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 Ascend CL 接口的内存泄漏检测，不支持 Device 接口检测。
+7. msSanitizer工具当前只支持对 blockDim 小于 100 的算子进行检测。
