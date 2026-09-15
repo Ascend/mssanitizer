@@ -66,7 +66,7 @@
 
 > [!NOTE]
 >
-> - 此样例工程不支持昇腾A3系列产品。
+> - 此样例工程不支持Atlas A3 系列产品。
 > - 下载代码样例时，需执行以下命令指定分支版本。
 >
 > ```shell
@@ -131,7 +131,7 @@
 > [!NOTE]
 >
 > - 此样例工程仅支持Python3.9，若要在其他Python版本上运行，需要修改`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation`目录下`run_op_plugin.sh`文件中的Python版本。
-> - 此样例工程不支持昇腾A3系列产品。
+> - 此样例工程不支持Atlas A3 系列产品。
 > - 下载代码样例时，需执行以下命令指定分支版本。
 >
 > ```shell
