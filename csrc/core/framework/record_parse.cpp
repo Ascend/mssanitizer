@@ -4542,6 +4542,10 @@ void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &ev
 
     it->second(kernelRecord, events);
     if (events.size() == 0) { return; }
+    // 统一为本条 record 生成的事件标注指令类型，供按指令的策略（如告警屏蔽）使用
+    for (auto &event : events) {
+        event.recordType = kernelRecord.recordType;
+    }
     ProcessHsetWaitSync(events);
     UpdateSyncInPipe(kernelRecord, events);
     ReplaceSetSyncPipeScalar(events);

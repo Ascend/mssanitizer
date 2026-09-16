@@ -3715,4 +3715,117 @@ TEST(AddressSanitizer, get_gm_buffer_out_of_bound_record_and_print_excep)
     msg = "";
 }
 
+static constexpr uint64_t SUPPRESSED_ADDR = 0x3000;
+static constexpr uint64_t KEPT_ADDR = 0x4000;
+
+void AddErrorMsgToAsan(const std::shared_ptr<AddressSanitizer> &asan, MemErrorType type, AddressSpace space,
+                       uint64_t addr, RecordType recordType)
+{
+    ErrorMsg msg{};
+    msg.SetType(type, space, addr);
+    // nBadBytes 为 0 的 error 会被 ErrorBuffer::Add 丢弃，带字节语义的告警须给非零 size
+    msg.auxData.nBadBytes = 32;
+    msg.auxData.recordType = recordType;
+    asan->errorBuffer_.Add(msg);
+}
+
+std::shared_ptr<AddressSanitizer> CreateAsanWithConfig(const Config &config, std::string &msg)
+{
+    auto asan = std::dynamic_pointer_cast<AddressSanitizer>(SanitizerFactory::GetInstance().Create(ToolType::MEMCHECK));
+    if (asan == nullptr) {
+        return nullptr;
+    }
+    asan->RegisterNotifyFunc([&msg](LogLv const&, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
+
+    DeviceInfoSummary deviceInfoSummary{};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    if (!asan->SetDeviceInfo(deviceInfoSummary, config)) {
+        return nullptr;
+    }
+    RuntimeContext::Instance().deviceSummary_.device = deviceInfoSummary.device;
+
+    KernelSummary kernelInfo{};
+    kernelInfo.kernelType = KernelType::AIVEC;
+    kernelInfo.blockDim = 1;
+    asan->SetKernelInfo(kernelInfo);
+    return asan;
+}
+
+// 测试 initcheck 下按异常指令屏蔽未初始化告警。预期 LOAD_L1_2D 的告警不上报，同容器内 MOV_UB_TO_L1 的照常上报。
+TEST(AddressSanitizer, uninit_read_of_load_l1_2d_expect_suppressed_in_init_check)
+{
+    Config config{};
+    config.initCheck = true;
+    std::string msg;
+    auto asan = CreateAsanWithConfig(config, msg);
+    ASSERT_NE(asan, nullptr);
+
+    AddErrorMsgToAsan(asan, MemErrorType::UNINITIALIZED_READ, AddressSpace::L1, SUPPRESSED_ADDR, RecordType::LOAD_L1_2D);
+    AddErrorMsgToAsan(asan, MemErrorType::UNINITIALIZED_READ, AddressSpace::L1, KEPT_ADDR, RecordType::MOV_UB_TO_L1);
+    asan->ReportErrorMsg();
+
+    ASSERT_EQ(msg.find("0x3000"), std::string::npos);
+    ASSERT_NE(msg.find("0x4000"), std::string::npos);
+}
+
+// 测试屏蔽的生效前提。预期非 initcheck（memcheck）下不做屏蔽，LOAD_L1_2D 的告警照常上报。
+TEST(AddressSanitizer, uninit_read_of_load_l1_2d_expect_reported_in_mem_check)
+{
+    Config config{};
+    config.memCheck = true;
+    std::string msg;
+    auto asan = CreateAsanWithConfig(config, msg);
+    ASSERT_NE(asan, nullptr);
+
+    AddErrorMsgToAsan(asan, MemErrorType::UNINITIALIZED_READ, AddressSpace::L1, SUPPRESSED_ADDR, RecordType::LOAD_L1_2D);
+    asan->ReportErrorMsg();
+
+    ASSERT_NE(msg.find("0x3000"), std::string::npos);
+}
+
+// 测试未标注指令（recordType 为默认值）的告警是否受影响。预期不命中屏蔽表，照常上报。
+TEST(AddressSanitizer, uninit_read_without_record_type_expect_reported_in_init_check)
+{
+    Config config{};
+    config.initCheck = true;
+    std::string msg;
+    auto asan = CreateAsanWithConfig(config, msg);
+    ASSERT_NE(asan, nullptr);
+
+    AddErrorMsgToAsan(asan, MemErrorType::UNINITIALIZED_READ, AddressSpace::L1, KEPT_ADDR, INVALID_RECORD_TYPE);
+    asan->ReportErrorMsg();
+
+    ASSERT_NE(msg.find("0x4000"), std::string::npos);
+}
+
+// 测试屏蔽是否限定内存空间。预期只按异常指令匹配，不限定空间，GM 上的同类告警同样被屏蔽。
+TEST(AddressSanitizer, uninit_read_of_load_l1_2d_on_gm_expect_suppressed_in_init_check)
+{
+    Config config{};
+    config.initCheck = true;
+    std::string msg;
+    auto asan = CreateAsanWithConfig(config, msg);
+    ASSERT_NE(asan, nullptr);
+
+    AddErrorMsgToAsan(asan, MemErrorType::UNINITIALIZED_READ, AddressSpace::GM, SUPPRESSED_ADDR, RecordType::LOAD_L1_2D);
+    asan->ReportErrorMsg();
+
+    ASSERT_EQ(msg.find("0x3000"), std::string::npos);
+}
+
+// 测试屏蔽是否限定告警类型。预期只有未初始化读被屏蔽，LOAD_L1_2D 上的其它类型告警（如非法读）照常上报。
+TEST(AddressSanitizer, illegal_read_of_load_l1_2d_expect_reported_in_init_check)
+{
+    Config config{};
+    config.initCheck = true;
+    std::string msg;
+    auto asan = CreateAsanWithConfig(config, msg);
+    ASSERT_NE(asan, nullptr);
+
+    AddErrorMsgToAsan(asan, MemErrorType::ILLEGAL_ADDR_READ, AddressSpace::L1, KEPT_ADDR, RecordType::LOAD_L1_2D);
+    asan->ReportErrorMsg();
+
+    ASSERT_NE(msg.find("0x4000"), std::string::npos);
+}
+
 }

@@ -116,6 +116,7 @@ struct ErrorMsg {
         SimtThreadLocation threadLoc;
         SimtThreadLocation conflictedThreadLoc;
         InstrName instrName;
+        RecordType recordType = INVALID_RECORD_TYPE;
         bool isSimt;
         bool displayThread;  // 输出错误的格式是否展示线程数，由于simt的记录会被融合成dynamicRecord，其中包含了多个线程的读写事件；
                              // 此时依托dynamicRecord检测出的错误类型，比如simt的核间踩踏、simt的未初始化等问题展示线程数不准确，

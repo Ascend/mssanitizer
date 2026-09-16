@@ -5375,4 +5375,73 @@ TEST_F(TestRecordParse, parse_dsb_seq_record_generates_single_barrier_and_expect
     ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::INVALID);
     RecordParse::ResetSyncInPipeInfo();
 }
+
+static SanitizerRecord MakeLoadRecord()
+{
+    KernelRecord record{};
+    record.recordType = RecordType::LOAD;
+    record.payload.loadStoreRecord.location.blockId = 7;
+    record.payload.loadStoreRecord.addr = 0x12;
+    record.payload.loadStoreRecord.size = 100;
+    record.payload.loadStoreRecord.alignSize = 100;
+    record.payload.loadStoreRecord.space = AddressSpace::GM;
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+    return sanitizerRecord;
+}
+
+static SanitizerRecord MakeLoadL12DRecord()
+{
+    KernelRecord record{};
+    record.recordType = RecordType::LOAD_L1_2D;
+    record.blockType = BlockType::AICUBE;
+    record.payload.loadL12DRecord.src = 0x1000;
+    record.payload.loadL12DRecord.dst = 0x2000;
+    record.payload.loadL12DRecord.mStep = 16;
+    record.payload.loadL12DRecord.kStep = 1;
+    record.payload.loadL12DRecord.srcStride = 1;
+    record.payload.loadL12DRecord.dstMemType = MemType::UB;
+    record.payload.loadL12DRecord.transposeMode = TransposeMode::DISABLE;
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+    return sanitizerRecord;
+}
+
+// 测试 Parse 为生成的事件标注产生它的指令类型。预期事件 recordType 等于该记录类型 LOAD。
+TEST_F(TestRecordParse, parse_load_record_expect_event_record_type_is_load)
+{
+    std::vector<SanEvent> events;
+    RecordParse::Parse(MakeLoadRecord(), events);
+    ASSERT_EQ(events.size(), 1);
+    ASSERT_EQ(events[0].recordType, RecordType::LOAD);
+}
+
+// 测试 LOAD_L1_2D 记录解析出的事件标签（告警屏蔽所依赖的指令标识）。预期全部事件的 recordType 均为 LOAD_L1_2D。
+TEST_F(TestRecordParse, parse_load_l1_2d_record_expect_event_record_type_is_load_l1_2d)
+{
+    std::vector<SanEvent> events;
+    RecordParse::Parse(MakeLoadL12DRecord(), events);
+    ASSERT_FALSE(events.empty());
+    for (const auto &event : events) {
+        ASSERT_EQ(event.recordType, RecordType::LOAD_L1_2D);
+    }
+}
+
+// 测试连续解析两条不同类型记录时，各自事件是否带上各自记录的指令类型。预期各自标注互不串扰。
+TEST_F(TestRecordParse, parse_two_records_with_separate_events_expect_each_tagged_by_own_record)
+{
+    std::vector<SanEvent> loadEvents;
+    RecordParse::Parse(MakeLoadRecord(), loadEvents);
+    ASSERT_EQ(loadEvents.size(), 1);
+    ASSERT_EQ(loadEvents[0].recordType, RecordType::LOAD);
+
+    std::vector<SanEvent> loadL12DEvents;
+    RecordParse::Parse(MakeLoadL12DRecord(), loadL12DEvents);
+    ASSERT_FALSE(loadL12DEvents.empty());
+    for (const auto &event : loadL12DEvents) {
+        ASSERT_EQ(event.recordType, RecordType::LOAD_L1_2D);
+    }
+}
 }

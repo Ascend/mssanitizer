@@ -34,6 +34,7 @@ inline void FillErrorLocInfo(MemOpRecord const &record, ErrorMsg &msg)
     msg.auxData.pc = record.pc;
     msg.auxData.serialNo = record.serialNo;
     msg.auxData.side = record.side;
+    msg.auxData.recordType = record.recordType;
 }
 
 } // namespace [Dummy]

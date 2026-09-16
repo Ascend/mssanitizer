@@ -271,6 +271,7 @@ struct SanEvent {
     VectorTime timeInfo;
     LocInfo loc{};
     bool isAtomicMode = false;
+    RecordType recordType = INVALID_RECORD_TYPE;
 };
 
 // 输入数据结构

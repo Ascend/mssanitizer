@@ -355,6 +355,9 @@ enum class RecordType : uint32_t {
     FINISH,
 };
 
+/// 指令类型未设置时的默认值
+#define INVALID_RECORD_TYPE (static_cast<RecordType>(0xFFFFFFFFU))
+
 enum class InstrName : uint8_t {
     NONE = 0,
     VABS,
@@ -2235,6 +2238,7 @@ struct MemOpRecord {
     uint64_t mainScalarPc;
     bool ignoreIllegalCheck;
     bool isSimt;
+    RecordType recordType;
     GMAddrOutOfBoundRecord gmAddrOutOfBoundsRecord;
 
     MemOpRecord() = default;
@@ -2243,7 +2247,8 @@ struct MemOpRecord {
         : serialNo{0}, type{record.type}, coreId{}, moduleId{}, srcAddr{record.srcAddr}, dstAddr{record.dstAddr},
         srcSpace{}, dstSpace{}, memSize(record.memSize), lineNo{}, fileName{}, blockType{}, pc{},
         infoSrc{record.infoSrc}, infoDesc{record.infoDesc}, side{}, paramsNo{record.paramsNo},
-        rootAddr{record.rootAddr}, mainScalarPc{}, ignoreIllegalCheck{}, isSimt{}
+        rootAddr{record.rootAddr}, mainScalarPc{}, ignoreIllegalCheck{}, isSimt{},
+        recordType{INVALID_RECORD_TYPE}
     {}
 };
 

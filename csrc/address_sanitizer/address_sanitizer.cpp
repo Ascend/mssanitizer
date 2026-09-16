@@ -71,6 +71,7 @@ void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
     record.pc = event.loc.pc;
     // 从 SanEvent 转换来的 MemOpRecord 都是 kernel 侧的记录
     record.side = MemOpSide::KERNEL;
+    record.recordType = event.recordType;
 }
 
 void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event, MemType memType) {
@@ -336,6 +337,12 @@ void AddressSanitizer::ReportErrorMsg()
 {
     auto const &errorList = this->errorBuffer_.GetBuffer();
 
+    // LOAD_L1_2D 按整 512B 数据分形读，当源地址包含未按 cube 粒度对齐产生的 padding 行、
+    // 以及前序装载指令 burst 间的 dstGap 空洞时，会产生未初始化告警，经决策需要屏蔽
+    static const std::set<RecordType> uninitCheckSkipInstrs = {
+        RecordType::LOAD_L1_2D,
+    };
+
     // build pc stack map cache
     std::set<uint64_t> pcOffsets;
     for (ReducedErrorMsg const &error : errorList) {
@@ -344,6 +351,11 @@ void AddressSanitizer::ReportErrorMsg()
     CallStack::Instance().CachePcOffsets(RuntimeContext::Instance().kernelSummary_.kernelName, pcOffsets);
 
     for (ReducedErrorMsg const &error : errorList) {
+        // 仅屏蔽“未初始化读”告警，其它类型（越界/对齐等）照常上报
+        if (config_.initCheck && error.errorMsg.type == MemErrorType::UNINITIALIZED_READ &&
+            uninitCheckSkipInstrs.count(error.errorMsg.auxData.recordType) != 0) {
+            continue;
+        }
         msgFunc_(GetNotifyLv(error.errorMsg.type), [&error](void) {
             std::stringstream ss;
             ss << error << std::endl;
