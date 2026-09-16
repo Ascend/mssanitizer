@@ -85,7 +85,7 @@
 
     > [!NOTE]
     > 
-    > 在样例工程的`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp`目录下，修改在op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能
+    > 在样例工程的`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp`目录下，修改op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能
     >
     > ```cmake
     > npu_op_kernel_options(ascendc_kernels ALL OPTIONS -sanitizer)

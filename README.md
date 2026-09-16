@@ -49,7 +49,7 @@ msSanitizer 通过多个子功能模块提供不同类型的异常检测能力�
 
 ## 📦 安装指南
 
-介绍工具的环境依赖与安装方法，请参见《[msSanitizer 安装指南](docs/zh/install_guide/mssanitizer_install_guide.md)》。
+工具支持在线安装、离线安装以及源码安装，请参见《[msSanitizer 安装指南](docs/zh/install_guide/mssanitizer_install_guide.md)》。
 
 ## 📘 使用指南
 
