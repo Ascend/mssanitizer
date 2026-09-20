@@ -1666,7 +1666,6 @@ AICORE_FUNC_HEAD void RecordScalarRedAndAtomEvent(EXTRA_PARAMS_DEC, uint64_t add
     record.location.lineNo = lineNo;
 #endif
     record.location.pc = static_cast<uint64_t>(pc);
-    record.isAtom = recordType == RecordType::SCALAR_ATOM;
     record.detailedDataType = detailedDataType;
 
     Recorder recorder(memInfo, blockIdx);

@@ -124,6 +124,8 @@ struct MemOpInfo {
     // 对齐大小，由内存检测引入
     uint16_t alignSize;
     bool ignoreIllegalCheck;
+    // 用于标记SCALAR_RED和SCALAR_ATOM，避免竞争误报
+    bool isScalarAtomic = false;
     uint32_t dcciDistance;
     // FIX_L0C_TO_UB/FIX_L0C_TO_L1 跨核写入时，标注目标核信息，跨核检测时替代 loc.coreId/blockType
     uint32_t dstCoreId = 0;
