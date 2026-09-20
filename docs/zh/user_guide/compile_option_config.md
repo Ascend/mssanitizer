@@ -24,7 +24,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
     > [!NOTE]
     > 
-    > 此样例工程不支持Atlas A3 系列产品和Ascend 950PR&950DT 系列产品。
+    > 此样例工程不支持Atlas A3系列产品和Ascend 950PR&950DT系列产品。
 
 2. 进行算子代码编译，需添加以下编译选项：
 
@@ -73,7 +73,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
         endif()
         ```
 
-4. 启用msSanitizer检测工具时，需要加载NPU侧可执行文件_<kernel\_name>__npu，该文件的获取可参考《Ascend C算子开发指南》中的“Kernel直调算子开发 >[Kernel直调](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/opdevg/Ascendcopdevg/atlas_ascendc_10_0056.html)”章节。
+4. 启用msSanitizer检测工具时，需要加载NPU侧可执行文件_<kernel\_name>__npu，该文件的获取可参考《Ascend C算子开发指南》中的“Kernel直调算子开发 >[Kernel直调](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/programug/Ascendcopdevg/docs/zh/guide/programming_guide/advanced_programming/aclnn_operator_development/design_and_implementation/kernel_operator_implementation.md)”章节。
 
 ## 3. msOpGen算子工程编译场景
 

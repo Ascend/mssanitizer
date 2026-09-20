@@ -6,7 +6,7 @@
 
 msSanitizer 工具是基于昇腾 AI 处理器的异常检测工具，包含单算子开发场景下的内存检测、竞争检测、未初始化检测和同步检测四个子功能。本文档基于入门教程中开发的简易加法算子，演示 msSanitizer 工具的核心功能，帮助初学者直观感受其为算子开发过程带来的高效与便捷。
 
-本章节以您已完成<a href="https://gitcode.com/Ascend/msot/blob/master/docs/zh/quick_start/op_tool_quick_start.md" target="_blank">《算子开发工具链快速入门》</a>的全流程操作为前提；若尚未体验，建议先完成该指南以获得更佳的学习效果。
+本章节以您已完成<a href="https://gitcode.com/Ascend/msot/blob/26.2.0/docs/zh/quick_start/op_tool_quick_start.md" target="_blank">《算子开发工具链快速入门》</a>的全流程操作为前提；若尚未体验，建议先完成该指南以获得更佳的学习效果。
 
 ## 2. 操作步骤
 
@@ -18,7 +18,7 @@ msSanitizer 工具是基于昇腾 AI 处理器的异常检测工具，包含单�
 #### 2.1.1 安装 CANN 容器环境
 
 ✅ **请严格按以下指南完成环境安装：**  
-👉 **<a href="https://gitcode.com/Ascend/msot/blob/master/docs/zh/quick_start/installation_guide.md" target="_blank">《昇腾 AI 算子开发工具链学习环境安装指南》</a>**
+👉 **<a href="https://gitcode.com/Ascend/msot/blob/26.2.0/docs/zh/quick_start/installation_guide.md" target="_blank">《昇腾 AI 算子开发工具链学习环境安装指南》</a>**
 
 > ⏱️ **外网可达环境下预计耗时：约 3 分钟**  
 > 安装完成后，您将获得一个预装所有算子工具、示例代码和依赖库的标准化容器环境。
@@ -36,7 +36,7 @@ msSanitizer 工具是基于昇腾 AI 处理器的异常检测工具，包含单�
 
 ### 2.2【前提】算子工程准备完成
 
-按照<a href="https://gitcode.com/Ascend/msot/blob/master/docs/zh/quick_start/op_tool_quick_start.md#23开发构建算子工程msopgen" target="_blank">《算子开发工具链快速入门》</a>中 2.3 节操作，完成算子工程准备。
+按照<a href="https://gitcode.com/Ascend/msot/blob/26.2.0/docs/zh/quick_start/op_tool_quick_start.md#23开发构建算子工程msopgen" target="_blank">《算子开发工具链快速入门》</a>中 2.3 节操作，完成算子工程准备。
 
 ### 2.3【检测】算子异常检测（msSanitizer）
 

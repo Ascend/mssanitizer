@@ -178,7 +178,7 @@ mssanitizer --tool=memcheck ./add_npu
 | [非法释放](#6135-非法释放) | 对未分配或已释放的地址进行释放导致的异常。 | Host | GM |
 | [内存泄漏](#6134-内存泄漏) | 申请内存使用后未释放，导致程序在运行过程中内存占用持续增加的异常。 | Host | GM |
 | [分配内存未使用](#6136-分配内存未使用) | 对内存分配后未使用导致的异常。 | Kernel、Host | GM |
-| [Ascend 950PR&950DT 系列产品SIMT单元异常信息](#6137-ascend-950pr950dt-系列产品simt单元异常信息) | SIMT架构下展示异常信息发生的线程位置。 | Kernel | GM |
+| [Ascend 950PR&950DT系列产品SIMT单元异常信息](#6137-ascend-950pr950dt系列产品simt单元异常信息) | SIMT架构下展示异常信息发生的线程位置。 | Kernel | GM |
 | [线程间踩踏](#6138-线程间踩踏) | AI Core核心内线程间访问了重叠的内存导致的踩踏问题。 | Kernel | GM |
 | [寄存器告警](#6139-寄存器告警) | 寄存器未回归默认值时，告警提示用户有寄存器值残留。 | Kernel | GM |
 | [GM内存安全区越界写入](#61310-gm内存安全区越界写入) | 使用aicpu tiling下沉功能时，tiling函数出现的越界写入行为 | Host | GM |
@@ -197,9 +197,9 @@ mssanitizer --tool=memcheck ./add_npu
 >
 > - 当用户程序运行完成后，界面将会打印异常报告。
 > - 当用户使用PyTorch等框架接入算子时，框架内部可能会通过内存池管理GM内存，而内存池通常会一次性分配大量GM内存，并在运行过程中复用。此时，若用户对算子进行检测并记录GM上所有内存分配和释放的信息，会因为内存池的内存管理方式导致检测信息不准确。因此检测工具提供了手动上报GM内存分配信息的接口，方便用户在算子调用时手动上报该算子应当使用的GM内存范围，详细接口介绍请参见《[MindStudio Sanitizer对外接口使用说明](../api_reference/mssanitizer_api_reference.md)》中的sanitizerReportMalloc和sanitizerReportFree接口。
-> - msSanitizer工具也支持对Atlas A2 系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3 系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
+> - msSanitizer工具也支持对Atlas A2系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
 > - msSanitizer工具也支持对通算融合类算子的非法读写检测。
-> - 当前Ascend 950PR&950DT 系列产品支持内存检测中GM/UB/L1/L0A/L0B/L0C，其他暂不支持。
+> - 当前Ascend 950PR&950DT系列产品支持内存检测中GM/UB/L1/L0A/L0B/L0C，其他暂不支持。
 
 #### 6.1.3 内存异常报告解读
 
@@ -316,9 +316,9 @@ AI Core是AI处理器中的计算核心，AI处理器内部有多个AI Core，�
 ====== SUMMARY: 1100byte(s) unused memory in 2 allocation(s) // 内存分配未使用的总结信息，包括未使用内存块的个数及字节等信息
 ```
 
-##### 6.1.3.7 Ascend 950PR&950DT 系列产品SIMT单元异常信息
+##### 6.1.3.7 Ascend 950PR&950DT系列产品SIMT单元异常信息
 
-SIMT架构下异常信息的展示会额外提供异常信息发生的线程位置，线程id从0开始计数，例如下方异常信息发生在线程idX=1 idY=0，idZ=0处。Ascend 950PR&950DT 系列产品SIMT单元异常时，错误信息展示如下：
+SIMT架构下异常信息的展示会额外提供异常信息发生的线程位置，线程id从0开始计数，例如下方异常信息发生在线程idX=1 idY=0，idZ=0处。Ascend 950PR&950DT系列产品SIMT单元异常时，错误信息展示如下：
 
 ```text
 ====== ERROR: illegal read of size 4
@@ -360,7 +360,7 @@ SIMT架构下多线程编程时，如果各线程对GM的访问未正确处理�
 > [!NOTE]
 >
 > 当前仅内存检测支持寄存器告警。
-> --trace-non-default-spr-reg=vector功能当前仅支持Atlas A2 系列产品、Atlas A3 系列产品。
+> --trace-non-default-spr-reg=vector功能当前仅支持Atlas A2系列产品、Atlas A3系列产品。
 
 ##### 6.1.3.10 GM内存安全区越界写入
 
@@ -376,7 +376,7 @@ SIMT架构下多线程编程时，如果各线程对GM的访问未正确处理�
 > [!NOTE]
 >
 > GM内存安全区越界写入不支持内存池场景检测。
-> 当前仅支持Atlas A2 系列产品、Atlas A3 系列产品以及Ascend 950PR&950DT 系列产品。
+> 当前仅支持Atlas A2系列产品、Atlas A3系列产品以及Ascend 950PR&950DT系列产品。
 
 ### 6.2 竞争检测
 
@@ -481,8 +481,8 @@ mssanitizer --tool=initcheck application   # application为用户程序
 > - 启动工具后，将会在当前目录下自动生成工具运行日志文件mssanitizer__{TIMESTAMP}__{_PID_}.log。
 > - 由于硬件限制，某些指令仅支持以Block形式进行数据搬运。当参与计算的实际数据量不是Block大小的整数倍时，可能会不可避免地带入部分无效数据（即“脏数据”），这可能导致工具报告初始化异常，用户需自行判断这些“脏数据”是否会影响计算结果。
 > - 未初始化检测结果准确的前提是不存在数据竞争，因为初始化的本质是“先写后读”，如果存在内存读写竞争，则未初始化检测结果可能不准确。因此建议先处理完竞争问题，再进行未初始化检测。
-> - 当前仅支持Atlas A2 系列产品、Atlas A3 系列产品以及Ascend 950PR&950DT 系列产品。
-> - Ascend 950PR&950DT 系列产品不支持UB地址空间未初始化检测。
+> - 当前仅支持Atlas A2系列产品、Atlas A3系列产品以及Ascend 950PR&950DT系列产品。
+> - Ascend 950PR&950DT系列产品不支持UB地址空间未初始化检测。
 
 #### 6.3.3 未初始化异常报告解读
 
@@ -511,13 +511,13 @@ mssanitizer --tool=initcheck application   # application为用户程序
 
 如果存在多余的SetFlag指令，当有两个及两个以上多余的SetFlag指令存在时，同步检测将同时触发匹配异常和冗余异常。
 
-对于Ascend 950PR&950DT 系列产品，SIMT单元还存在线程间同步指令__syncthreads()，作用是同步block内的所有线程，到达同步点后再执行后续指令。因此禁止用户指定部分线程执行__syncthreads()，同步检测功能会识别此类行为并上报错误信息，提醒用户存在同步异常。
+对于Ascend 950PR&950DT系列产品，SIMT单元还存在线程间同步指令__syncthreads()，作用是同步block内的所有线程，到达同步点后再执行后续指令。因此禁止用户指定部分线程执行__syncthreads()，同步检测功能会识别此类行为并上报错误信息，提醒用户存在同步异常。
 
 > [!NOTE]
 >
 > - 同步检测单独启用时不会执行内存检测和竞争检测，因此建议用户先使用内存检测和竞争检测，若竞争检测无异常报告，但算子存在竞争现象时，再考虑使用同步检测对前序算子进行检查。
 > - 若存在多余WaitFlag指令，将会导致当前算子的后续指令被阻塞，从而出现算子运行停滞的现象。此时，开发者无需工具提示，便可自行发现问题。
-> - 当前仅支持Atlas A2 系列产品、Atlas A3 系列产品以及Ascend 950PR&950DT 系列产品。
+> - 当前仅支持Atlas A2系列产品、Atlas A3系列产品以及Ascend 950PR&950DT系列产品。
 
 #### 6.4.1 同步异常类型
 
@@ -610,7 +610,7 @@ mssanitizer --tool=synccheck application   # application为用户程序
 
 ##### 6.4.3.4 线程同步检测
 
-若Ascend 950PR&950DT 系列产品SIMT单元未正确使用__syncthreads()同步指令，将触发线程同步检测告警，工具会打印出所有未达到同步点的线程信息。
+若Ascend 950PR&950DT系列产品SIMT单元未正确使用__syncthreads()同步指令，将触发线程同步检测告警，工具会打印出所有未达到同步点的线程信息。
 
 ```text
 ====== ERROR: Sync error detected. Divergent thread(s) in vec_add
