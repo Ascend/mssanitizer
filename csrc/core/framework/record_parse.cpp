@@ -213,6 +213,7 @@ static void ParseRedAndAtomRecord(const KernelRecord &record, std::vector<SanEve
     memInfo.repeatTimes = 1U;
     memInfo.repeatStride = 1U;
     memInfo.alignSize = redRecord.size;
+    memInfo.isScalarAtomic = true;
     AlignChecker::Instance().CheckAlign(event, redRecord.size);
     events.emplace_back(event);
 }

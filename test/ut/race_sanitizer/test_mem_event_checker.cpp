@@ -713,4 +713,122 @@ TEST(MemEventChecker, ub_events_should_not_trigger_missing_dcci)
     ConfigManager::Instance().Get().checkDcci = false;
 }
 
+namespace {
+// 构造一条标量原子指令（SCALAR_RED/SCALAR_ATOM）解析后的READ+WRITE两个子事件，
+// 模拟EventContainer::Push对MEMCPY_BLOCKS事件的拆分
+void AppendScalarAtomicSubEvents(std::vector<MemEvent> &events, uint32_t coreId, uint64_t serialNo, uint64_t addr)
+{
+    SanEvent event;
+    event.eventInfo.memInfo.memType = MemType::GM;
+    event.eventInfo.memInfo.addr = addr;
+    event.eventInfo.memInfo.blockNum = 1;
+    event.eventInfo.memInfo.blockSize = 4;
+    event.eventInfo.memInfo.repeatTimes = 1;
+    event.eventInfo.memInfo.isScalarAtomic = true;
+    event.pipe = PipeType::PIPE_S;
+    event.loc.coreId = coreId;
+    event.serialNo = serialNo;
+
+    uint8_t blockDim = 10;
+    VectorTime t;
+    t.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
+    t[static_cast<uint8_t>(PipeType::PIPE_S) + coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
+
+    MemEvent readEvent(event);
+    readEvent.memInfo.opType = AccessType::READ;
+    readEvent.vt = t;
+    events.push_back(readEvent);
+
+    MemEvent writeEvent(event);
+    writeEvent.memInfo.opType = AccessType::WRITE;
+    writeEvent.vt = t;
+    events.push_back(writeEvent);
+}
+
+MemEvent MakeScalarAtomicSubEvent(uint32_t coreId, uint64_t serialNo, uint64_t addr, AccessType opType)
+{
+    SanEvent event;
+    event.eventInfo.memInfo.memType = MemType::GM;
+    event.eventInfo.memInfo.addr = addr;
+    event.eventInfo.memInfo.blockNum = 1;
+    event.eventInfo.memInfo.blockSize = 4;
+    event.eventInfo.memInfo.repeatTimes = 1;
+    event.eventInfo.memInfo.opType = opType;
+    event.eventInfo.memInfo.isScalarAtomic = true;
+    event.pipe = PipeType::PIPE_S;
+    event.loc.coreId = coreId;
+    event.serialNo = serialNo;
+
+    uint8_t blockDim = 10;
+    VectorTime t;
+    t.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
+    t[static_cast<uint8_t>(PipeType::PIPE_S) + coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
+
+    MemEvent memEvent(event);
+    memEvent.vt = t;
+    return memEvent;
+}
+}
+
+TEST(MemEventChecker, scalar_atomic_instructions_expect_no_race)
+{
+    std::vector<MemEvent> events;
+    AppendScalarAtomicSubEvents(events, 0U, 13U, 0x120000017000);
+    AppendScalarAtomicSubEvents(events, 1U, 25U, 0x120000017000);
+    AppendScalarAtomicSubEvents(events, 2U, 38U, 0x120000017000);
+    RunAllRaceAlgExpectNoRace(events);
+}
+
+TEST(MemEventChecker, scalar_atomic_against_normal_write_expect_cross_core_race)
+{
+    std::vector<MemEvent> events;
+    events.push_back(MakeScalarAtomicSubEvent(0U, 13U, 0x120000017000, AccessType::WRITE));
+    events.push_back(MakeScalarAtomicSubEvent(1U, 25U, 0x120000017000, AccessType::WRITE));
+    events[1].memInfo.isScalarAtomic = false;
+    RunAllRaceAlgExpectCrossCoreRace(events);
+}
+
+namespace {
+// 构造isAtomicMode=true时的GM搬运算子
+MemEvent MakeVectorAtomicWrite(uint32_t coreId, uint64_t serialNo, uint64_t addr, PipeType pipe)
+{
+    SanEvent event;
+    event.eventInfo.memInfo.memType = MemType::GM;
+    event.eventInfo.memInfo.addr = addr;
+    event.eventInfo.memInfo.blockNum = 1;
+    event.eventInfo.memInfo.blockSize = 4;
+    event.eventInfo.memInfo.repeatTimes = 1;
+    event.eventInfo.memInfo.opType = AccessType::WRITE;
+    event.pipe = pipe;
+    event.loc.coreId = coreId;
+    event.serialNo = serialNo;
+    event.isAtomicMode = true;
+
+    uint8_t blockDim = 10;
+    VectorTime t;
+    t.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
+    t[static_cast<uint8_t>(pipe) + coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
+
+    MemEvent memEvent(event);
+    memEvent.vt = t;
+    return memEvent;
+}
+}
+
+TEST(MemEventChecker, scalar_atomic_and_vector_atomic_expect_no_race)
+{
+    std::vector<MemEvent> events;
+    AppendScalarAtomicSubEvents(events, 0U, 13U, 0x120000017000);
+    events.push_back(MakeVectorAtomicWrite(1U, 25U, 0x120000017000, PipeType::PIPE_MTE3));
+    RunAllRaceAlgExpectNoRace(events);
+}
+
+TEST(MemEventChecker, vector_atomic_writes_expect_no_race)
+{
+    std::vector<MemEvent> events;
+    events.push_back(MakeVectorAtomicWrite(0U, 13U, 0x120000017000, PipeType::PIPE_MTE3));
+    events.push_back(MakeVectorAtomicWrite(1U, 25U, 0x120000017000, PipeType::PIPE_MTE3));
+    RunAllRaceAlgExpectNoRace(events);
+}
+
 }

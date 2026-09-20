@@ -602,18 +602,14 @@ bool MemEventChecker::IsMemSpaceOverlap(const MemEvent &op1, const MemEvent &op2
 
 bool MemEventChecker::IsAtomicAgainst(const MemEvent& event1, const MemEvent& event2) const
 {
-    // 均为原子写指令且均非标量写的指令，两者不会发生竞争
-    if (!event1.isAtomicMode || !event2.isAtomicMode) {
-        return false;
-    }
-
-    if (event1.memInfo.opType != AccessType::WRITE || event2.memInfo.opType != AccessType::WRITE) {
-        return false;
-    }
-
-    if (event1.pipe == PipeType::PIPE_S || event2.pipe == PipeType::PIPE_S) {
-        return false;
-    }
-    return true;
+    // 涉及原子操作的两种情况，不会产生竞争：
+    // 1. set_atomic_xxx和set_atomic_none之间的指令，isAtomicMode均为true且均非标量写
+    // 2. SCALAR_RED和SCALAR_ATOM，本身自带原子性，被建模为READ+WRITE后，子事件仍应保持原子性
+    auto isAtomicEvent = [](const MemEvent &event) {
+        return event.memInfo.isScalarAtomic ||
+            (event.isAtomicMode && event.memInfo.opType == AccessType::WRITE &&
+            event.pipe != PipeType::PIPE_S);
+    };
+    return isAtomicEvent(event1) && isAtomicEvent(event2);
 }
 }

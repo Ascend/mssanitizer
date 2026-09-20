@@ -999,7 +999,6 @@ struct RedRecord {
     uint64_t addr;
     uint64_t size;
     Location location;
-    uint8_t isAtom;
     DetailedDataType detailedDataType;
 };
 

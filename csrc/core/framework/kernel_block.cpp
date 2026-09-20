@@ -432,10 +432,10 @@ const std::map<RecordType, std::function<bool(uint8_t const *, KernelRecord &, u
         return ParseMemErrorType(record, kernelRecord.payload.kernelErrorRecord, offset);
     }},
     {RecordType::SCALAR_RED, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        return ParseRecordByType(record, kernelRecord.payload.redRecord, offset);
     }},
     {RecordType::SCALAR_ATOM, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
-        return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
+        return ParseRecordByType(record, kernelRecord.payload.redRecord, offset);
     }},
     {RecordType::LDVA, [](uint8_t const *record, KernelRecord &kernelRecord, uint64_t &offset) {
         return ParseRecordByType(record, kernelRecord.payload.loadStoreRecord, offset);
