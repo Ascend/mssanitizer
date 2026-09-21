@@ -569,6 +569,15 @@ private:
         return false;
     }
 
+    // SIMT架构下同一warp内的线程锁步执行，读写交错属于编程模型内的正常行为；
+    // 仅写写(WW)竞争在同warp内仍视为真实bug。warp大小为32，threadId/32即warp编号。
+    // pc是否相同的判断不在此函数内进行，由调用点在竞争判断处显式给出。
+    static constexpr uint16_t WARP_SIZE = 32U;
+    AICORE_FUNC_HEAD bool IsSameWarp(uint16_t threadId1, uint16_t threadId2) const
+    {
+        return (threadId1 / WARP_SIZE) == (threadId2 / WARP_SIZE);
+    }
+
     AICORE_FUNC_HEAD ByteStatus_t ExtractSamePcStatus(
         MemoryByteStatus memoryStatus, ByteStatus_t oldValue, uint16_t threadId, AddrInfo const &addrInfo) const {
         uint16_t oldThreadId = MBSP::ExtractThreadId(oldValue);
@@ -733,14 +742,17 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateLoadStatusForRace(
         } else if (oldStatus == MemoryByteStatus::GLOBAL_READ) {
             newValue = ExtractSamePcStatus(MemoryByteStatus::GLOBAL_READ, oldValue, threadId, addrInfo);
         } else if (oldStatus == MemoryByteStatus::WRITE) {
-            if (oldThreadId != threadId && ExistRace(oldValue, memType)) {
+            // 同warp且不同pc（处于不同指令/分支，时序有序）的写读交错属正常行为，不报
+            if (oldThreadId != threadId && ExistRace(oldValue, memType) &&
+                (!IsSameWarp(oldThreadId, threadId) || oldPc == addrInfo.location.pc)) {
                 /// 写读竞争时，将gm上的状态设置为写线程的状态，以保证后续遇到读事件时能识别到竞争问题
                 newValue = MBSP::Construct(MemoryByteStatus::RACE, oldThreadId, oldPc, memType, addrInfo.isAtomic);
                 AssignErrorInfo<KernelErrorType::THREAD_WR_RACE>(oldValue, threadId, auxInfo);
             }
         } else if (oldStatus == MemoryByteStatus::RACE) {
-            if (oldThreadId != threadId && ExistRace(oldValue, memType)) {
-                newValue = ExtractSamePcStatus(MemoryByteStatus::RACE, oldValue, threadId, addrInfo);
+            if (oldThreadId != threadId && ExistRace(oldValue, memType) &&
+                (!IsSameWarp(oldThreadId, threadId) || oldPc == addrInfo.location.pc)) {
+                newValue = MBSP::Construct(MemoryByteStatus::RACE, oldThreadId, oldPc, memType, addrInfo.isAtomic);
                 AssignErrorInfo<KernelErrorType::THREAD_WR_RACE>(oldValue, threadId, auxInfo);
             } else {
                 CopyShadowMemoryToMemInfo(false);
@@ -764,12 +776,15 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateStoreStatusForRace(
         ByteStatus_t newValue = oldValue;
         MemoryByteStatus oldStatus = MBSP::ExtractMemoryStatus(oldValue);
         uint16_t oldThreadId = MBSP::ExtractThreadId(oldValue);
+        uint32_t oldPc = MBSP::ExtractPc(oldValue);
         if (oldStatus == MemoryByteStatus::DEFAULT) {
             newValue =
                 MBSP::Construct(MemoryByteStatus::WRITE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
         } else if (oldStatus == MemoryByteStatus::READ) {
             CopyShadowMemoryToMemInfo(false);
-            if (oldThreadId != threadId && ExistRace(oldValue, memType)) {
+            // 同warp且不同pc的读写交错属正常行为，不报
+            if (oldThreadId != threadId && ExistRace(oldValue, memType) &&
+                (!IsSameWarp(oldThreadId, threadId) || oldPc == addrInfo.location.pc)) {
                 newValue =
                     MBSP::Construct(MemoryByteStatus::RACE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
                 AssignErrorInfo<KernelErrorType::THREAD_RW_RACE>(oldValue, threadId, auxInfo);
@@ -779,7 +794,8 @@ AICORE_FUNC_HEAD void ShadowMemoryOnline::UpdateStoreStatusForRace(
             }
         } else if (oldStatus == MemoryByteStatus::GLOBAL_READ) {
             CopyShadowMemoryToMemInfo(false);
-            if (ExistRace(oldValue, memType)) {
+            if (ExistRace(oldValue, memType) &&
+                (!IsSameWarp(oldThreadId, threadId) || oldPc == addrInfo.location.pc)) {
                 newValue =
                     MBSP::Construct(MemoryByteStatus::RACE, threadId, addrInfo.location.pc, memType, addrInfo.isAtomic);
                 AssignErrorInfo<KernelErrorType::THREAD_RW_RACE>(oldValue, threadId, auxInfo);

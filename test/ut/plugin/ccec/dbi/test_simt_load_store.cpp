@@ -95,8 +95,8 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     __sanitizer_report_simt_stk_b32(memInfo.data(), 0x1000, 0, 0x800000, 11);
     auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
         head.offsetInfo.simtErrorInfo.offset);
-    ASSERT_EQ(blockHead->recordWriteCount, 30);
-    ASSERT_EQ(blockHead->recordCount, 30);
+    ASSERT_EQ(blockHead->recordWriteCount, 18);
+    ASSERT_EQ(blockHead->recordCount, 18);
 }
 
 TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)
@@ -137,8 +137,8 @@ TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)
     __sanitizer_report_red_s_bf16(memInfo.data(), 0x1000, 0, 0x10000);
     auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
         head.offsetInfo.simtErrorInfo.offset);
-    ASSERT_EQ(blockHead->recordWriteCount, 12);
-    ASSERT_EQ(blockHead->recordCount, 12);
+    ASSERT_EQ(blockHead->recordWriteCount, 7);
+    ASSERT_EQ(blockHead->recordCount, 7);
 }
 
 TEST(SimtLoadStoreInstructions, dump_simt_atom_with_initcheck_expect_get_success)
@@ -191,8 +191,8 @@ TEST(SimtLoadStoreInstructions, dump_simt_atom_with_initcheck_expect_get_success
     __sanitizer_report_atom_max_g_s32(memInfo.data(), 0x1000, 0, 0x10000);
     auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
         head.offsetInfo.simtErrorInfo.offset);
-    ASSERT_EQ(blockHead->recordWriteCount, 24);
-    ASSERT_EQ(blockHead->recordCount, 24);
+    ASSERT_EQ(blockHead->recordWriteCount, 16);
+    ASSERT_EQ(blockHead->recordCount, 16);
 }
 
 }
