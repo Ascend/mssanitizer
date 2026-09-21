@@ -200,6 +200,7 @@ mssanitizer --tool=memcheck ./add_npu
 > - msSanitizer工具也支持对Atlas A2 系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3 系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
 > - msSanitizer工具也支持对通算融合类算子的非法读写检测。
 > - 当前Ascend 950PR&950DT 系列产品支持内存检测中GM/UB/L1/L0A/L0B/L0C，其他暂不支持。
+> - 当前在UB地址空间的内存检测默认使用物理上限作为可用空间。
 
 #### 6.1.3 内存异常报告解读
 

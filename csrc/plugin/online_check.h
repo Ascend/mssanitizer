@@ -536,14 +536,11 @@ AICORE_FUNC_HEAD bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, ui
 
     uint64_t addr = addrInfo.addr;
     uint64_t size = addrInfo.size;
-    uint32_t ubSize = globalHead_->simtInfo.ubDynamicSize;
-    // 规避：未传 launch cfg（GE 图模式 / <<<>>> 裸启动）时 ubDynamicSize 为 0，
-    // 在线检查会把 0 当成"UB 全部不可访问"，导致 SIMT 线程读 UB 实参区等合法访问被误报为 illegal read。
-    // 此处兜底为 950 物理 UB 上限 253952（248KB，platform_config ub_size），与离线 UnionBounds(0, ubSize) 对齐。
-    if (ubSize == 0U) {
-        constexpr uint32_t maxUbDynamicSize = 253952U; // 248KB
-        ubSize = maxUbDynamicSize;
-    }
+    // 无论上层传的 ubDynamicSize 是多少，检测都固定使用 950 物理 UB 上限 253952（248KB，
+    // platform_config ub_size），与离线 UnionBounds(0, ubSize) 对齐。
+    // 栈上 __ubuf__ 数组由编译器在编译期分配，检测工具不跟踪其实际大小，
+    // 因此统一用物理上限做边界判定，避免上层传小 ubDynamicSize 时误报栈上 UB 访问。
+    constexpr uint32_t ubSize = 253952U; // 248KB
     if (addr >= ubSize) {
         illegalSize = size;
     } else if (addr + size > ubSize) {

@@ -336,3 +336,96 @@ TEST(OnlineCheck, check_unaligned_simt_record_expect_one_error)
     ASSERT_EQ(errorDesc->space, AddressSpace::GM);
     ASSERT_EQ(errorDesc->location.blockId, 1);
 }
+
+TEST(OnlineCheck, check_ub_read_within_physical_limit_expect_success)
+{
+    uint64_t blockDim = 1;
+    uint64_t cacheSize = 10 * MB_TO_BYTES;
+    std::vector<uint8_t> memInfo(cacheSize * blockDim, 0);
+    RecordGlobalHead head{};
+    head.simtInfo.ubDynamicSize = 0U;
+    head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
+    RecordBlockHead blockHead{};
+    blockHead.hostMemoryInfoPtr = nullptr;
+    blockHead.hostMemoryNum = 0;
+    std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
+    std::copy_n(reinterpret_cast<uint8_t const*>(&blockHead), sizeof(RecordBlockHead),
+        memInfo.begin() + sizeof(RecordGlobalHead));
+    uint64_t allHeadSize = sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    OnlineCheck checker = OnlineCheck();
+    checker.Init(memInfo.data(), memInfo.data() + allHeadSize, memInfo.data() + sizeof(RecordGlobalHead), 0);
+    SimtLoadStoreRecord record = {
+        .addr = 0x100,
+        .size = 4,
+        .location = {10, 10, 0x10, 1},
+        .threadLoc = {0, 0, 0},
+        .space = AddressSpace::UB,
+    };
+    checker.Process<RecordType::SIMT_LDS>(record);
+    auto recordTypePtr = reinterpret_cast<RecordType const*>(memInfo.data() + allHeadSize +
+        sizeof(SimtRecordBlockHead));
+    ASSERT_EQ(*recordTypePtr, RecordType{});
+}
+
+TEST(OnlineCheck, check_ub_read_beyond_physical_limit_expect_error)
+{
+    uint64_t blockDim = 1;
+    uint64_t cacheSize = 10 * MB_TO_BYTES;
+    std::vector<uint8_t> memInfo(cacheSize * blockDim, 0);
+    RecordGlobalHead head{};
+    head.simtInfo.ubDynamicSize = 0U;
+    head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
+    RecordBlockHead blockHead{};
+    blockHead.hostMemoryInfoPtr = nullptr;
+    blockHead.hostMemoryNum = 0;
+    std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
+    std::copy_n(reinterpret_cast<uint8_t const*>(&blockHead), sizeof(RecordBlockHead),
+        memInfo.begin() + sizeof(RecordGlobalHead));
+    uint64_t allHeadSize = sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    OnlineCheck checker = OnlineCheck();
+    checker.Init(memInfo.data(), memInfo.data() + allHeadSize, memInfo.data() + sizeof(RecordGlobalHead), 0);
+    SimtLoadStoreRecord record = {
+        .addr = 253952UL,
+        .size = 4,
+        .location = {10, 10, 0x10, 1},
+        .threadLoc = {0, 0, 0},
+        .space = AddressSpace::UB,
+    };
+    checker.Process<RecordType::SIMT_LDS>(record);
+    auto recordTypePtr = reinterpret_cast<RecordType const*>(memInfo.data() + allHeadSize +
+        sizeof(SimtRecordBlockHead));
+    ASSERT_EQ(*recordTypePtr, RecordType::ONLINE_ERROR);
+}
+
+TEST(OnlineCheck, check_ub_read_within_small_ubDynamicSize_expect_success)
+{
+    uint64_t blockDim = 1;
+    uint64_t cacheSize = 10 * MB_TO_BYTES;
+    std::vector<uint8_t> memInfo(cacheSize * blockDim, 0);
+    RecordGlobalHead head{};
+    head.simtInfo.ubDynamicSize = 1024U;
+    head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
+    RecordBlockHead blockHead{};
+    blockHead.hostMemoryInfoPtr = nullptr;
+    blockHead.hostMemoryNum = 0;
+    std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
+    std::copy_n(reinterpret_cast<uint8_t const*>(&blockHead), sizeof(RecordBlockHead),
+        memInfo.begin() + sizeof(RecordGlobalHead));
+    uint64_t allHeadSize = sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    OnlineCheck checker = OnlineCheck();
+    checker.Init(memInfo.data(), memInfo.data() + allHeadSize, memInfo.data() + sizeof(RecordGlobalHead), 0);
+    SimtLoadStoreRecord record = {
+        .addr = 2048U,
+        .size = 4,
+        .location = {10, 10, 0x10, 1},
+        .threadLoc = {0, 0, 0},
+        .space = AddressSpace::UB,
+    };
+    checker.Process<RecordType::SIMT_LDS>(record);
+    auto recordTypePtr = reinterpret_cast<RecordType const*>(memInfo.data() + allHeadSize +
+        sizeof(SimtRecordBlockHead));
+    ASSERT_EQ(*recordTypePtr, RecordType{});
+}
