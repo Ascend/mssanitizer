@@ -46,7 +46,7 @@ msSanitizer工具包含sanitizer接口和mstx扩展接口两种类型。sanitize
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMalloc的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMalloc的详细说明。
 
 **函数原型**
 
@@ -87,7 +87,7 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMallocCached的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMallocCached的详细说明。
 
 **函数原型**
 
@@ -128,7 +128,7 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtFree的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtFree的详细说明。
 
 **函数原型**
 
@@ -167,7 +167,7 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemset的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMemset的详细说明。
 
 **函数原型**
 
@@ -209,7 +209,7 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemsetAsync的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMemsetAsync的详细说明。
 
 **函数原型**
 
@@ -252,7 +252,7 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMemcpy的详细说明。
 
 **函数原型**
 
@@ -295,7 +295,7 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpyAsync的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMemcpyAsync的详细说明。
 
 **函数原型**
 
@@ -339,7 +339,7 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2d的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMemcpy2d的详细说明。
 
 **函数原型**
 
@@ -384,7 +384,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 
 > [!NOTE]
 > 
-> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/API/appdevgapi/aclcppdevg_03_0094.html)》手册中“acl API参考（C） > 运行时管理 > 内存管理”章节查看aclrtMemcpy2dAsync的详细说明。
+> 可参见《[应用开发接口](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/API/runtimeapi/aclcppdevg_03_0094.html)》手册中“内存管理”章节查看aclrtMemcpy2dAsync的详细说明。
 
 **函数原型**
 
@@ -495,7 +495,7 @@ void sanitizerReportFree(void *ptr);
 
 ### mstx接口简介
 
-mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
+mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程序中插入特定的标记，以便在工具进行内存检测时能够更精确地定位特定算子的内存问题。例如，针对二级指针类算子，在不使能mstx接口的情况下，得到的地址空间可能不准确。通过《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/zh/api_reference/README.md)》的mstxMemRegionsRegister和mstxMemRegionsUnregister接口，可以将准确的地址空间传递给异常检测工具，实现更精准的内存检测。
 
 > [!NOTE]
 > 
@@ -503,7 +503,7 @@ mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程
 
 ### mstx接口列表
 
-msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/master/docs/zh/api_reference/README.md)》。
+msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/zh/api_reference/README.md)》。
 
 **表 13**  msSanitizer工具调用的mstx接口列表<a name="table111"></a>
 
@@ -523,7 +523,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 
     >[!NOTE]
     > 
-    > 此样例工程不支持Atlas A3 系列产品。
+    > 此样例工程不支持Atlas A3系列产品。
 
 - 在`${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt`路径下新增库文件`libms_tools_ext.so`，地址为：`${INSTALL_DIR}/lib64/libms_tools_ext.so`。
 
