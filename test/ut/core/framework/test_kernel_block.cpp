@@ -38,8 +38,8 @@ protected:
     }
 
     // 创建有效的内存缓冲区，包含有效的 RecordGlobalHead 和 RecordBlockHead
-    std::vector<uint8_t> CreateValidMemBuffer(uint64_t &outMemSize, uint32_t blockIdx = 0)
-    {
+    std::vector<uint8_t> CreateValidMemBuffer(
+        uint64_t &outMemSize, uint32_t blockIdx = 0, uint32_t entryRecordCount = 0) {
         // 计算最小所需大小：全局头 + 块头 + 一些记录空间
         uint64_t simdRecordsSize = 1024; // 1KB for simd records
         // GetAllThreadSize 计算的是 (simtErrorInfo.size + sizeof(SimtRecordBlockHead)) * SIMT_THREAD_MAX_SIZE
@@ -48,6 +48,8 @@ protected:
         uint64_t shadowMemHeadSize = sizeof(ShadowMemoryRecordHead);
         uint64_t shadowMemRecordsSize = 10 * sizeof(ShadowMemoryRecord); // 10 records
         uint64_t simtEntryHeadSize = sizeof(SimtEntryBlockHead);
+        // SimtEntryRecord 记录位于 SimtEntryBlockHead 之后，ParseSimtEntryRecord 用例需预留记录空间
+        simtEntryHeadSize += static_cast<uint64_t>(entryRecordCount) * sizeof(OnlineShadowMemory::SimtEntryRecord);
 
         uint64_t totalSize = sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
                              simdRecordsSize + simtSize + shadowMemHeadSize +
@@ -257,4 +259,67 @@ TEST_F(TestKernelBlock, GetRecordBlockHead)
     auto blockHead = kernelBlock->GetRecordBlockHead();
     EXPECT_EQ(blockHead.blockInfo.blockType, BlockType::AIVEC);
     EXPECT_EQ(blockHead.recordCount, 10);
+}
+
+// 测试 ParseSimtEntryRecord：设备写入顺序不保证"UB 在前、GM 在后"（实测可交错 9 段），
+// 按位置切分会把 GM/UB 记录混入同一动态事件，导致事件级 memType 取首条记录 space 而失真。
+// stable_partition 按记录真实 space 稳定分区后，切分出的两个动态事件应各自单空间。
+TEST_F(TestKernelBlock, ParseSimtEntryRecord_InterleavedSpace_SingleSpaceEvents) {
+    constexpr uint32_t kEntryCount = 4;
+    uint64_t memSize = 0;
+    // 4 条 SimtEntryRecord，GM 在前、UB/GM 交错：旧位置切分会把前 2 条 (GM,UB) 混为"UB事件"、
+    // 后 2 条 (GM,UB) 混为"GM事件"，事件级 memType 均失真
+    auto buffer = CreateValidMemBuffer(memSize, 0, kEntryCount);
+    auto kernelBlock = KernelBlock::CreateKernelBlock(buffer.data(), memSize, 0);
+    ASSERT_NE(kernelBlock, nullptr);
+    ASSERT_NE(kernelBlock->simtEntryHead_, nullptr);
+
+    // simtEntryHead_ 为 const 指针，但其指向的缓冲区本身可写；CreateKernelBlock 按
+    // "simt 错误区之后"定位的真实 simtEntry 区域，才是 ParseSimtEntryRecord 读取的位置
+    auto *entryHead = const_cast<SimtEntryBlockHead *>(kernelBlock->simtEntryHead_);
+    entryHead->recordCount = kEntryCount;
+    entryHead->recordWriteCount = kEntryCount;
+    entryHead->exceedSize = 0;
+    entryHead->mainScalarPc = 0;
+    entryHead->threadXDim = 1024; // DecomposeThreadId 依赖线程维度配置
+    entryHead->threadYDim = 1;
+    entryHead->threadZDim = 1;
+
+    using OnlineShadowMemory::MEMORY_TYPE_START_BIT;
+    using OnlineShadowMemory::SimtEntryRecord;
+    auto *entryRecords = reinterpret_cast<SimtEntryRecord *>(entryHead + 1);
+    const uint64_t ubStatus = 1ULL << MEMORY_TYPE_START_BIT; // [30:30]=1 → UB
+    const uint64_t gmStatus = 0; // [30:30]=0 → GM（协议默认）
+    entryRecords[0] = SimtEntryRecord{0x1000, gmStatus, 4}; // GM 记录
+    entryRecords[1] = SimtEntryRecord{0x0, ubStatus, 4}; // UB 记录
+    entryRecords[2] = SimtEntryRecord{0x2000, gmStatus, 4}; // GM 记录
+    entryRecords[3] = SimtEntryRecord{0x4, ubStatus, 4}; // UB 记录
+
+    std::vector<KernelRecord> kernelRecords;
+    EXPECT_TRUE(kernelBlock->ParseSimtEntryRecord(kernelRecords));
+
+    // stable_partition 后产生两个单空间事件：UB 事件在前、GM 事件在后
+    ASSERT_EQ(kernelRecords.size(), 2U);
+
+    // UB 事件：两条记录均为 UB，首条记录 space=UB（事件级 memType 正确）
+    ASSERT_EQ(kernelRecords[0].recordType, RecordType::DYNAMIC_OP);
+    ASSERT_EQ(kernelRecords[0].payload.dynamicRecord.dynamicType, RecordType::SIMT_ENTRY);
+    ASSERT_EQ(kernelRecords[0].payload.dynamicRecord.count, 2U);
+    auto *ubRecords = reinterpret_cast<ShadowMemoryRecord *>(kernelRecords[0].payload.dynamicRecord.buffer);
+    ASSERT_NE(ubRecords, nullptr);
+    EXPECT_EQ(ubRecords[0].space, AddressSpace::UB);
+    EXPECT_EQ(ubRecords[0].addr, 0x0U);
+    EXPECT_EQ(ubRecords[1].space, AddressSpace::UB);
+    EXPECT_EQ(ubRecords[1].addr, 0x4U);
+
+    // GM 事件：两条记录均为 GM，首条记录 space=GM
+    ASSERT_EQ(kernelRecords[1].recordType, RecordType::DYNAMIC_OP);
+    ASSERT_EQ(kernelRecords[1].payload.dynamicRecord.dynamicType, RecordType::SIMT_ENTRY);
+    ASSERT_EQ(kernelRecords[1].payload.dynamicRecord.count, 2U);
+    auto *gmRecords = reinterpret_cast<ShadowMemoryRecord *>(kernelRecords[1].payload.dynamicRecord.buffer);
+    ASSERT_NE(gmRecords, nullptr);
+    EXPECT_EQ(gmRecords[0].space, AddressSpace::GM);
+    EXPECT_EQ(gmRecords[0].addr, 0x1000U);
+    EXPECT_EQ(gmRecords[1].space, AddressSpace::GM);
+    EXPECT_EQ(gmRecords[1].addr, 0x2000U);
 }
