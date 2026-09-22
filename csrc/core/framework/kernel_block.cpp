@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <cstdint>
+#include <algorithm>
 #include <functional>
 #include <fstream>
 
@@ -765,6 +766,11 @@ bool KernelBlock::ParseSimtEntryRecord(std::vector<KernelRecord> &kernelRecords)
         record.location.blockId = simdRecordHead_.blockInfo.blockId;
         records.emplace_back(record);
     }
+    // 设备写入顺序不保证"UB 在前、GM 在后"（本算子 GM 读在前），若直接按位置切分会把 GM/UB 记录
+    // 混入同一动态事件，导致事件级 memType 取首条记录的 space 而失真，进而绕过 racecheck 的 UB 豁免。
+    // 这里按记录真实 space 稳定分区（UB 在前、GM 在后），保证切分出的两个动态事件各自单空间。
+    std::stable_partition(records.begin(), records.end(),
+        [](const ShadowMemoryRecord &record) { return record.space == AddressSpace::UB; });
     KernelRecord kernelRecord{};
     kernelRecord.blockType = this->simdRecordHead_.blockInfo.blockType;
     kernelRecord.recordType = RecordType::DYNAMIC_OP;
