@@ -761,3 +761,7 @@ error  info   warn
 5. 启用 `--check-dcci` 后，竞争检测将只分析 dcci 缺失，不会展示除 dcci 缺失以外的其他竞争检测结果。
 6. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 Ascend CL 接口的内存泄漏检测，不支持 Device 接口检测。
 7. msSanitizer工具当前只支持对 blockDim 小于 100 的算子进行检测。
+8. 工具尚无法感知Ascend 950PR&950DT系列产品在SIMD VF函数内的向量计算指令对UB的读写行为，因此Ascend 950PR&950DT系列产品未初始化检测暂不支持UB空间。
+9. 工具暂不支持通过aclnn配置CCU方式下发的算子进行异常检测。
+10. 工具暂不支持识别由HCCL提供的共享内存。
+11. 当算子使用`asc_atomic_inc`、`asc_atomic_dec`、`WaitPreBlockCalc`、`GroupBarrier::Wait`接口时，由于这些接口内部采用软同步机制，竞争检测结果会提示存在读写竞争。该提示属于良性告警，对算子实际运行结果无影响。
