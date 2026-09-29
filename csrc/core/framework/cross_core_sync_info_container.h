@@ -99,6 +99,11 @@ public:
     const std::vector<CrossCoreSyncWarnInfo> &GetFlagIdWarnInfo() const;
     void ClearFlagIdWarnInfo();
 
+    // 当前算子一个 blockDim 上实际运行的 AIV 核数（device 侧 get_subblockdim()）：
+    // __mix__(1,2) 为 2，__mix__(0,1)/__mix__(1,1) 为 1；未设置时使用默认值 2。
+    void SetVecSubBlockDim(uint8_t vecSubBlockDim) { vecSubBlockDim_ = vecSubBlockDim; }
+    uint8_t GetVecSubBlockDim() const { return vecSubBlockDim_; }
+
     // 设置同步向量时钟-软同步
     void SetBlockSoftSyncInfo(int32_t eventID, uint32_t blockIdx, const VectorTime& vectorTime);
     // 获取同步向量时钟并更新本地时钟-软同步
@@ -128,6 +133,8 @@ private:
 private:
     uint32_t maxBlockNum_ = 0;
     KernelType kernelType_{};
+    // 一个 blockDim 上实际运行的 AIV 核数（默认 2）
+    uint8_t vecSubBlockDim_ = C220_VEC_SUB_BLOCKDIM;
     std::vector<BlockSyncEvent> blockSyncEvent_;
     std::vector<BlockSoftSyncInfo> blockSoftSyncInfo_;
     /// map-key: std::pair<addr, flagId>，key为addr和flagId

@@ -249,25 +249,41 @@ TEST_F(TestPipelineReplayer, callback_fires_during_processing_memory_events) {
     ASSERT_GE(syncCount, 0) << "SYNC_EVENT should not trigger MEMORY_EVENT";
 }
 
-// case 4. PIPE_S 路由：PIPE_S 上的事件根据 event.pipe 发射到目标 PIPE
-TEST_F(TestPipelineReplayer, pipe_s_routes_to_target_pipe) {
+// case 4. 内存事件不迁移：仍留在 PIPE_S 队列，按记录顺序（= 程序顺序）回放
+// 若把内存事件一并迁移到各自的 PIPE 队列，PIPE_V 先于 PIPE_MTE2 被排空，
+// 跨 PIPE 的"先写后读"会被颠倒，使 initcheck 误报未初始化读。
+TEST_F(TestPipelineReplayer, mem_events_keep_record_order_across_pipes) {
     RegisterCollectingCallback();
+    replayer_.Do(MakeMemEvent(PipeType::PIPE_MTE2, AccessType::WRITE));
     replayer_.Do(MakeMemEvent(PipeType::PIPE_V, AccessType::READ));
     replayer_.Do(MakeKernelFinishEvent());
 
     ASSERT_TRUE(replayer_.IsFinished());
-    bool memOnPipeV = false;
+    std::vector<AccessType> order;
     for (auto &r : callbackRecords_) {
-        if (r.type == ReplayerCallbackType::MEMORY_EVENT && r.event.type == EventType::MEM_EVENT &&
-            r.event.pipe == PipeType::PIPE_V) {
-            memOnPipeV = true;
-            break;
+        if (r.type == ReplayerCallbackType::MEMORY_EVENT && r.event.type == EventType::MEM_EVENT) {
+            order.push_back(r.event.eventInfo.memInfo.opType);
         }
     }
-    ASSERT_TRUE(memOnPipeV);
+    ASSERT_EQ(order.size(), 2U);
+    EXPECT_EQ(order[0], AccessType::WRITE) << "写事件应按记录顺序先于读事件回放";
+    EXPECT_EQ(order[1], AccessType::READ);
 }
 
-// case 5. SYNC_EVENT：SET_FLAG / WAIT_FLAG 配对成功 && 无 SET 时卡死
+// case 5. 同步事件迁移：同核 wait 排在其 set 之前（多流水并行的正常形态）不应误报卡死
+// wait 挂目的 PIPE、set 挂生产者 PIPE；若不迁移，wait 会阻塞 PIPE_S 单队列，
+// 排在它之后的 set 永远消费不到，导致误报 kernel locked up。
+TEST_F(TestPipelineReplayer, sync_events_migrate_so_stuck_wait_before_its_set) {
+    RegisterCollectingCallback();
+    replayer_.Do(MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 5, SyncType::WAIT_FLAG));
+    replayer_.Do(MakeSyncEvent(PipeType::PIPE_MTE2, PipeType::PIPE_MTE2, PipeType::PIPE_V, 5, SyncType::SET_FLAG));
+    replayer_.Do(MakeKernelFinishEvent());
+
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertNoStuck();
+}
+
+// case 6. SYNC_EVENT：SET_FLAG / WAIT_FLAG 配对成功 && 无 SET 时卡死
 TEST_F(TestPipelineReplayer, sync_event_set_wait) {
     RegisterCollectingCallback();
 
@@ -297,7 +313,7 @@ TEST_F(TestPipelineReplayer, sync_event_set_wait) {
     ASSERT_TRUE(stuckFired) << "WAIT_FLAG without SET_FLAG should cause stuck";
 }
 
-// case 6. CROSS_CORE_SYNC_EVENT：FFTS_SYNC + WAIT_FLAG_DEV / WAIT_INTRA_BLOCK
+// case 7. CROSS_CORE_SYNC_EVENT：FFTS_SYNC + WAIT_FLAG_DEV / WAIT_INTRA_BLOCK
 TEST_F(TestPipelineReplayer, ffts_sync_and_wait_variants) {
     RegisterCollectingCallback();
 
@@ -323,7 +339,7 @@ TEST_F(TestPipelineReplayer, ffts_sync_and_wait_variants) {
     AssertStuck("WAIT_INTRA_BLOCK without FFTS_SYNC should stall");
 }
 
-// case 7. CROSS_CORE_SOFT_SYNC_EVENT：IB_SET / IB_WAIT / SYNC_ALL
+// case 8. CROSS_CORE_SOFT_SYNC_EVENT：IB_SET / IB_WAIT / SYNC_ALL
 TEST_F(TestPipelineReplayer, soft_sync_set_wait_and_sync_all) {
     RegisterCollectingCallback();
 
@@ -351,7 +367,7 @@ TEST_F(TestPipelineReplayer, soft_sync_set_wait_and_sync_all) {
     AssertStuck("SYNC_ALL with single core should stall (needs all cores to arrive)");
 }
 
-// case 8. MSTX_CROSS_SYNC_EVENT：SET_CROSS / WAIT_CROSS (含 isMore 跳过)
+// case 9. MSTX_CROSS_SYNC_EVENT：SET_CROSS / WAIT_CROSS (含 isMore 跳过)
 TEST_F(TestPipelineReplayer, mstx_cross_sync_variants) {
     RegisterCollectingCallback();
 
@@ -379,7 +395,7 @@ TEST_F(TestPipelineReplayer, mstx_cross_sync_variants) {
     AssertStuck("MSTX_WAIT_CROSS (!isMore) without set should stall");
 }
 
-// case 9. BARRIER：CROSS_CORE_BARRIER + NPU_BARRIER 退化
+// case 10. BARRIER：CROSS_CORE_BARRIER + NPU_BARRIER 退化
 TEST_F(TestPipelineReplayer, barrier_cross_core_and_npu) {
     RegisterCollectingCallback();
 
@@ -414,7 +430,7 @@ TEST_F(TestPipelineReplayer, barrier_cross_core_and_npu) {
     AssertStuck("Decayed NPU barrier with insufficient cores should stall");
 }
 
-// case 10. BUF_SYNC_EVENT：GET_BUF / RLS_BUF
+// case 11. BUF_SYNC_EVENT：GET_BUF / RLS_BUF
 TEST_F(TestPipelineReplayer, buf_sync_get_rls_variants) {
     RegisterCollectingCallback();
 
@@ -463,7 +479,7 @@ TEST_F(TestPipelineReplayer, buf_sync_get_rls_variants) {
     AssertStuck("Nested GET→GET→RLS→RLS: second GET stalls, RLS behind it unreachable");
 }
 
-// case 11. 综合多事件序列 + 卡死回调准确性验证
+// case 12. 综合多事件序列 + 卡死回调准确性验证
 TEST_F(TestPipelineReplayer, multiple_events_and_stuck_verify) {
     RegisterCollectingCallback();
 
@@ -506,4 +522,55 @@ TEST_F(TestPipelineReplayer, multiple_events_and_stuck_verify) {
     ASSERT_EQ(se->serialNo, stuckSerial);
     ASSERT_EQ(se->type, EventType::SYNC_EVENT);
     ASSERT_EQ(se->eventInfo.syncInfo.opType, SyncType::WAIT_FLAG);
+}
+
+// case 13. 跨 kernel 复用 syncDB_
+// 场景：kernel1 只发 SET_FLAG；同一 replayer_ 对象 Init 后，kernel2 只发同 key 的 WAIT_FLAG。
+// 预期：仍判卡死（ALL_DEVICE_STUCK），上一 kernel 的过期 set 不能把本 kernel 的 wait 满足掉。
+TEST_F(TestPipelineReplayer, reinit_clears_sync_db_across_kernels) {
+    RegisterCollectingCallback();
+    // kernel1：只有 SET_FLAG，没有配对的 WAIT_FLAG
+    replayer_.Do(MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 7, SyncType::SET_FLAG));
+    replayer_.Do(MakeKernelFinishEvent());
+    ASSERT_TRUE(replayer_.IsFinished());
+
+    // kernel2：复用同一个 replayer_ 对象（生产代码中它是进程级对象，每个 kernel 只调 Init）
+    callbackRecords_.clear();
+    replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, kDefaultBlockDim);
+
+    replayer_.Do(MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 7, SyncType::WAIT_FLAG));
+    replayer_.Do(MakeKernelFinishEvent());
+
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertStuck("stale SET_FLAG from the previous kernel must not satisfy this kernel's WAIT_FLAG");
+}
+
+// case 14. __mix__(0,1) 全 AIV 阻塞的到齐数
+// 场景：MIX 内核 blockDim=2（展开后 6 个 block），AIV coreId 0/1 各发一次 MODE0 全 AIV 阻塞 set，block 1 再等它。
+// 预期：两个 AIV 核到齐后 wait 立即满足，回放正常结束、无 ALL_DEVICE_STUCK。
+TEST_F(TestPipelineReplayer, mix_kernel_with_single_vec_sub_block_dim_expect_no_stuck) {
+    // MIX + 910B1 会按 subblock 展开：maxBlockNum_ = blockDim * C220_MIX_SUB_BLOCKDIM
+    replayer_.Init(KernelType::MIX, DeviceType::ASCEND_910B1, 2U);
+    RegisterCollectingCallback();
+
+    // AIV coreId 0/1 展开后是 block 0/1：各发一个 MODE0 全 AIV 阻塞 set，vecSubBlockDim=1
+    auto setOnCore0 = MakeBlockSyncEvent(PipeType::PIPE_S, 0, static_cast<uint8_t>(FftsSyncMode::MODE0),
+                                         SyncType::FFTS_SYNC, 0);
+    setOnCore0.eventInfo.fftsSyncInfo.vecSubBlockDim = 1U;
+    replayer_.Do(setOnCore0);
+
+    auto setOnCore1 = MakeBlockSyncEvent(PipeType::PIPE_S, 0, static_cast<uint8_t>(FftsSyncMode::MODE0),
+                                         SyncType::FFTS_SYNC, 1);
+    setOnCore1.eventInfo.fftsSyncInfo.vecSubBlockDim = 1U;
+    replayer_.Do(setOnCore1);
+
+    // block 1 等待该全 AIV 阻塞，2 个 AIV 核到齐后应被满足
+    auto waitOnCore1 = MakeBlockSyncEvent(PipeType::PIPE_S, 0, static_cast<uint8_t>(FftsSyncMode::MODE0),
+                                          SyncType::WAIT_FLAG_DEV, 1);
+    waitOnCore1.eventInfo.fftsSyncInfo.vecSubBlockDim = 1U;
+    replayer_.Do(waitOnCore1);
+
+    replayer_.Do(MakeKernelFinishEvent());
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertNoStuck();
 }

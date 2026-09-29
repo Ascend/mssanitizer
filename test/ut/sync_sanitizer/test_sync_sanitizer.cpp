@@ -744,4 +744,28 @@ TEST(SyncSanitizer, stuck_multiple_wait_flags_some_unpaired_expect_stuck_err) {
     ASSERT_TRUE(msg.find("kernel locked up") != std::string::npos);
 }
 
+TEST(SyncSanitizer, stuck_wait_before_its_set_in_same_core_expect_no_stuck_err) {
+    // 同一核内 wait 排在它的 set 之前：多流水并行时属于正常形态（WAIT 只阻塞目的 PIPE，
+    // 生产者 PIPE 会继续推进并置位）。回放必须把事件从 PIPE_S 迁移到各自 PIPE 再并发推进，
+    // 否则该 SET 永远无法被消费 → 误报卡死。
+    SyncSanitizer syncSan{};
+    std::string msg{};
+    InitSyncSanForStuckTest(syncSan, msg);
+
+    SanitizerRecord record{};
+    std::vector<SanEvent> events;
+    // MTE2 先等待 MTE3 置位
+    g_fillSyncRecord(record, 0U, RecordType::WAIT_FLAG, PipeType::PIPE_MTE3, PipeType::PIPE_MTE2, EventID::EVENT_ID0);
+    RecordPreProcess::GetInstance().Process(record, events);
+    // MTE3 稍后才 set（同一个 eventId/pipe 对）
+    g_fillSyncRecord(record, 0U, RecordType::SET_FLAG, PipeType::PIPE_MTE3, PipeType::PIPE_MTE2, EventID::EVENT_ID0);
+    RecordPreProcess::GetInstance().Process(record, events);
+    PushKernelFinish(events);
+
+    syncSan.Do(record, events);
+
+    ASSERT_TRUE(syncSan.stuckEvents_.empty());
+    ASSERT_TRUE(msg.find("kernel locked up") == std::string::npos);
+}
+
 } // namespace

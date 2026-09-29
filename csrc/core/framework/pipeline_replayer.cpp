@@ -27,7 +27,8 @@ void PipelineReplayer::Init(KernelType kernelType, DeviceType deviceType, uint32
     uint32_t totalBlockNum = NeedExpandBlockDim(kernelType, deviceType)
         ? blockDim * C220_MIX_SUB_BLOCKDIM : blockDim;
     eventContainer_.Init(totalBlockNum);
-    syncDB_.resize(totalBlockNum);
+    // 跨 kernel 复用需要清空，否则上一 kernel 未配对的 SET_FLAG 会满足本 kernel 的 WAIT_FLAG，造成同步问题漏报。
+    syncDB_.assign(totalBlockNum, SyncEventDataBase{});
     crossCoreSyncInfoContainer_.Init(totalBlockNum, kernelType);
 
     getRlsBufMap_.clear();
@@ -89,6 +90,20 @@ void PipelineReplayer::CacheMstxCrossSet(const SanEvent& event)
 
 // 事件分发
 ReturnType PipelineReplayer::ProcessEvent(const SanEvent &event) {
+    // 同步事件迁移到 event.pipe 对应的队列，让各 PIPE 并发推进（对齐 racecheck 的 RaceAlgImpl）。
+    // 否则全部事件卡在 PIPE_S 单队列串行，"wait 排在其 set 之前"（多流水并行的正常形态：
+    // set 挂生产者 PIPE、wait 挂目的 PIPE）的场景下该 set 永远消费不到，导致误报卡死。
+    // 内存事件不迁移：它们本就不阻塞流水，留在 PIPE_S 队列按记录顺序（= 程序顺序）回放即可；
+    // 若一并迁移，跨 PIPE 的"先写后读"会被各队列轮转调度打乱，使 initcheck 误报未初始化读。
+    const bool isMemEvent = (event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT);
+    const PipeType curPipe = eventContainer_.GetPipeIndex();
+    if (!isMemEvent && curPipe != event.pipe &&
+        static_cast<uint32_t>(event.pipe) < static_cast<uint32_t>(PipeType::SIZE)) {
+        const uint32_t blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_);
+        eventContainer_.Push(event, event.pipe, blockIndex);
+        return ReturnType::PROCESS_OK;
+    }
+
     switch (event.type) {
         case EventType::SYNC_EVENT:
             return ProcessSyncEvent(event);
@@ -160,6 +175,12 @@ ReturnType PipelineReplayer::ProcessBlockSyncEvent(const SanEvent& event)
     uint32_t blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_);
     auto& fftsInfo = event.eventInfo.fftsSyncInfo;
     VectorTime vt{};
+
+    // 以记录里上报的 vec 子核数为准（__mix__(0,1)取1、__mix__(1,2)取2），
+    // 否则全 AIV 阻塞的到齐数会算错，导致误报卡死。
+    if (fftsInfo.vecSubBlockDim >= 1U && fftsInfo.vecSubBlockDim <= C220_VEC_SUB_BLOCKDIM) {
+        crossCoreSyncInfoContainer_.SetVecSubBlockDim(fftsInfo.vecSubBlockDim);
+    }
 
     if (fftsInfo.opType == SyncType::FFTS_SYNC) {
         crossCoreSyncInfoContainer_.SetBlockSyncInfo(fftsInfo.flagId,
