@@ -108,3 +108,42 @@ TEST(EventContainer, pop_some_events_and_expect_the_size_is_right)
 
     ASSERT_TRUE(container.IsEmpty());
 }
+
+// 场景：同一对象跨 kernel 复用，kernel1 队列里还留着未处理事件。
+// 预期：第二次 Init 后队列整体清空（IsEmpty()==true、GetAllQueSize()==0）。
+TEST(EventContainer, reinit_shall_clear_leftover_events_across_kernels)
+{
+    EventContainer container;
+    container.Init(1);
+    SanEvent e;
+    e.pipe = PipeType::PIPE_S;
+    container.Push(e, e.pipe, 0);
+    ASSERT_FALSE(container.IsEmpty());
+
+    // 同一个对象进入下一个 kernel
+    container.Init(1);
+    ASSERT_TRUE(container.IsEmpty());
+    ASSERT_EQ(container.GetAllQueSize(), 0U);
+}
+
+// 场景：kernel1 以“所有 device 卡死”收尾后，同一对象再 Init 进入 kernel2。
+// 预期：重走一遍卡死判定仍能到达 IsAllDeviceStuck()（未复位时 stuckDeviceNum_ 会越过 deviceNum_，Run() 死循环）。
+TEST(EventContainer, reinit_shall_reset_stuck_state_across_kernels)
+{
+    EventContainer container;
+    container.Init(1);
+    SanEvent e;
+    e.pipe = PipeType::PIPE_S;
+    container.Push(e, e.pipe, 0);
+
+    // kernel1 以“所有 device 卡死”收尾：一轮 block 零出队
+    container.SwitchToNextBlock();
+    container.CheckCurDeviceStuck();
+    ASSERT_TRUE(container.IsAllDeviceStuck());
+
+    // kernel2 复用同一对象后，重新走一遍卡死判定必须仍能到达 IsAllDeviceStuck()
+    container.Init(1);
+    container.SwitchToNextBlock();
+    container.CheckCurDeviceStuck();
+    ASSERT_TRUE(container.IsAllDeviceStuck());
+}

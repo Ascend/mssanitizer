@@ -273,4 +273,121 @@ TEST(CrossCoreSyncInfoContainer, flag_id_warn_info_clear_expect_empty)
     syncContainer.ClearFlagIdWarnInfo();
     ASSERT_TRUE(syncContainer.GetFlagIdWarnInfo().empty());
 }
+
+// 场景：kernel1 凑齐 MODE0 全 AIV 阻塞、产生未消费的 waitVec，随后同一容器 Init 进入 kernel2。
+// 预期：Init 清空 blockSyncEvent_，kernel2 的 GetBlockSyncInfo 返回 false（否则 wait 被过期 set 满足 → 漏报）。
+TEST(CrossCoreSyncInfoContainer, reinit_shall_clear_ffts_sync_info_across_kernels)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(6, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // kernel#1：4 个 AIV block（c220 默认 vecSubBlockDim=2 -> AIVCount=4）到齐，产生各 AIV block 的 wait
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 0, vt);
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 1, vt);
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 3, vt);
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 4, vt);
+
+    // 同一对象进入 kernel#2：上一 kernel 残留的 wait 必须已被清空
+    syncContainer.Init(6, KernelType::MIX);
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_FALSE(syncContainer.GetBlockSyncInfo(0, 0, vt));
+}
+
+// 场景：kernel1 留下未消费的软同步（IB_SET）信息，随后同一容器 Init 进入 kernel2。
+// 预期：Init 清空 blockSoftSyncInfo_，kernel2 的 GetBlockSoftSyncInfo 返回 false。
+TEST(CrossCoreSyncInfoContainer, reinit_shall_clear_soft_sync_info_across_kernels)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(6, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // kernel#1 留下一个未被消费的软同步 set
+    syncContainer.SetBlockSoftSyncInfo(0, 0, vt);
+
+    syncContainer.Init(6, KernelType::MIX);
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0, 0, vt));
+}
+
+// 场景：kernel1 留下未消费的 MSTX 跨核 set，随后同一容器 Init 进入 kernel2。
+// 预期：Init 清空 mstxCrossSetMap_，kernel2 的 GetMstxCrossInfo 返回 false。
+TEST(CrossCoreSyncInfoContainer, reinit_shall_clear_mstx_cross_set_across_kernels)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    MstxCrossInfo crossInfo = {
+        .addr = 0x200,
+        .flagId = 1,
+        .pipe = PipeType::PIPE_MTE2,
+        .isMore = false,
+        .isMerge = false,
+        .opType = SyncType::MSTX_SET_CROSS,
+    };
+    syncContainer.Init(6, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 1);
+    // kernel#1 留下一个未被消费的 mstx set
+    syncContainer.SetMstxCrossInfo(crossInfo, vt);
+
+    syncContainer.Init(6, KernelType::MIX);
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_FALSE(syncContainer.GetMstxCrossInfo(crossInfo, vt));
+}
+
+// 场景：__mix__(0,1)（vec 子核数=1）、blockDim=2，两个 AIV 核各发一个 MODE0 全 AIV 阻塞 set。
+// 预期：全 AIV 阻塞的到齐数按 1 算（=2）即满足、GetBlockSyncInfo 为 true；按固定 2 算需 4 个，误报卡死。
+TEST(CrossCoreSyncInfoContainer, mix_with_single_vec_sub_block_dim_need_one_aiv_set_per_core)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    // blockDim=2 -> maxBlockNum_ = 2 * C220_MIX_SUB_BLOCKDIM = 6，逻辑 AICore 数 = 2
+    syncContainer.Init(2U * C220_MIX_SUB_BLOCKDIM, KernelType::MIX);
+    syncContainer.SetVecSubBlockDim(1U);
+    ASSERT_EQ(syncContainer.GetVecSubBlockDim(), 1U);
+
+    VectorTime vt;
+    vt.resize(66, 1);
+    // 2 个 AIV 核（展开后 block 0 / block 1）各 set 一次即应到齐
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 0, vt);
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 1, vt);
+
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_TRUE(syncContainer.GetBlockSyncInfo(0, 0, vt));
+}
+
+// 场景：__mix__(1,2)（vec 子核数=2）、blockDim=2，需 4 个 AIV 核到齐（对照组，防过度修正）。
+// 预期：只到齐 2/4 时不满足（false），4/4 才满足（true）。
+TEST(CrossCoreSyncInfoContainer, mix_with_two_vec_sub_block_dim_need_two_aiv_sets_per_core)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(2U * C220_MIX_SUB_BLOCKDIM, KernelType::MIX);
+    syncContainer.SetVecSubBlockDim(C220_VEC_SUB_BLOCKDIM);
+
+    VectorTime vt;
+    vt.resize(66, 1);
+    // 只到齐 2/4 个 AIV 核，不能提前放行
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 0, vt);
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 1, vt);
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_FALSE(syncContainer.GetBlockSyncInfo(0, 0, vt));
+
+    // 其余 2 个 AIV 核到齐后才放行
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 3, vt);
+    syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 4, vt);
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_TRUE(syncContainer.GetBlockSyncInfo(0, 0, vt));
+}
+
+// 场景：kernel1 上报 vecSubBlockDim=1；kernel2 的记录未携带该值，复用同一容器。
+// 预期：Init 把 vecSubBlockDim_ 复位为默认值 2，不残留上一算子的取值。
+TEST(CrossCoreSyncInfoContainer, reinit_shall_restore_default_vec_sub_block_dim)
+{
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(2U * C220_MIX_SUB_BLOCKDIM, KernelType::MIX);
+    syncContainer.SetVecSubBlockDim(1U);
+    ASSERT_EQ(syncContainer.GetVecSubBlockDim(), 1U);
+
+    // 下一个算子的记录未携带 vecSubBlockDim 时必须回到默认值 2
+    syncContainer.Init(2U * C220_MIX_SUB_BLOCKDIM, KernelType::MIX);
+    ASSERT_EQ(syncContainer.GetVecSubBlockDim(), C220_VEC_SUB_BLOCKDIM);
+}
 }

@@ -24,7 +24,17 @@ void EventContainer::Init(uint32_t blockNum, uint32_t deviceNum)
 {
     deviceNum_ = deviceNum;
     maxBlockNum_ = blockNum;
-    ques_.resize(deviceNum * blockNum * (static_cast<uint32_t>(PipeType::SIZE)));
+    // 跨 kernel 复用场景下必须全部复位，否则残留事件会让 IsEmpty() 恒为 false，
+    // stuckDeviceNum_ 越过 deviceNum_ 会让 IsAllDeviceStuck() 恒为 false，导致 PipeLine::Run() 死循环。
+    ques_.assign(deviceNum * blockNum * (static_cast<uint32_t>(PipeType::SIZE)), std::queue<SanEvent>());
+    pipeIndex_ = 0U;
+    blockIndex_ = 0U;
+    deviceIndex_ = 0U;
+    blockPopCount_ = 0U;
+    devicePopCount_ = 0U;
+    isBlockStuck_ = false;
+    isDeviceStuck_ = false;
+    stuckDeviceNum_ = 0U;
 }
 
 // 将事件保存到对应block的PIPE队列中

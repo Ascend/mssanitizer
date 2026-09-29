@@ -23,9 +23,15 @@ void CrossCoreSyncInfoContainer::Init(uint32_t blockNum, KernelType kernelType)
 {
     maxBlockNum_ = blockNum;
     kernelType_ = kernelType;
-    blockSyncEvent_.resize(blockNum);
-    blockSoftSyncInfo_.resize(blockNum);
+    // 跨 kernel 复用时，残留的 set 会让本 kernel 的 wait 被过期 set 满足（导致漏报），必须整体清空：
+    // semCores_ 停在上一轮未完成态会让本 kernel 的 SyncAll 直接返回 false（导致误报 pipe 阻塞）。
+    blockSyncEvent_.assign(blockNum, BlockSyncEvent{});
+    blockSoftSyncInfo_.assign(blockNum, BlockSoftSyncInfo{});
+    mstxCrossSetMap_.clear();
+    semCores_.Reset(0);
     flagIdWarnInfo_.clear();
+    // 复位成默认值，避免上一 kernel 的 vec 子核数残留。
+    vecSubBlockDim_ = C220_VEC_SUB_BLOCKDIM;
 }
 
 bool IsAIC(uint32_t blockIndex, KernelType kernelType)
@@ -41,7 +47,8 @@ bool IsAIC(uint32_t blockIndex, KernelType kernelType)
 uint32_t CrossCoreSyncInfoContainer::GetAIVCount()
 {
     if (kernelType_ == KernelType::MIX) {
-        return maxBlockNum_ / C220_MIX_SUB_BLOCKDIM * C220_VEC_SUB_BLOCKDIM;
+        // vec 子核数必须用实际上报值：__mix__(0,1) 只有 1 个，按固定 2 算会让全 AIV 阻塞的到齐数异常，误报卡死。
+        return maxBlockNum_ / C220_MIX_SUB_BLOCKDIM * vecSubBlockDim_;
     }
     return maxBlockNum_;
 }
