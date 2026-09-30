@@ -14,9 +14,6 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # -------------------------------------------------------------------------
-# ================================================================================
-# run包安装解析公共脚本
-# 解析filelist.csv文件，完成目录创建，文件复制，权限设置，文件删除等操作。
 
 # 缓存mod文件名
 STASH_MOD_PATH="stash_mod.txt"
@@ -674,7 +671,7 @@ do_chmod_file_dir() {
     local install_path="$1"
     local filelist_path="$2"
     local package="$3"
-    
+
     foreach_filelist "NA" "change_mod_and_own_files" "$install_path" "copy del" "$filelist_path" "no" "concurrency"
     foreach_filelist "NA" "change_mod_and_own_dirs" "$install_path" "mkdir" "$filelist_path" "reverse" "normal"
 }
@@ -968,4 +965,3 @@ fi
 formal_commands_with_lock "$@"
 
 exit 0
-

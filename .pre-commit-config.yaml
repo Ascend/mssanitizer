@@ -26,6 +26,7 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
+        exclude: ^package/
         args: [
             "-L",
             "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,nd,tbe,copyin,alog,UNACCESSABLE,thirdparty,DEPENDEES",

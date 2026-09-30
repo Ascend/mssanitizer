@@ -1,4 +1,18 @@
-// Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+// -------------------------------------------------------------------------
+// This file is part of the MindStudio project.
+// Copyright (c) 2026 Huawei Technologies Co.,Ltd.
+//
+// MindStudio is licensed under Mulan PSL v2.
+// You can use this software according to the terms and conditions of the Mulan PSL v2.
+// You may obtain a copy of Mulan PSL v2 at:
+//
+//          http://license.coscl.org.cn/MulanPSL2
+//
+// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+// EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+// MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+// See the Mulan PSL v2 for more details.
+// -------------------------------------------------------------------------
 
 #include <utility>
 #include <gtest/gtest.h>
@@ -36,7 +50,7 @@ TEST(Load3DInstructions, load_cbuf_to_ca_3dv2_b32)
     record.fMapRightPad = 0;
     record.fMapTopPad = 0;
     record.fMapBottomPad = 0;
-    
+
     record.matrixRptStride = 64;
     record.matrixRptTimes = 64;
     record.matrixRptMode = 0;
@@ -79,7 +93,7 @@ TEST(Load3DInstructions, load_cbuf_to_ca_3dv2_b32)
     SetConfByUint<24, 24>(sprL3dRpt, 0);//repeatMode
     SetConfByUint<47, 32>(sprL3dRpt, 32);//dstStride
     SetConfByUint<63, 48>(sprL3dRpt, 0);//mStartPosition output
-    
+
     __sanitizer_report_set_fmatrix(memInfo.data(), record.location.pc, 0, sprMatrix);
     __sanitizer_report_set_l3d_rpt(memInfo.data(), record.location.pc, 0, sprL3dRpt);
 
@@ -129,7 +143,7 @@ TEST(Load3DInstructions, load_cbuf_to_ca_3dv2_b16)
     record.fMapRightPad = 0;
     record.fMapTopPad = 0;
     record.fMapBottomPad = 0;
-    
+
     record.matrixRptStride = 64;
     record.matrixRptTimes = 64;
     record.matrixRptMode = 0;
@@ -172,7 +186,7 @@ TEST(Load3DInstructions, load_cbuf_to_ca_3dv2_b16)
     SetConfByUint<24, 24>(sprL3dRpt, 0);//repeatMode
     SetConfByUint<47, 32>(sprL3dRpt, 32);//dstStride
     SetConfByUint<63, 48>(sprL3dRpt, 0);//mStartPosition output
-    
+
     __sanitizer_report_set_fmatrix(memInfo.data(), record.location.pc, 0, sprMatrix);
     __sanitizer_report_set_l3d_rpt(memInfo.data(), record.location.pc, 0, sprL3dRpt);
 
@@ -223,7 +237,7 @@ TEST(Load3DInstructions, load_cbuf_to_ca_3dv2_b8)
     record.fMapRightPad = 0;
     record.fMapTopPad = 0;
     record.fMapBottomPad = 0;
-    
+
     record.matrixRptStride = 64;
     record.matrixRptTimes = 64;
     record.matrixRptMode = 0;
@@ -266,7 +280,7 @@ TEST(Load3DInstructions, load_cbuf_to_ca_3dv2_b8)
     SetConfByUint<24, 24>(sprL3dRpt, 0);//repeatMode
     SetConfByUint<47, 32>(sprL3dRpt, 32);//dstStride
     SetConfByUint<63, 48>(sprL3dRpt, 0);//mStartPosition output
-    
+
     __sanitizer_report_set_fmatrix(memInfo.data(), record.location.pc, 0, sprMatrix);
     __sanitizer_report_set_l3d_rpt(memInfo.data(), record.location.pc, 0, sprL3dRpt);
 
@@ -316,7 +330,7 @@ TEST(Load3DInstructions, load_cbuf_to_cb_3dv2_b32)
     record.fMapRightPad = 0;
     record.fMapTopPad = 0;
     record.fMapBottomPad = 0;
-    
+
     record.matrixRptStride = 64;
     record.matrixRptTimes = 64;
     record.matrixRptMode = 0;
@@ -359,7 +373,7 @@ TEST(Load3DInstructions, load_cbuf_to_cb_3dv2_b32)
     SetConfByUint<24, 24>(sprL3dRpt, 0);//repeatMode
     SetConfByUint<47, 32>(sprL3dRpt, 32);//dstStride
     SetConfByUint<63, 48>(sprL3dRpt, 0);//mStartPosition output
-    
+
     __sanitizer_report_set_fmatrix(memInfo.data(), record.location.pc, 0, sprMatrix);
     __sanitizer_report_set_l3d_rpt(memInfo.data(), record.location.pc, 0, sprL3dRpt);
 
@@ -409,7 +423,7 @@ TEST(Load3DInstructions, load_cbuf_to_cb_3dv2_b16)
     record.fMapRightPad = 0;
     record.fMapTopPad = 0;
     record.fMapBottomPad = 0;
-    
+
     record.matrixRptStride = 64;
     record.matrixRptTimes = 64;
     record.matrixRptMode = 0;
@@ -452,7 +466,7 @@ TEST(Load3DInstructions, load_cbuf_to_cb_3dv2_b16)
     SetConfByUint<24, 24>(sprL3dRpt, 0);//repeatMode
     SetConfByUint<47, 32>(sprL3dRpt, 32);//dstStride
     SetConfByUint<63, 48>(sprL3dRpt, 0);//mStartPosition output
-    
+
     __sanitizer_report_set_fmatrix(memInfo.data(), record.location.pc, 0, sprMatrix);
     __sanitizer_report_set_l3d_rpt(memInfo.data(), record.location.pc, 0, sprL3dRpt);
 
@@ -502,7 +516,7 @@ TEST(Load3DInstructions, load_cbuf_to_cb_3dv2_b8)
     record.fMapRightPad = 0;
     record.fMapTopPad = 0;
     record.fMapBottomPad = 0;
-    
+
     record.matrixRptStride = 64;
     record.matrixRptTimes = 64;
     record.matrixRptMode = 0;
@@ -545,7 +559,7 @@ TEST(Load3DInstructions, load_cbuf_to_cb_3dv2_b8)
     SetConfByUint<24, 24>(sprL3dRpt, 0);//repeatMode
     SetConfByUint<47, 32>(sprL3dRpt, 32);//dstStride
     SetConfByUint<63, 48>(sprL3dRpt, 0);//mStartPosition output
-    
+
     __sanitizer_report_set_fmatrix(memInfo.data(), record.location.pc, 0, sprMatrix);
     __sanitizer_report_set_l3d_rpt(memInfo.data(), record.location.pc, 0, sprL3dRpt);
 

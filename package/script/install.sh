@@ -1,4 +1,19 @@
 #!/bin/bash
+# -------------------------------------------------------------------------
+# This file is part of the MindStudio project.
+# Copyright (c) 2026 Huawei Technologies Co.,Ltd.
+#
+# MindStudio is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#
+#          http://license.coscl.org.cn/MulanPSL2
+#
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# -------------------------------------------------------------------------
 USERNAME=$(id -un)
 USERGROUP=$(id -gn)
 
@@ -91,7 +106,7 @@ function check_parent_dir_permission(){
 
     local _owner=$(stat -c %U "${_ppath}/${_cur_dir}")
     if [ ${_owner} != "root" ]; then
-        log_and_print $LEVEL_WARN "The dir [${_cur_dir}] permision not right, " \
+        log_and_print $LEVEL_WARN "The dir [${_cur_dir}] permission not right, " \
             "it should belong to root."
         return 1
     fi
@@ -128,7 +143,7 @@ function install_path_should_belong_to_root() {
     fi
 
     if [ ${_ret} -ne 0 ] && [ ${force_flag} = n ]; then
-        print_log $LEVEL_INFO "You are going to install on a unsecure path, " \
+        print_log $LEVEL_INFO "You are going to install on a insecure path, " \
             "do you want to continue? [y/n]"
         while true; do
             read yn
@@ -148,12 +163,12 @@ function convert_install_path() {
     if [ -z "${_install_path}" ]; then
         _install_path="/"
     fi
-    # covert relative path to absolute path
+    # convert relative path to absolute path
     local _prefix=`echo "${_install_path}" | cut -d"/" -f1`
     if [ ! -z "${_prefix}" ] && [ "~" != "${_prefix}" ]; then
         _install_path="${run_path}/${_install_path}"
     fi
-    # covert '~' to home path
+    # convert '~' to home path
     local _suffix_path=`echo "${_install_path}" | cut -d"~" -f2`
     if [ "${_suffix_path}" != "${_install_path}" ]; then
         local _home_path=`eval echo "~" | sed "s/\/*$//g"`
@@ -187,7 +202,7 @@ function real_install_path() {
             input_install_path=$(default_install_path)
         fi
     fi
-    
+
     install_path=$(convert_install_path "${input_install_path}")
     create_folder $install_path "${USERNAME}:${USERGROUP}" 750
 
