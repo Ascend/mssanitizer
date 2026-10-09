@@ -171,7 +171,7 @@ struct BufSyncInfo {
 struct SoftSyncInfo {
     SyncType opType;
     int32_t eventID;
-    uint16_t waitCoreID; // 被等的核ID
+    int32_t waitCoreID; // 被等的核ID可用-1表示"不限制对端核"，因此需要使用有符号类型
     int32_t usedCores;
     bool isAIVOnly;
 };

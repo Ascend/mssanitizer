@@ -2897,6 +2897,138 @@ TEST_F(TestRecordParse, parse_mstx_cross_record_expect_success)
     ASSERT_EQ(events[1].eventInfo.mstxCrossInfo.opType, SyncType::MSTX_WAIT_CROSS);
 }
 
+// 场景：MSTX 跨核 set/wait 上报接口用 peerCoreId = -1 声明"不限制对端核"，配对只依赖 eventId。
+// 预期：解析后 waitCoreID 原样保留 -1，不得被截断成 uint16 的 65535；
+TEST_F(TestRecordParse, parse_mstx_cross_core_wait_flag_with_unspecified_peer_core_expect_negative_wait_core_id) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    MstxCrossCoreWaitFlag waitFlag{};
+    waitFlag.eventId = 0x1300002;
+    waitFlag.peerCoreId = -1;
+    waitFlag.pipeBarrierAll = false;
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG;
+    record.payload.mstxRecord.bufferLens = sizeof(MstxCrossCoreWaitFlag);
+    record.payload.mstxRecord.interface.mstxCrossCoreWaitFlag = waitFlag;
+    record.payload.mstxRecord.location.blockId = 1;
+    record.payload.mstxRecord.error = false;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+
+    uint32_t softSyncCnt = 0U;
+    for (const auto &event : events) {
+        if (event.type != EventType::CROSS_CORE_SOFT_SYNC_EVENT) {
+            continue;
+        }
+        ++softSyncCnt;
+        ASSERT_EQ(event.eventInfo.softSyncInfo.opType, SyncType::IB_WAIT);
+        ASSERT_EQ(event.eventInfo.softSyncInfo.eventID, 0x1300002);
+        // 关键断言：负值哨兵不得被截断（历史缺陷：int32_t -1 → uint16_t 65535）
+        ASSERT_EQ(event.eventInfo.softSyncInfo.waitCoreID, -1);
+    }
+    ASSERT_EQ(softSyncCnt, 1U);
+}
+
+// 场景：pipeBarrierAll = true 时解析会额外生成全流水 barrier 事件。
+// 预期：软同步事件仍携带原始的 -1，不受其它生成事件影响。
+TEST_F(TestRecordParse, parse_mstx_cross_core_wait_flag_with_pipe_barrier_all_expect_negative_wait_core_id) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    MstxCrossCoreWaitFlag waitFlag{};
+    waitFlag.eventId = 0x1300002;
+    waitFlag.peerCoreId = -1;
+    waitFlag.pipeBarrierAll = true;
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG;
+    record.payload.mstxRecord.bufferLens = sizeof(MstxCrossCoreWaitFlag);
+    record.payload.mstxRecord.interface.mstxCrossCoreWaitFlag = waitFlag;
+    record.payload.mstxRecord.location.blockId = 1;
+    record.payload.mstxRecord.error = false;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+
+    uint32_t softSyncCnt = 0U;
+    for (const auto &event : events) {
+        if (event.type != EventType::CROSS_CORE_SOFT_SYNC_EVENT) {
+            continue;
+        }
+        ++softSyncCnt;
+        ASSERT_EQ(event.eventInfo.softSyncInfo.opType, SyncType::IB_WAIT);
+        ASSERT_EQ(event.eventInfo.softSyncInfo.waitCoreID, -1);
+    }
+    ASSERT_EQ(softSyncCnt, 1U);
+}
+
+// 场景：指定对端核（peerCoreId >= 0）应原样保留，与 -1 分支互不影响。
+TEST_F(TestRecordParse, parse_mstx_cross_core_wait_flag_with_specified_peer_core_expect_positive_wait_core_id) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    MstxCrossCoreWaitFlag waitFlag{};
+    waitFlag.eventId = 0x1300003;
+    waitFlag.peerCoreId = 3;
+    waitFlag.pipeBarrierAll = false;
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG;
+    record.payload.mstxRecord.bufferLens = sizeof(MstxCrossCoreWaitFlag);
+    record.payload.mstxRecord.interface.mstxCrossCoreWaitFlag = waitFlag;
+    record.payload.mstxRecord.location.blockId = 1;
+    record.payload.mstxRecord.error = false;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+
+    ASSERT_EQ(events.size(), 1U);
+    ASSERT_EQ(events[0].type, EventType::CROSS_CORE_SOFT_SYNC_EVENT);
+    ASSERT_EQ(events[0].eventInfo.softSyncInfo.opType, SyncType::IB_WAIT);
+    ASSERT_EQ(events[0].eventInfo.softSyncInfo.waitCoreID, 3);
+}
+
+// 场景：set 侧同样必须原样保留 peerCoreId（含 -1）。
+TEST_F(TestRecordParse, parse_mstx_cross_core_set_flag_with_unspecified_peer_core_expect_negative_wait_core_id) {
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+
+    MstxCrossCoreSetFlag setFlag{};
+    setFlag.eventId = 0x1300004;
+    setFlag.peerCoreId = -1;
+    setFlag.pipeBarrierAll = false;
+
+    record.recordType = RecordType::MSTX_STUB;
+    record.payload.mstxRecord.interfaceType = InterfaceType::MSTX_CROSS_CORE_SET_FLAG;
+    record.payload.mstxRecord.bufferLens = sizeof(MstxCrossCoreSetFlag);
+    record.payload.mstxRecord.interface.mstxCrossCoreSetFlag = setFlag;
+    record.payload.mstxRecord.location.blockId = 0;
+    record.payload.mstxRecord.error = false;
+
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+
+    ASSERT_EQ(events.size(), 1U);
+    ASSERT_EQ(events[0].type, EventType::CROSS_CORE_SOFT_SYNC_EVENT);
+    ASSERT_EQ(events[0].eventInfo.softSyncInfo.opType, SyncType::IB_SET);
+    ASSERT_EQ(events[0].eventInfo.softSyncInfo.waitCoreID, -1);
+}
+
 TEST_F(TestRecordParse, parse_mstx_cross_error_record_expect_success)
 {
     std::vector<SanEvent> events;

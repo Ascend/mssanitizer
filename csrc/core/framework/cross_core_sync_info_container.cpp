@@ -324,16 +324,32 @@ void CrossCoreSyncInfoContainer::SetBlockSoftSyncInfo(int32_t eventID, uint32_t 
     blockSoftSyncInfo_[blockIdx].mapVectorTime[eventID] = vectorTime;
 }
 
-bool CrossCoreSyncInfoContainer::GetBlockSoftSyncInfo(int32_t eventID, uint32_t waitBlockIdx, VectorTime& vectorTime)
-{
-    if (waitBlockIdx >= maxBlockNum_) {
+bool CrossCoreSyncInfoContainer::ConsumeBlockSoftSyncInfo(int32_t eventID, uint32_t blockIdx, VectorTime &vectorTime) {
+    auto &map = blockSoftSyncInfo_[blockIdx].mapVectorTime;
+    auto iter = map.find(eventID);
+    if (iter == map.end()) {
         return false;
     }
-    auto& map = blockSoftSyncInfo_[waitBlockIdx].mapVectorTime;
-    if (map.find(eventID) != map.end()) {
-        VectorClock::UpdateVectorTime(map[eventID], vectorTime);
-        map.erase(eventID);
-        return true;
+    VectorClock::UpdateVectorTime(iter->second, vectorTime);
+    map.erase(iter);
+    return true;
+}
+
+bool CrossCoreSyncInfoContainer::GetBlockSoftSyncInfo(int32_t eventID, int32_t peerCoreId, VectorTime &vectorTime) {
+    if (peerCoreId >= 0) {
+        uint32_t waitBlockIdx = static_cast<uint32_t>(peerCoreId);
+        if (waitBlockIdx >= maxBlockNum_) {
+            return false;
+        }
+        return ConsumeBlockSoftSyncInfo(eventID, waitBlockIdx, vectorTime);
+    }
+    // peerCoreId < 0：上报方声明"不限制对端核"，配对只依赖 eventID（对应 MSTX 跨核 set/wait 上报接口
+    // peerCoreId = -1 场景）。若仍按核号索引，-1 会被当作越界核号而永久等待，造成 IB_WAIT 误报卡死。
+    // 取 blockIdx 最小者以保证回放结果确定。
+    for (uint32_t blockIdx = 0; blockIdx < maxBlockNum_; ++blockIdx) {
+        if (ConsumeBlockSoftSyncInfo(eventID, blockIdx, vectorTime)) {
+            return true;
+        }
     }
     return false;
 }

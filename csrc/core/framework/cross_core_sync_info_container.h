@@ -107,7 +107,9 @@ public:
     // 设置同步向量时钟-软同步
     void SetBlockSoftSyncInfo(int32_t eventID, uint32_t blockIdx, const VectorTime& vectorTime);
     // 获取同步向量时钟并更新本地时钟-软同步
-    bool GetBlockSoftSyncInfo(int32_t eventID, uint32_t waitBlockIdx, VectorTime& vectorTime);
+    // peerCoreId >= 0：仅与该核（即 set 侧上报的 blockIdx）配对；
+    // peerCoreId < 0 ：上报方声明"不限制对端核"，此时仅按 eventID 在全体核中配对。
+    bool GetBlockSoftSyncInfo(int32_t eventID, int32_t peerCoreId, VectorTime &vectorTime);
     // 任意多核软同步
     bool SyncAll(uint32_t blockIdx, int32_t usedCores, uint32_t pipeIdx, VectorTime& vecTime);
     // 参与软同步的全体向量时钟同步处理
@@ -130,6 +132,9 @@ private:
     void UpdateSyncInfoInMode0(uint8_t flagId);
     // 记录 AIV 核 mode4 场景 flag_id 非法告警
     void AddFlagIdWarnInfo(uint8_t flagId, const LocInfo &loc, uint64_t serialNo);
+    // 消费指定核上 eventID 对应的软同步 set：成功则更新 vectorTime 并返回 true
+    bool ConsumeBlockSoftSyncInfo(int32_t eventID, uint32_t blockIdx, VectorTime &vectorTime);
+
 private:
     uint32_t maxBlockNum_ = 0;
     KernelType kernelType_{};

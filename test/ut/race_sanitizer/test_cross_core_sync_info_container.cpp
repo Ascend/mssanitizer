@@ -119,6 +119,36 @@ TEST(CrossCoreSyncInfoContainer, aiv_ib_set_and_ib_wait_expect_success)
     ASSERT_EQ(vt[0], 3U);
 }
 
+// 场景：上报方声明"不限制对端核"（peerCoreId < 0），即 MSTX 跨核 set/wait 上报接口的 peerCoreId = -1。
+// 预期：wait 按 eventID 在全体核中配对，不会因核号越界而永久等待；配对后 set 被消费。
+TEST(CrossCoreSyncInfoContainer, ib_wait_with_unspecified_peer_core_expect_success) {
+    CrossCoreSyncInfoContainer syncContainer;
+    syncContainer.Init(6, KernelType::MIX);
+    VectorTime vt;
+    vt.resize(66, 0);
+    // 生产者核 4 上报 set
+    std::fill(vt.begin(), vt.end(), 7);
+    syncContainer.SetBlockSoftSyncInfo(0x1300002, 4, vt);
+
+    // 消费者携带 peerCoreId = -1，仍应配对成功并取到 set 的向量时钟
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_TRUE(syncContainer.GetBlockSoftSyncInfo(0x1300002, -1, vt));
+    ASSERT_EQ(vt[0], 7U);
+    // set 已被消费，重复 wait 不应再成功
+    ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0x1300002, -1, vt));
+    // 无对应 set 时也不能因 peerCoreId < 0 而放行
+    ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0x1300003, -1, vt));
+
+    // 指定核号越界（如旧实现中被截断后的 65535）：即便该 eventID 确有 set，也不得误配对
+    std::fill(vt.begin(), vt.end(), 9);
+    syncContainer.SetBlockSoftSyncInfo(0x1300004, 4, vt);
+    ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0x1300004, 65535, vt));
+    // 用正确的核号仍可配对，说明上一步只是被越界拦截、set 未被消费
+    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_TRUE(syncContainer.GetBlockSoftSyncInfo(0x1300004, 4, vt));
+    ASSERT_EQ(vt[0], 9U);
+}
+
 TEST(CrossCoreSyncInfoContainer, aiv_sync_all_expect_success)
 {
     CrossCoreSyncInfoContainer syncContainer;

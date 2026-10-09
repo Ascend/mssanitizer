@@ -142,7 +142,7 @@ static SanEvent MakeBlockSyncEvent(PipeType pipe, uint8_t flagId, uint8_t mode, 
 }
 
 static SanEvent MakeSoftSyncEvent(
-    PipeType pipe, int32_t eventID, SyncType opType, uint16_t waitCoreID, int32_t usedCores, uint32_t coreId = 0) {
+    PipeType pipe, int32_t eventID, SyncType opType, int32_t waitCoreID, int32_t usedCores, uint32_t coreId = 0) {
     auto e = MakeEventBase(EventType::CROSS_CORE_SOFT_SYNC_EVENT, pipe, coreId);
     e.eventInfo.softSyncInfo.opType = opType;
     e.eventInfo.softSyncInfo.eventID = eventID;
@@ -365,6 +365,60 @@ TEST_F(TestPipelineReplayer, soft_sync_set_wait_and_sync_all) {
     replayer_.Do(MakeKernelFinishEvent());
     ASSERT_TRUE(replayer_.IsFinished());
     AssertStuck("SYNC_ALL with single core should stall (needs all cores to arrive)");
+}
+
+// case 8b. 上报方声明"不限制对端核"（peerCoreId < 0，MSTX 跨核上报接口用 -1）：
+// set 与 wait 在不同核上、wait 不指定对端核时应配对成功；
+// 曾因 -1 被截断成越界核号而永久等待，造成 IB_WAIT 假卡死（并连带 barrier 误报）。
+TEST_F(TestPipelineReplayer, soft_sync_wait_with_unspecified_peer_core_expect_no_stuck) {
+    // 需要 4 个 block，让 set 与 wait 落在不同核上
+    ResetReplayer(4U);
+    RegisterCollectingCallback();
+
+    // 核 3 上 set，核 1 上 wait（peerCoreId = -1）→ 应配对成功
+    replayer_.Do(MakeSoftSyncEvent(PipeType::PIPE_S, 42, SyncType::IB_SET, -1, 0, 3));
+    replayer_.Do(MakeSoftSyncEvent(PipeType::PIPE_S, 42, SyncType::IB_WAIT, -1, 0, 1));
+    replayer_.Do(MakeKernelFinishEvent());
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertNoStuck();
+
+    // 无对应 set 时（peerCoreId = -1）仍应判定位卡死
+    ResetReplayer(4U);
+    RegisterCollectingCallback();
+    replayer_.Do(MakeSoftSyncEvent(PipeType::PIPE_S, 7, SyncType::IB_WAIT, -1, 0, 1));
+    replayer_.Do(MakeKernelFinishEvent());
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertStuck("IB_WAIT with peerCoreId=-1 without IB_SET should stall");
+}
+
+// case 8c. 复现 shmem allgather 上报的级联形态：
+// 全核先过一轮 barrier，随后部分核用 peerCoreId = -1 上报软同步 set/wait，再进第二轮 barrier。应正常通过无告警。
+TEST_F(TestPipelineReplayer, cascade_unspecified_peer_soft_sync_and_barrier_expect_no_stuck) {
+    constexpr uint32_t kBlockDim = 4U; // 用 4 个核等价压缩 16 核场景
+    constexpr uint32_t kProducerNum = 2U; // 前 2 核为生产者，其余为消费者
+    constexpr int32_t kEventId = 100;
+    ResetReplayer(kBlockDim);
+    RegisterCollectingCallback();
+
+    // 第一轮 barrier：全核到齐
+    for (uint32_t i = 0; i < kBlockDim; ++i) {
+        replayer_.Do(MakeMstxBarrierEvent(PipeType::PIPE_S, kBlockDim, i));
+    }
+    // 生产者上报 set、消费者用 peerCoreId = -1 上报 wait
+    for (uint32_t i = 0; i < kProducerNum; ++i) {
+        replayer_.Do(MakeSoftSyncEvent(PipeType::PIPE_S, kEventId, SyncType::IB_SET, -1, 0, i));
+    }
+    for (uint32_t i = kProducerNum; i < kBlockDim; ++i) {
+        replayer_.Do(MakeSoftSyncEvent(PipeType::PIPE_S, kEventId, SyncType::IB_WAIT, -1, 0, i));
+    }
+    // 第二轮 barrier：只要有一个核没推到此处，就凑不齐到齐数
+    for (uint32_t i = 0; i < kBlockDim; ++i) {
+        replayer_.Do(MakeMstxBarrierEvent(PipeType::PIPE_S, kBlockDim, i));
+    }
+    replayer_.Do(MakeKernelFinishEvent());
+
+    ASSERT_TRUE(replayer_.IsFinished());
+    AssertNoStuck();
 }
 
 // case 9. MSTX_CROSS_SYNC_EVENT：SET_CROSS / WAIT_CROSS (含 isMore 跳过)

@@ -669,14 +669,37 @@ TEST(SyncSanitizer, redundancy_set_flag_wait_flag_eventid_diff_instruction_expec
     syncSanitizerTestClear(events, syncSan, msg);
 }
 
-void InitSyncSanForStuckTest(SyncSanitizer &syncSan, std::string &msg) {
+void InitSyncSanForStuckTest(SyncSanitizer &syncSan, std::string &msg, uint32_t blockDim = 1U) {
     syncSan.deviceType_ = DeviceType::ASCEND_910B1;
     KernelSummary ks{};
     ks.kernelType = KernelType::AIVEC;
-    ks.blockDim = 1;
+    ks.blockDim = blockDim;
     syncSan.Init(ks);
     syncSan.RegisterNotifyFunc([&msg](LogLv const &, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
 }
+
+// 填充 MSTX 跨核 set/wait 上报记录（按 interfaceType 选择对应的 union 成员）
+auto g_fillMstxCrossCoreFlagRecord = [](SanitizerRecord &record, uint32_t coreId, InterfaceType type, int32_t eventId,
+                                         int32_t peerCoreId, bool pipeBarrierAll = false) {
+    record.version = RecordVersion::KERNEL_RECORD;
+    record.payload.kernelRecord.recordType = RecordType::MSTX_STUB;
+    auto &mstxRecord = record.payload.kernelRecord.payload.mstxRecord;
+    mstxRecord.interfaceType = type;
+    mstxRecord.bufferLens = sizeof(MstxCrossCoreWaitFlag);
+    mstxRecord.location.blockId = coreId;
+    mstxRecord.error = false;
+    if (type == InterfaceType::MSTX_CROSS_CORE_SET_FLAG) {
+        auto &flag = mstxRecord.interface.mstxCrossCoreSetFlag;
+        flag.eventId = eventId;
+        flag.peerCoreId = peerCoreId;
+        flag.pipeBarrierAll = pipeBarrierAll;
+    } else {
+        auto &flag = mstxRecord.interface.mstxCrossCoreWaitFlag;
+        flag.eventId = eventId;
+        flag.peerCoreId = peerCoreId;
+        flag.pipeBarrierAll = pipeBarrierAll;
+    }
+};
 
 void PushKernelFinish(std::vector<SanEvent> &events) {
     SanEvent e{};
@@ -766,6 +789,47 @@ TEST(SyncSanitizer, stuck_wait_before_its_set_in_same_core_expect_no_stuck_err) 
 
     ASSERT_TRUE(syncSan.stuckEvents_.empty());
     ASSERT_TRUE(msg.find("kernel locked up") == std::string::npos);
+}
+
+// 场景：MSTX 跨核软同步上报（peerCoreId = -1 表示“不限制对端核”），生产者核与消费者核不同。
+// 预期：不出现卡死误报。
+TEST(SyncSanitizer, stuck_mstx_cross_core_wait_with_unspecified_peer_core_expect_no_stuck_err) {
+    SyncSanitizer syncSan{};
+    std::string msg{};
+    InitSyncSanForStuckTest(syncSan, msg, 2U);
+
+    SanitizerRecord record{};
+    std::vector<SanEvent> events;
+    // 核 0 上报 set
+    g_fillMstxCrossCoreFlagRecord(record, 0U, InterfaceType::MSTX_CROSS_CORE_SET_FLAG, 42, -1);
+    RecordPreProcess::GetInstance().Process(record, events);
+    // 核 1 上报 wait
+    g_fillMstxCrossCoreFlagRecord(record, 1U, InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG, 42, -1);
+    RecordPreProcess::GetInstance().Process(record, events);
+    PushKernelFinish(events);
+
+    syncSan.Do(record, events);
+
+    ASSERT_TRUE(syncSan.stuckEvents_.empty());
+    ASSERT_TRUE(msg.find("kernel locked up") == std::string::npos);
+}
+
+// 反向用例：确实没有 set 时必须仍然报卡死，避免修复把“误报”变成“漏报”。
+TEST(SyncSanitizer, stuck_mstx_cross_core_wait_with_unspecified_peer_core_without_set_expect_stuck_err) {
+    SyncSanitizer syncSan{};
+    std::string msg{};
+    InitSyncSanForStuckTest(syncSan, msg, 1U);
+
+    SanitizerRecord record{};
+    std::vector<SanEvent> events;
+    g_fillMstxCrossCoreFlagRecord(record, 0U, InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG, 42, -1);
+    RecordPreProcess::GetInstance().Process(record, events);
+    PushKernelFinish(events);
+
+    syncSan.Do(record, events);
+
+    ASSERT_FALSE(syncSan.stuckEvents_.empty());
+    ASSERT_TRUE(msg.find("kernel locked up") != std::string::npos);
 }
 
 } // namespace
