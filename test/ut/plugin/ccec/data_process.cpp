@@ -143,7 +143,8 @@ ReduceV2Record CreateRandomReduceV2Record()
 VecDupRecord CreateRandomVecDupRecord()
 {
     VecDupRecord record{};
-    record.dst = RandInt(0, 0x1000000);
+    record.dst = (static_cast<uint64_t>(RandInt(1, 0xFFFF)) << 32) |
+                 static_cast<uint64_t>(RandInt(1, 0x7FFFFFFF));
     record.dstBlockStride = RandInt(0, 0xFFFF);
     record.dstRepeatStride = RandInt(0, 0xFFF);
     record.repeat = RandInt(0, 0xFF);
@@ -567,19 +568,13 @@ bool IsEqual(MovFpRecord const &lhs, MovFpRecord const &rhs)
 
 bool IsEqual(VecDupRecord const &lhs, VecDupRecord const &rhs, uint8_t bitsSize)
 {
-    uint64_t dst = 0;
-
-    if (bitsSize == UT_VECTOR_DUP_B16_BITS) {
-        dst = rhs.dst & 0x0000FFFF;
-    } else {
-        dst = rhs.dst & 0xFFFFFFFF;
-    }
     return
         lhs.location == rhs.location &&
-        (lhs.dst == dst) &&
+        (lhs.dst == rhs.dst) &&
         (lhs.dstBlockStride == rhs.dstBlockStride) &&
         (lhs.dstRepeatStride == rhs.dstRepeatStride) &&
-        (lhs.repeat == rhs.repeat);
+        (lhs.repeat == rhs.repeat) &&
+        (lhs.dataBits == bitsSize);
 }
 
 bool IsEqual(HardSyncRecord const &lhs, HardSyncRecord const &rhs)

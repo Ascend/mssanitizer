@@ -173,18 +173,10 @@ AICORE_FUNC_HEAD void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst,
     if (InvalidMemInfo(memInfo)) {
         return;
     }
-    constexpr uint8_t dataBitsForB16 = 16;
-    constexpr uint8_t dataBitsForB32 = 32;
     uint64_t blockIdx = GetBlockIdx();
     auto record = VecDupRecord{};
-    /// vector_dup指令，对于b16类型数据，取dst低16位地址；对于b32数据，取dst低32位地址
-    if (sizeof(T) == 2) {
-        record.dst = reinterpret_cast<uint64_t>(dst) & 0x0000FFFF;
-        record.dataBits = dataBitsForB16;
-    } else {
-        record.dst = reinterpret_cast<uint64_t>(dst) & 0xFFFFFFFF;
-        record.dataBits = dataBitsForB32;
-    }
+    record.dst = reinterpret_cast<uint64_t>(dst);
+    record.dataBits = DataBitSize<T>::value;
     record.location.blockId = blockIdx;
 #if !defined(BUILD_DYNAMIC_PROBE)
     record.location.fileNo = fileNo;

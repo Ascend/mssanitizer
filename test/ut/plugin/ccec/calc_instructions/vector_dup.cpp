@@ -132,3 +132,35 @@ TEST(VecDupInstructions, dump_vector_dup_bf16_expect_get_correct_records)
 {
     TestVectorDupForType<__bf16>(Bf16{}, 16);
 }
+
+template <typename T>
+void TestVectorDupHighAddrPreserved(uint8_t bitsSize)
+{
+    constexpr uint64_t highAddr = 0xABCD000012345678ULL;
+
+    auto record = CreateRandomVecDupRecord();
+    record.dst = highAddr;
+
+    std::vector<uint8_t> memInfo = CreateMemInfo();
+    uint64_t config = ExtractConfigFromVecDupRecord(record);
+
+    __sanitizer_report_vector_dup(memInfo.data(), static_cast<uint64_t>(record.location.fileNo),
+                                  static_cast<uint64_t>(record.location.lineNo), record.location.pc,
+                                  reinterpret_cast<T *>(record.dst), T{}, config);
+
+    uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    VecDupRecord const &actual = *reinterpret_cast<VecDupRecord const *>(ptr + sizeof(RecordType));
+
+    ASSERT_EQ(actual.dst, highAddr);
+    ASSERT_EQ(actual.dataBits, bitsSize);
+}
+
+TEST(VecDupInstructions, dump_vector_dup_high_addr_b16_expect_full_addr_preserved)
+{
+    TestVectorDupHighAddrPreserved<half>(16);
+}
+
+TEST(VecDupInstructions, dump_vector_dup_high_addr_b32_expect_full_addr_preserved)
+{
+    TestVectorDupHighAddrPreserved<float>(32);
+}
