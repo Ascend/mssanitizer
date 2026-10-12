@@ -435,7 +435,8 @@ void Checker::Do(const SanitizerRecord &record)
             workerArgs_[i].push(std::move(workargs));
         }
     }
-    if (record.payload.kernelRecord.recordType != RecordType::KERNEL_FINISH) {
+    if (record.version != RecordVersion::KERNEL_RECORD ||
+        record.payload.kernelRecord.recordType != RecordType::KERNEL_FINISH) {
         workerCv_.notify_all();
     } else {
         finishProduce_ = true;
@@ -486,7 +487,8 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
         }
     }
 
-    if (!records.empty() && records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
+    if (!records.empty() && records.back().version == RecordVersion::KERNEL_RECORD &&
+        records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
         finishProduce_ = true;
         workerCv_.notify_all();
         for (uint8_t i = 0; i < TOOL_NUM; ++i) {

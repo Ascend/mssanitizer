@@ -358,3 +358,76 @@ TEST(Checker, error_buffer_keep_illegal_free_error) {
         ASSERT_EQ(func->errorBuffer_.GetBuffer().size(), 1);
     }
 }
+
+namespace {
+// 构造一条 MEMORY_RECORD，并将其 serialNo 置为 KERNEL_FINISH 的枚举值。
+// 由于 SanitizerRecord.payload 是 union，KernelRecord.recordType（offset 0, uint32_t）
+// 与 MemOpRecord.serialNo（offset 0, uint64_t）的低 32 位共享同一块内存。
+// 若不先校验 record.version 就读取 kernelRecord.recordType，会读到 KERNEL_FINISH，
+// 从而误触发 kernel 结束分支（重置 errorCounts_、打印 "Sanitizer finished"）。
+SanitizerRecord CreateMemoryRecordMimickingKernelFinish() {
+    SanitizerRecord record{};
+    record.version = RecordVersion::MEMORY_RECORD;
+    record.payload.memoryRecord.serialNo = static_cast<uint64_t>(RecordType::KERNEL_FINISH);
+    record.payload.memoryRecord.type = MemOpType::MALLOC;
+    record.payload.memoryRecord.dstAddr = 0x1000;
+    record.payload.memoryRecord.dstSpace = AddressSpace::GM;
+    record.payload.memoryRecord.memSize = 0x100;
+    return record;
+}
+} // namespace
+
+TEST(Checker, non_kernel_record_should_not_trigger_kernel_finish_branch) {
+    // 单条：非 KERNEL_RECORD 版本的记录即使其 union 内存恰好等于 KERNEL_FINISH，
+    // 也不应进入 kernel 结束分支。
+    std::stringstream ss;
+    std::shared_ptr<Checker> checker = GetNewChecker(ss);
+
+    constexpr uint32_t seedErrorCount = 7;
+    checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)] = seedErrorCount;
+
+    SanitizerRecord record = CreateMemoryRecordMimickingKernelFinish();
+    checker->Do(record);
+
+    // 结束分支会通过 swap 将 errorCounts_ 清零；未进入则保持 seedErrorCount。
+    ASSERT_EQ(checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)], seedErrorCount);
+    // DisplaySanitizerEnd 仅在结束分支调用，不应出现 "Sanitizer finished"。
+    ASSERT_EQ(ss.str().find("Sanitizer finished"), std::string::npos);
+
+    checker->Finish();
+}
+
+TEST(Checker, non_kernel_record_in_batch_should_not_trigger_kernel_finish_branch) {
+    // 批量：以非 KERNEL_RECORD 记录作为 back() 时，同样不应误判为 kernel 结束。
+    std::stringstream ss;
+    std::shared_ptr<Checker> checker = GetNewChecker(ss);
+
+    constexpr uint32_t seedErrorCount = 7;
+    checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)] = seedErrorCount;
+
+    std::vector<SanitizerRecord> records{CreateMemoryRecordMimickingKernelFinish()};
+    checker->Do(records);
+
+    ASSERT_EQ(checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)], seedErrorCount);
+    ASSERT_EQ(ss.str().find("Sanitizer finished"), std::string::npos);
+
+    checker->Finish();
+}
+
+TEST(Checker, kernel_finish_record_still_resets_error_counts) {
+    // KERNEL_RECORD + KERNEL_FINISH 仍应正常进入结束分支并清零 errorCounts_。
+    std::stringstream ss;
+    std::shared_ptr<Checker> checker = GetNewChecker(ss);
+
+    constexpr uint32_t seedErrorCount = 7;
+    checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)] = seedErrorCount;
+
+    SanitizerRecord record = CreateKernelSanRecord();
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
+    checker->Do(record);
+
+    ASSERT_EQ(checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)], 0U);
+    ASSERT_NE(ss.str().find("Sanitizer finished"), std::string::npos);
+
+    checker->Finish();
+}
