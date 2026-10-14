@@ -69,7 +69,7 @@ For details about common issues and solutions, see [msSanitizer FAQs](docs/en/su
 
 To improve documentation search efficiency, we provide multiple efficient search methods:
 
-- **[Precise Search (ReadTheDocs)](https://mindstudio-operator-tools-docs.readthedocs.io/en/latest/)**: Performs millisecond-level structured search across all documents to precisely locate underlying configuration and API details.
+- **[Precise Search (ReadTheDocs)](https://mindstudio-operator-tools-docs.readthedocs.io/zh-cn/latest/)**: Performs millisecond-level structured search across all documents to precisely locate underlying configuration and API details.
 - **[AI Q&A (DeepWiki)](https://deepwiki.com/mindstudio-docs/master)**: A context-based AI development assistant that answers natural language questions within seconds.
 
 ## 🛠️ Contribution Guide
@@ -89,14 +89,14 @@ You are welcome to contribute to the community. If you have any questions or sug
 
 | Instant Interaction (WeChat Group) | Official Updates (WeChat Account) | In-depth Support (Assistant/Forum) |
 |:--:|:--:|:--:|
-| <img src="https://raw.gitcode.com/Ascend/docs/files/master/common/Writing_Template/figures/qr_code_wechat_work.png" width="120"><br><sub>*Scan to join the technical discussion group*</sub> | <img src="https://raw.gitcode.com/Ascend/docs/files/master/common/Writing_Template/figures/qr_code_wechat_official_account.png" width="120"><br><sub>*Scan to follow the official WeChat account*</sub> | Scan to join the group and follow the account to access the fastest communication platform for MindStudio users and developers: <br> **Ask questions:** Discuss technical issues with community peers in real time<br>**Stay informed:** Get version release and feature update notifications as soon as they are released<br> **Share experience:** Exchange best practices and hands-on insights with developers  <br> <br> **More support channels**: 👉 Ascend Assistant: [![WeChat](https://img.shields.io/badge/WeChat-07C160?style=flat-square&logo=wechat&logoColor=white)](https://gitcode.com/Ascend/msit/blob/master/docs/en/figures/readme/xiaozhushou.png) 👉 Ascend Forum: [![Website](https://img.shields.io/badge/Website-%231e37ff?style=flat-square&logo=RSS&logoColor=white)](https://www.hiascend.com/forum/) |
+| <img src="https://raw.gitcode.com/Ascend/docs/files/master/common/Writing_Template/figures/qr_code_wechat_work.png" width="120"><br><sub>*Scan to join the technical discussion group*</sub> | <img src="https://raw.gitcode.com/Ascend/docs/files/master/common/Writing_Template/figures/qr_code_wechat_official_account.png" width="120"><br><sub>*Scan to follow the official WeChat account*</sub> | Scan to join the group and follow the account to access the fastest communication platform for MindStudio users and developers: <br> **Ask questions:** Discuss technical issues with community peers in real time<br>**Stay informed:** Get version release and feature update notifications as soon as they are released<br> **Share experience:** Exchange best practices and hands-on insights with developers  <br> <br> **More support channels**: 👉 Ascend Assistant: [![WeChat](https://img.shields.io/badge/WeChat-07C160?style=flat-square&logo=wechat&logoColor=white)](https://gitcode.com/Ascend/msit/blob/master/docs/zh/figures/readme/xiaozhushou.png) 👉 Ascend Forum: [![Website](https://img.shields.io/badge/Website-%231e37ff?style=flat-square&logo=RSS&logoColor=white)](https://www.hiascend.com/forum/) |
 
 ## 🙏 Acknowledgements
 
 This tool is jointly developed by the following Huawei departments:   
-🔹 Ascend Computing MindStudio Development Department
-🔹 Ascend Computing Ecosystem Enablement Department
-🔹 Huawei Cloud AI Compute Service
-🔹 Compiler Technologies Lab, 2012 Labs
-🔹 Markov Lab, 2012 Labs
+🔹 Ascend Computing MindStudio Development Department  
+🔹 Ascend Computing Ecosystem Enablement Department  
+🔹 Huawei Cloud AI Compute Service  
+🔹 Compiler Technologies Lab, 2012 Labs  
+🔹 Markov Lab, 2012 Labs  
 Thank you to everyone in the community for your PRs. We warmly welcome your contributions.
