@@ -23,10 +23,33 @@
 #include "hook_report.h"
 #include "hook_logger.h"
 #include "hooks_verify.h"
+#include "vallina_symbol.h"
 #include "hal_hooks.h"
 
 using namespace Sanitizer;
 
+namespace {
+
+struct HalLibLoader {
+    static void *Load(void) {
+        // libascend_hal.so 由 driver 提供，不在 $ASCEND_HOME_PATH/lib64 下，
+        // 直接按 soname 交由动态链接器（LD_LIBRARY_PATH）解析。
+        return dlopen("libascend_hal.so", RTLD_NOW | RTLD_GLOBAL);
+    }
+};
+
+using HalSymbol = VallinaSymbol<HalLibLoader>;
+
+/// 从真实 libascend_hal.so 中解析同名公有函数，穿透到原始实现
+template <typename Func> Func RealHal(char const *symbol) {
+    auto fn = HalSymbol::Instance().Get<Func>(symbol);
+    if (fn == nullptr) {
+        HOOK_LOG("vallina func %s get FAILED", symbol);
+    }
+    return fn;
+}
+
+} // namespace
 
 inline int32_t GetMallocModuleId(unsigned long long flag)
 {
@@ -36,7 +59,11 @@ inline int32_t GetMallocModuleId(unsigned long long flag)
 
 drvError_t halMemAlloc(void **pp, unsigned long long size, unsigned long long flag)
 {
-    drvError_t ret = halMemAllocInner(pp, size, flag);
+    auto real = RealHal<HalMemAlloc>(__func__);
+    if (real == nullptr) {
+        return DRV_ERROR_INNER_ERR;
+    }
+    drvError_t ret = real(pp, size, flag);
     if (ret != DRV_ERROR_NONE) {
         return ret;
     }
@@ -65,7 +92,11 @@ drvError_t halMemFree(void *pp)
         HOOK_LOG("report to saniziter FAILED");
     }
 
-    drvError_t ret = halMemFreeInner(pp);
+    auto real = RealHal<HalMemFree>(__func__);
+    if (real == nullptr) {
+        return DRV_ERROR_INNER_ERR;
+    }
+    drvError_t ret = real(pp);
     if (ret != DRV_ERROR_NONE) {
         return ret;
     }
@@ -75,7 +106,11 @@ drvError_t halMemFree(void *pp)
 
 drvError_t drvMemsetD8(DVdeviceptr dst, size_t destMax, uint8_t value, size_t num)
 {
-    drvError_t ret = drvMemsetD8Inner(dst, destMax, value, num);
+    auto real = RealHal<DrvMemsetD8>(__func__);
+    if (real == nullptr) {
+        return DRV_ERROR_INNER_ERR;
+    }
+    drvError_t ret = real(dst, destMax, value, num);
     ReportAddrInfo addrInfo{dst, num, MemInfoSrc::HAL};
     /// report to sanitizer here
     if (halIsDevicePtr(dst)) {
@@ -89,7 +124,11 @@ drvError_t drvMemsetD8(DVdeviceptr dst, size_t destMax, uint8_t value, size_t nu
 
 drvError_t drvMemcpy(DVdeviceptr dst, size_t destMax, DVdeviceptr src, size_t byteCount)
 {
-    drvError_t ret = drvMemcpyInner(dst, destMax, src, byteCount);
+    auto real = RealHal<DrvMemcpy>(__func__);
+    if (real == nullptr) {
+        return DRV_ERROR_INNER_ERR;
+    }
+    drvError_t ret = real(dst, destMax, src, byteCount);
     ReportAddrInfo addrInfo{dst, byteCount, MemInfoSrc::HAL};
     /// report to sanitizer here
     HookReport& report = HookReport::Instance();
@@ -111,7 +150,11 @@ drvError_t drvMemcpy(DVdeviceptr dst, size_t destMax, DVdeviceptr src, size_t by
 drvError_t halMemCpyAsync(DVdeviceptr dst, size_t destMax, DVdeviceptr src,
                           size_t byteCount, uint64_t *copyFd)
 {
-    drvError_t ret = halMemCpyAsyncInner(dst, destMax, src, byteCount, copyFd);
+    auto real = RealHal<HalMemCpyAsync>(__func__);
+    if (real == nullptr) {
+        return DRV_ERROR_INNER_ERR;
+    }
+    drvError_t ret = real(dst, destMax, src, byteCount, copyFd);
     ReportAddrInfo addrInfo{dst, byteCount, MemInfoSrc::HAL};
     /// report to sanitizer here
     HookReport& report = HookReport::Instance();
@@ -132,7 +175,11 @@ drvError_t halMemCpyAsync(DVdeviceptr dst, size_t destMax, DVdeviceptr src,
 
 drvError_t halMemcpy2D(MEMCPY2D *pCopy)
 {
-    drvError_t ret = halMemcpy2DInner(pCopy);
+    auto real = RealHal<HalMemcpy2D>(__func__);
+    if (real == nullptr) {
+        return DRV_ERROR_INNER_ERR;
+    }
+    drvError_t ret = real(pCopy);
 
     if (!IsValidHalMemcpy2DArg(pCopy)) {
         return ret;

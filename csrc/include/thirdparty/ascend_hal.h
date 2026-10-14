@@ -223,13 +223,6 @@ struct MEMCPY2D {
 /// HAL interfaces
 extern "C" {
 drvError_t drvMemGetAttribute(DVdeviceptr vptr, struct DVattribute *attr);
-drvError_t halMemAllocInner(void **pp, unsigned long long size, unsigned long long flag);
-drvError_t halMemFreeInner(void *pp);
-drvError_t drvMemsetD8Inner(DVdeviceptr dst, size_t destMax, uint8_t value, size_t num);
-drvError_t drvMemcpyInner(DVdeviceptr dst, size_t destMax, DVdeviceptr src, size_t byteCount);
-drvError_t halMemCpyAsyncInner(DVdeviceptr dst, size_t destMax, DVdeviceptr src,
-                               size_t byteCount, uint64_t *copyFd);
-drvError_t halMemcpy2DInner(MEMCPY2D *pCopy);
 }  // extern "C"
 
 #endif  // __HOOK_ASCEND_HAL_H__

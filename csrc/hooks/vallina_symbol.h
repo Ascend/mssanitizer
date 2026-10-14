@@ -18,6 +18,7 @@
 #ifndef __STUB_DEF_VALLINA_SYMBOL_H__
 #define __STUB_DEF_VALLINA_SYMBOL_H__
 
+#include <cstdlib>
 #include <string>
 #include <iostream>
 #include <dlfcn.h>
