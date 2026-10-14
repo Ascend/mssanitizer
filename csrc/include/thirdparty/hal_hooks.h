@@ -22,6 +22,14 @@
 
 /// Interfaces to be hooked use C ABI
 extern "C" {
+typedef drvError_t (*HalMemAlloc)(void **pp, unsigned long long size, unsigned long long flag);
+typedef drvError_t (*HalMemFree)(void *pp);
+typedef drvError_t (*DrvMemsetD8)(DVdeviceptr dst, size_t destMax, uint8_t value, size_t num);
+typedef drvError_t (*DrvMemcpy)(DVdeviceptr dst, size_t destMax, DVdeviceptr src, size_t byteCount);
+typedef drvError_t (*HalMemCpyAsync)(
+    DVdeviceptr dst, size_t destMax, DVdeviceptr src, size_t byteCount, uint64_t *copyFd);
+typedef drvError_t (*HalMemcpy2D)(MEMCPY2D *pCopy);
+
 drvError_t halMemAlloc(void **pp, unsigned long long size, unsigned long long flag);
 drvError_t halMemFree(void *pp);
 drvError_t drvMemsetD8(DVdeviceptr dst, size_t destMax, uint8_t value, size_t num);
