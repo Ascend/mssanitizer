@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #ifndef CORE_FRAMEWORK_CHECKER_H
 #define CORE_FRAMEWORK_CHECKER_H
 
@@ -83,7 +82,10 @@ public:
 
 private:
     void ConsumeRecordThread(uint8_t consumeId, const std::thread::id &rootTid);
-    void ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args);
+    void ConsumeRecord(uint8_t consumeId, const SanitizerRecord &record, std::vector<SanEvent> &events,
+        uint64_t &removedPathwayEventCount);
+    void ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount);
+    void ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPathwayEventCount) const;
     inline void WaitAfterConsumed(uint8_t consumeId);
     inline bool IsNeedFilterDbi(uint8_t toolIdx) const;
     inline bool IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx) const;

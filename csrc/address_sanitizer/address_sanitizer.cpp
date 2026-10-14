@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #include "address_sanitizer.h"
 
 #include <vector>
@@ -561,7 +560,7 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
         return;
     }
 
-    for (auto &event : events) {
+    for (const auto &event : events) {
         // 同一条指令会被拆成多个event（读和写），特殊情况下还会被拆成多条记录（vgather）
         // 但是“非默认寄存器值”对一条指令只需要检测一次，因此用serialNo过滤重复值
         if (config_.traceNonDefaultSprReg && event.serialNo != preSerialNo_) {
@@ -573,7 +572,7 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
     // 未初始化检测需要感知同步事件，通过流水线回放还原真实执行顺序，避免跨核/跨block初始化误报，故初始化检测场景需要pipeline回放
     // 纯内存检测（越界/对齐/踩踏）不依赖执行顺序，不走回放以降低开销
     if (config_.initCheck) {
-        for (auto &event : events) {
+        for (const auto &event : events) {
             pipelineReplayer_.Do(event);
         }
         if (pipelineReplayer_.IsFinished()) {
@@ -681,7 +680,7 @@ void AddressSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockTy
             if (kernelErrorDesc.l2StartAddr % 8 != 0) {
                 SAN_INFO_LOG("====== unaligned l2StartAddr=0x%lu", kernelErrorDesc.l2StartAddr);
             }
- 	    }
+        }
 
         if (kernelErrorDesc.errorType >= KernelErrorType::MAX) {
             SAN_ERROR_LOG("Unknown kernel error type: %u", static_cast<uint32_t>(kernelErrorDesc.errorType));

@@ -64,6 +64,8 @@ MindStudio Sanitizer（异常检测工具，msSanitizer）是一种基于AI处�
 >
 > 建议先运行 **memcheck**（内存检测），确认算子程序无内存异常后，再按需运行 racecheck / initcheck / synccheck。
 
+对于硬件不支持通路的事件过滤及 `removed events` 日志含义，参见《[通路事件过滤使用说明](./pathway_filter_user_guide.md)》。
+
 ## 4. 适用场景
 
 ### 4.1 Kernel直调场景

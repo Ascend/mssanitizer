@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #include "checker.h"
 #include <algorithm>
 #include <atomic>
@@ -39,6 +38,7 @@
 #include "utility/umask_guard.h"
 #include "utility/log.h"
 #include "utility/cpp_future.h"
+#include "pathway_filter.h"
 
 namespace {
 
@@ -190,6 +190,7 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
 {
     RuntimeContext().Instance().rootTid_ = rootTid;
     auto &que = workerArgs_[consumeId];
+    uint64_t removedPathwayEventCount = 0;
     while (true) {
         WorkArgs args;
         if (finishProduce_ && !que.empty()) {
@@ -202,52 +203,65 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
             que.pop();
         }
         switch (args.eventType) {
-            case BroadcastEvent::SANITIZER_RECORD_ARRIVED:
-                break;
-            case BroadcastEvent::KERNEL_BLOCK_ARRIVED: {
-                ConsumeKernelBlock(consumeId, args);
-                continue;
-            }
-            case BroadcastEvent::DEVICE_INFO_UPDATED: {
-                RuntimeContext::Instance().deviceSummary_ = args.deviceInfo;
-                continue;
-            }
-            case BroadcastEvent::KERNEL_SUMMARY_UPDATED: {
-                RuntimeContext::Instance().kernelSummary_ = args.kernelSummary;
-                continue;
-            }
-            case BroadcastEvent::KERNEL_NAME_UPDATED: {
-                RuntimeContext::Instance().kernelNameDisplay = args.kernelNameDisplay;
-                continue;
-            }
-            case BroadcastEvent::STOP:
-                // clear queue
-                std::queue<WorkArgs>().swap(que);
-                return;
-            default:
-                continue;
+        case BroadcastEvent::SANITIZER_RECORD_ARRIVED:
+            break;
+        case BroadcastEvent::KERNEL_BLOCK_ARRIVED: {
+            ConsumeKernelBlock(consumeId, args, removedPathwayEventCount);
+            continue;
+        }
+        case BroadcastEvent::DEVICE_INFO_UPDATED: {
+            RuntimeContext::Instance().deviceSummary_ = args.deviceInfo;
+            continue;
+        }
+        case BroadcastEvent::KERNEL_SUMMARY_UPDATED: {
+            RuntimeContext::Instance().kernelSummary_ = args.kernelSummary;
+            removedPathwayEventCount = 0;
+            continue;
+        }
+        case BroadcastEvent::KERNEL_NAME_UPDATED: {
+            RuntimeContext::Instance().kernelNameDisplay = args.kernelNameDisplay;
+            continue;
+        }
+        case BroadcastEvent::STOP:
+            // clear queue
+            std::queue<WorkArgs>().swap(que);
+            return;
+        default:
+            continue;
         };
 
-        const auto &record = args.record;
-        const auto &events = args.event;
-        if ((initWithDeviceInfoDone_[consumeId] ||
-            initWithKernelInfoDone_[consumeId]) &&
-            sanitizerArr_[consumeId]->CheckRecordBeforeProcess(record)) {
-            sanitizerArr_[consumeId]->Do(record, events);
-        }
+        ConsumeRecord(consumeId, args.record, args.event, removedPathwayEventCount);
         if (finishProduce_) {
             WaitAfterConsumed(consumeId);
         }
     };
 }
 
-void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args) {
-    if (initWithDeviceInfoDone_[consumeId] || initWithKernelInfoDone_[consumeId]) {
-        for (std::size_t i = 0; i < args.records.size(); ++i) {
-            if (sanitizerArr_[consumeId]->CheckRecordBeforeProcess(args.records[i])) {
-                sanitizerArr_[consumeId]->Do(args.records[i], args.events[i]);
-            }
+void Checker::ConsumeRecord(uint8_t consumeId, const SanitizerRecord &record, std::vector<SanEvent> &events,
+    uint64_t &removedPathwayEventCount) {
+    const bool initialized = initWithDeviceInfoDone_[consumeId] || initWithKernelInfoDone_[consumeId];
+    if (initialized && sanitizerArr_[consumeId]->CheckRecordBeforeProcess(record)) {
+        const bool shouldFilter = consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) ||
+            consumeId == static_cast<uint8_t>(ToolType::RACECHECK);
+        if (shouldFilter && record.version == RecordVersion::KERNEL_RECORD) {
+            removedPathwayEventCount += PathwayFilter::FilterInPlace(record.payload.kernelRecord.recordType, events);
         }
+        sanitizerArr_[consumeId]->Do(record, events);
+    }
+
+    if (record.version == RecordVersion::KERNEL_RECORD &&
+        record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
+        if (consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) ||
+            consumeId == static_cast<uint8_t>(ToolType::RACECHECK)) {
+            ReportPathwayFilterSummary(consumeId, removedPathwayEventCount);
+            removedPathwayEventCount = 0;
+        }
+    }
+}
+
+void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount) {
+    for (std::size_t i = 0; i < args.records.size(); ++i) {
+        ConsumeRecord(consumeId, args.records[i], args.events[i], removedPathwayEventCount);
     }
 
     if (finishProduce_) {
@@ -255,8 +269,16 @@ void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args) {
     }
 }
 
-void Checker::SetDeviceInfo(const DeviceInfoSummary &deviceInfo)
-{
+void Checker::ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPathwayEventCount) const {
+    const char *consumer = consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) ? "AddressSanitizer" : "RaceSanitizer";
+    const RuntimeContext &runtimeContext = RuntimeContext::Instance();
+    SAN_INFO_LOG("Pathway filter consumer:%s, kernel:%s, deviceId:%d, deviceType:%u, removed events:%llu", consumer,
+        runtimeContext.kernelNameDisplay.c_str(), runtimeContext.GetDeviceId(),
+        static_cast<uint32_t>(runtimeContext.deviceSummary_.device),
+        static_cast<unsigned long long>(removedPathwayEventCount));
+}
+
+void Checker::SetDeviceInfo(const DeviceInfoSummary &deviceInfo) {
     this->deviceType_ = deviceInfo.device;
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
         if (sanitizerArr_[i] != nullptr) {

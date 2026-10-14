@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #ifndef ADDRESS_SANITIZER_ADDRESS_SANITIZER_H
 #define ADDRESS_SANITIZER_ADDRESS_SANITIZER_H
 
