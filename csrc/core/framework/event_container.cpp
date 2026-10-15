@@ -61,8 +61,23 @@ void EventContainer::Push(const SanEvent &e, PipeType pipe, uint32_t blockIdx, u
     ques_[pipeIndex].push(e);
 }
 
-// 获取当前PIPE的头部事件
-SanEvent EventContainer::Front() const
+void EventContainer::Push(SanEvent &&e, PipeType pipe, uint32_t blockIdx, uint32_t deviceIdx)
+{
+    if (blockIdx >= maxBlockNum_ || deviceIdx >= deviceNum_) {
+        SAN_ERROR_LOG("Invalid blockIdx %u / deviceIdx %u, serialNo %lu", blockIdx, deviceIdx, e.serialNo);
+        return;
+    }
+    if (e.type == EventType::MEM_EVENT && e.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS) {
+        // 需要 push 两条（READ/WRITE），沿用拷贝路径
+        Push(static_cast<const SanEvent &>(e), pipe, blockIdx, deviceIdx);
+        return;
+    }
+    uint32_t pipeIndex = FlattenPipeIdx(static_cast<uint32_t>(pipe), blockIdx, deviceIdx);
+    ques_[pipeIndex].push(std::move(e));
+}
+
+// 获取当前PIPE的头部事件（返回引用，调用方不得在 Pop/切换队列后继续使用）
+const SanEvent &EventContainer::Front() const
 {
     // Front前先判空, 判空由调用方做
     return ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].front();

@@ -17,7 +17,10 @@
 
 #include <gtest/gtest.h>
 
+#include "fd_test_util.h"
 #include "protocol.h"
+#include "utility/elf_loader.h"
+#include "utility/recv_fd.h"
 #include "utility/serializer.h"
 
 namespace Sanitizer {
@@ -215,4 +218,56 @@ TEST(Protocol, get_kernel_summary_from_protocol_expect_success) {
     ASSERT_EQ(ret.blockDim, summary.blockDim);
     ASSERT_EQ(ret.kernelType, summary.kernelType);
     ASSERT_EQ(ret.pcStartAddr, summary.pcStartAddr);
+}
+
+TEST(Protocol, get_kernel_binary_from_protocol_expect_success)
+{
+    PacketHead header;
+    header.type = PacketType::KERNEL_BINARY;
+    std::string binaryData = "hello_kernel_binary";
+
+    MemCheckProtocol protocol;
+    protocol.Feed(Serialize(header));
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::INVALID);
+
+    protocol.Feed(Serialize(static_cast<uint64_t>(binaryData.size())) + binaryData);
+    packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::KERNEL_BINARY);
+    ASSERT_EQ(packet.GetPayload().binary.len, binaryData.size());
+    ASSERT_EQ(std::string(packet.GetPayload().binary.buf, packet.GetPayload().binary.len), binaryData);
+}
+
+TEST(Protocol, get_kernel_binary_from_fd_expect_zero_copy_packet)
+{
+    const std::string payload = "mmap-kernel-binary";
+    int fd = TestUtility::CreatePayloadFd(payload);
+    ASSERT_GE(fd, 0);
+    // P3：模拟发送方经 SCM_RIGHTS 传来的 fd，接收端 mmap 零拷贝构造 Packet
+    PushRecvFd(fd);
+
+    PacketHead header;
+    header.type = PacketType::KERNEL_BINARY;
+
+    MemCheckProtocol protocol;
+    protocol.Feed(Serialize(header, static_cast<uint64_t>(payload.size())));
+    Packet packet = protocol.GetPacket();
+
+    ASSERT_EQ(packet.GetType(), PacketType::KERNEL_BINARY);
+    ASSERT_NE(packet.GetBinaryBuffer(), nullptr);
+    ASSERT_EQ(packet.GetPayload().binary.len, payload.size());
+    ASSERT_EQ(std::string(packet.GetPayload().binary.buf, packet.GetPayload().binary.len), payload);
+}
+
+TEST(Protocol, get_kernel_binary_with_oversized_length_expect_invalid_packet)
+{
+    PacketHead header;
+    header.type = PacketType::KERNEL_BINARY;
+    // 长度字段超过 kernel object 上限，应被安全校验拦截
+    uint64_t oversize = detail::MAX_LEGAL_ELF_SEGMENT_SIZE + 1UL;
+
+    MemCheckProtocol protocol;
+    protocol.Feed(Serialize(header, oversize));
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::INVALID);
 }

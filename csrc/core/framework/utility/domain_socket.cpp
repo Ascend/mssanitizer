@@ -16,6 +16,8 @@
 
 
 #include "domain_socket.h"
+#include <algorithm>
+#include <cstring>
 #include <string>
 #include <iostream>
 #include <unistd.h>
@@ -27,6 +29,11 @@
 #include "securec.h"
 #include "file_system.h"
 #include "log.h"
+#include "recv_fd.h"
+
+#ifndef MSG_CMSG_CLOEXEC
+#define MSG_CMSG_CLOEXEC 0
+#endif
 
 namespace {
 constexpr mode_t SOCK_UMASK = 0177;
@@ -180,11 +187,37 @@ Result DomainSocketServer::Read(ClientId id, std::string &message, size_t maxByt
         cfd = cfds_[id];
     }
 
-    std::vector<char> buffer(maxBytes);
-    ssize_t ret = read(cfd, buffer.data(), maxBytes);
+    // 复用 thread_local 缓冲，避免每次 Read 都分配（大内核二进制场景下按 MB 级分片读取）
+    static thread_local std::vector<char> buffer;
+    if (buffer.size() < maxBytes) {
+        buffer.resize(maxBytes);
+    }
+    // P3：用 recvmsg 接收，以便捕获发送方经 SCM_RIGHTS 传来的内核二进制 fd（零拷贝传输）
+    struct iovec iov = {};
+    iov.iov_base = buffer.data();
+    iov.iov_len = maxBytes;
+    // 需同时容纳 SO_PASSCRED 带来的 SCM_CREDENTIALS 与 SCM_RIGHTS（若缓冲过小，fd 会被截断丢弃）
+    alignas(cmsghdr) char control[CMSG_SPACE(sizeof(struct ucred)) + CMSG_SPACE(sizeof(int))] = {};
+    struct msghdr msgHdr = {};
+    msgHdr.msg_iov = &iov;
+    msgHdr.msg_iovlen = 1;
+    msgHdr.msg_control = control;
+    msgHdr.msg_controllen = sizeof(control);
+    ssize_t ret = recvmsg(cfd, &msgHdr, MSG_CMSG_CLOEXEC);
     if (ret == -1) {
         result.SetError("recv failed. " + std::string(strerror(errno)));
         return result;
+    }
+    for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msgHdr); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msgHdr, cmsg)) {
+        if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS ||
+            cmsg->cmsg_len < CMSG_LEN(sizeof(int))) {
+            continue;
+        }
+        int fd = -1;
+        std::copy_n(reinterpret_cast<const char *>(CMSG_DATA(cmsg)), sizeof(int), reinterpret_cast<char *>(&fd));
+        if (fd >= 0) {
+            PushRecvFd(fd);
+        }
     }
     receivedBytes = static_cast<size_t>(ret);
     message.assign(buffer.data(), receivedBytes);
@@ -254,7 +287,10 @@ Result DomainSocketClient::Read(std::string &message, uint64_t maxBytes, size_t 
         return result;
     }
 
-    std::vector<char> buffer(maxBytes);
+    static thread_local std::vector<char> buffer;
+    if (buffer.size() < maxBytes) {
+        buffer.resize(maxBytes);
+    }
     ssize_t ret = read(sfd_, buffer.data(), maxBytes);
     if (ret == -1) {
         std::error_condition ec(errno, std::generic_category());

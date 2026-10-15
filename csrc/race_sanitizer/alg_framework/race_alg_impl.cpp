@@ -79,7 +79,7 @@ ReturnType RaceAlgImpl::ProcessEvent(const SanEvent& event)
         e.pipe = event.pipe;
         e.timeInfo = vc_[curPipeIdx];
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::SINGLE_BLOCK_CHECK);
-        eventContainer_.Push(e, e.pipe, blockIndex);
+        eventContainer_.Push(std::move(e), e.pipe, blockIndex);
         eventContainer_.Push(event, event.pipe, blockIndex);
         return ReturnType::PROCESS_OK;
     }

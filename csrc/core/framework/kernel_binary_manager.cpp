@@ -16,16 +16,17 @@
 
 #include "kernel_binary_manager.h"
 #include <mutex>
+#include <utility>
 
 namespace Sanitizer {
 
-void KernelBinaryManager::Set(std::string const &kernelName, std::vector<char> const &binary)
+void KernelBinaryManager::Set(std::string const &kernelName, BinaryPtr binary)
 {
     std::unique_lock<std::mutex> guard(mtx_);
-    binaryMap_[kernelName] = binary;
+    binaryMap_[kernelName] = std::move(binary);
 }
 
-bool KernelBinaryManager::Get(std::string const &kernelName, std::vector<char> &binary) const
+bool KernelBinaryManager::Get(std::string const &kernelName, BinaryPtr &binary) const
 {
     std::unique_lock<std::mutex> guard(mtx_);
     auto it = binaryMap_.find(kernelName);

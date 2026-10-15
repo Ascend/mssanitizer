@@ -91,7 +91,8 @@ PipeState PipeLine::CheckCurPipe()
 
 PipeState PipeLine::Process()
 {
-    SanEvent event = events_.Front();
+    // 引用绑定，避免每个事件都整块拷贝 SanEvent（记录多时是热点）；Pop 前该引用有效
+    const SanEvent &event = events_.Front();
     if (!func_) {
         return PipeState::EXCEPTION;
     }

@@ -74,7 +74,7 @@ ReturnType CrossCoreRaceAlgImpl::ProcessEvent(const SanEvent &event)
         e.loc.blockType = event.loc.blockType;
         e.timeInfo = vc_[curPipe];
         auto blockIdx = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::CROSS_BLOCK_CHECK);
-        eventContainer_.Push(e, e.pipe, blockIdx);
+        eventContainer_.Push(std::move(e), e.pipe, blockIdx);
         eventContainer_.Push(event, event.pipe, blockIdx);
         return ReturnType::PROCESS_OK;
     }

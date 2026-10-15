@@ -17,10 +17,12 @@
 #ifndef CORE_FRAMEWORK_KERNEL_BINARY_MANAGER_H
 #define CORE_FRAMEWORK_KERNEL_BINARY_MANAGER_H
 
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
 
+#include "core/framework/binary_buffer.h"
 #include "utility/singleton.h"
 
 namespace Sanitizer {
@@ -34,21 +36,24 @@ class KernelBinaryManager : public Singleton<KernelBinaryManager> {
 public:
     friend class Singleton<KernelBinaryManager>;
 
+    // 持有二进制视图（vector 或 mmap'd fd），Set/Get 全程零拷贝
+    using BinaryPtr = BinaryBuffer::Ptr;
+
     /**
      * @brief 记录二进制文件
      * @param kernelName [in] 要记录的二进制文件对应的 kernelName
-     * @param binary [in] 要记录的二进制文件数据
+     * @param binary [in] 要记录的二进制文件数据（共享所有权，不拷贝）
      */
-    void Set(std::string const &kernelName, std::vector<char> const &binary);
+    void Set(std::string const &kernelName, BinaryPtr binary);
 
     /**
      * @brief 获取二进制文件
      * @param kernelName [in] 要查询的二进制文件对应的 kernelName
-     * @param binary [out] 返回二进制数据
+     * @param binary [out] 返回二进制数据的共享指针，不拷贝
      * @return true 获取成功
      *         false 获取失败
      */
-    bool Get(std::string const &kernelName, std::vector<char> &binary) const;
+    bool Get(std::string const &kernelName, BinaryPtr &binary) const;
 
 #if defined(__BUILD_TESTS__)
     void Clear()
@@ -58,7 +63,7 @@ public:
 #endif
 
 private:
-    std::unordered_map<std::string, std::vector<char>> binaryMap_;
+    std::unordered_map<std::string, BinaryPtr> binaryMap_;
     mutable std::mutex mtx_;
 };
 

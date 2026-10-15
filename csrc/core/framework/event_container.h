@@ -32,8 +32,10 @@ public:
     void Init(uint32_t blockNum, uint32_t deviceNum = 1);
     // 将事件保存到对应的队列中
     void Push(const SanEvent &e, PipeType pipe, uint32_t blockIdx, uint32_t deviceIdx = 0);
-    // 获取当前队列头部事件
-    SanEvent Front() const;
+    // 右值重载：调用方传入临时/可交出的事件时避免拷贝
+    void Push(SanEvent &&e, PipeType pipe, uint32_t blockIdx, uint32_t deviceIdx = 0);
+    // 获取当前队列头部事件的引用（元素在 Pop/出队前保持有效；避免记录多时逐事件拷贝 SanEvent）
+    const SanEvent &Front() const;
     // 将当前队列的头部事件出队，表示事件处理完成
     void Pop();
     // 判断当前队列为空

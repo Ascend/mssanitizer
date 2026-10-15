@@ -22,7 +22,9 @@
 #include "record_defs.h"
 #include "record_format.h"
 #include "utility/cpp_future.h"
+#include "utility/elf_loader.h"
 #include "utility/log.h"
+#include "utility/recv_fd.h"
 #include "utility/serializer.h"
 
 namespace Sanitizer {
@@ -60,6 +62,7 @@ public:
     inline bool Read(T &val);
     inline bool Read(uint64_t size, std::string &buffer);
     inline void Feed(const std::string &msg);
+    inline void Reserve(uint64_t payloadSize);
     inline void Swap(Extractor &rhs);
 
 private:
@@ -103,6 +106,13 @@ bool MemCheckProtocol::Extractor::Read(uint64_t size, std::string &buffer)
     if (offset_ + size > bytes_.size()) {
         return false;
     }
+    if (offset_ == 0UL && size == bytes_.size()) {
+        // 剩余缓冲恰好就是本包载荷，直接 move 交出，避免 substr 的整块拷贝
+        buffer = std::move(bytes_);
+        bytes_.clear();
+        offset_ = 0UL;
+        return true;
+    }
     buffer = bytes_.substr(offset_, size);
     offset_ += size;
 
@@ -118,6 +128,16 @@ void MemCheckProtocol::Extractor::Feed(const std::string &msg)
     // 限制协议解析流的最大长度
     if (bytes_.size() + msg.size() < MAX_STREAM_LEN) {
         bytes_ += msg;
+    }
+}
+
+void MemCheckProtocol::Extractor::Reserve(uint64_t payloadSize)
+{
+    std::lock_guard<std::mutex> guard(mutex_);
+    // 已知即将到达的大包长度，一次性预留容量，避免累积期反复扩容（重分配 + 拷贝 + 页清零）
+    uint64_t needed = static_cast<uint64_t>(bytes_.size()) + payloadSize;
+    if (needed > bytes_.capacity()) {
+        bytes_.reserve(needed);
     }
 }
 
@@ -154,7 +174,11 @@ template <typename BinaryDataT>
 Packet MemCheckProtocol::GetBinaryDataPacket(void)
 {
     std::string buffer;
-    return GetBinaryData(buffer) ? Packet(BinaryDataT{buffer}) : Packet();
+    if (!GetBinaryData(buffer)) {
+        return Packet();
+    }
+    // move 接管，避免再对 GB 级二进制做一次拷贝
+    return Packet(BinaryDataT{std::move(buffer)});
 }
 
 bool MemCheckProtocol::GetPacketHead(PacketHead &head) const
@@ -169,12 +193,48 @@ bool MemCheckProtocol::GetPacketHead(PacketHead &head) const
     return true;
 }
 
+// P3：优先消费发送方经 SCM_RIGHTS 传来的 fd，mmap 后零拷贝构造 Packet；
+// 若无 fd（旧协议/内存模式/回退）则走原有字节流路径。
+Packet MemCheckProtocol::GetKernelBinaryPacket(void)
+{
+    if (pendingBinaryFd_ < 0) {
+        pendingBinaryFd_ = PopRecvFd();
+    }
+    if (pendingBinaryFd_ < 0) {
+        return GetBinaryDataPacket<Packet::KernelBinary>();
+    }
+    uint64_t length = 0;
+    if (!extractor_->Read(length)) {
+        // 长度尚未到达：保留 fd，等待后续数据
+        return Packet();
+    }
+    BinaryBuffer::Ptr buffer = BinaryBuffer::FromMappedFd(pendingBinaryFd_, length);
+    pendingBinaryFd_ = -1;
+    if (buffer == nullptr) {
+        SAN_ERROR_LOG("Failed to mmap kernel binary fd (length: %lu).", length);
+        return Packet();
+    }
+    SAN_INFO_LOG("Kernel binary received via fd, mmap %lu bytes (zero-copy).", length);
+    return Packet(PacketType::KERNEL_BINARY, std::move(buffer));
+}
+
 bool MemCheckProtocol::GetBinaryData(std::string &data)
 {
     thread_local static uint64_t size{};
     if (size == 0UL) {
         if (!extractor_->Read(size)) {
             return false;
+        }
+        // 安全校验：长度字段来源于 IPC 流，可能被恶意篡改或损坏。
+        // 上限取 kernel object（ELF 段）允许的最大尺寸，防止超大长度触发超量内存分配。
+        if (size > detail::MAX_LEGAL_ELF_SEGMENT_SIZE) {
+            SAN_ERROR_LOG("Binary data length (%lu) exceeds the max kernel object size (%lu), drop this packet.",
+                size, detail::MAX_LEGAL_ELF_SEGMENT_SIZE);
+            size = 0UL;
+            return false;
+        }
+        if (size > 0UL) {
+            extractor_->Reserve(size);
         }
     }
     if (extractor_->Size() < size) {
@@ -205,7 +265,7 @@ Packet MemCheckProtocol::GetPayLoad(PacketHead head) {
         case PacketType::MEM_REGION_PERMISSION:
             return GetTriviallyCopyable<MemRegionPermissionDesc>();
         case PacketType::KERNEL_BINARY:
-            return GetBinaryDataPacket<Packet::KernelBinary>();
+            return GetKernelBinaryPacket();
         case PacketType::LOG_STRING:
             return GetBinaryDataPacket<Packet::LogString>();
         case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:

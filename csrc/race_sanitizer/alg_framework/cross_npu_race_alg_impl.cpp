@@ -152,7 +152,7 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
         e.loc.blockType = event.loc.blockType;
         e.timeInfo = vc_[curPipe];
         auto blockIdx = GetEventExpandBlockIndex(event);
-        eventContainer_.Push(e, e.pipe, blockIdx, event.loc.deviceIdx);
+        eventContainer_.Push(std::move(e), e.pipe, blockIdx, event.loc.deviceIdx);
         eventContainer_.Push(event, event.pipe, blockIdx, event.loc.deviceIdx);
         return ReturnType::PROCESS_OK;
     }

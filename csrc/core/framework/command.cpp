@@ -333,9 +333,17 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     checker.Do(records);
 }
 
-inline void HandleKernelBinary(Packet::BinaryPayload const &payload)
+inline void HandleKernelBinary(Packet::BinaryPayload const &payload, BinaryBuffer::Ptr buffer)
 {
-    std::vector<char> buffer(payload.buf, payload.buf + payload.len);
+    // fd 路径下 buffer 已由 Packet 持有（mmap zero-copy）；字节流路径下退化为整块构造
+    if (buffer == nullptr) {
+        buffer = BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(
+            payload.buf, payload.buf + payload.len));
+    }
+    if (buffer == nullptr) {
+        SAN_ERROR_LOG("Empty kernel binary.");
+        return;
+    }
 
     KernelBinaryManager::Instance().Set(RuntimeContext::Instance().kernelSummary_.kernelName, buffer);
 
@@ -469,7 +477,7 @@ void Command::Exec(const ParamList &execParams)
                     HandleGMAddrOutOfBoundRecord(checker, packet.GetPayload().gmAddrOutOfBoundRecord);
                     break;
                 case PacketType::KERNEL_BINARY:
-                    HandleKernelBinary(packet.GetPayload().binary);
+                    HandleKernelBinary(packet.GetPayload().binary, packet.GetBinaryBuffer());
                     break;
                 case PacketType::LOG_STRING:
                     HandleLogString(packet.GetPayload().binary);

@@ -443,6 +443,13 @@ void Checker::Do(const SanitizerRecord &record)
     std::vector<SanEvent> events;
     RecordPreProcess::GetInstance().Process(record, events);
     finishProduce_ = false;
+    uint8_t activeToolNum = 0;
+    for (uint8_t i = 0; i < TOOL_NUM; ++i) {
+        if (!IsNeedFilterDbi(record, i) && sanitizerArr_[i] != nullptr) {
+            ++activeToolNum;
+        }
+    }
+    const bool canMoveEvent = (activeToolNum <= 1);
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
         if (IsNeedFilterDbi(record, i)) {
             continue;
@@ -453,7 +460,7 @@ void Checker::Do(const SanitizerRecord &record)
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::SANITIZER_RECORD_ARRIVED;
             workargs.record = record;
-            workargs.event = events;
+            workargs.event = canMoveEvent ? std::move(events) : events;
             workerArgs_[i].push(std::move(workargs));
         }
     }
@@ -494,6 +501,14 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
     }
 
     finishProduce_ = false;
+    // 仅一个工具使能时，可把 events 直接 move 进队列，避免整块拷贝（多工具时仍需各自一份）
+    uint8_t activeToolNum = 0;
+    for (uint8_t i = 0; i < TOOL_NUM; ++i) {
+        if (!IsNeedFilterDbi(i) && sanitizerArr_[i] != nullptr) {
+            ++activeToolNum;
+        }
+    }
+    const bool canMoveEvents = (activeToolNum <= 1);
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
         if (IsNeedFilterDbi(i)) {
             continue;
@@ -504,7 +519,7 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::KERNEL_BLOCK_ARRIVED;
             workargs.records = records;
-            workargs.events = events;
+            workargs.events = canMoveEvents ? std::move(events) : events;
             workerArgs_[i].push(std::move(workargs));
         }
     }
