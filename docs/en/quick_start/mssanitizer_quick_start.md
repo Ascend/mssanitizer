@@ -6,7 +6,7 @@
 
 msSanitizer is an exception check tool based on Ascend AI Processors. It provides memory check, race check, uninitialization check, and synchronization check in single-operator development scenarios. This document demonstrates the core functions of msSanitizer based on the simple addition operator developed in the introductory tutorial. It helps beginners intuitively experience the efficiency and convenience the tool brings to the operator development process.
 
-This document assumes that you have completed all operations in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a>. If you have not done so, complete that guide first for a better learning experience.
+This document assumes that you have completed all operations in <a href="https://atomgit.com/Ascend/msot/blob/26.2.0/docs/en/quick_start/op_tool_quick_start.md" target="_blank">Ascend Operator Development Toolchain Quick Start</a>. If you have not done so, complete that guide first for a better learning experience.
 
 ## 2. Procedure
 
@@ -18,7 +18,7 @@ This tutorial **supports only** standard CANN container environments. It is not 
 #### 2.1.1 Installing the CANN Container Environment
 
 ✅ **Strictly follow the following guide to complete the environment installation:**  
-👉 **<a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/installation_guide.md" target="_blank">Ascend AI Operator Development Toolchain Learning Environment Installation Guide</a>**
+👉 **<a href="https://atomgit.com/Ascend/msot/blob/26.2.0/docs/en/quick_start/installation_guide.md" target="_blank">Ascend AI Operator Development Toolchain Learning Environment Installation Guide</a>**
 
 > ⏱️ **Estimated time in an environment with external network access: about 3 minutes**  
 > After installation, you will get a standard container environment with all operator tools, sample code, and dependent libraries preinstalled.
@@ -36,7 +36,7 @@ Before the hands-on experience, **copy the entire script**, paste it into the te
 
 ### 2.2 [Prerequisite] Completing Operator Project Preparation
 
-Follow Section 2.3 in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md#23-developing-and-building-the-operator-project-msopgen" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete the operator project preparation.
+Follow Section 2.3 in <a href="https://atomgit.com/Ascend/msot/blob/26.2.0/docs/en/quick_start/op_tool_quick_start.md#23-development-building-the-operator-project-msopgen" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete the operator project preparation.
 
 ### 2.3 [Check] msSanitizer
 
@@ -69,7 +69,7 @@ MY_OP_PKG=$(find ./build_out -maxdepth 1 -name "custom_opp_*.run" | head -1) && 
 ```
 
 > [!NOTE]
-> 
+>
 > If the following warning appears during redeployment, the environment variable `ASCEND_CUSTOM_OPP_PATH` is set to an incorrect value or contains multiple colon-separated paths:
 >
 > ```text

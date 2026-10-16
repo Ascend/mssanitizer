@@ -564,8 +564,8 @@ sequenceDiagram
             Consumer thread 1->>SanitizerBase: Do(record, events)
         end
     end
-    Checker->> Consumer thread 0: Stop
-    Checker->> Consumer thread 1: Stop
+    Checker->> Consumer thread 0: Stop (STOP)
+    Checker->> Consumer thread 1: Stop (STOP)
     Consumer thread 0->>SanitizerBase: Exit()
     Consumer thread 1->>SanitizerBase: Exit()
     deactivate Checker
@@ -689,7 +689,7 @@ flowchart TD
     I -->|no| C
     J --> C
     H -->|no| C
-    C -->|no| K[End]
+    C -->|no| K([End])
 ```
 
 #### 5.3.7 Shared Memory Support
@@ -1006,7 +1006,7 @@ flowchart TD
 |-----|---------|
 | `-h, --help` | Displays the help information about the tool.|
 | `-v, --version` | Queries the version information|
-| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`.Separate multiple tools with a pipe ( `\`) to enable them simultaneously (for example, `memcheck \ racecheck`). By default, all tools are enabled.|
+| `-t, --tool <name>` | Specifies the check tool module: `memcheck`, `racecheck`, `initcheck`, and `synccheck`. Separate multiple tools with a pipe (`\|`) to enable them simultaneously (for example, `memcheck\|racecheck`). By default, all tools are enabled. |
 | `--log-file <file>` | Saves log information to a specified file. If no file is specified, the log information is printed.|
 | `--log-level <level>` | Specifies the print level. The default value is `warn`.|
 | `--max-debuglog-size <size>` | Specifies the size of a single debug log file.|
@@ -1110,6 +1110,7 @@ struct Config {
     bool leakCheck;
     bool checkUnusedMemory;
     bool isPrintFullStack{false};
+    bool traceNonDefaultSprReg{false};
     int16_t checkBlockId = -1;
     uint32_t cacheSize = 100;
     DemangleMode demangleMode{DemangleMode::FULL_DEMANGLED_NAME};

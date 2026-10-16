@@ -1,137 +1,78 @@
-# MindStudio Sanitizer Development Environment Setup, Build, and UT Methods
+# msSanitizer Development Guide
 
 <br>
 
-## 1. Background Knowledge Required
+## 1. Prerequisites
 
-For details about the code framework and core process, see the [msSanitizer Architecture Design Specifications](./architecture.md).
+### 1.1 Prerequisite Knowledge
 
-## 2. Development Environment Setup
+Before starting development, read [msSanitizer Architecture Design Specifications](./architecture.md) to learn about the code framework and core processes.
 
-Set up the environment by referring to the [Operator Tool Development Environment Setup Guide](https://gitcode.com/Ascend/msot/blob/master/docs/en/common/dev_env_setup.md).
+### 1.2 Environment Preparation
 
-## 3. Building and Packaging
+Follow [msSanitizer Installation Guide — Source Installation](../install_guide/mssanitizer_install_guide.md#231-environment-setup) to set up the build and test environment.
 
-There are two methods, each with its own advantages and disadvantages:
+> **Note:** The environment image build method and the supporting software versions are maintained by the MindStudio Unified Build Image Creation Guide and are not redefined in this repository.
 
-| Method| Application Scenario| Advantages| Disadvantages|
-|------|---------|------|------|
-| One-click script| Initial build and CI/CD pipeline| Zero configuration, one-step setup| A single step cannot be executed independently.|
-| Step-by-step script| Routine development and incremental build| Flexible and efficient| Multiple steps are required.|
+## 2. Build
 
-### 3.1 Method 1: One-Click Script
+Choose one of the following build methods as needed:
 
-```shell
-python build.py
+| Method | Application Scenario | Features |
+|------|---------|------|
+| One-click script | Initial build and CI/CD pipeline | Zero configuration, completes the entire process in one step |
+| Step-by-step build | Routine development and incremental build | Executes individual steps as needed, which is more efficient. |
+
+### 2.1 One-Click Script
+
+Run the following command in the project root directory:
+
+```bash
+python3 build.py
 ```
 
-### 3.2 Method 2: Step-by-Step Script
+The script automatically completes the entire process of downloading dependencies, building, and packaging.
 
-#### 3.2.1 Downloading Dependencies
+### 2.2 Step-by-Step Build
 
-```shell
-python download_dependencies.py
+#### Downloading Dependencies
+
+```bash
+python3 download_dependencies.py
 ```
 
-#### 3.2.2 Building and Packaging
+#### Building
 
-##### 3.2.2.1 Starting Build
-
-Run the following commands to start the build:
-
-```shell
-mkdir build
-cd build
-cmake ../cmake
-make -j$(nproc)  # -j indicates the number of parallel build jobs, which can be specified as required. If nproc is unavailable, manually enter a number (for example, -j8)
+```bash
+python3 build.py local
 ```
 
-> [!NOTE]
->
-> **Debug version build**
->
-> To perform GDB or VS Code graphical breakpoint debugging, build the debug version. The procedure is as follows:
-> Add `-DCMAKE_BUILD_TYPE=Debug` when running the preceding CMake command, for example, `cmake ../cmake -DCMAKE_BUILD_TYPE=Debug`.
->
-> **CMake parameter issues**
->
-> Use `cmake ../cmake` instead of `cmake ..`. Otherwise, the .run installation package will not be generated.
+#### Build Artifacts
 
-If the generation time of the `Ascend-mindstudio-sanitizer-xxx.run` file in the `output` directory is updated to the current build time, the building and packaging are successful.
+After a successful build, the output is generated in the `artifacts` directory.
 
-##### 3.2.2.2 Build Result Description
+#### Build Cleanup
 
-The build result is generated in the `output` directory:
+To perform a full rebuild, delete the build directory and run the preceding steps again:
 
-```text
-output/
-|-- Ascend-mindstudio-sanitizer-XXX_linux-aarch64.run  # Installation package
-|-- bin                                                  # Executable bin file, which can directly call the debugging function
-|-- include                                              # API header file
-|-- lib64                                                # Various dynamic and static libraries
-|-- version.info                                         # Version information
-```
-
-#### 3.2.3 Cleanup/Rebuild
-
-Delete the build directory and perform [3.2.2.1](#3221-starting-build).
-
-```shell
+```bash
 rm -rf build
 ```
 
-## 4. Running UT
+## 3. Unit Tests
 
-### 4.1 Method 1: One-Click Script
+### 3.1 Running Tests
 
-```shell
-python build.py test
+```bash
+python3 build.py test
 ```
 
-### 4.2 Method 2: Step-by-Step Script
+A command return code of 0 with no failed test cases indicates that the unit tests pass. If any `FAILED` case exists, locate the cause of the failure from the logs.
 
-#### 4.2.1 Downloading Dependencies
+### 3.2 Cleaning the Test Environment
 
-```shell
-python download_dependencies.py test
-```
+Delete the UT build directory and run the tests again:
 
-#### 4.2.2 Running UT
-
-> [!NOTE]
-> 
-> **CMake entry description for UT**
-> 
-> The UT build uses `CMakeLists.txt` in the root directory (that is, `cmake ..` instead of `cmake ../cmake`) of the project. Only the test and dependency are built, and the .run packaging process is not included.
-
-```shell
-mkdir build_ut
-cd build_ut
-cmake .. -DBUILD_TESTS=ON
-make -j$(nproc) mssanitizer_test # -j indicates the number of parallel build jobs, which can be specified as required. If nproc is unavailable, manually enter a number (for example, -j8)
-./test/ut/mssanitizer_test
-```
-
-If the number of executed test cases is the same as the number of passed test cases, the test is successful. The output is similar to the following:
-
-```text
-[==========] 912 tests from 139 test cases ran. (46693 ms total)
-[  PASSED  ] 912 tests.
-```
-
-#### 4.2.3 Cleanup/Rebuild
-
-Delete the build directory and perform [4.2.2](#422-running-ut).
-
-```shell
+```bash
 rm -rf build_ut
 ```
-
-## 5. FAQ
-
-### 5.1 Why Is No .run Package Generated When I Run the make Command During Building?
-
-It is possible that `cmake ..` is used when running the `cmake` command. The `cmake` command is described as follows:
-
-- `cmake ..`: Only the current project is built. The `make install` command installs the project to the `output/` directory, but does not call `makeself`. Therefore, no `Ascend-mindstudio-sanitizer-xxx.run` file is generated.
-- `cmake ../cmake`: "super build" of `cmake/CMakeLists.txt` is used. The project is built and installed first, and then `parser.py` and `makeself` are executed to generate the .run file in the `output/` directory.

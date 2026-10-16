@@ -19,7 +19,7 @@
     After the one-click script building and running is complete, the NPU-side executable file `_<kernel_name>_npu_` is generated in the project directory.
 
     > [!NOTE]
-    > 
+    >
     > If the `acl/acl.h` header file cannot be found during compilation, manually add the corresponding header file path to the `cmake/npu/CMakeLists.txt` file:
     >
     > ```cmake
@@ -66,7 +66,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 
 > [!NOTE]
 >
-> - This sample project does not support Atlas A3 training products and Atlas A3 inference products.
+> - This sample project does not support Atlas A3 products.
 > - When downloading the code sample, run the following command to specify the branch version:
 >
 > ```shell
@@ -81,10 +81,10 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
     bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user
     ```
 
-2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/master/docs/en/user_guide/msopgen_user_guide.md).
+2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://atomgit.com/Ascend/msopgen/blob/26.2.0/docs/en/user_guide/msopgen_user_guide.md).
 
     > [!NOTE]
-    > 
+    >
     > In the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp` directory of the sample project, modify the `op_kernel/CMakeLists.txt` file and add the `-sanitizer` option to the kernel implementation to support the check function.
     >
     > ```cmake
@@ -131,14 +131,14 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 > [!NOTE]
 >
 > - This sample project supports only Python 3.9. To run this sample project in other Python versions, change the Python version in the `run_op_plugin.sh` file in the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation` directory.
-> - This sample project does not support Atlas A3 training products and Atlas A3 inference products.
+> - This sample project does not support Atlas A3 products.
 > - When downloading the code sample, run the following command to specify the branch version:
 >
 > ```shell
 > git clone https://gitee.com/ascend/samples.git -b master
 > ```
 
-- You have installed the PyTorch framework and TorchNPU plugin by referring to [TorchNPU Software Installation](https://www.hiascend.com/document/detail/en/Pytorch/2610/installguide/swinstall/docs/en/installation_guide/installation_description.md).
+- You have installed the PyTorch framework and TorchNPU plugin by referring to [TorchNPU Software Installation](https://atomgit.com/Ascend/pytorch/blob/v2.7.1-26.1.0/docs/en/installation_guide/installation_description.md).
 
 ### 3.2 Procedure
 
@@ -148,10 +148,10 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
       bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user
     ```
 
-2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/master/docs/en/user_guide/msopgen_user_guide.md).
+2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://atomgit.com/Ascend/msopgen/blob/26.2.0/docs/en/user_guide/msopgen_user_guide.md).
 
     > [!NOTE]
-    > 
+    >
     > Edit the `CMakeLists.txt` file in the sample project directory `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/CustomOp/op_kernel` and add the compilation option `-sanitizer`.
     >
     > ```cmake
@@ -206,10 +206,14 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 
 ### 4.1 Prerequisites
 
-- The Triton and Triton-Ascend plugin have been installed and configured by referring to [triton-ascend repository](https://gitcode.com/Ascend/triton-ascend).
-- Enable the following environment variables to prevent un-recompiled operators from causing issues.
+- The Triton and Triton-Ascend plugin have been installed and configured by referring to [triton-ascend repository](https://atomgit.com/Ascend/triton-ascend).
+- Enable the following environment variables to turn on the exception check function for Triton operators.
 
     ```sh
+    # Enable exception check
+    export TRITON_ENABLE_SANITIZER=1
+ 
+    # Force operator recompilation so that exception check takes effect
     export TRITON_ALWAYS_COMPILE=1
     ```
 
@@ -335,7 +339,7 @@ To identify a memory leak, perform the following steps:
           mssanitizer --check-device-heap=yes --leak-check=yes ./add_npu
         ```
 
-        The path of the program to be checked (for example, *_add_custom_npu_*) can be set to either an absolute path or a relative path according to the actual situation.
+        The path of the program to be checked (for example, `*_add_custom_npu_*`) can be set to either an absolute path or a relative path according to the actual situation.
 
     2. If no exception information is displayed, the check program is running properly and no memory leak occurs on the host. If the following exception information is displayed, memory leak occurs on the host.
 
