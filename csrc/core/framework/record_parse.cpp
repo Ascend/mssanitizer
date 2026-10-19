@@ -4304,14 +4304,11 @@ void RecordParse::DfsSrcGraph(PipeType targetPipe, std::unordered_set<PipeType> 
 /// 常规的set/wait顺序：set(pipe1, pipe2)->wait(pipe1, pipe2)->set(pipe2, pipe1)->wait(pipe2, pipe1)
 /// 常规的hset/hwait顺序：hwait(pipe1, pipe2)->hset(pipe2, pipe1)->hwait(pipe2, pipe1)->hset(pipe1, pipe2)
 /// 有时用户会调整顺序，如：hset(pipe2, pipe1)->hwait(pipe1, pipe2)->hset(pipe1, pipe2)->hwait(pipe2, pipe1)
-/// 因此不适合用全量4条指令作为判断依据，而是取关键的wait指令判断状态迁移：
-/// +---+   (h)wait_1_2    +---+   (h)wait_2_1    +------------------+
-/// | F |  ------------->  | T |  ------------->  | pipe_barrier & F |
-/// +---+                  +---+                  +------------------+
-/// 使用数组记录状态值，用boolean表示
-///    PIPE_S, PIPE_V, PIPE_M, PIPE_MTE1, PIPE_MTE2, PIPE_MTE3...
-/// : [   F  ,    F  ,    F  ,     T    ,     F    ,     F    ...]
-/// 按顺序集齐一对wait指令就插入一个pipe_barrier，并将状态值归零；遇到内存指令就结束判断，将对应pipe的状态值归零
+/// 由 set/wait 构成握手链：环 = 同一个 pipe 的 set 到 wait 的一次闭合往返，区间 [起始点, 终点]。
+/// 该区间被两条同 pipe 访存完整包含时不竞争；落在环内或跨环端点仍报。
+/// 起始点用 serialNo 表示。本函数只算环并推进水位线，Parse() 把水位线打到事件上，检测侧比较一次即可。
+/// 边由 (src, dst, eventId) 确定，三者全同才配对。环长 >=3 时，起始点沿链传递闭合。
+/// dstSrcGraph_ 只服务 PIPE_S 分支：pipe 一旦访存就裁掉它作为 src 的边，避免陈旧依赖外扩。
 void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEvent> &events)
 {
     if (record.recordType == RecordType::BLOCK_FINISH || record.recordType == RecordType::KERNEL_FINISH) {
@@ -4324,16 +4321,14 @@ void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEv
     }
 
     SanEvent event = events.back();
-    // 遇到内存指令，重置状态
+    // 该 pipe 发生访存：仅裁剪 PIPE_S 分支依赖图中"它作为 src"的边
     if (event.type == EventType::MEM_EVENT) {
-        setWaitStat_[static_cast<uint8_t>(event.pipe)] = false;
         for (size_t i = 0; i < static_cast<uint8_t>(PipeType::SIZE); ++i) {
             dstSrcGraph_[static_cast<PipeType>(i)].erase(event.pipe);
         }
         return;
     }
-    // 只使用sync_event(h)的wait_flag更新状态值
-    if (event.type != EventType::SYNC_EVENT || event.eventInfo.syncInfo.opType != SyncType::WAIT_FLAG) {
+    if (event.type != EventType::SYNC_EVENT) {
         return;
     }
     // 校验数组的两个维度是否超出上限，避免数组越界
@@ -4351,43 +4346,82 @@ void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEv
         SAN_ERROR_LOG("The eventId exceeds the maximum limit, eventId:%u.", latestEventId);
         return;
     }
-    // 根据srcPipe/dstPipe更新数组状态，发现有pipe成环就插入pipe_barrier
+
+    // 起始：把 inheritedStartPoints_[srcPipe] 和本次 serialNo 并入 edgeStartPoints_[srcPipe][dstPipe][eventId]。
+    // 继承表只读不取走：SET,SET,WAIT,WAIT 这类连续 set 时，第二个 set 仍要带上第一个继承到的起始点，否则断链。
+    if (event.eventInfo.syncInfo.opType == SyncType::SET_FLAG) {
+        RingStartPoints &edgeStarts = edgeStartPoints_[srcPipe][static_cast<PipeType>(dstPipe)][latestEventId];
+        const RingStartPoints &inherited = inheritedStartPoints_[srcPipe];
+        for (size_t i = 0; i < static_cast<size_t>(PipeType::SIZE); ++i) {
+            if (inherited[i] > edgeStarts[i]) {
+                edgeStarts[i] = inherited[i];
+            }
+        }
+        if (event.serialNo > edgeStarts[srcPipe]) {
+            edgeStarts[srcPipe] = event.serialNo;
+        }
+        return;
+    }
+    // 只使用sync_event的wait_flag更新状态值
+    if (event.eventInfo.syncInfo.opType != SyncType::WAIT_FLAG) {
+        return;
+    }
+
+    // dstPipe 依赖 srcPipe，供 PIPE_S 分支使用
     dstSrcGraph_[event.eventInfo.syncInfo.dstPipe].insert(event.eventInfo.syncInfo.srcPipe);
-    if (!setWaitStat_[srcPipe]) {
-        setWaitStat_[srcPipe] = true;
+
+    // 闭环：把 edgeStartPoints_[srcPipe][dstPipe][eventId] 并入 dstPipe 的继承表；含 dstPipe 自身说明往返
+    // 闭合回 dstPipe，水位线推进到该起始点。
+    auto dstEdges = edgeStartPoints_[srcPipe].find(static_cast<PipeType>(dstPipe));
+    if (dstEdges != edgeStartPoints_[srcPipe].end()) {
+        auto byEvent = dstEdges->second.find(latestEventId);
+        if (byEvent != dstEdges->second.end()) {
+            const RingStartPoints &edgeStarts = byEvent->second;
+            RingStartPoints &inherited = inheritedStartPoints_[dstPipe];
+            for (size_t i = 0; i < static_cast<size_t>(PipeType::SIZE); ++i) {
+                if (edgeStarts[i] > inherited[i]) {
+                    inherited[i] = edgeStarts[i];
+                }
+            }
+            if (edgeStarts[dstPipe] > closedRingStartSerialNo_[dstPipe]) {
+                closedRingStartSerialNo_[dstPipe] = edgeStarts[dstPipe];
+            }
+        }
     }
 
     /// 如果存在pipe_s等待pipe_other的流水间同步，则当前结点之后相当于对pipe_other有流水内同步作用
     if (dstPipe == static_cast<uint8_t>(PipeType::PIPE_S)) {
-        std::unordered_set<PipeType> visited;
-        DfsSrcGraph(event.eventInfo.syncInfo.srcPipe, visited);
-        for (const auto &visitPipe : visited) {
+        std::unordered_set<PipeType> reachable;
+        DfsSrcGraph(event.eventInfo.syncInfo.srcPipe, reachable);
+        for (const auto &visitPipe : reachable) {
             events.emplace_back(CreateInnerPipeSyncEvent(record, visitPipe, record.payload.syncRecord));
         }
     }
-
-    if (setWaitStat_[dstPipe]) {
-        events.emplace_back(CreateInnerPipeSyncEvent(record, event.eventInfo.syncInfo.dstPipe,
-                                                     record.payload.syncRecord));
-        setWaitStat_[dstPipe] = false;
-    }
 }
 
-thread_local std::array<bool, static_cast<uint8_t>(PipeType::SIZE)> RecordParse::setWaitStat_ = {};
 thread_local RecordParse::DstSrcGraph RecordParse::dstSrcGraph_ = {};
+thread_local std::array<RecordParse::RingStartPointsByDst, static_cast<size_t>(PipeType::SIZE)>
+    RecordParse::edgeStartPoints_ = {};
+thread_local std::array<RecordParse::RingStartPoints, static_cast<size_t>(PipeType::SIZE)>
+    RecordParse::inheritedStartPoints_ = {};
+thread_local std::array<uint64_t, static_cast<size_t>(PipeType::SIZE)> RecordParse::closedRingStartSerialNo_ = {};
 thread_local std::map<HsetRecordKey, HsetRecordState> RecordParse::hsetSyncMap_ = {};
 thread_local std::map<std::pair<uint16_t, uint64_t>, uint64_t> RecordParse::getRlsBufMap_ = {};
 
-void RecordParse::ResetSyncInPipeInfo()
-{
-    setWaitStat_ = {};
+void RecordParse::ResetSyncInPipeInfo() {
     dstSrcGraph_ = {};
+    for (auto &dstEdges : edgeStartPoints_) {
+        dstEdges.clear();
+    }
+    for (auto &inherited : inheritedStartPoints_) {
+        inherited.fill(0U);
+    }
+    closedRingStartSerialNo_.fill(0U);
 }
 
 void RecordParse::ResetAll()
 {
-    setWaitStat_ = {};
-    dstSrcGraph_ = {};
+    ResetSyncInPipeInfo();
     hsetSyncMap_ = {};
     getRlsBufMap_ = {};
 }
@@ -4541,14 +4575,26 @@ void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &ev
         return;
     }
 
+    // events 在一次批量flush中会被多条record复用，用增量判断本条record是否产出事件，
+    // 避免参数为0(空)时误处理前序record遗留的陈旧事件，并保证打戳只作用于本条 record 的事件
+    const size_t parseBeginIdx = events.size();
     it->second(kernelRecord, events);
-    if (events.size() == 0) { return; }
+    if (events.size() == parseBeginIdx) {
+        return;
+    }
     // 统一为本条 record 生成的事件标注指令类型，供按指令的策略（如告警屏蔽）使用
     for (auto &event : events) {
         event.recordType = kernelRecord.recordType;
     }
     ProcessHsetWaitSync(events);
     UpdateSyncInPipe(kernelRecord, events);
+    // 给本条 record 产出的事件记下环水位线：该事件所属 pipe 上、终点早于本事件的环中最大的起始点
+    for (size_t i = parseBeginIdx; i < events.size(); ++i) {
+        uint8_t pipeIdx = static_cast<uint8_t>(events[i].pipe);
+        if (pipeIdx < static_cast<uint8_t>(PipeType::SIZE)) {
+            events[i].closedRingStartSerialNo = closedRingStartSerialNo_[pipeIdx];
+        }
+    }
     ReplaceSetSyncPipeScalar(events);
 }
 }

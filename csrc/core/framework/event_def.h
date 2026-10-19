@@ -274,6 +274,8 @@ struct SanEvent {
     LocInfo loc{};
     bool isAtomicMode = false;
     RecordType recordType = INVALID_RECORD_TYPE;
+    // 环水位线：该事件所属 pipe 上、终点早于本事件的环中最大的起始点 serialNo（见 RecordParse）
+    uint64_t closedRingStartSerialNo = 0U;
 };
 
 // 输入数据结构
@@ -281,6 +283,8 @@ struct MemEvent {
     uint64_t serialNo = 0U;
     uint64_t barrierNo = 0U;
     uint64_t pipeSerialNo = 0U;
+    // 环水位线，取自 SanEvent::closedRingStartSerialNo
+    uint64_t closedRingStartSerialNo = 0U;
     VectorTime vt;
     MemOpInfo memInfo;
     DynamicOpInfo dynamicMemInfo;
@@ -290,9 +294,8 @@ struct MemEvent {
     bool isDynamic = false;
 
     explicit MemEvent(const SanEvent &event)
-        : serialNo(event.serialNo), loc(event.loc), pipe(event.pipe),
-        isAtomicMode(event.isAtomicMode)
-    {
+        : serialNo(event.serialNo), closedRingStartSerialNo(event.closedRingStartSerialNo), loc(event.loc),
+          pipe(event.pipe), isAtomicMode(event.isAtomicMode) {
         if (event.type == EventType::DYNAMIC_MEM_EVENT) {
             dynamicMemInfo = event.eventInfo.dynamicOpInfo;
             isDynamic = true;

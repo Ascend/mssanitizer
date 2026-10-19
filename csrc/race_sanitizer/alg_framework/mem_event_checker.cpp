@@ -346,6 +346,13 @@ bool MemEventChecker::IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo
         return false;
     }
 
+    // 环保护：两条指令之间若完整包含一个已闭环的环，则不会竞争。
+    // closedRingStartSerialNo 是该事件所属 pipe 上已闭环环的最大起始点（见 RecordParse）。两事件先后不定，
+    // 两个方向都要判。用 <= 而非 <：hset 生成的 SET_FLAG 复用其触发访存的 serialNo，该访存正落在起始点上。
+    if (event1.serialNo <= event2.closedRingStartSerialNo || event2.serialNo <= event1.closedRingStartSerialNo) {
+        return false;
+    }
+
     // 比较内存空间是否存在重叠
     return IsMemSpaceOverlap(event1, event2, idxInfo1, idxInfo2);
 }

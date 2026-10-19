@@ -3286,7 +3286,8 @@ TEST_F(TestRecordParse, parse_wait_flag_and_hwait_flag_end_to_end_in_pipe_record
     record.payload.syncRecord.dst = PipeType::PIPE_MTE1;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
-    ASSERT_EQ(events.size(), 5);
+    // 环保护不再注入合成 pipe_barrier：本用例只有 wait 链（无 set），不构成闭环往返，只产出 1 个事件
+    ASSERT_EQ(events.size(), 4);
 
     record.recordType = RecordType::HWAIT_FLAG;
     record.payload.hardSyncRecord.location.blockId = 0;
@@ -3296,13 +3297,13 @@ TEST_F(TestRecordParse, parse_wait_flag_and_hwait_flag_end_to_end_in_pipe_record
     record.payload.hardSyncRecord.memory = MemType::L0A;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
-    ASSERT_EQ(events.size(), 6);
+    ASSERT_EQ(events.size(), 5);
 
     record.payload.hardSyncRecord.src = PipeType::PIPE_FIX;
     record.payload.hardSyncRecord.dst = PipeType::PIPE_MTE1;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
-    ASSERT_EQ(events.size(), 7);
+    ASSERT_EQ(events.size(), 6);
 }
 
 TEST_F(TestRecordParse, parse_hset_hwait_flag_with_mte1_record_expect_success)
@@ -3357,31 +3358,40 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_two_sync_expect_get_in
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
 
+    // 两腿上/下行必须落在同一 flag 通道（这里同为 eventID 0）才构成闭环往返；
+    // 环的起始点/终点位置取自 serialNo，故各条记录需给出单调递增的 serialNo
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.location.blockId = 0;
     record.payload.syncRecord.src = PipeType::PIPE_V;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE2;
     record.payload.syncRecord.eventID = 0;
+    record.serialNo = 11U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 12U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
     record.payload.syncRecord.dst = PipeType::PIPE_V;
-    record.payload.syncRecord.eventID = 5;
-    RecordParse::Parse(sanitizerRecord, events);
-    record.recordType = RecordType::WAIT_FLAG;
+    record.payload.syncRecord.eventID = 0;
+    record.serialNo = 13U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
-    const size_t targetEventSize = 5;
+    record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 14U;
+    sanitizerRecord.payload.kernelRecord = record;
+    RecordParse::Parse(sanitizerRecord, events);
+
+    // 不再注入合成 pipe_barrier：闭环往返被记录为环区间 [11,14] 并把水位线打戳到该事件（V 上）
+    const size_t targetEventSize = 4;
     ASSERT_EQ(events.size(), targetEventSize);
     size_t lastEventIdx = events.size() - 1;
     ASSERT_EQ(events[lastEventIdx].type, EventType::SYNC_EVENT);
     ASSERT_EQ(events[lastEventIdx].pipe, PipeType::PIPE_V);
-    ASSERT_EQ(events[lastEventIdx].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_EQ(events[lastEventIdx].closedRingStartSerialNo, 11U);
     RecordParse::ResetSyncInPipeInfo();
 }
 
@@ -3393,41 +3403,51 @@ TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_three_sync_expect_get_
     SanitizerRecord sanitizerRecord;
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
 
+    // 三方往返 V→MTE2→MTE3→V，闭合在 V 上，环区间 [21,26]（V 自己的 set@21 到自己的 wait@26）
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.location.blockId = 0;
     record.payload.syncRecord.src = PipeType::PIPE_V;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE2;
     record.payload.syncRecord.eventID = 3;
+    record.serialNo = 21U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 22U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE3;
-    record.payload.syncRecord.eventID = 5;
+    record.payload.syncRecord.eventID = 3;
+    record.serialNo = 23U;
+    sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 24U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE3;
     record.payload.syncRecord.dst = PipeType::PIPE_V;
-    record.payload.syncRecord.eventID = 6;
+    record.payload.syncRecord.eventID = 3;
+    record.serialNo = 25U;
+    sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 26U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
-    const size_t targetEventSize = 7;
+    // ≥3 方环仍能识别（不再注入合成 pipe_barrier）：环区间 [21,26] 的水位线打戳到闭环事件上
+    const size_t targetEventSize = 6;
     ASSERT_EQ(events.size(), targetEventSize);
     size_t lastEventIdx = events.size() - 1;
     ASSERT_EQ(events[lastEventIdx].type, EventType::SYNC_EVENT);
     ASSERT_EQ(events[lastEventIdx].pipe, PipeType::PIPE_V);
-    ASSERT_EQ(events[lastEventIdx].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
+    ASSERT_EQ(events[lastEventIdx].closedRingStartSerialNo, 21U);
     RecordParse::ResetSyncInPipeInfo();
 }
 
@@ -5246,37 +5266,34 @@ TEST_F(TestRecordParse, parse_high_event_id_cross_pipe_sync_expect_get_inner_pip
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE3;
     record.payload.syncRecord.eventID = 8;
+    record.serialNo = 51U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 52U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
-    // 第二对 set_flag/wait_flag：MTE3 -> MTE2, eventid 9
+    // 第二对 set_flag/wait_flag：MTE3 -> MTE2, eventid 8（硬件截断后为通道 0）
+    // 链根按 pipe 对 (src,dst) 传递、eventId 不参与配对
     record.recordType = RecordType::SET_FLAG;
     record.payload.syncRecord.src = PipeType::PIPE_MTE3;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE2;
-    record.payload.syncRecord.eventID = 9;
+    record.payload.syncRecord.eventID = 8;
+    record.serialNo = 53U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 54U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
-    // 解析时 eventId 应按硬件语义截断到 0~7：8 -> 0, 9 -> 1
+    // 解析时 eventId 应按硬件语义截断到 0~7
     ASSERT_EQ(events[1].eventInfo.syncInfo.eventId, 0U);
-    ASSERT_EQ(events[3].eventInfo.syncInfo.eventId, 1U);
+    ASSERT_EQ(events[3].eventInfo.syncInfo.eventId, 0U);
 
-    // 应当生成 MTE2 的流水内 pipe_barrier
-    bool findMte2Barrier = false;
-    for (const auto &event : events) {
-        if (event.type == EventType::SYNC_EVENT && event.pipe == PipeType::PIPE_MTE2 &&
-            event.eventInfo.syncInfo.opType == SyncType::PIPE_BARRIER) {
-            findMte2Barrier = true;
-            break;
-        }
-    }
-    ASSERT_TRUE(findMte2Barrier);
+    // 不注入合成 pipe_barrier：MTE2 上的闭环往返记为环区间 [51,54]，水位线打在闭环事件上
+    ASSERT_EQ(events[3].closedRingStartSerialNo, 51U);
     RecordParse::ResetSyncInPipeInfo();
 }
 
@@ -5297,9 +5314,11 @@ TEST_F(TestRecordParse, parse_max_event_id_cross_pipe_sync_expect_get_inner_pipe
     record.payload.syncRecord.src = PipeType::PIPE_MTE2;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE3;
     record.payload.syncRecord.eventID = 32;
+    record.serialNo = 61U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 62U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
@@ -5308,9 +5327,11 @@ TEST_F(TestRecordParse, parse_max_event_id_cross_pipe_sync_expect_get_inner_pipe
     record.payload.syncRecord.src = PipeType::PIPE_MTE3;
     record.payload.syncRecord.dst = PipeType::PIPE_MTE2;
     record.payload.syncRecord.eventID = 32;
+    record.serialNo = 63U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
     record.recordType = RecordType::WAIT_FLAG;
+    record.serialNo = 64U;
     sanitizerRecord.payload.kernelRecord = record;
     RecordParse::Parse(sanitizerRecord, events);
 
@@ -5318,16 +5339,8 @@ TEST_F(TestRecordParse, parse_max_event_id_cross_pipe_sync_expect_get_inner_pipe
     ASSERT_EQ(events[1].eventInfo.syncInfo.eventId, 0U);
     ASSERT_EQ(events[3].eventInfo.syncInfo.eventId, 0U);
 
-    // 应当生成 MTE2 的流水内 pipe_barrier
-    bool findMte2Barrier = false;
-    for (const auto &event : events) {
-        if (event.type == EventType::SYNC_EVENT && event.pipe == PipeType::PIPE_MTE2 &&
-            event.eventInfo.syncInfo.opType == SyncType::PIPE_BARRIER) {
-            findMte2Barrier = true;
-            break;
-        }
-    }
-    ASSERT_TRUE(findMte2Barrier);
+    // 不注入合成 pipe_barrier：MTE2 上的闭环往返记为环区间 [61,64]，水位线打在闭环事件上
+    ASSERT_EQ(events[3].closedRingStartSerialNo, 61U);
     RecordParse::ResetSyncInPipeInfo();
 }
 
