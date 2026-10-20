@@ -43,25 +43,21 @@ inline RaceDispInfo FillRaceDispInfo(bool isMissDcci, const MemEvent &event1, co
 template <RaceCheckType checkType>
 inline uint32_t GetPipeIdxByMemEvent(const MemEvent &event, KernelType kernelType, DeviceType deviceType)
 {
-    SanEvent sanEvent{};
-    sanEvent.loc = event.loc;
-    uint32_t blockIdx = GetEventBlockIndex(sanEvent, kernelType, deviceType, checkType);
+    uint32_t blockIdx = GetEventBlockIndexByLoc(event.loc, kernelType, deviceType, checkType);
     return (blockIdx * static_cast<uint16_t>(PipeType::SIZE)) + static_cast<uint16_t>(event.pipe);
+}
+
+inline uint32_t GetExpandPipeIdx(MemEvent const &event, uint32_t blockNum)
+{
+    uint32_t blockIdx = GetEventExpandBlockIndexByLoc(event.loc);
+    return event.loc.deviceIdx * blockNum * static_cast<uint32_t>(PipeType::SIZE) +
+        blockIdx * static_cast<uint32_t>(PipeType::SIZE) + static_cast<uint32_t>(event.pipe);
 }
 
 struct CompareShadowMemoryRecord {
     ShadowMemoryRecord record;
     uint64_t idx;                  // record对应的全局索引
 };
-
-inline uint32_t GetExpandPipeIdx(MemEvent const &event, uint32_t blockNum)
-{
-    SanEvent sanEvent{};
-    sanEvent.loc = event.loc;
-    uint32_t blockIdx = GetEventExpandBlockIndex(sanEvent);
-    return event.loc.deviceIdx * blockNum * static_cast<uint32_t>(PipeType::SIZE) +
-        blockIdx * static_cast<uint32_t>(PipeType::SIZE) + static_cast<uint32_t>(event.pipe);
-}
 
 // 该类集成了内存块之间做竞争比较的功能。
 // 需要记录算子运行过程已经发生的所有内存事件(携带时间戳)

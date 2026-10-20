@@ -48,7 +48,7 @@ void ParseDmaMovWithByteMode(const DmaMovRecord &dmaMovRecord, std::vector<SanEv
     AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV);
     events.emplace_back(event);
 }
- 
+
 void ParseDmaMovWithPadMode(const DmaMovRecord& dmaMovRecord, std::vector<SanEvent>& events,
     SanEvent& event)
 {

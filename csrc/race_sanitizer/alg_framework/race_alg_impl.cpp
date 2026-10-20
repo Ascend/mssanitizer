@@ -31,6 +31,12 @@ RaceAlgImpl::RaceAlgImpl(KernelType kernelType, DeviceType deviceType, uint32_t 
     memChecker_.Init(kernelType, deviceType, RaceCheckType::SINGLE_BLOCK_CHECK);
 }
 
+RaceAlgImpl::~RaceAlgImpl()
+{
+    // 先等后台 stage-2 结束：它还会访问本 alg（含派生类）的解析状态与成员
+    WaitFinished();
+}
+
 void RaceAlgImpl::Do(const SanEvent& event)
 {
     // 阶段一 所有事件推入PIPE_S(标量流水)待执行
@@ -42,27 +48,29 @@ void RaceAlgImpl::Do(const SanEvent& event)
         return;
     }
 
-    // 阶段二 模拟PIPE流水执行，进行竞争分析
-    PipeLine pipeLine(eventContainer_);
-    pipeLine.RegisterEventFunc(std::bind(&RaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
-    // 这一步耗时会较长，可以单独放一个线程去处理
-    pipeLine.Run();
-    memChecker_.RunAlgorithm();
-    isFinished_ = true;
+    // 阶段二 模拟PIPE流水执行，进行竞争分析（异步：提交后台，Do 立即返回；外部调用者最后统一 WaitFinished）
+    SubmitStage2([this]() {
+        PipeLine pipeLine(eventContainer_);
+        pipeLine.RegisterEventFunc(std::bind(&RaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
+        pipeLine.Run();
+        memChecker_.RunAlgorithm();
+    });
 }
 
 bool RaceAlgImpl::IsFinished() const
 {
-    return isFinished_;
+    return isFinished_.load(std::memory_order_acquire);
 }
 
 std::shared_ptr<std::vector<RaceDispInfo>> RaceAlgImpl::GetResult() const
 {
+    WaitFinished();
     return memChecker_.GetResult();
 }
 
 uint32_t RaceAlgImpl::GetRaceCount() const
 {
+    WaitFinished();
     return memChecker_.GetRaceCount();
 }
 

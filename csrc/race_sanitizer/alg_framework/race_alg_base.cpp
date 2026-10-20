@@ -22,6 +22,20 @@ namespace Sanitizer {
 RaceAlgBase::RaceAlgBase(KernelType kernelType, DeviceType deviceType, uint32_t blockDim)
     : kernelType_(kernelType), deviceType_(deviceType), blockDim_(blockDim) {}
 
+void RaceAlgBase::SubmitStage2(std::function<void()> body) {
+    stage2Future_ = std::async(std::launch::async, [this, body]() mutable {
+        body();
+        isFinished_.store(true, std::memory_order_release);
+    });
+}
+
+void RaceAlgBase::WaitFinished() const {
+    if (stage2Future_.valid()) {
+        stage2Future_.get();
+        stage2Future_ = {};
+    }
+}
+
 ReturnType RaceAlgBase::ProcessBlockSyncEvent(const SanEvent &event, RaceCheckType checkType)
 {
     uint32_t blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, checkType);

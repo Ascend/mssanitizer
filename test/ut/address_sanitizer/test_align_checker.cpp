@@ -16,12 +16,16 @@
 
 #include <gtest/gtest.h>
 #include <any>
+#include <atomic>
 #include <mutex>
+#include <thread>
+#include <utility>
 #include <vector>
 #include <string>
 
 #define private public
 #include "align_checker.h"
+#include "core/framework/file_mapping.h"
 #undef private
 
 using namespace std;
@@ -47,6 +51,56 @@ SanEvent CreateSanEvent()
     memInfo.blockSize = blockSize;
     return event;
 }
+
+namespace {
+// 同时存活两个线程，保证拿到的 thread::id 互不相同（避免线程 id 复用）
+std::pair<std::thread::id, std::thread::id> CaptureTwoRootIds()
+{
+    std::atomic<int> ready{0};
+    std::thread::id first;
+    std::thread::id second;
+    std::thread t1([&first, &ready]() {
+        first = std::this_thread::get_id();
+        ++ready;
+        while (ready.load() < 2) { }
+    });
+    std::thread t2([&second, &ready]() {
+        second = std::this_thread::get_id();
+        ++ready;
+        while (ready.load() < 2) { }
+    });
+    t1.join();
+    t2.join();
+    return {first, second};
+}
+
+// 地址按 32 递增，保持“非 32 对齐”，同时让每条错误在 ErrorBuffer 中唯一
+SanEvent MakeMisalignedEvent(uint64_t index, uint64_t fileNo = 0)
+{
+    SanEvent event = CreateSanEvent();
+    event.serialNo = index;
+    event.loc.fileNo = fileNo;
+    event.eventInfo.memInfo.addr = 0x2001U + 32U * index;
+    return event;
+}
+
+void RunAlignWorkers(const std::thread::id &root, uint64_t serialBase, int threadNum = 4, int perThread = 16)
+{
+    std::vector<std::thread> workers;
+    for (int t = 0; t < threadNum; ++t) {
+        workers.emplace_back([root, serialBase, t, perThread]() {
+            RuntimeContext::Instance().rootTid_ = root;
+            for (int i = 0; i < perThread; ++i) {
+                SanEvent event = MakeMisalignedEvent(serialBase + static_cast<uint64_t>(t * perThread + i));
+                AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV);
+            }
+        });
+    }
+    for (auto &worker : workers) {
+        worker.join();
+    }
+}
+} // namespace
 
 class TestAlignChecker : public testing::Test {
 public:
@@ -90,7 +144,7 @@ TEST_F(TestAlignChecker, correct_align_expect_no_error)
     Sanitizer::AlignChecker::Instance().CheckAlign(sanEvent, recordType);
     ASSERT_EQ(memOpInfo.alignSize, expectedAlignSize);
     ASSERT_EQ(detectInfo.size(), 0);
-   
+
     memOpInfo.memType = MemType::GM;
     Sanitizer::AlignChecker::Instance().CheckAlign(sanEvent, recordType);
     ASSERT_EQ(memOpInfo.alignSize, 1);
@@ -205,4 +259,90 @@ TEST_F(TestAlignChecker, test_310p_element_alignment_expect_misalignment)
     Sanitizer::AlignChecker::Instance().CheckAlign(sanEvent, recordType);
     ASSERT_EQ(Sanitizer::AlignChecker::Instance().errorBuffer_.GetBuffer().size(), 1);
     ASSERT_EQ(memOpInfo.alignSize, 32);
+}
+TEST(AlignCheckerRoot, errors_are_isolated_by_root_tid)
+{
+    const auto roots = CaptureTwoRootIds();
+    const auto saved = RuntimeContext::Instance().rootTid_;
+    std::vector<DetectionInfo> infoA;
+    std::vector<DetectionInfo> infoB;
+
+    RuntimeContext::Instance().rootTid_ = roots.first;
+    AlignChecker::Instance().SetDeviceType(DeviceType::ASCEND_910B1);
+    AlignChecker::Instance().errorBuffer_.Clear();
+    AlignChecker::Instance().RegisterNotifyFunc([&infoA](const LogLv &, SanitizerBase::MSG_GEN &&gen) {
+        infoA.push_back(gen());
+    });
+
+    RuntimeContext::Instance().rootTid_ = roots.second;
+    AlignChecker::Instance().SetDeviceType(DeviceType::ASCEND_910B1);
+    AlignChecker::Instance().errorBuffer_.Clear();
+    AlignChecker::Instance().RegisterNotifyFunc([&infoB](const LogLv &, SanitizerBase::MSG_GEN &&gen) {
+        infoB.push_back(gen());
+    });
+
+    RunAlignWorkers(roots.first, 1000);
+    RunAlignWorkers(roots.second, 2000);
+
+    RuntimeContext::Instance().rootTid_ = roots.first;
+    AlignChecker::Instance().Notify();
+    RuntimeContext::Instance().rootTid_ = roots.second;
+    AlignChecker::Instance().Notify();
+
+    EXPECT_EQ(infoA.size(), 64U);
+    EXPECT_EQ(infoB.size(), 64U);
+    AlignChecker::Instance().UnregisterNotifyFunc();
+    RuntimeContext::Instance().rootTid_ = roots.first;
+    AlignChecker::Instance().UnregisterNotifyFunc();
+    RuntimeContext::Instance().rootTid_ = saved;
+}
+
+TEST(AlignCheckerRoot, concurrent_check_align_same_root)
+{
+    const auto roots = CaptureTwoRootIds();
+    const auto saved = RuntimeContext::Instance().rootTid_;
+    std::vector<DetectionInfo> info;
+
+    RuntimeContext::Instance().rootTid_ = roots.first;
+    AlignChecker::Instance().SetDeviceType(DeviceType::ASCEND_910B1);
+    AlignChecker::Instance().errorBuffer_.Clear();
+    AlignChecker::Instance().RegisterNotifyFunc([&info](const LogLv &, SanitizerBase::MSG_GEN &&gen) {
+        info.push_back(gen());
+    });
+
+    RunAlignWorkers(roots.first, 10000, 8, 500);
+    AlignChecker::Instance().Notify();
+
+    EXPECT_EQ(info.size(), 4000U);
+    AlignChecker::Instance().UnregisterNotifyFunc();
+    RuntimeContext::Instance().rootTid_ = saved;
+}
+
+TEST(AlignCheckerRoot, worker_resolves_client_file_mapping)
+{
+    const auto roots = CaptureTwoRootIds();
+    const auto saved = RuntimeContext::Instance().rootTid_;
+    std::vector<DetectionInfo> info;
+
+    RuntimeContext::Instance().rootTid_ = roots.first;
+    FileMapping::Instance().fileMap_[7] = FileInfo{0, "foo.cpp"};
+    AlignChecker::Instance().SetDeviceType(DeviceType::ASCEND_910B1);
+    AlignChecker::Instance().errorBuffer_.Clear();
+    AlignChecker::Instance().RegisterNotifyFunc([&info](const LogLv &, SanitizerBase::MSG_GEN &&gen) {
+        info.push_back(gen());
+    });
+
+    std::thread worker([&roots]() {
+        RuntimeContext::Instance().rootTid_ = roots.first;
+        SanEvent event = MakeMisalignedEvent(1, 7);
+        AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV);
+    });
+    worker.join();
+    AlignChecker::Instance().Notify();
+
+    ASSERT_EQ(info.size(), 1U);
+    EXPECT_NE(info[0].message.find("foo.cpp"), string::npos);
+    FileMapping::Instance().fileMap_.erase(7);
+    AlignChecker::Instance().UnregisterNotifyFunc();
+    RuntimeContext::Instance().rootTid_ = saved;
 }

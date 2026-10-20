@@ -17,6 +17,8 @@
 #include "checker.h"
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
+#include <cstdlib>
 #include <iterator>
 #include <numeric>
 #include <ostream>
@@ -95,9 +97,32 @@ bool IsSanitizerToolSupportDBI(DeviceType deviceType, SanitizerTool tool)
 
 namespace Sanitizer {
 
-Checker::Checker(Config const &config, bool enableDebugLog) : config_(config), enableDebugLog_{enableDebugLog} {
+namespace {
+constexpr uint32_t PARSE_THREADS = 8;
+
+// 解析 worker 与 committer 都是新建线程，RuntimeContext 是 thread_local 的，
+// 需各自按本任务的上下文恢复，否则收尾打印(如 DisplaySanitizerEnd)取不到 kernel 名。
+void RestoreParseContext(ParseContext const &ctx) {
+    RuntimeContext &rc = RuntimeContext::Instance();
+    rc.deviceSummary_ = ctx.deviceInfo;
+    rc.kernelSummary_ = ctx.kernelSummary;
+    rc.kernelIdx_ = ctx.kernelIdx;
+    rc.kernelNameDisplay = ctx.kernelNameDisplay;
+    rc.rootTid_ = ctx.rootTid;
+}
+} // namespace
+
+Checker::Checker(Config const &config, bool enableDebugLog)
+    : config_(config), enableDebugLog_{enableDebugLog},
+      pipeline_(
+          PARSE_THREADS, 16, [this](ParseTask &&task) { return ParseRecords(std::move(task)); },
+          [this](ParseOut &&out) {
+              RestoreParseContext(out.ctx);
+              DispatchParsed(out.records, out.events);
+          }) {
     // 后续依据不同的工具选择使能不同的sanitizer功能
-    auto rootTid = RuntimeContext::Instance().rootTid_;
+    rootTid_ = RuntimeContext::Instance().rootTid_;
+    auto rootTid = rootTid_;
 
     auto createCheckerAndThread = [this, rootTid](ToolType toolType, int index, bool enabled) {
         if (enabled) {
@@ -279,6 +304,7 @@ void Checker::ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPath
 }
 
 void Checker::SetDeviceInfo(const DeviceInfoSummary &deviceInfo) {
+    pipeline_.Drain();
     this->deviceType_ = deviceInfo.device;
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
         if (sanitizerArr_[i] != nullptr) {
@@ -296,6 +322,10 @@ void Checker::SetDeviceInfo(const DeviceInfoSummary &deviceInfo) {
 
 void Checker::SetKernelInfo(const KernelSummary &kernelInfo)
 {
+    // 切换 kernel 上下文前排空解析流水线：确保上一 kernel 已提交的 ParseOut 全部 commit，
+    // 不会在新 kernel 的 DisplaySanitizerBegin/KERNEL_SUMMARY_UPDATED 之后才被分发，导致上下文/输出错位。
+    // 正常路径下上一 kernel 的 KERNEL_FINISH 已触发 Drain，这里是幂等的安全屏障。
+    pipeline_.Drain();
     DisplaySanitizerBegin(config_);
 
     isKernelWithDBI_ = kernelInfo.isKernelWithDBI;
@@ -434,7 +464,8 @@ void Checker::ParseOnlineError(const SanitizerRecord &record)
 void Checker::Do(const SanitizerRecord &record)
 {
     std::lock_guard<std::mutex> lk(doMutex_);
-     /// 解析在线检测的异常结果
+    pipeline_.Drain();
+    /// 解析在线检测的异常结果
     if (record.version == RecordVersion::KERNEL_RECORD &&
         record.payload.kernelRecord.recordType == RecordType::ONLINE_ERROR) {
         ParseOnlineError(record);
@@ -494,12 +525,44 @@ void Checker::Do(const SanitizerRecord &record)
     }
 }
 
-void Checker::Do(const std::vector<SanitizerRecord> &records) {
-    std::vector<std::vector<SanEvent>> events(records.size());
-    for (std::size_t i = 0; i < records.size(); ++i) {
-        RecordPreProcess::GetInstance().Process(records[i], events[i]);
+void Checker::Do(std::vector<SanitizerRecord> &&records) {
+    if (records.empty()) {
+        return;
     }
+    // 与本提交前的同步语义保持一致：批量以 KERNEL_FINISH 结尾时，等解析、分发与该 kernel 的
+    // 消费全部结束后再返回，调用方可立即观察到检测结果。
+    const bool endsWithKernelFinish = records.back().version == RecordVersion::KERNEL_RECORD &&
+        records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH;
+    RuntimeContext &ctx = RuntimeContext::Instance();
+    ParseTask task;
+    task.records = std::move(records);
+    task.ctx.deviceInfo = ctx.deviceSummary_;
+    task.ctx.kernelSummary = ctx.kernelSummary_;
+    task.ctx.kernelIdx = ctx.kernelIdx_;
+    task.ctx.kernelNameDisplay = ctx.kernelNameDisplay;
+    task.ctx.rootTid = rootTid_;
+    pipeline_.Submit(std::move(task));
 
+    if (endsWithKernelFinish) {
+        pipeline_.Drain();
+    }
+}
+
+ParseOut Checker::ParseRecords(ParseTask &&task) {
+    // 池线程的 RuntimeContext 是 thread_local 的，需先恢复本任务的 device/kernel 上下文，解析输出才正确
+    RestoreParseContext(task.ctx);
+
+    ParseOut out;
+    out.ctx = std::move(task.ctx);
+    out.records = std::move(task.records);
+    out.events.resize(out.records.size());
+    for (std::size_t i = 0; i < out.records.size(); ++i) {
+        RecordPreProcess::GetInstance().Process(out.records[i], out.events[i]);
+    }
+    return out;
+}
+
+void Checker::DispatchParsed(std::vector<SanitizerRecord> &records, std::vector<std::vector<SanEvent>> &events) {
     finishProduce_ = false;
     // 仅一个工具使能时，可把 events 直接 move 进队列，避免整块拷贝（多工具时仍需各自一份）
     uint8_t activeToolNum = 0;
@@ -542,15 +605,14 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
         auto errorCounts = decltype(errorCounts_){};
         std::swap(errorCounts, errorCounts_);
         DisplaySanitizerEnd(errorCounts);
-        KernelBlock::ResetAll();
     } else {
         workerCv_.notify_all();
     }
 
     if (enableDebugLog_) {
-        for (std::size_t i = 0; i < records.size(); ++i) {
+        for (const auto &record : records) {
             std::stringstream ss;
-            ss << records[i] << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
+            ss << record << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
             SAN_LOG("%s", ss.str().c_str());
         }
     }
@@ -558,6 +620,9 @@ void Checker::Do(const std::vector<SanitizerRecord> &records) {
 
 void Checker::Finish()
 {
+    // 先等所有已提交的 block 解析并分发完成，再停解析流水线
+    pipeline_.Drain();
+    pipeline_.Shutdown();
     if (!workers_.empty()) {
         for (uint8_t i = 0; i < TOOL_NUM; ++i) {
             if (sanitizerArr_[i] != nullptr) {

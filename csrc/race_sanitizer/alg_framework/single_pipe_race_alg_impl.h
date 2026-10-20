@@ -39,6 +39,7 @@ namespace Sanitizer {
 class SinglePipeRaceAlgImpl : public RaceAlgBase {
 public:
     explicit SinglePipeRaceAlgImpl(KernelType kernelType, DeviceType deviceType, uint32_t blockDim);
+    ~SinglePipeRaceAlgImpl() override;
     // 输入：处理算法预处理后的"事件"
     void Do(const SanEvent& event) override;
     // 输出：MemEventChecker检测出来的竞争风险信息

@@ -30,6 +30,7 @@ namespace Sanitizer {
 class RaceAlgImpl : public RaceAlgBase {
 public:
     explicit RaceAlgImpl(KernelType kernelType, DeviceType deviceType, uint32_t blockDim);
+    ~RaceAlgImpl() override;
     // 输入：处理算法预处理后的"事件"
     void Do(const SanEvent& event) override;
     // 输出：MemEventChecker检测出来的竞争风险信息

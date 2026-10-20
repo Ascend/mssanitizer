@@ -504,7 +504,7 @@ std::string ReadLogFile(FILE *file) {
         return {};
     }
     std::string contents(static_cast<size_t>(size), '\0');
-    const size_t readSize = std::fread(contents.data(), 1, contents.size(), file);
+    const size_t readSize = std::fread(&contents[0], 1, contents.size(), file);
     contents.resize(readSize);
     return contents;
 }
@@ -853,7 +853,7 @@ TEST(Checker, non_kernel_record_in_batch_should_not_trigger_kernel_finish_branch
     checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)] = seedErrorCount;
 
     std::vector<SanitizerRecord> records{CreateMemoryRecordMimickingKernelFinish()};
-    checker->Do(records);
+    checker->Do(std::move(records));
 
     ASSERT_EQ(checker->errorCounts_[static_cast<size_t>(ToolType::MEMCHECK)], seedErrorCount);
     ASSERT_EQ(ss.str().find("Sanitizer finished"), std::string::npos);

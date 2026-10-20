@@ -20,6 +20,9 @@
 
 #include <vector>
 #include <memory>
+#include <atomic>
+#include <functional>
+#include <future>
 #include "core/framework/event_def.h"
 #include "core/framework/pipe_line.h"
 #include "core/framework/event_container.h"
@@ -55,8 +58,15 @@ public:
     virtual ReturnType ProcessGetRlsBufSyncEvent(const SanEvent& event, RaceCheckType checkType) final;
     const std::vector<CrossCoreSyncWarnInfo> &GetFlagIdWarnInfo() const;
     void ClearFlagIdWarnInfo();
+    // 等待本 alg 的 stage-2（PipeLine 模拟 + RunAlgorithm）跑完（幂等，零开销于未提交时）；
+    // GetResult()/GetRaceCount() 内部也会调用，确保读取结果前 stage-2 已完成
+    void WaitFinished() const;
 
 protected:
+    // 把 stage-2 提交到后台执行；body 捕获 this，执行完自动置 isFinished_
+    void SubmitStage2(std::function<void()> body);
+    mutable std::future<void> stage2Future_;
+    mutable std::atomic<bool> isFinished_{false};
     EventContainer eventContainer_;
     CrossCoreSyncInfoContainer crossCoreSyncInfoContainer_;
     /// 缓存需要处理的MSTX_WAIT_CROSS_SYNC对应的set数量，key:pair<addr, flagId>，value:被调用的次数；
@@ -68,7 +78,6 @@ protected:
     KernelType kernelType_ = KernelType::AICPU;
     DeviceType deviceType_ = DeviceType::INVALID;
     uint32_t blockDim_{};
-    bool isFinished_ = false;
 };
 }
 

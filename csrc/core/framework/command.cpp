@@ -129,6 +129,9 @@ void HandleKernelInfo(Checker &checker, CrossNpuChecker &crossNpuChecker,
 
     RuntimeContext::Instance().kernelIdx_++;
     RuntimeContext::Instance().currentBlockIdx_ = 0;
+    // 解码状态（含跨 block 的 totalBlockDim_/vecSubBlockDim_/dynamicMemorys_）在收包线程上复位，
+    // 解析已移出该线程，故 ResetAll 不能依赖解析分发路径调用。
+    KernelBlock::ResetAll();
     RuntimeContext::Instance().kernelSummary_ = kernelSummary;
     RuntimeContext::Instance().kernelNameDisplay = GetDisplayKernelName(kernelSummary, config.demangleMode);
     KernelManager::Instance().Add(RuntimeContext::Instance().GetDeviceId(), kernelSummary);
@@ -330,7 +333,7 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
         SAN_INFO_LOG("Finish processing the last kernel block.");
     }
 
-    checker.Do(records);
+    checker.Do(std::move(records));
 }
 
 inline void HandleKernelBinary(Packet::BinaryPayload const &payload, BinaryBuffer::Ptr buffer)

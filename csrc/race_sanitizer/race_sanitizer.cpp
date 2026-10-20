@@ -221,9 +221,15 @@ void RaceSanitizer::DoImpl(const SanitizerRecord &record, const std::vector<SanE
     }
 
     // 进行检测：分核内（流水间和流水内）、核间遍历events，处理后进行检测
+    // 分发循环只做轻量事件入容器（stage-1）；重活（stage-2）已异步提交，见各 alg 的 Do
     SingleBlockRaceCheck(events);
     SinglePipeRaceCheck(events);
     AllBlockRaceCheck(events);
+
+    // 等所有 alg 的 stage-2（PipeLine 模拟 + RunAlgorithm）跑完，再取结果
+    for (auto &it : raceAlgs_) {
+        if (it) { it->WaitFinished(); }
+    }
 
     // 显示竞争结果
     for (const auto &it : raceAlgs_) {
@@ -419,6 +425,10 @@ void RaceSanitizer::RegisterNotifyFunc(const MSG_FUNC &func) { msgFunc_ = func; 
 
 void RaceSanitizer::Exit()
 {
+    // 兜底等待所有 alg 的 stage-2 完成
+    for (auto &a : raceAlgs_) {
+        if (a) { a->WaitFinished(); }
+    }
 }
 
 static std::shared_ptr<SanitizerBase> CreateRaceSanitizer()

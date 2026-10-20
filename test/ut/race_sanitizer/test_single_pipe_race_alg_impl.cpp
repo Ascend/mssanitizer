@@ -52,6 +52,7 @@ TEST(SinglePipeRaceAlgImpl, race_alg_can_detect_race_events_expect_success)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 2U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -87,6 +88,7 @@ TEST(SinglePipeRaceAlgImpl, race_alg_detect_pipe_barrier_expect_no_race)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -139,6 +141,7 @@ TEST(SinglePipeRaceAlgImpl, get_buf_block_mode_expect_no_race) {
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -191,6 +194,7 @@ TEST(SinglePipeRaceAlgImpl, first_get_buf_expect_race) {
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -241,6 +245,7 @@ TEST(SinglePipeRaceAlgImpl, rls_buf_expect_race) {
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -277,6 +282,7 @@ TEST(SinglePipeRaceAlgImpl, same_pipe_write_write_without_barrier_expect_race) {
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -321,6 +327,7 @@ TEST(SinglePipeRaceAlgImpl, same_pipe_write_write_with_barrier_expect_no_race) {
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -412,6 +419,7 @@ TEST(SinglePipeRaceAlgImpl, mte2_write_write_with_high_event_id_sync_expect_no_r
     finishEvent.type = EventType::SANITIZER_CONTROL_EVENT;
     finishEvent.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(finishEvent);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
     ASSERT_EQ(alg.IsFinished(), true);
 

@@ -18,6 +18,7 @@
 #include <cinttypes>
 #include <algorithm>
 #include <set>
+#include <unordered_map>
 
 #include "mem_error_def.h"
 #include "core/framework/utility/cpp_future.h"
@@ -356,7 +357,7 @@ void ShadowMemory::ClearBlockId(uint64_t addr, uint64_t size) const
 
 void ShadowMemory::ValidateRange(AddressSpace space, uint64_t &addr, uint64_t &size) const
 {
-    const std::map<AddressSpace, uint64_t> MEM_SIZE_MAP = {
+    const std::unordered_map<AddressSpace, uint64_t> MEM_SIZE_MAP = {
         {AddressSpace::GM, chipInfo_.hbmSize},
         {AddressSpace::L1, chipInfo_.l1Size},
         {AddressSpace::L0A, chipInfo_.l0aSize},

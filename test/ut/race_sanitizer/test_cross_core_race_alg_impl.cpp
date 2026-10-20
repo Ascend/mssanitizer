@@ -54,6 +54,7 @@ TEST(CrossCoreRaceAlgImpl, race_alg_can_detect_race_events_expect_success)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 3U);
 }
 
@@ -88,6 +89,7 @@ TEST(CrossCoreRaceAlgImpl, race_alg_can_detect_atomic_race_events_expect_success
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 2U);
 }
 
@@ -124,6 +126,7 @@ TEST(CrossCoreRaceAlgImpl, race_alg_detect_diverse_coarse_overlapping_mem_race_e
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 3U);
 }
 
@@ -160,6 +163,7 @@ TEST(CrossCoreRaceAlgImpl, race_alg_detect_zero_length_overlapping_mem_race_even
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -194,6 +198,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_can_detect_sync_race_events_expec
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -260,6 +265,7 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_no_sync_race_events_expect_s
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -297,6 +303,7 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_with_set_pipe_s_no_sync_race
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -336,6 +343,7 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_with_set_error_pipe_can_dete
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 
@@ -375,6 +383,7 @@ TEST(CrossCoreRaceAlgImpl, mstx_cross_core_race_alg_with_wait_error_pipe_can_det
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 
@@ -417,6 +426,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_can_det
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -459,6 +469,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_can_det
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -503,6 +514,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_can_det
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -548,6 +560,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_1_can_det
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -592,6 +605,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode0_can_detect_aic_ai
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -639,6 +653,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode0_can_detect_aiv_ai
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -691,6 +706,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode1_can_detect_aic_ai
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -734,6 +750,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_aiv_set
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
 }
@@ -777,6 +794,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_2_aic_set
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
 }
@@ -821,6 +839,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode2_1_ratio_1_expect_
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
 }
@@ -862,6 +881,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode0_expect_success)
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
 }
@@ -907,6 +927,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_with_ffts_mode1_expect_success)
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0);
     }
 }
@@ -939,6 +960,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_write_event_expect_r
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 
@@ -970,6 +992,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_dynamic_read_event_expect_no
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -1006,6 +1029,7 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 

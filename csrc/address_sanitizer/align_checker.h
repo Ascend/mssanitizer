@@ -18,7 +18,7 @@
 #ifndef ALIGN_CHECKER_H
 #define ALIGN_CHECKER_H
 
-#include <iostream>
+#include <mutex>
 
 #include "address_sanitizer.h"
 #include "error_buffer.h"
@@ -54,9 +54,12 @@ public:
     friend class std::pair<const std::thread::id, AlignChecker>;
 
 private:
-    AlignChecker() : msgFunc_(nullptr), deviceType_ (DeviceType::INVALID){};
+    AlignChecker() : msgFunc_(nullptr), deviceType_(DeviceType::INVALID) {};
     ~AlignChecker();
+
     SanitizerBase::MSG_FUNC msgFunc_;
+    // 解析 worker 会并发调用 CheckAlign，错误低频，用一把锁保护 errorBuffer_ 即可
+    std::mutex errMutex_;
     ErrorBuffer errorBuffer_;
     DeviceType deviceType_;
 };

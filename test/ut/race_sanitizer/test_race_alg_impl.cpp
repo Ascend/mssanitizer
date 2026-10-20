@@ -75,6 +75,7 @@ TEST(RaceAlgImpl, race_alg_can_detect_race_events_expect_success)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 3U);
     ASSERT_EQ(alg.IsFinished(), true);
 }
@@ -109,6 +110,7 @@ TEST(RaceAlgImpl, race_alg_can_detect_cross_core_sync_events_expect_success)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 
@@ -140,6 +142,7 @@ TEST(RaceAlgImpl, race_alg_can_detect_cross_core_soft_sync_events_expect_success
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -276,6 +279,7 @@ TEST(RaceAlgImpl, race_alg_with_ffts_mode2_1_ratio_1_expect_success)
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0U);
     }
 }
@@ -328,6 +332,7 @@ TEST(RaceAlgImpl, race_alg_with_ffts_mode2_1_ratio_1_non_circular_ffts_expect_ca
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -380,6 +385,7 @@ TEST(RaceAlgImpl, race_alg_with_ffts_mode2_1_ratio_2_expect_success)
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0U);
     }
 }
@@ -436,6 +442,7 @@ TEST(RaceAlgImpl, race_alg_with_ffts_mode2_1_ratio_2_non_circular_ffts_expect_ca
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -477,6 +484,7 @@ TEST(RaceAlgImpl, race_alg_with_ffts_mode0_1_ratio_2_expect_success)
         event.type = EventType::SANITIZER_CONTROL_EVENT;
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), 0U);
     }
 }
@@ -520,6 +528,7 @@ TEST(RaceAlgImpl, race_alg_with_ffts_mode0_1_ratio_2_non_circular_ffts_expect_ca
         event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
         alg.Do(event);
         uint32_t raceCount = event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2 : 1;
+        alg.WaitFinished();
         ASSERT_EQ(alg.GetRaceCount(), raceCount);
     }
 }
@@ -556,6 +565,7 @@ TEST(RaceAlgImpl, dynamic_gm_write_event_with_mem_event_expect_race_error)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 
@@ -591,6 +601,7 @@ TEST(RaceAlgImpl, dynamic_gm_write_event_with_mem_event_expect_normal)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -626,6 +637,7 @@ TEST(RaceAlgImpl, dynamic_ub_write_event_with_mem_event_expect_normal)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
 }
 
@@ -661,5 +673,6 @@ TEST(RaceAlgImpl, dynamic_ub_write_event_with_mem_event_expect_race_error)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }

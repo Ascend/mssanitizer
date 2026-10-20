@@ -30,6 +30,7 @@
 #include "config.h"
 #include "runtime_context.h"
 #include "platform_config.h"
+#include "parse_pipeline.h"
 #include "utility/log.h"
 #include "protocol.h"
 
@@ -76,7 +77,7 @@ public:
     void ParseOnlineError(const SanitizerRecord &record);
     // do check
     void Do(const SanitizerRecord& record);
-    void Do(const std::vector<SanitizerRecord> &records);
+    void Do(std::vector<SanitizerRecord> &&records);
     bool SupportSimt() const;
     bool IsTargetBlock(uint64_t blockIdx) const;
 
@@ -86,6 +87,9 @@ private:
         uint64_t &removedPathwayEventCount);
     void ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount);
     void ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPathwayEventCount) const;
+    // ---- 解析并行：有界、保序的解析流水线（见 parse_pipeline.h）----
+    ParseOut ParseRecords(ParseTask &&task);
+    void DispatchParsed(std::vector<SanitizerRecord> &records, std::vector<std::vector<SanEvent>> &events);
     inline void WaitAfterConsumed(uint8_t consumeId);
     inline bool IsNeedFilterDbi(uint8_t toolIdx) const;
     inline bool IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx) const;
@@ -111,11 +115,16 @@ private:
     mutable std::mutex detMutex_{};
     mutable std::mutex doMutex_{};
 
+    // 解析流水线：并行解析 + 按提交顺序分发
+    OrderedParsePipeline pipeline_;
+
     std::array<std::shared_ptr<Sanitizer::SanitizerBase>, TOOL_NUM> sanitizerArr_{};
     std::array<bool, TOOL_NUM> initWithDeviceInfoDone_{};
     std::array<bool, TOOL_NUM> initWithKernelInfoDone_{};
     bool isKernelWithDBI_{false};
     DeviceType deviceType_{DeviceType::INVALID};
+    // 所属 client 线程的 rootTid：解析池线程与消费线程都按它解析 ThreadSingleton
+    std::thread::id rootTid_{};
 }; // class Checker
 
 } // namespace Sanitizer

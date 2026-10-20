@@ -83,6 +83,7 @@ TEST(RaceSanitizer, race_sanitizer_detect_cntmask_overlapping_mem_race_events_ex
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 
     // mask = 32时，两条UnaryOpRecord的内存示意图
@@ -102,6 +103,7 @@ TEST(RaceSanitizer, race_sanitizer_detect_cntmask_overlapping_mem_race_events_ex
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg1.Do(event);
+    alg1.WaitFinished();
     ASSERT_EQ(alg1.GetRaceCount(), 0U);
 }
 
@@ -134,6 +136,7 @@ TEST(RaceSanitizer, race_sanitizer_detect_race_events_mask_count_expect_success)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg.Do(event);
+    alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 0U);
     ASSERT_EQ(alg.IsFinished(), true);
 
@@ -150,6 +153,7 @@ TEST(RaceSanitizer, race_sanitizer_detect_race_events_mask_count_expect_success)
     event.type = EventType::SANITIZER_CONTROL_EVENT;
     event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
     alg1.Do(event);
+    alg1.WaitFinished();
     ASSERT_EQ(alg1.GetRaceCount(), 1U);
     ASSERT_EQ(alg1.IsFinished(), true);
 }
@@ -219,6 +223,7 @@ TEST(RaceSanitizer, race_sanitizer_can_detect_aiv_pipe_race_events_expect_succes
     RecordPreProcess::GetInstance().Process(record, events);
     ASSERT_EQ(events.size(), 6);
     alg.Do(record, events);
+    alg.raceAlgs_[2]->WaitFinished();
     ASSERT_EQ((*alg.raceAlgs_[2]->GetResult()).size(), 2);
 }
 
@@ -415,6 +420,7 @@ TEST(RaceSanitizer, race_sanitizer_detect_load_store_missing_dcci_expect_get_mis
     alg.Do(record, events);
     events.clear();
 
+    alg.raceAlgs_[4]->WaitFinished();
     std::vector<RaceDispInfo> const &results = *alg.raceAlgs_[4]->GetResult();
     ASSERT_EQ(results.size(), 1U);
     // miss dcci report

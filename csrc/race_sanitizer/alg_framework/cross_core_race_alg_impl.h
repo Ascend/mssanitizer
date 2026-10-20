@@ -22,6 +22,7 @@
 #include <map>
 
 #include "race_alg_base.h"
+#include "core/framework/platform_config.h"
 #include "core/framework/sync_event_data_base.h"
 #include "core/framework/barrier_database.hpp"
 
@@ -31,6 +32,7 @@ namespace Sanitizer {
 class CrossCoreRaceAlgImpl : public RaceAlgBase {
 public:
     CrossCoreRaceAlgImpl(KernelType kernelType, DeviceType deviceType, uint32_t blockDim);
+    ~CrossCoreRaceAlgImpl() override;
     // 输入：处理算法预处理后的"事件"
     void Do(const SanEvent& event) override;
     // 输出：MemEventChecker检测出来的竞争风险信息
@@ -48,6 +50,12 @@ private:
     ReturnType ProcessMstxCrossCoreBarrier(const SanEvent& event);
     ReturnType ProcessMstxCrossNpuBarrier(const SanEvent& event);
     ReturnType ProcessDynamicMemEvent(const SanEvent& event);
+    // 跨核只检测 GM（Ascend95 上额外放行 UB）；其余（UB/L1/L0…）为 core-private 访问，
+    // 跨核不可能竞争，可在 stage-1 直接过滤 / stage-2 直接丢弃
+    inline bool NeedCrossCoreMemCheck(MemType memType) const
+    {
+        return memType == MemType::GM || (IsAscend95(this->deviceType_) && memType == MemType::UB);
+    }
 
 private:
     using CrossCoreBarrierWorker = uint32_t;

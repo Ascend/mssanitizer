@@ -32,29 +32,47 @@ CrossCoreRaceAlgImpl::CrossCoreRaceAlgImpl(KernelType kernelType, DeviceType dev
     memChecker_.Init(kernelType, deviceType, RaceCheckType::CROSS_BLOCK_CHECK);
 }
 
+CrossCoreRaceAlgImpl::~CrossCoreRaceAlgImpl()
+{
+    // 先等后台 stage-2 结束：它还会访问本 alg（含派生类）的解析状态与成员
+    WaitFinished();
+}
+
 void CrossCoreRaceAlgImpl::Do(const SanEvent &event)
 {
     if (event.type != EventType::SANITIZER_CONTROL_EVENT ||
         event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
+        // 早过滤（唯一过滤点）：core-private 内存事件（非 GM，及非 Ascend95-UB）不参与跨核竞争，
+        // 直接不进 stage-1/stage-2，省去其发射(TIME_EVENT)与流水模拟开销
+        if (event.type == EventType::MEM_EVENT && !NeedCrossCoreMemCheck(event.eventInfo.memInfo.memType)) {
+            return;
+        }
+        if (event.type == EventType::DYNAMIC_MEM_EVENT &&
+            !NeedCrossCoreMemCheck(event.eventInfo.dynamicOpInfo.memType)) {
+            return;
+        }
         CacheMstxCrossSet(event);
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::CROSS_BLOCK_CHECK);
         eventContainer_.Push(event, PipeType::PIPE_S, blockIndex);
         return;
     }
-    PipeLine pipeLine(eventContainer_);
-    pipeLine.RegisterEventFunc(std::bind(&CrossCoreRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
-    pipeLine.Run();
-    memChecker_.RunAlgorithm();
-    isFinished_ = true;
+    // 阶段二 模拟PIPE流水执行，进行竞争分析（异步：提交后台，Do 立即返回）
+    SubmitStage2([this]() {
+        PipeLine pipeLine(eventContainer_);
+        pipeLine.RegisterEventFunc(std::bind(&CrossCoreRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
+        pipeLine.Run();
+        memChecker_.RunAlgorithm();
+    });
 }
 
 bool CrossCoreRaceAlgImpl::IsFinished() const
 {
-    return isFinished_;
+    return isFinished_.load(std::memory_order_acquire);
 }
 
 std::shared_ptr<std::vector<RaceDispInfo>> CrossCoreRaceAlgImpl::GetResult() const
 {
+    WaitFinished();
     return memChecker_.GetResult();
 }
 
@@ -131,11 +149,7 @@ ReturnType CrossCoreRaceAlgImpl::ProcessBlockSoftSyncEvent(const SanEvent& event
 
 ReturnType CrossCoreRaceAlgImpl::ProcessMemEvent(const SanEvent &event)
 {
-    if (event.eventInfo.memInfo.memType != MemType::GM) {
-        if (!IsAscend95(this->deviceType_) || (event.eventInfo.memInfo.memType != MemType::UB)) {
-            return ReturnType::PROCESS_OK;
-        }
-    }
+    // 入队前已在 Do() 早过滤 core-private 内存事件，此处无需再判
     auto e = MemEvent(event);
     e.isAtomicMode = event.isAtomicMode;
     uint32_t curPipe = eventContainer_.GetQueIndex();
@@ -148,11 +162,7 @@ ReturnType CrossCoreRaceAlgImpl::ProcessMemEvent(const SanEvent &event)
 
 ReturnType CrossCoreRaceAlgImpl::ProcessDynamicMemEvent(const SanEvent& event)
 {
-    if (event.eventInfo.dynamicOpInfo.memType != MemType::GM) {
-        if (!IsAscend95(this->deviceType_) || (event.eventInfo.dynamicOpInfo.memType != MemType::UB)) {
-            return ReturnType::PROCESS_OK;
-        }
-    }
+    // 入队前已在 Do() 早过滤 core-private 内存事件，此处无需再判
     uint32_t curPipe = eventContainer_.GetQueIndex();
     VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
     auto e = MemEvent(event);
@@ -235,6 +245,7 @@ ReturnType CrossCoreRaceAlgImpl::ProcessTimeEvent(const SanEvent &event)
 
 uint32_t CrossCoreRaceAlgImpl::GetRaceCount() const
 {
+    WaitFinished();
     return memChecker_.GetRaceCount();
 }
 

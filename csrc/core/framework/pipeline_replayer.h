@@ -119,6 +119,26 @@ inline uint32_t GetEventExpandBlockIndex(const SanEvent &event)
     return aicoreIndex * C220_MIX_SUB_BLOCKDIM + subBlockIndex;
 }
 
+// 仅依赖 loc 的重载：热点路径（如竞争判定里按事件算 pipe 索引）可避免构造整条 SanEvent
+inline uint32_t GetEventExpandBlockIndexByLoc(const LocInfo &loc) {
+    uint32_t aicoreIndex =
+        loc.blockType == BlockType::AIVEC ? loc.coreId / C220_VEC_SUB_BLOCKDIM : loc.coreId;
+    uint32_t subBlockIndex =
+        loc.blockType == BlockType::AIVEC ? loc.coreId % C220_VEC_SUB_BLOCKDIM : C220_VEC_SUB_BLOCKDIM;
+    return aicoreIndex * C220_MIX_SUB_BLOCKDIM + subBlockIndex;
+}
+
+inline uint32_t GetEventBlockIndexByLoc(const LocInfo &loc, KernelType kernelType, DeviceType deviceType,
+    RaceCheckType checkType) {
+    if (!NeedExpandBlockDim(kernelType, deviceType)) {
+        if (checkType == RaceCheckType::SINGLE_BLOCK_CHECK) {
+            return 0U;
+        }
+        return loc.coreId;
+    }
+    return GetEventExpandBlockIndexByLoc(loc);
+}
+
 inline uint32_t GetEventBlockIndex(const SanEvent &event, KernelType kernelType, DeviceType deviceType)
 {
     if (!NeedExpandBlockDim(kernelType, deviceType)) {

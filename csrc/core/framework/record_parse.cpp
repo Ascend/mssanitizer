@@ -613,7 +613,11 @@ static void DmaMovNdorDn2nzDavSmallC0(
         AlignChecker::Instance().CheckAlign(event, RecordType::DMA_MOV_DN2NZ_D);
     }
     /// 向上取整计算每个ndNum数据包含多少行数据
-    const uint32_t alignSize = C0_SIZE / (C0_D_VALUE_NUM * dTypeByteSize);
+    const uint64_t alignDivisor = C0_D_VALUE_NUM * dTypeByteSize;
+    if (alignDivisor == 0U) {
+        return;
+    }
+    const uint32_t alignSize = C0_SIZE / alignDivisor;
     memInfo.blockNum = CeilByAlignSize(dmaMovRecord.nValue, alignSize);
     memInfo.blockStride = 1;
     for (uint64_t h = 0; h < dmaMovRecord.ndNum; ++h) {
@@ -4320,7 +4324,9 @@ void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEv
         return;
     }
 
-    SanEvent event = events.back();
+    // 仅读取 back 事件的字段用于状态更新；此处必须用引用，避免每条 kernel 记录都按值拷贝
+    // SanEvent（内含 std::vector timeInfo）造成的堆分配风暴。后续新增事件的路径不得再使用 event。
+    const SanEvent &event = events.back();
     // 该 pipe 发生访存：仅裁剪 PIPE_S 分支依赖图中"它作为 src"的边
     if (event.type == EventType::MEM_EVENT) {
         for (size_t i = 0; i < static_cast<uint8_t>(PipeType::SIZE); ++i) {
