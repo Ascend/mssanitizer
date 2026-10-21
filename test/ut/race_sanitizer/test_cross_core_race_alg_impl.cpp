@@ -1033,4 +1033,139 @@ TEST(CrossCoreRaceAlgImpl, dynamic_write_event_with_mem_event_expect_race_error)
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
 
+namespace {
+void FillGmMemEvent(SanEvent &event, uint32_t coreId, AccessType opType, uint64_t addr, PipeType pipe)
+{
+    event.type = EventType::MEM_EVENT;
+    event.pipe = pipe;
+    event.loc.coreId = coreId;
+    event.loc.blockType = BlockType::AIVEC;
+    event.eventInfo.memInfo.opType = opType;
+    event.eventInfo.memInfo.memType = MemType::GM;
+    event.eventInfo.memInfo.addr = addr;
+    event.eventInfo.memInfo.blockNum = 1U;
+    event.eventInfo.memInfo.blockSize = 1U;
+    event.eventInfo.memInfo.blockStride = 1U;
+    event.eventInfo.memInfo.repeatTimes = 1U;
+    event.eventInfo.memInfo.repeatStride = 1U;
+}
+
+// 核内 pipe 同步：set 挂生产者 pipe，wait 挂目的 pipe（对应 SetFlag/WaitFlag<HardEvent>）
+void FillPipeSyncEvent(SanEvent &event, uint32_t coreId, PipeType srcPipe, PipeType dstPipe,
+                       uint32_t eventId, SyncType opType)
+{
+    event.type = EventType::SYNC_EVENT;
+    event.pipe = opType == SyncType::SET_FLAG ? srcPipe : dstPipe;
+    event.loc.coreId = coreId;
+    event.loc.blockType = BlockType::AIVEC;
+    event.eventInfo.syncInfo.opType = opType;
+    event.eventInfo.syncInfo.srcPipe = srcPipe;
+    event.eventInfo.syncInfo.dstPipe = dstPipe;
+    event.eventInfo.syncInfo.eventId = eventId;
+}
+
+void FillSignalSetEvent(SanEvent &event, uint32_t coreId, uint64_t addr, int64_t value)
+{
+    event.type = EventType::MSTX_SIGNAL_SET_EVENT;
+    event.pipe = PipeType::PIPE_S;
+    event.loc.coreId = coreId;
+    event.loc.blockType = BlockType::AIVEC;
+    event.eventInfo.mstxSignalSet.addr = addr;
+    event.eventInfo.mstxSignalSet.value = value;
+}
+
+void FillSignalWaitEvent(SanEvent &event, uint32_t coreId, uint64_t addr, CompareOp cmpOp, int64_t cmpValue)
+{
+    event.type = EventType::MSTX_SIGNAL_WAIT_EVENT;
+    event.pipe = PipeType::PIPE_S;
+    event.loc.coreId = coreId;
+    event.loc.blockType = BlockType::AIVEC;
+    event.eventInfo.mstxSignalWait.addr = addr;
+    event.eventInfo.mstxSignalWait.cmpOp = cmpOp;
+    event.eventInfo.mstxSignalWait.cmpValue = cmpValue;
+}
+
+void FillFinishEvent(SanEvent &event)
+{
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    event.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+}
+}  // namespace
+
+TEST(CrossCoreRaceAlgImpl, mstx_signal_no_report_can_detect_race_events)
+{
+    // 核对：核 0 写 GM，核 1 读同一块 GM，两者之间没有任何软同步上报 -> 判定为竞争
+    CrossCoreRaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2);
+    SanEvent event;
+
+    FillGmMemEvent(event, 0, AccessType::WRITE, 0x50, PipeType::PIPE_MTE3);
+    alg.Do(event);
+    FillGmMemEvent(event, 1, AccessType::READ, 0x50, PipeType::PIPE_MTE2);
+    alg.Do(event);
+
+    FillFinishEvent(event);
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 1U);
+}
+
+TEST(CrossCoreRaceAlgImpl, mstx_signal_set_wait_expect_no_race)
+{
+    // 与上个用例同一份访存序列，只在中间补软同步上报 -> 竞争消失。
+    // 上报挂在 PIPE_S：生产者需先把数据 pipe 同步到 PIPE_S（SetFlag/WaitFlag），
+    // 上报的向量时间才会覆盖数据写，消费者通过 Wait 一次拿到该 happens-before
+    CrossCoreRaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2);
+    SanEvent event;
+    constexpr uint32_t syncEventId = 5;
+    constexpr uint64_t signalAddr = 0x200;
+
+    FillGmMemEvent(event, 0, AccessType::WRITE, 0x50, PipeType::PIPE_MTE3);
+    alg.Do(event);
+    FillPipeSyncEvent(event, 0, PipeType::PIPE_MTE3, PipeType::PIPE_S, syncEventId, SyncType::SET_FLAG);
+    alg.Do(event);
+    FillPipeSyncEvent(event, 0, PipeType::PIPE_MTE3, PipeType::PIPE_S, syncEventId, SyncType::WAIT_FLAG);
+    alg.Do(event);
+    FillSignalSetEvent(event, 0, signalAddr, 1);
+    alg.Do(event);
+
+    FillSignalWaitEvent(event, 1, signalAddr, CompareOp::GE, 1);
+    alg.Do(event);
+    FillGmMemEvent(event, 1, AccessType::READ, 0x50, PipeType::PIPE_MTE2);
+    alg.Do(event);
+
+    FillFinishEvent(event);
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 0U);
+}
+
+TEST(CrossCoreRaceAlgImpl, mstx_signal_multi_producer_accumulate_expect_no_race)
+{
+    // 计数型握手：核 0 / 核 1 各自写数据并累加到同一个 flag，核 2 轮询后读两份数据。
+    // Wait 取 >= 100，两种语义都能满足，唯一区别是向量时间：合并语义下核 2 同时排在两个
+    // 生产者之后；若只保留最后一个生产者，核 2 读先发布者的数据仍会被误报
+    CrossCoreRaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_910B1, 3);
+    SanEvent event;
+    constexpr uint64_t signalAddr = 0x200;
+
+    FillGmMemEvent(event, 0, AccessType::WRITE, 0x50, PipeType::PIPE_S);
+    alg.Do(event);
+    FillSignalSetEvent(event, 0, signalAddr, 100);
+    alg.Do(event);
+
+    FillGmMemEvent(event, 1, AccessType::WRITE, 0x60, PipeType::PIPE_S);
+    alg.Do(event);
+    FillSignalSetEvent(event, 1, signalAddr, 200);
+    alg.Do(event);
+
+    FillSignalWaitEvent(event, 2, signalAddr, CompareOp::GE, 100);
+    alg.Do(event);
+    FillGmMemEvent(event, 2, AccessType::READ, 0x50, PipeType::PIPE_S);
+    alg.Do(event);
+    FillGmMemEvent(event, 2, AccessType::READ, 0x60, PipeType::PIPE_S);
+    alg.Do(event);
+
+    FillFinishEvent(event);
+    alg.Do(event);
+    ASSERT_EQ(alg.GetRaceCount(), 0U);
+}
+
 }

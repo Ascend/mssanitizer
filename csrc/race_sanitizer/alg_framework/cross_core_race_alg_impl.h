@@ -25,6 +25,7 @@
 #include "core/framework/platform_config.h"
 #include "core/framework/sync_event_data_base.h"
 #include "core/framework/barrier_database.hpp"
+#include "signal_database.h"
 
 namespace Sanitizer {
 
@@ -47,6 +48,8 @@ private:
     ReturnType ProcessSyncEvent(const SanEvent& event);
     ReturnType ProcessTimeEvent(const SanEvent& event);
     ReturnType ProcessBlockSoftSyncEvent(const SanEvent& event);
+    ReturnType ProcessMstxSignalSetEvent(const SanEvent& event);
+    ReturnType ProcessMstxSignalWaitEvent(const SanEvent& event);
     ReturnType ProcessMstxCrossCoreBarrier(const SanEvent& event);
     ReturnType ProcessMstxCrossNpuBarrier(const SanEvent& event);
     ReturnType ProcessDynamicMemEvent(const SanEvent& event);
@@ -63,6 +66,9 @@ private:
 
     std::vector<SyncEventDataBase> syncDB_;
     CrossCoreBarrierDatabase crossCoreBarrier_;
+    // 地址型软同步上报（MstxSignalSet/MstxSignalWait）数据库；本算法实例按 kernel 创建，
+    // 且 Checker 按设备连接线程创建，故同一 kernel 内地址唯一，无需再按设备分键。
+    SignalDatabase signalDatabase_;
 };
 }
 

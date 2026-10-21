@@ -37,6 +37,9 @@ public:
 public:
     // signal set 事件，并输出对应的向量时间
     void Set(MstxSignalSet const &event, VectorTime const &vt);
+    // 计数型 signal set 事件：同一地址由多个生产者分别置位，合并各生产者的向量时间、
+    // value 取最大值（单调不减），供核间检测使用
+    void Accumulate(MstxSignalSet const &event, VectorTime const &vt);
     // signal wait 事件，并获取对应的向量时间
     bool Wait(MstxSignalWait const &event, VectorTime &vt);
 
