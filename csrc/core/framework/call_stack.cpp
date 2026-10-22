@@ -205,19 +205,13 @@ CallStack::~CallStack(void)
     }
 }
 
-std::string CallStack::Load(std::string const &kernelName, BinaryBuffer const &binary)
+std::string CallStack::Load(BinaryBuffer const &binary)
 {
-    // 单飞：memcheck 与 registercheck 两个线程可能同时为同一内核构建调用栈，
-    // 串行化「查缓存 + 落盘 + 入缓存」，避免同一内核被并行写两份 GB 级 kernel.o。
+    // 串行生成独立镜像；同名内核可能对应不同二进制，不能按名称复用旧文件。
     std::lock_guard<std::mutex> loadGuard{loadMtx_};
     Path kernelPath;
     {
         std::lock_guard<std::mutex> guard{mtx_};
-        auto cached = kernelPathMap_.find(kernelName);
-        if (cached != kernelPathMap_.cend()) {
-            // 同一内核二进制只需落盘一次，后续直接复用已写好的路径
-            return cached->second;
-        }
         kernelPath = Path(OUTPUT_DIR) / Path(CreateKernelFileName(kernelPaths_.size()));
     }
     std::string const &kernelStr = kernelPath.ToString();
@@ -257,7 +251,6 @@ std::string CallStack::Load(std::string const &kernelName, BinaryBuffer const &b
 
     std::lock_guard<std::mutex> guard{mtx_};
     kernelPaths_.emplace_back(kernelStr);
-    kernelPathMap_[kernelName] = kernelStr;
     return kernelStr;
 }
 
@@ -318,7 +311,7 @@ void CallStack::CachePcOffsets(std::string const &kernelName, std::set<uint64_t>
         SAN_ERROR_LOG("Get kernel binary from KernelBinaryManager failed. kernelName: %s", kernelName.c_str());
         return;
     }
-    std::string kernelPath = this->Load(kernelName, *binary);
+    std::string kernelPath = this->Load(*binary);
     if (kernelPath.empty()) {
         return;
     }

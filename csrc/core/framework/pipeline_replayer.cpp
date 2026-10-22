@@ -36,6 +36,7 @@ void PipelineReplayer::Init(KernelType kernelType, DeviceType deviceType, uint32
     mstxSetCrossMap_.clear();
     crossCoreBarrier_.clear();
     isFinished_ = false;
+    memEventCount_ = 0U;
 }
 
 void PipelineReplayer::Do(const SanEvent& event)
@@ -44,6 +45,10 @@ void PipelineReplayer::Do(const SanEvent& event)
         event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         // 收集阶段：缓存 MSTX set 计数，并将事件推入 eventContainer_
         CacheMstxCrossSet(event);
+        // 统计内存事件数，供回放前预分配 replayedEvents_
+        if (event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT) {
+            ++memEventCount_;
+        }
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_);
         eventContainer_.Push(event, PipeType::PIPE_S, blockIndex);
         return;
@@ -67,6 +72,11 @@ void PipelineReplayer::Do(const SanEvent& event)
 bool PipelineReplayer::IsFinished() const
 {
     return isFinished_;
+}
+
+uint64_t PipelineReplayer::GetMemEventCount() const
+{
+    return memEventCount_;
 }
 
 void PipelineReplayer::RegisterCallback(const EventCallback &callback) { callback_ = callback; }

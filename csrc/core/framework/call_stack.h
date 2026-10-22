@@ -75,7 +75,7 @@ private:
     CallStack(void) { }
     ~CallStack(void);
 
-    std::string Load(std::string const &kernelName, BinaryBuffer const &binary);
+    std::string Load(BinaryBuffer const &binary);
     StackEachKernel ParseStacks(std::string const &msg) const;
     void ParseEachStack(nlohmann::json const &stackJson, StackEachKernel &stackCacheMap) const;
 
@@ -84,8 +84,6 @@ private:
     mutable std::mutex loadMtx_;
     bool isPrintFullStack_{false};
     std::vector<std::string> kernelPaths_;
-    // kernelName -> 已落盘的内核二进制路径，避免同一内核重复写 GB 级 kernel.o
-    std::unordered_map<std::string, std::string> kernelPathMap_;
 };
 
 } // namespace Sanitizer

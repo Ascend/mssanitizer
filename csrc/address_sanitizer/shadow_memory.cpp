@@ -18,7 +18,6 @@
 #include <cinttypes>
 #include <algorithm>
 #include <set>
-#include <unordered_map>
 
 #include "mem_error_def.h"
 #include "core/framework/utility/cpp_future.h"
@@ -234,10 +233,15 @@ ErrorMsgList ShadowMemory::LoadNBytes(MemOpRecordForShadow memOpRecordForShadow,
 
     ValidateRange(space, addr, size);
 
-    uint64_t nUninitializedReadBytes = 0U;
     PM *memmap = GetMemMap(space);
     if (memmap == nullptr) { return msgList; }
 
+    // 快路径（对标 MSan mem_is_zero）：整段无 UNDEFINED 状态字节则直接返回，避免逐段扫描
+    if (initCheck && !memmap->RangeHasStatus(addr, size, static_cast<uint8_t>(MemStatus::UNDEFINED))) {
+        return msgList;
+    }
+
+    uint64_t nUninitializedReadBytes = 0U;
     Range1D range = memmap->GetRange(addr, size);
     uint64_t unifiedSize = 1UL;
     for (Range1D::Iterator it = range.Begin(); it < range.End(); it += unifiedSize) {
@@ -357,17 +361,20 @@ void ShadowMemory::ClearBlockId(uint64_t addr, uint64_t size) const
 
 void ShadowMemory::ValidateRange(AddressSpace space, uint64_t &addr, uint64_t &size) const
 {
-    const std::unordered_map<AddressSpace, uint64_t> MEM_SIZE_MAP = {
-        {AddressSpace::GM, chipInfo_.hbmSize},
-        {AddressSpace::L1, chipInfo_.l1Size},
-        {AddressSpace::L0A, chipInfo_.l0aSize},
-        {AddressSpace::L0B, chipInfo_.l0bSize},
-        {AddressSpace::L0C, chipInfo_.l0cSize},
-        {AddressSpace::UB, chipInfo_.ubSize},
-        {AddressSpace::PRIVATE, chipInfo_.privateSize},
+    // 表只构造一次；保存成员指针而非首次调用的容量，支持不同设备和重复 Init。
+    static const std::map<AddressSpace, uint32_t ChipInfo::*> MEM_SIZE_MAP = {
+        {AddressSpace::L1, &ChipInfo::l1Size},
+        {AddressSpace::L0A, &ChipInfo::l0aSize},
+        {AddressSpace::L0B, &ChipInfo::l0bSize},
+        {AddressSpace::L0C, &ChipInfo::l0cSize},
+        {AddressSpace::UB, &ChipInfo::ubSize},
+        {AddressSpace::PRIVATE, &ChipInfo::privateSize},
     };
-
-    uint64_t maxSize = space == AddressSpace::GM ? GLOBAL_MEM_MASK : MEM_SIZE_MAP.find(space)->second;
+    uint64_t maxSize = GLOBAL_MEM_MASK;
+    if (space != AddressSpace::GM) {
+        const auto it = MEM_SIZE_MAP.find(space);
+        maxSize = it == MEM_SIZE_MAP.end() ? 0U : chipInfo_.*(it->second);
+    }
     uint64_t addrR {};
     if (UINT64_MAX - size < addr) {
         addrR = maxSize;

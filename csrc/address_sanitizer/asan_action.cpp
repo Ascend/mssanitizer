@@ -24,6 +24,14 @@ namespace {
 
 using namespace Sanitizer;
 
+template <typename Action>
+ErrorMsgList ExecuteAction(const MemOpRecord &record, ShadowMemory &shadowMemory, BoundsCheck &boundsCheck,
+    const Config &config, bool ignoreShadowMemory)
+{
+    Action action(record);
+    return action.doAction(shadowMemory, boundsCheck, config, ignoreShadowMemory);
+}
+
 inline void FillErrorLocInfo(MemOpRecord const &record, ErrorMsg &msg)
 {
     msg.auxData.moduleId = record.moduleId;
@@ -40,28 +48,23 @@ inline void FillErrorLocInfo(MemOpRecord const &record, ErrorMsg &msg)
 } // namespace [Dummy]
 
 namespace Sanitizer {
-std::shared_ptr<AsanAction> AsanActionFactory::CreateAsanAction(
+AsanActionValue AsanActionFactory::CreateAsanAction(
     const MemOpRecord &record)
 {
-    using ActionCreateFunc = std::function<std::shared_ptr<AsanAction>(const MemOpRecord &)>;
-    static const std::map<MemOpType, ActionCreateFunc> CREATE_FUNC_MAP = {
-        {MemOpType::MALLOC,
-            [](const MemOpRecord &record) { return std::make_shared<AsanMalloc>(record); }},
-        {MemOpType::FREE,
-            [](const MemOpRecord &record) { return std::make_shared<AsanFree>(record); }},
-        {MemOpType::MEMCPY_BLOCKS,
-            [](const MemOpRecord &record) { return std::make_shared<AsanMemcpyBlocks>(record); }},
-        {MemOpType::LOAD,
-            [](const MemOpRecord &record) { return std::make_shared<AsanLoad>(record); }},
-        {MemOpType::STORE,
-            [](const MemOpRecord &record) { return std::make_shared<AsanStore>(record); }},
-    };
-
-    auto it = CREATE_FUNC_MAP.find(record.type);
-    if (it != CREATE_FUNC_MAP.end()) {
-        return CREATE_FUNC_MAP.at(record.type)(record);
+    switch (record.type) {
+        case MemOpType::MALLOC:
+            return AsanActionValue(record, ExecuteAction<AsanMalloc>);
+        case MemOpType::FREE:
+            return AsanActionValue(record, ExecuteAction<AsanFree>);
+        case MemOpType::MEMCPY_BLOCKS:
+            return AsanActionValue(record, ExecuteAction<AsanMemcpyBlocks>);
+        case MemOpType::LOAD:
+            return AsanActionValue(record, ExecuteAction<AsanLoad>);
+        case MemOpType::STORE:
+            return AsanActionValue(record, ExecuteAction<AsanStore>);
+        default:
+            return AsanActionValue(record, nullptr);
     }
-    return nullptr;
 }
 
 ErrorMsgList AsanMalloc::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,

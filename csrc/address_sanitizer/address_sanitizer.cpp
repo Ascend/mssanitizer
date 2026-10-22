@@ -372,21 +372,21 @@ bool AddressSanitizer::SwitchToScope(BoundsCheckScope scope)
     return true;
 }
 
-ErrorMsgList AddressSanitizer::ScopeDoAction(std::shared_ptr<AsanAction> action)
+ErrorMsgList AddressSanitizer::ScopeDoAction(AsanAction& action)
 {
     switch (boundsCheckScope_) {
         case AddressSanitizer::BoundsCheckScope::DFX:
-            return action->doAction(*shadowMemory_, boundsCheckDfx_, config_, false);
+            return action.doAction(*shadowMemory_, boundsCheckDfx_, config_, false);
         case AddressSanitizer::BoundsCheckScope::BYPASS: {
             // bypass第一次处理时先忽略shadowMemory，保证boundsCheck free时能获取到size，以防漏报；
-            ErrorMsgList dfxError = action->doAction(*shadowMemory_, boundsCheckDfx_, config_, true);
-            ErrorMsgList rtError = action->doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
+            ErrorMsgList dfxError = action.doAction(*shadowMemory_, boundsCheckDfx_, config_, true);
+            ErrorMsgList rtError = action.doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
             dfxError.reserve(dfxError.size() + rtError.size());
             dfxError.insert(dfxError.end(), rtError.begin(), rtError.end());
             return dfxError;
         }
         default:
-            return action->doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
+            return action.doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
     }
 }
 
@@ -572,7 +572,12 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
     // 未初始化检测需要感知同步事件，通过流水线回放还原真实执行顺序，避免跨核/跨block初始化误报，故初始化检测场景需要pipeline回放
     // 纯内存检测（越界/对齐/踩踏）不依赖执行顺序，不走回放以降低开销
     if (config_.initCheck) {
+        // 回放前按收集到的内存事件总数预分配，避免大量 push_back 反复扩容搬移。
         for (const auto &event : events) {
+            if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
+                event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
+                replayedEvents_.reserve(pipelineReplayer_.GetMemEventCount());
+            }
             pipelineReplayer_.Do(event);
         }
         if (pipelineReplayer_.IsFinished()) {
@@ -641,13 +646,9 @@ void AddressSanitizer::DoWithLocalTensor(const MstxRecord &record, const std::ve
             continue;
         }
 
-        auto action = AsanActionFactory::CreateAsanAction(r);
-        if (action == nullptr) {
-            SAN_WARN_LOG("Failed to create action");
-            return;
-        }
         BoundsCheck &boundsCheck = r.type == MemOpType::LOAD ? boundsCheckR : boundsCheckW;
-        ErrorMsgList errors = action->doAction(*shadowMemory_, boundsCheck, config_, true);
+        auto action = AsanActionFactory::CreateAsanAction(r);
+        ErrorMsgList errors = action.doAction(*shadowMemory_, boundsCheck, config_, true);
         for (auto const &error : errors) {
             this->errorBuffer_.Add(error);
         }
@@ -722,7 +723,7 @@ void AddressSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockTy
 void AddressSanitizer::DoMemOpRecord(MemOpRecord const &record, bool reduce)
 {
     auto action = AsanActionFactory::CreateAsanAction(record);
-    if (action == nullptr) {
+    if (!action.IsValid()) {
         SAN_WARN_LOG("Failed to create action");
         return;
     }

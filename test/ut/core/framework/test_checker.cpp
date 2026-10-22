@@ -218,6 +218,53 @@ SanitizerRecord MakeKernelFinishRecord() {
     return record;
 }
 
+TEST(Checker, batch_parse_preserves_empty_and_multiple_event_boundaries) {
+    Config config{};
+    Checker checker(config, false);
+    ParseTask task{};
+    task.ctx.deviceInfo.device = DeviceType::ASCEND_910B1;
+    task.ctx.kernelSummary.kernelType = KernelType::AIVEC;
+    task.ctx.rootTid = RuntimeContext::Instance().rootTid_;
+    task.records = {MakeMemoryRecord(),
+        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 17),
+        CreateKernelSanRecord(), MakeKernelFinishRecord()};
+
+    auto parsed = checker.ParseRecords(std::move(task));
+
+    ASSERT_EQ(parsed.records.size(), 4U);
+    ASSERT_EQ(parsed.events.size(), 4U);
+    EXPECT_TRUE(parsed.events[0].empty());
+    ASSERT_EQ(parsed.events[1].size(), 1U);
+    EXPECT_GT(parsed.events[2].size(), 1U);
+    ASSERT_EQ(parsed.events[3].size(), 1U);
+    EXPECT_EQ(parsed.events[1][0].serialNo, 17U);
+    EXPECT_EQ(parsed.events[3][0].type, EventType::SANITIZER_CONTROL_EVENT);
+}
+
+TEST(Checker, batch_handoff_keeps_records_without_events_for_every_consumer) {
+    auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
+    Config config{.defaultCheck = true, .memCheck = true, .raceCheck = true, .syncCheck = true};
+    Checker checker(config, false);
+    const std::array<std::shared_ptr<RecordingSanitizer>, 3> consumers{memChecker, raceChecker, syncChecker};
+    for (size_t i = 0; i < consumers.size(); ++i) {
+        checker.sanitizerArr_[i] = consumers[i];
+    }
+    SetCheckerContext(checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
+    checker.Do(std::vector<SanitizerRecord>{MakeMemoryRecord(),
+        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 23), MakeKernelFinishRecord()});
+
+    for (const auto &consumer : consumers) {
+        ASSERT_EQ(consumer->records.size(), 3U);
+        ASSERT_EQ(consumer->consumedEvents.size(), 3U);
+        EXPECT_EQ(consumer->checkRecordCount, 3U);
+        EXPECT_TRUE(consumer->consumedEvents[0].empty());
+        ASSERT_EQ(consumer->consumedEvents[1].size(), 1U);
+        EXPECT_EQ(consumer->consumedEvents[1][0].serialNo, 23U);
+        ASSERT_EQ(consumer->consumedEvents[2].size(), 1U);
+        EXPECT_EQ(consumer->consumedEvents[2][0].type, EventType::SANITIZER_CONTROL_EVENT);
+    }
+}
+
 SanitizerRecord MakeMstxTensorRecord() {
     SanitizerRecord record{};
     record.version = RecordVersion::KERNEL_RECORD;

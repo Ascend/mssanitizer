@@ -118,7 +118,7 @@ Checker::Checker(Config const &config, bool enableDebugLog)
           PARSE_THREADS, 16, [this](ParseTask &&task) { return ParseRecords(std::move(task)); },
           [this](ParseOut &&out) {
               RestoreParseContext(out.ctx);
-              DispatchParsed(out.records, out.events);
+              DispatchParsed(out);
           }) {
     // 后续依据不同的工具选择使能不同的sanitizer功能
     rootTid_ = RuntimeContext::Instance().rootTid_;
@@ -525,7 +525,7 @@ void Checker::Do(const SanitizerRecord &record)
     }
 }
 
-void Checker::Do(std::vector<SanitizerRecord> &&records) {
+void Checker::Do(std::vector<SanitizerRecord> records) {
     if (records.empty()) {
         return;
     }
@@ -562,7 +562,10 @@ ParseOut Checker::ParseRecords(ParseTask &&task) {
     return out;
 }
 
-void Checker::DispatchParsed(std::vector<SanitizerRecord> &records, std::vector<std::vector<SanEvent>> &events) {
+void Checker::DispatchParsed(ParseOut &out) {
+    auto &records = out.records;
+    const bool isKernelFinish = !records.empty() && records.back().version == RecordVersion::KERNEL_RECORD &&
+        records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH;
     finishProduce_ = false;
     // 仅一个工具使能时，可把 events 直接 move 进队列，避免整块拷贝（多工具时仍需各自一份）
     uint8_t activeToolNum = 0;
@@ -582,13 +585,12 @@ void Checker::DispatchParsed(std::vector<SanitizerRecord> &records, std::vector<
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::KERNEL_BLOCK_ARRIVED;
             workargs.records = records;
-            workargs.events = canMoveEvents ? std::move(events) : events;
+            workargs.events = canMoveEvents ? std::move(out.events) : out.events;
             workerArgs_[i].push(std::move(workargs));
         }
     }
 
-    if (!records.empty() && records.back().version == RecordVersion::KERNEL_RECORD &&
-        records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH) {
+    if (isKernelFinish) {
         finishProduce_ = true;
         workerCv_.notify_all();
         for (uint8_t i = 0; i < TOOL_NUM; ++i) {

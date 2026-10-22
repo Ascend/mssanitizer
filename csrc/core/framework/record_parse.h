@@ -84,10 +84,8 @@ public:
     static void ResetSyncInPipeInfo();
     // for UT
     static void ResetAll();
-    // 用图存储流水间同步信息，key:dst val:[src1, src2, ...] 表示 dst 通过 wait_flag 等待过 src（dst 依赖 src）
-    using DstSrcGraph = std::unordered_map<PipeType, std::unordered_set<PipeType>>;
-    // PIPE_S 分支使用的依赖图：pipe 一旦发生访存就裁剪它作为 src 的边，
-    // 避免 wait(dst=PIPE_S) 的传递注入沿陈旧依赖向外扩散
+    // 用图存储流水间同步信息，key:dst val:[src1, src2, ...]（PipeType 枚举固定，用定长数组直接索引，避免 unordered_map 哈希开销）
+    using DstSrcGraph = std::array<std::unordered_set<PipeType>, static_cast<uint8_t>(PipeType::SIZE)>;
     thread_local static DstSrcGraph dstSrcGraph_;
 
     // ===== 跨流水同步环保护状态（单流水竞争检测用），规则见 UpdateSyncInPipe =====

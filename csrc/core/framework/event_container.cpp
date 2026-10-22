@@ -26,7 +26,8 @@ void EventContainer::Init(uint32_t blockNum, uint32_t deviceNum)
     maxBlockNum_ = blockNum;
     // 跨 kernel 复用场景下必须全部复位，否则残留事件会让 IsEmpty() 恒为 false，
     // stuckDeviceNum_ 越过 deviceNum_ 会让 IsAllDeviceStuck() 恒为 false，导致 PipeLine::Run() 死循环。
-    ques_.assign(deviceNum * blockNum * (static_cast<uint32_t>(PipeType::SIZE)), std::queue<SanEvent>());
+    ques_.clear();
+    ques_.resize(deviceNum * blockNum * (static_cast<uint32_t>(PipeType::SIZE)));
     pipeIndex_ = 0U;
     blockIndex_ = 0U;
     deviceIndex_ = 0U;
@@ -53,12 +54,12 @@ void EventContainer::Push(const SanEvent &e, PipeType pipe, uint32_t blockIdx, u
     if (e.type == EventType::MEM_EVENT && e.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS) {
         SanEvent event = e;
         event.eventInfo.memInfo.opType = AccessType::READ;
-        ques_[pipeIndex].push(event);
+        ques_[pipeIndex].Push(event);
         event.eventInfo.memInfo.opType = AccessType::WRITE;
-        ques_[pipeIndex].push(event);
+        ques_[pipeIndex].Push(event);
         return;
     }
-    ques_[pipeIndex].push(e);
+    ques_[pipeIndex].Push(e);
 }
 
 void EventContainer::Push(SanEvent &&e, PipeType pipe, uint32_t blockIdx, uint32_t deviceIdx)
@@ -73,26 +74,26 @@ void EventContainer::Push(SanEvent &&e, PipeType pipe, uint32_t blockIdx, uint32
         return;
     }
     uint32_t pipeIndex = FlattenPipeIdx(static_cast<uint32_t>(pipe), blockIdx, deviceIdx);
-    ques_[pipeIndex].push(std::move(e));
+    ques_[pipeIndex].Push(std::move(e));
 }
 
 // 获取当前PIPE的头部事件（返回引用，调用方不得在 Pop/切换队列后继续使用）
 const SanEvent &EventContainer::Front() const
 {
     // Front前先判空, 判空由调用方做
-    return ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].front();
+    return ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].Front();
 }
 
 void EventContainer::Pop()
 {
     ++blockPopCount_;
     ++devicePopCount_;
-    ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].pop();
+    ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].Pop();
 }
 
 bool EventContainer::IsCurQueEmpty() const
 {
-    return ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].empty();
+    return ques_[FlattenPipeIdx(pipeIndex_, blockIndex_, deviceIndex_)].Empty();
 }
 
 bool EventContainer::IsCurBlockEmpty() const
@@ -100,7 +101,7 @@ bool EventContainer::IsCurBlockEmpty() const
     uint32_t startIdx = FlattenPipeIdx(0, blockIndex_, deviceIndex_);
     uint32_t endIdx = startIdx + static_cast<uint32_t>(PipeType::SIZE);
     for (auto i = startIdx; i < endIdx; ++i) {
-        if (!ques_[i].empty()) {
+        if (!ques_[i].Empty()) {
             return false;
         }
     }
@@ -113,7 +114,7 @@ bool EventContainer::IsCurDeviceEmpty() const
     uint32_t startIdx = FlattenPipeIdx(0, 0, deviceIndex_);
     uint32_t endIdx = startIdx + maxBlockNum_ * static_cast<uint32_t>(PipeType::SIZE);
     for (uint32_t i = startIdx; i < endIdx; ++i) {
-        if (!ques_[i].empty()) {
+        if (!ques_[i].Empty()) {
             return false;
         }
     }
@@ -135,8 +136,8 @@ bool EventContainer::IsNeedSwitchNextDevice() const
 
 bool EventContainer::IsEmpty() const
 {
-    for (const auto &it : ques_) {
-        if (!it.empty()) {
+    for (const auto &q : ques_) {
+        if (!q.Empty()) {
             return false;
         }
     }
@@ -162,11 +163,11 @@ bool EventContainer::IsAllDeviceStuck() const
 void EventContainer::PrintStuckSerialNo() const
 {
     for (size_t i = 0; i < ques_.size(); i++) {
-        if (ques_[i].empty()) {
+        if (ques_[i].Empty()) {
             continue;
         }
-        SAN_INFO_LOG("Stuck pipe index %lu , serialNo %lu, remaining event count %lu",
-            i, ques_[i].front().serialNo, ques_[i].size());
+        SAN_INFO_LOG("Stuck pipe index %lu , serialNo %lu, remaining event count %u",
+            i, ques_[i].Front().serialNo, ques_[i].Size());
     }
 }
 
@@ -175,8 +176,8 @@ void EventContainer::ForEachFrontEvent(const std::function<void(const SanEvent &
         return;
     }
     for (const auto &q : ques_) {
-        if (!q.empty()) {
-            func(q.front());
+        if (!q.Empty()) {
+            func(q.Front());
         }
     }
 }
@@ -236,14 +237,14 @@ uint32_t EventContainer::GetBlockIndex() const
 
 uint32_t EventContainer::GetCurQueSize() const
 {
-    return ques_[(blockIndex_ * (static_cast<uint32_t>(PipeType::SIZE))) + pipeIndex_].size();
+    return ques_[(blockIndex_ * (static_cast<uint32_t>(PipeType::SIZE))) + pipeIndex_].Size();
 }
 
 uint32_t EventContainer::GetAllQueSize() const
 {
     uint32_t sum = 0U;
-    for (const auto &it: ques_) {
-        sum += it.size();
+    for (const auto &q : ques_) {
+        sum += q.Size();
     }
 
     return sum;

@@ -14,9 +14,34 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
+#include <algorithm>
+
 #include "pm.h"
 #include "securec.h"
 #include "core/framework/utility/log.h"
+
+namespace {
+// 每个影子字节的低 2 位保存状态，其余位保存归属信息。
+constexpr uint8_t STATUS_MASK = 0x03U;
+constexpr uint64_t BYTE_ONES = 0x0101010101010101ULL;
+constexpr uint64_t BYTE_HIGH_BITS = 0x8080808080808080ULL;
+constexpr uint64_t BYTE_STATUS_MASKS = BYTE_ONES * STATUS_MASK;
+
+// 按字节复制到整数对象，支持未对齐地址，避免直接解引用 uint64_t 指针。
+uint64_t ReadShadowWord(const uint8_t *bytes)
+{
+    uint64_t word = 0;
+    std::copy_n(bytes, sizeof(word), reinterpret_cast<unsigned char *>(&word));
+    return word;
+}
+
+// 判断任意字节是否为 0：减一使零字节的最高位置位，再通过掩码提取。
+// 跨字节借位不影响“是否存在”的结果；此掩码不用于定位或统计匹配字节。
+bool HasZeroByte(uint64_t word)
+{
+    return ((word - BYTE_ONES) & ~word & BYTE_HIGH_BITS) != 0;
+}
+} // namespace
 
 namespace Sanitizer {
 
@@ -185,11 +210,65 @@ uint64_t PM::UnifiedSizeAfter(uint64_t baseAddr, uint64_t size, uint64_t addr) c
         PM::SM const& sm = *smList_[blockIndex];
         uint8_t head = sm.vabits8[blockOffset];
         uint64_t offset = 1;
+        // 比较完整影子字节（包含归属信息），每次跳过一个同值整数宽度。
+        // 不跨越当前 SM 或请求区间；遇到差异后逐字节确定准确边界。
+        const uint64_t headBytes = static_cast<uint64_t>(head) * BYTE_ONES;
+        while (offset + sizeof(uint64_t) <= commonSize) {
+            const uint64_t chunk = ReadShadowWord(&sm.vabits8[blockOffset + offset]);
+            if (chunk != headBytes) {
+                break;
+            }
+            offset += sizeof(uint64_t);
+        }
         for (; offset < commonSize && sm.vabits8[blockOffset + offset] == head; ++offset) { }
         return offset;
     } else {
         return commonSize;
     }
+}
+
+bool PM::RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const
+{
+    // 空区间不命中；status 是 MemStatus 的低 2 位编码，范围为 [0, 3]。
+    if (size == 0) {
+        return false;
+    }
+    uint64_t blockIndexL = GetBlockIdx(addr);
+    uint64_t blockIndexR = GetBlockIdx(addr + size + blockSize_ - 1);
+    uint64_t offsetInBlock = GetBlockOffset(addr);
+    uint64_t remaining = size;
+    for (uint64_t bi = blockIndexL; bi < blockIndexR; ++bi) {
+        uint64_t blockLen = std::min(remaining, blockSize_ - offsetInBlock);
+        if (smList_[bi] == nullptr) {
+            // 整块统一状态：O(1)
+            if ((commonBitsList_[bi] & STATUS_MASK) == status) {
+                return true;
+            }
+        } else {
+            // 已物化的 SM 分别检查整字和尾部。异或后仅保留状态位：
+            // 某个差值字节为 0，恰好表示该位置的状态等于目标状态。
+            const uint8_t *p = smList_[bi]->vabits8 + offsetInBlock;
+            const uint64_t status8 = static_cast<uint64_t>(status) * BYTE_ONES;
+            uint64_t i = 0;
+            for (; i + sizeof(uint64_t) <= blockLen; i += sizeof(uint64_t)) {
+                const uint64_t diff = (ReadShadowWord(p + i) ^ status8) & BYTE_STATUS_MASKS;
+                if (HasZeroByte(diff)) {
+                    return true;
+                }
+            }
+            for (; i < blockLen; ++i) {
+                if ((p[i] & STATUS_MASK) == status) {
+                    return true;
+                }
+            }
+        }
+        remaining -= blockLen;
+        offsetInBlock = 0;
+        if (remaining == 0) {
+            break;
+        }
+    }
+    return false;
 }
 
 inline uint64_t PM::GetBlockIdx(uint64_t addr) const
@@ -274,6 +353,39 @@ uint64_t GmPM::UnifiedSizeAfter(uint64_t baseAddr, uint64_t size, uint64_t addr)
         return PM::UnifiedSizeAfter(GetBlockOffset(newBaseAddr), curSize, GetBlockOffset(addr));
     }
     return pm->UnifiedSizeAfter(GetBlockOffset(newBaseAddr), curSize, GetBlockOffset(addr));
+}
+
+bool GmPM::RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const
+{
+    if (size == 0) {
+        return false;
+    }
+    // 按一级 GM 块切分请求；未物化的块查统一状态，已物化的块交给 PM。
+    // 每次只扫描当前块的有效区间，避免跨块遗漏或读取到请求范围之外。
+    uint64_t blockIndexL = GetBlockIdx(addr);
+    uint64_t blockIndexR = GetBlockIdx(addr + size + blockSize_ - 1);
+    uint64_t offsetInBlock = GetBlockOffset(addr);
+    uint64_t remaining = size;
+    for (uint64_t bi = blockIndexL; bi < blockIndexR; ++bi) {
+        uint64_t blockLen = std::min(remaining, blockSize_ - offsetInBlock);
+        PmPtr pm = QueryPM(bi * blockSize_);
+        if (pm == nullptr) {
+            // 整 1TB 块统一状态：commonBitsList_ 按 1TB 索引（GmPM::GetBits 同语义）
+            if (bi < commonBitsList_.size() && (commonBitsList_[bi] & STATUS_MASK) == status) {
+                return true;
+            }
+        } else {
+            if (pm->RangeHasStatus(offsetInBlock, blockLen, status)) {
+                return true;
+            }
+        }
+        remaining -= blockLen;
+        offsetInBlock = 0;
+        if (remaining == 0) {
+            break;
+        }
+    }
+    return false;
 }
 
 GmPM::PmPtr GmPM::QueryPM(uint64_t addr) const

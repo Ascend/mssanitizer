@@ -77,7 +77,7 @@ public:
     void ParseOnlineError(const SanitizerRecord &record);
     // do check
     void Do(const SanitizerRecord& record);
-    void Do(std::vector<SanitizerRecord> &&records);
+    void Do(std::vector<SanitizerRecord> records);
     bool SupportSimt() const;
     bool IsTargetBlock(uint64_t blockIdx) const;
 
@@ -89,7 +89,7 @@ private:
     void ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPathwayEventCount) const;
     // ---- 解析并行：有界、保序的解析流水线（见 parse_pipeline.h）----
     ParseOut ParseRecords(ParseTask &&task);
-    void DispatchParsed(std::vector<SanitizerRecord> &records, std::vector<std::vector<SanEvent>> &events);
+    void DispatchParsed(ParseOut &out);
     inline void WaitAfterConsumed(uint8_t consumeId);
     inline bool IsNeedFilterDbi(uint8_t toolIdx) const;
     inline bool IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx) const;

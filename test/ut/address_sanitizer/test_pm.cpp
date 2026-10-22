@@ -199,3 +199,59 @@ TEST(GMPM, set_large_size_then_get_expect_correct)
     Range1D::Iterator it = range.At(size);
     ASSERT_EQ(it, range.End());
 }
+
+TEST(PM, status_scan_matches_scalar_oracle_with_owner_bits_and_tails)
+{
+    PM pm(Sanitizer::ONE_SM_STAND_FOR_BYTE * 2, 0xFE);
+    const uint64_t base = Sanitizer::ONE_SM_STAND_FOR_BYTE - 37;
+    std::vector<uint8_t> values(128);
+    uint32_t seed = 17;
+    for (size_t i = 0; i < values.size(); ++i) {
+        seed = seed * 1664525U + 1013904223U;
+        values[i] = static_cast<uint8_t>(seed >> 24);
+        pm.Set(base + i, 1, values[i]);
+    }
+    for (size_t start = 0; start < 48; ++start) {
+        for (size_t length = 0; length < 64; ++length) {
+            for (uint8_t status = 0; status < 4; ++status) {
+                bool expected = false;
+                for (size_t i = start; i < start + length; ++i) {
+                    expected = expected || (values[i] & 3U) == status;
+                }
+                EXPECT_EQ(pm.RangeHasStatus(base + start, length, status), expected);
+            }
+        }
+    }
+    EXPECT_FALSE(pm.RangeHasStatus(0, 0, 2));
+    EXPECT_TRUE(pm.RangeHasStatus(0, 16, 2));
+    EXPECT_FALSE(pm.RangeHasStatus(0, 16, 1));
+}
+
+TEST(PM, unified_scan_preserves_owner_bits_and_exact_tail_boundaries)
+{
+    PM pm(Sanitizer::ONE_SM_STAND_FOR_BYTE * 2, 0xFE);
+    // 同时覆盖 SM 边界截断和未对齐地址上的整字扫描、逐字节尾部。
+    for (uint64_t base : {Sanitizer::ONE_SM_STAND_FOR_BYTE - 7, Sanitizer::ONE_SM_STAND_FOR_BYTE + 3}) {
+        for (uint64_t length = 1; length < 40; ++length) {
+            pm.Set(base, 48, 0xFE);
+            pm.Set(base + length, 1, 0x02); // 低 2 位相同，归属位不同，仍必须终止同值段。
+            const uint64_t firstBlock = std::min(length,
+                Sanitizer::ONE_SM_STAND_FOR_BYTE - base % Sanitizer::ONE_SM_STAND_FOR_BYTE);
+            EXPECT_EQ(pm.UnifiedSizeAfter(base, 48, base), firstBlock);
+            EXPECT_EQ(pm.UnifiedSizeAfter(base, length, base), firstBlock);
+        }
+    }
+}
+
+TEST(GMPM, status_scan_handles_uniform_materialized_and_cross_pm_ranges)
+{
+    GmPM pm(0xFE);
+    const uint64_t boundary = LOCAL_MEM_MASK;
+    EXPECT_FALSE(pm.RangeHasStatus(boundary - 8, 0, 2));
+    EXPECT_TRUE(pm.RangeHasStatus(boundary - 8, 16, 2));
+    EXPECT_FALSE(pm.RangeHasStatus(boundary - 8, 16, 1));
+    pm.Set(boundary - 1, 2, 0xFD);
+    EXPECT_TRUE(pm.RangeHasStatus(boundary - 8, 16, 1));
+    EXPECT_TRUE(pm.RangeHasStatus(boundary, 1, 1));
+    EXPECT_FALSE(pm.RangeHasStatus(boundary + 1, 7, 1));
+}

@@ -3828,4 +3828,41 @@ TEST(AddressSanitizer, illegal_read_of_load_l1_2d_expect_reported_in_init_check)
     ASSERT_NE(msg.find("0x4000"), std::string::npos);
 }
 
+TEST(AsanActionFactory, value_action_owns_record_and_dispatches_load_store)
+{
+    const DeviceType device = DeviceType::ASCEND_910B1;
+    ShadowMemory shadow;
+    ASSERT_TRUE(shadow.Init(device, CHIP_INFO_MAP.at(device)));
+    BoundsCheck bounds;
+    Config config{};
+    config.initCheck = true;
+    auto record = CreateMemOpRecord(MemOpType::LOAD);
+    record.dstSpace = AddressSpace::L1;
+    record.dstAddr = 32;
+    record.memSize = 8;
+    auto load = AsanActionFactory::CreateAsanAction(record);
+    ASSERT_TRUE(load.IsValid());
+    record.dstAddr = 64;
+    const auto errors = load.doAction(shadow, bounds, config, false);
+    ASSERT_EQ(errors.size(), 1U);
+    EXPECT_EQ(errors[0].type, MemErrorType::UNINITIALIZED_READ);
+    EXPECT_EQ(errors[0].auxData.badAddr.addr, 32U);
+    record.type = MemOpType::STORE;
+    record.dstAddr = 32;
+    auto store = AsanActionFactory::CreateAsanAction(record);
+    ASSERT_TRUE(store.IsValid());
+    EXPECT_TRUE(store.doAction(shadow, bounds, config, false).empty());
+    EXPECT_TRUE(load.doAction(shadow, bounds, config, false).empty());
+}
+
+TEST(AsanActionFactory, supported_types_and_invalid_type)
+{
+    for (auto type : {MemOpType::MALLOC, MemOpType::FREE, MemOpType::MEMCPY_BLOCKS,
+            MemOpType::LOAD, MemOpType::STORE}) {
+        EXPECT_TRUE(AsanActionFactory::CreateAsanAction(CreateMemOpRecord(type)).IsValid());
+    }
+    EXPECT_FALSE(AsanActionFactory::CreateAsanAction(
+        CreateMemOpRecord(static_cast<MemOpType>(0xFFFFFFFFU))).IsValid());
+}
+
 }

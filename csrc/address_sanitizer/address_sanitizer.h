@@ -71,7 +71,7 @@ private:
     bool SwitchToScope(BoundsCheckScope scope);
     void BeforeScopeSwitch(MemOpRecord const &record);
     void AfterScopeSwitch(MemOpRecord const &record);
-    ErrorMsgList ScopeDoAction(std::shared_ptr<AsanAction> action);
+    ErrorMsgList ScopeDoAction(AsanAction& action);
     BoundsCheckScope MemInfoToScope(MemInfoSrc infoSrc);
     std::string ScopeToString(BoundsCheckScope scope);
     void UpdateHeapInfo(MemOpRecord const &record);

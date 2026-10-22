@@ -38,10 +38,26 @@ public:
     MemOpRecord record_;
 };
 
-// 框架侧通过调用该函数，根据msg构造具体的AsanAction
+// 值对象持有记录和执行函数；具体 Action 在执行时构造于栈上，不分配堆内存。
+class AsanActionValue final : public AsanAction {
+public:
+    using ActionFunc = ErrorMsgList (*)(const MemOpRecord &, ShadowMemory &, BoundsCheck &, const Config &, bool);
+    AsanActionValue(const MemOpRecord &record, ActionFunc actionFunc) : AsanAction(record), actionFunc_(actionFunc) {}
+    bool IsValid() const { return actionFunc_ != nullptr; }
+    ErrorMsgList doAction(ShadowMemory &shadowMemory, BoundsCheck &boundsCheck, const Config &config,
+        bool ignoreShadowMemory) override
+    {
+        return IsValid() ? actionFunc_(record_, shadowMemory, boundsCheck, config, ignoreShadowMemory) : ErrorMsgList{};
+    }
+
+private:
+    ActionFunc actionFunc_;
+};
+
+// 工厂集中选择操作类型，返回可直接保存于栈上的值对象。
 class AsanActionFactory {
 public:
-    static std::shared_ptr<AsanAction> CreateAsanAction(const MemOpRecord &record);
+    static AsanActionValue CreateAsanAction(const MemOpRecord &record);
 };
 
 class AsanMalloc : public AsanAction {

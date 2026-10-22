@@ -66,7 +66,7 @@ TEST_F(TestCallStack, load_from_buffer_stream_expect_get_empty_map)
 {
     CallStack &callStack = CallStack::Instance();
     std::vector<char> buffer;
-    callStack.Load("kernel", *BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(buffer)));
+    callStack.Load(*BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(buffer)));
     ASSERT_TRUE(callStack.pcStackMap_.empty());
 }
 
@@ -156,7 +156,7 @@ TEST_F(TestCallStack, query_valid_pc_with_unset_env_expect_none)
     CallStack &callStack = CallStack::Instance();
     constexpr size_t binaryBuffSize = 10;
     std::vector<char> buffer(binaryBuffSize);
-    callStack.Load("kernel", *BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(buffer)));
+    callStack.Load(*BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(buffer)));
     unsetenv("ASCEND_HOME_PATH");
     CallStack::Stack stack = callStack.Query("kernel", 3);
     ASSERT_EQ(stack.size(), 0);
@@ -167,7 +167,7 @@ TEST_F(TestCallStack, query_valid_pc_with_invalid_env_expect_none)
     CallStack &callStack = CallStack::Instance();
     constexpr size_t binaryBuffSize = 10;
     std::vector<char> buffer(binaryBuffSize);
-    callStack.Load("kernel", *BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(buffer)));
+    callStack.Load(*BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(buffer)));
     setenv("ASCEND_HOME_PATH", "/a/", 1);
     CallStack::Stack stack = callStack.Query("kernel", 3);
     ASSERT_EQ(stack.size(), 0);

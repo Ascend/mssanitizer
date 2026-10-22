@@ -1092,4 +1092,22 @@ TEST(ShadowMemory, stress_test_multiple_concurrent_operations_simulation)
     ASSERT_EQ(error.type, MemErrorType::ILLEGAL_FREE);
 }
 
+TEST(ShadowMemory, range_limits_follow_each_device_and_reinitialization)
+{
+    ChipInfo chip{};
+    chip.l0aSize = chip.l0bSize = chip.l0cSize = chip.l1Size = chip.ubSize = chip.privateSize = 16;
+    ShadowMemory small;
+    ASSERT_TRUE(small.Init(DeviceType::ASCEND_910B1, chip));
+    MemOpRecordForShadow read(AddressSpace::L1, 32, 8, 0);
+    EXPECT_TRUE(small.LoadNBytes(read, true).empty());
+    chip.l1Size = 64;
+    ShadowMemory large;
+    ASSERT_TRUE(large.Init(DeviceType::ASCEND_910B1, chip));
+    auto errors = large.LoadNBytes(read, true);
+    ASSERT_EQ(errors.size(), 1U);
+    EXPECT_EQ(errors[0].auxData.nBadBytes, 8U);
+    ASSERT_TRUE(small.Init(DeviceType::ASCEND_910B1, chip));
+    EXPECT_EQ(small.LoadNBytes(read, true).size(), 1U);
+}
+
 }

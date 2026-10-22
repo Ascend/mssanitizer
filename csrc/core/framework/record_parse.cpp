@@ -4279,14 +4279,11 @@ const std::unordered_map<RecordType, ParseFunc> g_parseFuncs = {
 void RecordParse::DfsSrcGraph(PipeType targetPipe, std::unordered_set<PipeType> &visited)
 {
     visited.insert(targetPipe);
-    // 查找当前节点的邻接节点
-    auto it = dstSrcGraph_.find(targetPipe);
-    if (it != dstSrcGraph_.end()) {
-        for (PipeType neighbor : it->second) {
-            if (visited.find(neighbor) == visited.end()) {
-                // 递归调用 DFS 访问未访问过的邻接节点
-                DfsSrcGraph(neighbor, visited);
-            }
+    // 查找当前节点的邻接节点（定长数组直接索引）
+    for (PipeType neighbor : dstSrcGraph_[static_cast<uint8_t>(targetPipe)]) {
+        if (visited.find(neighbor) == visited.end()) {
+            // 递归调用 DFS 访问未访问过的邻接节点
+            DfsSrcGraph(neighbor, visited);
         }
     }
 }
@@ -4330,7 +4327,7 @@ void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEv
     // 该 pipe 发生访存：仅裁剪 PIPE_S 分支依赖图中"它作为 src"的边
     if (event.type == EventType::MEM_EVENT) {
         for (size_t i = 0; i < static_cast<uint8_t>(PipeType::SIZE); ++i) {
-            dstSrcGraph_[static_cast<PipeType>(i)].erase(event.pipe);
+            dstSrcGraph_[i].erase(event.pipe);
         }
         return;
     }
@@ -4374,7 +4371,7 @@ void RecordParse::UpdateSyncInPipe(KernelRecord const& record, std::vector<SanEv
     }
 
     // dstPipe 依赖 srcPipe，供 PIPE_S 分支使用
-    dstSrcGraph_[event.eventInfo.syncInfo.dstPipe].insert(event.eventInfo.syncInfo.srcPipe);
+    dstSrcGraph_[static_cast<uint8_t>(event.eventInfo.syncInfo.dstPipe)].insert(event.eventInfo.syncInfo.srcPipe);
 
     // 闭环：把 edgeStartPoints_[srcPipe][dstPipe][eventId] 并入 dstPipe 的继承表；含 dstPipe 自身说明往返
     // 闭合回 dstPipe，水位线推进到该起始点。
