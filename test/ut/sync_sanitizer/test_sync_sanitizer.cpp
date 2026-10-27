@@ -832,4 +832,113 @@ TEST(SyncSanitizer, stuck_mstx_cross_core_wait_with_unspecified_peer_core_withou
     ASSERT_TRUE(msg.find("kernel locked up") != std::string::npos);
 }
 
+// 覆盖 SetKernelInfo：AICPU 类型 / blockDim 超限 → false；正常 → true
+TEST(SyncSanitizer, SetKernelInfo_AllPaths_expect_correct)
+{
+    auto check = [](KernelType type, uint32_t dim) {
+        SyncSanitizer syncSan{};
+        KernelSummary kernelInfo{};
+        kernelInfo.kernelType = type;
+        kernelInfo.blockDim = dim;
+        return syncSan.SetKernelInfo(kernelInfo);
+    };
+    EXPECT_FALSE(check(KernelType::AICPU, 1));
+    EXPECT_FALSE(check(KernelType::AICUBE, MAX_BLOCKDIM_NUMS));
+    EXPECT_TRUE(check(KernelType::AICUBE, 1));
+}
+
+// 覆盖 CheckRecordBeforeProcess：非 KERNEL_RECORD → false；KERNEL_RECORD → true
+TEST(SyncSanitizer, CheckRecordBeforeProcess_AllPaths_expect_correct)
+{
+    SyncSanitizer syncSan{};
+    SanitizerRecord memRec{};
+    memRec.version = RecordVersion::MEMORY_RECORD;
+    EXPECT_FALSE(syncSan.CheckRecordBeforeProcess(memRec));
+    SanitizerRecord kernelRec{};
+    kernelRec.version = RecordVersion::KERNEL_RECORD;
+    EXPECT_TRUE(syncSan.CheckRecordBeforeProcess(kernelRec));
+}
+
+// 覆盖 ParseOnlineError：null desc / SYNC_THREADS_RECORD_LOSS → 空；
+// THREADS_ASYNC_IN_BLOCK → 新增；多种混合 → 仅保留 async
+TEST(SyncSanitizer, ParseOnlineError_AllPaths_expect_correct)
+{
+    {
+        SyncSanitizer syncSan{};
+        KernelErrorRecord r{};
+        r.kernelErrorDesc = nullptr;
+        r.errorNum = 1;
+        syncSan.ParseOnlineError(r, BlockType::AIVEC, 1);
+        EXPECT_TRUE(syncSan.syncThreadsInfo_.empty());
+    }
+    {
+        SyncSanitizer syncSan{};
+        KernelErrorDesc desc{};
+        desc.errorType = KernelErrorType::SYNC_THREADS_RECORD_LOSS;
+        KernelErrorRecord r{};
+        r.kernelErrorDesc = &desc;
+        r.errorNum = 1;
+        syncSan.ParseOnlineError(r, BlockType::AIVEC, 1);
+        EXPECT_TRUE(syncSan.syncThreadsInfo_.empty());
+    }
+    {
+        SyncSanitizer syncSan{};
+        KernelErrorDesc desc{};
+        desc.errorType = KernelErrorType::THREADS_ASYNC_IN_BLOCK;
+        desc.location.blockId = 2;
+        desc.payload.syncDesc.syncLocation.pc = 0x100;
+        KernelErrorRecord r{};
+        r.kernelErrorDesc = &desc;
+        r.errorNum = 1;
+        syncSan.ParseOnlineError(r, BlockType::AIVEC, 5);
+        ASSERT_EQ(syncSan.syncThreadsInfo_.size(), 1U);
+        EXPECT_EQ(syncSan.syncThreadsInfo_[0].coreId, 2U);
+        EXPECT_TRUE(syncSan.syncThreadsInfo_[0].isSimt);
+    }
+    {
+        SyncSanitizer syncSan{};
+        KernelErrorDesc descs[3]{};
+        descs[0].errorType = KernelErrorType::ILLEGAL_ADDR_WRITE;
+        descs[1].errorType = KernelErrorType::THREADS_ASYNC_IN_BLOCK;
+        descs[1].location.blockId = 1;
+        descs[2].errorType = KernelErrorType::THREAD_RW_RACE;
+        KernelErrorRecord r{};
+        r.kernelErrorDesc = descs;
+        r.errorNum = 3;
+        syncSan.ParseOnlineError(r, BlockType::AIVEC, 1);
+        EXPECT_EQ(syncSan.syncThreadsInfo_.size(), 1U);
+    }
+}
+
+// 测试 DoRedundancyCheck：PIPE_BARRIER 直接返回；非 SYNC_EVENT 清除对应 pipe
+TEST(SyncSanitizer, DoRedundancyCheck_PipeBarrierAndNonSync_expect_correct)
+{
+    SyncSanitizer syncSan{};
+    KernelSummary kernelInfo{};
+    kernelInfo.kernelType = KernelType::AICUBE;
+    kernelInfo.blockDim = 1;
+    syncSan.SetKernelInfo(kernelInfo);
+
+    SanEvent barrierEvent{};
+    barrierEvent.type = EventType::SYNC_EVENT;
+    barrierEvent.eventInfo.syncInfo.opType = SyncType::PIPE_BARRIER;
+    barrierEvent.eventInfo.syncInfo.srcPipe = PipeType::PIPE_V;
+    barrierEvent.eventInfo.syncInfo.dstPipe = PipeType::PIPE_MTE1;
+    syncSan.DoRedundancyCheck(barrierEvent);
+
+    SanEvent syncEvent{};
+    syncEvent.type = EventType::SYNC_EVENT;
+    syncEvent.eventInfo.syncInfo.opType = SyncType::SET_FLAG;
+    syncEvent.eventInfo.syncInfo.srcPipe = PipeType::PIPE_V;
+    syncEvent.eventInfo.syncInfo.dstPipe = PipeType::PIPE_MTE1;
+    syncSan.DoRedundancyCheck(syncEvent);
+    EXPECT_FALSE(syncSan.pipeRedundancyEvents_.empty());
+
+    SanEvent memEvent{};
+    memEvent.type = EventType::MEM_EVENT;
+    memEvent.pipe = PipeType::PIPE_V;
+    syncSan.DoRedundancyCheck(memEvent);
+    EXPECT_TRUE(syncSan.pipeRedundancyEvents_.find(PipeType::PIPE_V) == syncSan.pipeRedundancyEvents_.end());
+}
+
 } // namespace

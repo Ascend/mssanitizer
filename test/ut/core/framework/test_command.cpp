@@ -502,3 +502,80 @@ TEST_F(TestCommand, test_empty_dump_project_generated_expect_finish_ok)
     ASSERT_FALSE(DetectDumpProject(command, dumpPath_));
     ASSERT_FALSE(Path(dumpPath_).Exists());
 }
+
+// 声明 command.cpp 中的 Sanitizer 命名空间函数（未在头文件中声明）
+namespace Sanitizer {
+std::vector<std::string> GetSortedProjects(const std::string &dumpPath);
+}
+
+// 覆盖 GetSortedProjects：非目录 / 无效子目录名 / 非数字 ID → 空；有效项目 → 排序
+TEST_F(TestCommand, GetSortedProjects_AllPaths_expect_correct)
+{
+    EXPECT_TRUE(Sanitizer::GetSortedProjects("/nonexistent_path_xyz").empty());
+
+    Path invalidDir{dumpPath_ + "/invalid_name"};
+    ASSERT_EQ(mkdir(invalidDir.ToString().c_str(), DIR_DEFAULT_MOD), 0);
+    FakeConfigFile(invalidDir);
+    EXPECT_TRUE(Sanitizer::GetSortedProjects(dumpPath_).empty());
+
+    Path nonNumDir{dumpPath_ + "/dumpData_a_b"};
+    ASSERT_EQ(mkdir(nonNumDir.ToString().c_str(), DIR_DEFAULT_MOD), 0);
+    FakeConfigFile(nonNumDir);
+    EXPECT_TRUE(Sanitizer::GetSortedProjects(dumpPath_).empty());
+
+    Path subDir1{dumpPath_ + "/dumpData_0_1"};
+    Path subDir2{dumpPath_ + "/dumpData_0_0"};
+    ASSERT_EQ(mkdir(subDir1.ToString().c_str(), DIR_DEFAULT_MOD), 0);
+    ASSERT_EQ(mkdir(subDir2.ToString().c_str(), DIR_DEFAULT_MOD), 0);
+    FakeConfigFile(subDir1);
+    FakeConfigFile(subDir2);
+    auto result = Sanitizer::GetSortedProjects(dumpPath_);
+    ASSERT_EQ(result.size(), 2U);
+    EXPECT_TRUE(result[0].find("dumpData_0_0") != std::string::npos);
+    EXPECT_TRUE(result[1].find("dumpData_0_1") != std::string::npos);
+}
+
+// 测试 IPC MAP_INFO 直接在父进程调用（覆盖 HandleHostMemRecord + MemoryRecordToSanitizerRecord）
+TEST(Command, IPC_map_unmap_in_parent_expect_cover_handle_host_mem)
+{
+    const char *ipcMemName = "SHARED_MEM_PARENT";
+    Config config{
+        .defaultCheck = true,
+        .memCheck = true,
+    };
+    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    Checker checker(config, false);
+    ResetIPCMap();
+
+    IPCMemRecord setRecord;
+    setRecord.type = IPCOperationType::SET_INFO;
+    setRecord.setInfo.addr = 0x1000;
+    setRecord.setInfo.size = 4096;
+    strcpy_s(setRecord.setInfo.name, sizeof(setRecord.setInfo.name), ipcMemName);
+    HandleIpcMemRecord(checker, setRecord, threadManager, RespFunc);
+
+    IPCMemRecord mapRecord;
+    mapRecord.type = IPCOperationType::MAP_INFO;
+    mapRecord.mapInfo.addr = 0x2000;
+    strcpy_s(mapRecord.mapInfo.name, sizeof(mapRecord.mapInfo.name), ipcMemName);
+    HandleIpcMemRecord(checker, mapRecord, threadManager, RespFunc);
+    auto responseStr = ResponseHandler::response;
+    IPCResponse response;
+    ParseIPCResponse(responseStr, response);
+    ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
+
+    IPCMemRecord unmapRecord;
+    unmapRecord.type = IPCOperationType::UNMAP_INFO;
+    unmapRecord.unmapInfo.addr = 0x2000;
+    HandleIpcMemRecord(checker, unmapRecord, threadManager, RespFunc);
+    responseStr = ResponseHandler::response;
+    ParseIPCResponse(responseStr, response);
+    ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
+
+    IPCMemRecord destroyRecord;
+    destroyRecord.type = IPCOperationType::DESTROY_INFO;
+    strcpy_s(destroyRecord.destroyInfo.name, sizeof(destroyRecord.destroyInfo.name), ipcMemName);
+    HandleIpcMemRecord(checker, destroyRecord, threadManager, RespFunc);
+
+    ResetIPCMap();
+}

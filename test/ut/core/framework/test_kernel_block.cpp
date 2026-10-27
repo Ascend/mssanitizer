@@ -21,6 +21,8 @@
 #define private public
 #include "core/framework/kernel_block.h"
 #include "core/framework/record_defs.h"
+#include "core/framework/runtime_context.h"
+#include "core/framework/constant.h"
 #undef private
 
 using namespace Sanitizer;
@@ -322,4 +324,165 @@ TEST_F(TestKernelBlock, ParseSimtEntryRecord_InterleavedSpace_SingleSpaceEvents)
     EXPECT_EQ(gmRecords[0].addr, 0x1000U);
     EXPECT_EQ(gmRecords[1].space, AddressSpace::GM);
     EXPECT_EQ(gmRecords[1].addr, 0x2000U);
+}
+
+// 测试 ParseSimdRecord：遍历 RecordType 各数值段，命中 map 的类型应解析成功
+TEST_F(TestKernelBlock, ParseSimdRecord_AllRecordTypesInMap)
+{
+    KernelBlock kernelBlock;
+    kernelBlock.simdRecordHead_.blockInfo.blockType = BlockType::AIVEC;
+    kernelBlock.simdRecordHead_.blockInfo.vecSubBlockDim = 2;
+    constexpr size_t kBufSize = 8192;
+    std::vector<uint8_t> buffer(kBufSize, 0);
+
+    const std::vector<std::pair<uint32_t, uint32_t>> kRanges = {
+        {0, 17}, {100, 143}, {10000, 10016}, {20000, 20051},
+        {40000, 40012}, {60000, 60001}, {70000, 70010}, {79999, 80001}, {100000, 100003},
+    };
+    for (auto &r : kRanges) {
+        for (uint32_t v = r.first; v < r.second; ++v) {
+            *reinterpret_cast<RecordType *>(buffer.data()) = static_cast<RecordType>(v);
+            KernelRecord kr{};
+            if (kernelBlock.ParseSimdRecord(buffer.data(), kr)) {
+                EXPECT_EQ(kr.recordType, static_cast<RecordType>(v));
+            }
+        }
+    }
+}
+
+// 测试 ParseSimdRecord：serialNo 逻辑覆盖（ELEMENT/VSEL_OP/MSTX_STUB 三组场景）
+TEST_F(TestKernelBlock, ParseSimdRecord_SerialNoLogic)
+{
+    KernelBlock kernelBlock;
+    kernelBlock.simdRecordHead_.blockInfo.blockType = BlockType::AIVEC;
+    constexpr size_t kBufSize = 8192;
+    std::vector<uint8_t> buffer(kBufSize, 0);
+
+    kernelBlock.lastRecordType_ = RecordType::VGATHER;
+    uint64_t before = RuntimeContext::Instance().serialNo_;
+    *reinterpret_cast<RecordType *>(buffer.data()) = RecordType::ELEMENT;
+    KernelRecord kr{};
+    ASSERT_TRUE(kernelBlock.ParseSimdRecord(buffer.data(), kr));
+    EXPECT_EQ(RuntimeContext::Instance().serialNo_, before);
+    before = RuntimeContext::Instance().serialNo_;
+    *reinterpret_cast<RecordType *>(buffer.data()) = RecordType::LOAD;
+    ASSERT_TRUE(kernelBlock.ParseSimdRecord(buffer.data(), kr));
+    EXPECT_EQ(RuntimeContext::Instance().serialNo_, before + 1);
+
+    kernelBlock.lastRecordType_ = RecordType::CMPMASK_OP;
+    before = RuntimeContext::Instance().serialNo_;
+    *reinterpret_cast<RecordType *>(buffer.data()) = RecordType::VSEL_OP;
+    ASSERT_TRUE(kernelBlock.ParseSimdRecord(buffer.data(), kr));
+    EXPECT_EQ(RuntimeContext::Instance().serialNo_, before);
+    before = RuntimeContext::Instance().serialNo_;
+    *reinterpret_cast<RecordType *>(buffer.data()) = RecordType::UNARY_OP;
+    ASSERT_TRUE(kernelBlock.ParseSimdRecord(buffer.data(), kr));
+    EXPECT_EQ(RuntimeContext::Instance().serialNo_, before + 1);
+
+    for (auto rt : {RecordType::UNARY_OP, RecordType::DMA_MOV}) {
+        kernelBlock.lastRecordType_ = RecordType::MSTX_STUB;
+        before = RuntimeContext::Instance().serialNo_;
+        *reinterpret_cast<RecordType *>(buffer.data()) = rt;
+        ASSERT_TRUE(kernelBlock.ParseSimdRecord(buffer.data(), kr));
+        EXPECT_EQ(RuntimeContext::Instance().serialNo_, before);
+    }
+}
+
+// 测试 NextSimd：空记录 / 正常解析 / 偏移超界三条路径
+TEST_F(TestKernelBlock, NextSimd_AllPaths)
+{
+    uint64_t memSize = 0;
+    auto buffer = CreateValidMemBuffer(memSize, 0);
+    auto *blockHead = reinterpret_cast<RecordBlockHead *>(buffer.data() + sizeof(RecordGlobalHead));
+
+    blockHead->recordWriteCount = 0;
+    blockHead->writeOffset = 0;
+    auto kb = KernelBlock::CreateKernelBlock(buffer.data(), memSize, 0);
+    ASSERT_NE(kb, nullptr);
+    KernelRecord kr{};
+    EXPECT_FALSE(kb->NextSimd(kr));
+    EXPECT_EQ(kb->lastRecordType_, RecordType::BLOCK_FINISH);
+
+    blockHead->recordWriteCount = 1;
+    blockHead->writeOffset = sizeof(RecordType) + sizeof(LoadStoreRecord);
+    uint8_t *simdStart = buffer.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    *reinterpret_cast<RecordType *>(simdStart) = RecordType::LOAD;
+    kb = KernelBlock::CreateKernelBlock(buffer.data(), memSize, 0);
+    ASSERT_NE(kb, nullptr);
+    EXPECT_TRUE(kb->NextSimd(kr));
+    EXPECT_EQ(kr.recordType, RecordType::LOAD);
+
+    kb->simdOffset_ = blockHead->writeOffset + 1;
+    EXPECT_FALSE(kb->NextSimd(kr));
+}
+
+// 测试 ParseSimtErrorRecord：空记录 / 正常解析 / 溢出三条路径
+TEST_F(TestKernelBlock, ParseSimtErrorRecord_AllPaths)
+{
+    uint64_t memSize = 0;
+    auto buffer = CreateValidMemBuffer(memSize, 0);
+    auto *simtHead = reinterpret_cast<SimtRecordBlockHead *>(
+        buffer.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) + 1024);
+
+    simtHead->recordWriteCount = 0;
+    auto kb = KernelBlock::CreateKernelBlock(buffer.data(), memSize, 0);
+    ASSERT_NE(kb, nullptr);
+    std::vector<KernelRecord> records;
+    kb->ParseSimtErrorRecord(records);
+    EXPECT_TRUE(records.empty());
+
+    simtHead->recordWriteCount = 1;
+    simtHead->recordCount = 1;
+    simtHead->offset = sizeof(RecordType) + sizeof(LoadStoreRecord);
+    simtHead->writeOffset = sizeof(RecordType) + sizeof(LoadStoreRecord);
+    uint8_t *simtRecStart = reinterpret_cast<uint8_t *>(simtHead + 1);
+    *reinterpret_cast<RecordType *>(simtRecStart) = RecordType::SIMT_LD;
+    kb = KernelBlock::CreateKernelBlock(buffer.data(), memSize, 0);
+    ASSERT_NE(kb, nullptr);
+    records.clear();
+    kb->ParseSimtErrorRecord(records);
+    EXPECT_FALSE(records.empty());
+
+    simtHead->recordWriteCount = 0;
+    simtHead->recordCount = 100;
+    simtHead->offset = 1024;
+    simtHead->writeOffset = 0;
+    kb = KernelBlock::CreateKernelBlock(buffer.data(), memSize, 0);
+    ASSERT_NE(kb, nullptr);
+    records.clear();
+    kb->ParseSimtErrorRecord(records);
+    EXPECT_GT(kb->extendCacheSize_, 0U);
+}
+
+// 测试 CacheDynamicRecord：基础缓存
+TEST_F(TestKernelBlock, CacheDynamicRecord_BasicAndOffset)
+{
+    KernelBlock kernelBlock;
+    kernelBlock.simdRecordHead_.blockInfo.blockType = BlockType::AIVEC;
+
+    std::vector<ShadowMemoryRecord> records(4);
+    for (size_t i = 0; i < records.size(); ++i) {
+        records[i].addr = i * 16;
+        records[i].size = 8;
+    }
+    KernelRecord kr{};
+    kernelBlock.CacheDynamicRecord(reinterpret_cast<uint8_t *>(records.data()), records.size(), kr);
+    EXPECT_EQ(kr.payload.dynamicRecord.count, records.size());
+    auto *cached = reinterpret_cast<ShadowMemoryRecord *>(kr.payload.dynamicRecord.buffer);
+    for (size_t i = 0; i < records.size(); ++i) {
+        EXPECT_EQ(cached[i].addr, records[i].addr);
+    }
+
+    std::vector<ShadowMemoryRecord> records2(6);
+    for (size_t i = 0; i < records2.size(); ++i) {
+        records2[i].addr = i * 16;
+        records2[i].size = 8;
+    }
+    KernelRecord kr2{};
+    kernelBlock.CacheDynamicRecord(reinterpret_cast<uint8_t *>(records2.data()), 3, kr2,
+                                   2 * sizeof(ShadowMemoryRecord));
+    EXPECT_EQ(kr2.payload.dynamicRecord.count, 3U);
+    auto *cached2 = reinterpret_cast<ShadowMemoryRecord *>(kr2.payload.dynamicRecord.buffer);
+    EXPECT_EQ(cached2[0].addr, records2[2].addr);
+    EXPECT_EQ(cached2[2].addr, records2[4].addr);
 }

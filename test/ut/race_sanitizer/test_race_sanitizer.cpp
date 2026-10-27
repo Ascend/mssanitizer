@@ -430,4 +430,64 @@ TEST(RaceSanitizer, race_sanitizer_detect_load_store_missing_dcci_expect_get_mis
 
     ConfigManager::Instance().Get().checkDcci = false;
 }
+
+// 覆盖 SetKernelInfo：AICPU 类型 / blockDim 超限 → false；正常 → true
+TEST(RaceSanitizer, SetKernelInfo_AllPaths_expect_correct)
+{
+    auto setup = []() {
+        RaceSanitizer alg;
+        DeviceInfoSummary deviceInfoSummary{};
+        deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+        alg.SetDeviceInfo(deviceInfoSummary, Config{});
+        return alg;
+    };
+    {
+        auto alg = setup();
+        KernelSummary ks{};
+        ks.kernelType = KernelType::AICPU;
+        ks.blockDim = 1;
+        EXPECT_FALSE(alg.SetKernelInfo(ks));
+    }
+    {
+        auto alg = setup();
+        KernelSummary ks{};
+        ks.kernelType = KernelType::AIVEC;
+        ks.blockDim = MAX_BLOCKDIM_NUMS;
+        EXPECT_FALSE(alg.SetKernelInfo(ks));
+    }
+    {
+        auto alg = setup();
+        KernelSummary ks{};
+        ks.kernelType = KernelType::AIVEC;
+        ks.blockDim = 1;
+        EXPECT_TRUE(alg.SetKernelInfo(ks));
+    }
+}
+
+// 覆盖 IsTargetEvent：MSTX_SET_CROSS / MSTX_WAIT_CROSS → true；其他 opType → false
+TEST(RaceSanitizer, IsTargetEvent_AllPaths_expect_correct)
+{
+    RaceSanitizer alg;
+    DeviceInfoSummary deviceInfoSummary{};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    alg.SetDeviceInfo(deviceInfoSummary, Config{});
+    KernelSummary ks{};
+    ks.kernelType = KernelType::AIVEC;
+    ks.blockDim = 1;
+    alg.SetKernelInfo(ks);
+
+    SanEvent event{};
+    event.type = EventType::MSTX_CROSS_SYNC_EVENT;
+    event.loc.coreId = 99;
+    event.loc.blockType = BlockType::AIVEC;
+
+    event.eventInfo.mstxCrossInfo.opType = SyncType::MSTX_SET_CROSS;
+    EXPECT_TRUE(alg.IsTargetEvent(event, BlockType::AIVEC));
+
+    event.eventInfo.mstxCrossInfo.opType = SyncType::MSTX_WAIT_CROSS;
+    EXPECT_TRUE(alg.IsTargetEvent(event, BlockType::AIVEC));
+
+    event.eventInfo.mstxCrossInfo.opType = SyncType::SET_FLAG;
+    EXPECT_FALSE(alg.IsTargetEvent(event, BlockType::AIVEC));
+}
 }

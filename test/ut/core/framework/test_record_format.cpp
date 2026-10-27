@@ -23,6 +23,15 @@
 #include "core/framework/record_format.h"
 #include "sanitizer_report.h"
 
+// 以下 operator<< 在 record_format.cpp 中定义但未在头文件中声明，此处前置声明以便测试
+namespace Sanitizer {
+std::ostream &operator<<(std::ostream &os, MstxHcclCoreRecord const &record);
+std::ostream &operator<<(std::ostream &os, LoopInfo const &loopInfo);
+std::ostream &operator<<(std::ostream &os, DsbRecord const &record);
+std::ostream &operator<<(std::ostream &os, MemInfoDesc memInfoDesc);
+std::ostream &operator<<(std::ostream &os, Load3DV2Record const &record);
+}
+
 using namespace Sanitizer;
 namespace SanitizerTest {
 
@@ -1433,6 +1442,91 @@ TEST(RecordFormat, format_mstx_signal_wait_record_expect_correct_result)
     ASSERT_NE(str.find("addr:0x1234"), std::string::npos);
     ASSERT_NE(str.find("cmpValue:100"), std::string::npos);
     ASSERT_NE(str.find("cmpOp:EQ"), std::string::npos);
+}
+
+// 覆盖未覆盖的 enum operator<<
+TEST(RecordFormat, format_uncovered_enums_expect_no_crash)
+{
+    std::stringstream ss;
+    ss << EventID::EVENT_ID0 << EventID::EVENT_ID1 << EventID::EVENT_ID2 << EventID::EVENT_ID3;
+    ss << MemOpType::MALLOC << MemOpType::FREE << MemOpType::MEMCPY_BLOCKS
+       << MemOpType::LOAD << MemOpType::STORE << MemOpType::GM_ADDR_OUT_OF_BOUND;
+    ss << DcciEntireType::SINGLE_CACHE_LINE << DcciEntireType::ENTIRE_DATA_CACHE;
+    ss << DcciDstType::CACHE_LINE_ALL << DcciDstType::CACHE_LINE_UB
+       << DcciDstType::CACHE_LINE_OUT << DcciDstType::CACHE_LINE_ATOMIC;
+    ss << MemInfoSrc::BYPASS << MemInfoSrc::HAL << MemInfoSrc::RT << MemInfoSrc::ACL
+       << MemInfoSrc::EXTRA << MemInfoSrc::MANUAL << MemInfoSrc::MSTX_HEAP << MemInfoSrc::MSTX_REGION;
+    ss << MemInfoDesc::DEFAULT << MemInfoDesc::INPUT << MemInfoDesc::TILING << MemInfoDesc::DOUBLE_PTR
+       << MemInfoDesc::HCCL_MC2_CONTEXT << MemInfoDesc::SECTION << MemInfoDesc::IPC_MEMORY
+       << MemInfoDesc::OVERFLOW_ADDR << MemInfoDesc::PARA_BASE;
+    ss << SimtAtomMode::NONE << SimtAtomMode::MAX << SimtAtomMode::MIN
+       << SimtAtomMode::ADD << SimtAtomMode::EXCH << SimtAtomMode::CAS;
+    SUCCEED();
+}
+
+// 覆盖未覆盖的 record operator<<（默认构造记录并流式输出）
+TEST(RecordFormat, format_uncovered_records_expect_no_crash)
+{
+    std::stringstream ss;
+    MstxHcclCoreRecord mstxHcclCore{};
+    ss << mstxHcclCore;
+    MstxCrossCoreSetFlag mstxCrossCoreSet{};
+    ss << mstxCrossCoreSet;
+    MstxCrossCoreWaitFlag mstxCrossCoreWait{};
+    ss << mstxCrossCoreWait;
+    MstxCrossNpuBarrier mstxCrossNpu{};
+    ss << mstxCrossNpu;
+    MstxVecBinaryDesc mstxVecBin{};
+    ss << mstxVecBin;
+    MstxDataCopyDesc mstxDataCopy{};
+    ss << mstxDataCopy;
+    MovAlignRecordV2 movAlignV2{};
+    ss << movAlignV2;
+    LoopInfo loopInfo{};
+    ss << loopInfo;
+    NdDMAOut2UbRecord ndDma{};
+    ss << ndDma;
+    IntraBlockSyncRecord intraBlockSync{};
+    ss << intraBlockSync;
+    LoadL12DRecord loadL12d{};
+    ss << loadL12d;
+    Load3DV2Record load3dV2{};
+    ss << load3dV2;
+    SimtLoadStoreRecord simtLoadStore{};
+    ss << simtLoadStore;
+    SimtAtomRecord simtAtom{};
+    ss << simtAtom;
+    MmadA5Record mmadA5{};
+    ss << mmadA5;
+    RegisterSetRecord regSet{};
+    ss << regSet;
+    DcciRecord dcci{};
+    ss << dcci;
+    SUCCEED();
+}
+
+// 覆盖 MstxRecord 中所有 InterfaceType 分支的 lambda
+TEST(RecordFormat, format_mstx_record_all_interface_types_expect_no_crash)
+{
+    std::vector<InterfaceType> types = {
+        InterfaceType::MSTX_SET_CROSS_SYNC,
+        InterfaceType::MSTX_WAIT_CROSS_SYNC,
+        InterfaceType::MSTX_HCCL,
+        InterfaceType::MSTX_HCCLV,
+        InterfaceType::MSTX_CROSS_CORE_BARRIER,
+        InterfaceType::MSTX_CROSS_CORE_SET_FLAG,
+        InterfaceType::MSTX_CROSS_CORE_WAIT_FLAG,
+        InterfaceType::MSTX_VEC_UNARY_OP,
+        InterfaceType::MSTX_VEC_BINARY_OP,
+        InterfaceType::MSTX_DATA_COPY,
+    };
+    for (auto type : types) {
+        MstxRecord record{};
+        record.interfaceType = type;
+        std::stringstream ss;
+        ss << record;
+    }
+    SUCCEED();
 }
 
 }
