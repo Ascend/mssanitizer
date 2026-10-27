@@ -178,7 +178,7 @@ The following table lists memory exception types supported by memory check, incl
 | [Illegal Release](#6135-illegal-release)| This exception occurs when the memory address that is not allocated or has been released is released.| Host | GM |
 | [Memory Leak](#6134-memory-leak)| This exception occurs when the memory usage keeps increasing during program running after the allocated memory is not released after being used.| Host | GM |
 | [Allocated Memory Unused](#6136-allocated-memory-unused)| This exception occurs when memory is not used after being allocated.| Kernel, Host| GM |
-| [Atlas 950PR and 950DT SIMT unit exception](#6137-atlas-950pr-and-950dt-simt-unit-exception)| Displays the thread where the exception occurs in the SIMT architecture.| Kernel | GM|
+| [Ascend 950PR and 950DT SIMT unit exception](#6137-ascend-950pr-and-950dt-simt-unit-exception)| Displays the thread where the exception occurs in the SIMT architecture.| Kernel | GM|
 | [Inter-Thread Corruption](#6138-inter-thread-corruption)| This exception occurs when threads in the AI Core access overlapped memory.| Kernel | GM |
 | [Register Alarm](#6139-register-alarm)| If the register value is not restored to the default value, an alarm is generated, indicating that there is residual register value.| Kernel | GM |
 | [GM Memory Safe Area Out-of-Bounds Write](#61310-gm-memory-safe-area-out-of-bounds-write)| When the aicpu tiling downshift function is used, the out-of-bounds write behavior of the tiling function may occur.| Host | GM |
@@ -199,7 +199,7 @@ When msSanitizer is running, the memory check function (`memcheck`) is enabled b
 > - When you use a framework such as PyTorch to access an operator, the framework may use a memory pool to manage the GM. However, the memory pool usually allocates a large amount of the GM at a time and reuses the memory during running. In this case, if you check the operator and record all memory allocation and release information about the GM, the check may be inaccurate due to the memory management mode of the memory pool. Therefore, the check tool provides APIs for manually reporting the GM allocation information so that you can manually report the GM range used by an operator when the operator is called. For details about the APIs, see the `sanitizerReportMalloc` and `sanitizerReportFree` APIs in [MindStudio Sanitizer External API Reference](../api_reference/mssanitizer_api_reference.md).
 > - msSanitizer also supports the invalid read and write check for the `AllReduce`, `AllGather`, `ReduceScatter`, and `AlltoAll` APIs of Atlas A2 products and the `AllGather`, `ReduceScatter`, and `AlltoAllV` APIs of Atlas A3 products. For details, see "Advanced APIs" > "HCCL" > "HCCL Kernel APIs" in [Ascend C Operator Development APIs](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi).
 > - msSanitizer can also check invalid read and write operations of MC2 operators.
-> - Currently, Atlas 950PR and 950DT products support GM/UB/L1/L0A/L0B/L0C in memory check. Other types are not supported.
+> - Currently, Ascend 950PR and 950DT products support GM/UB/L1/L0A/L0B/L0C in memory check. Other types are not supported.
 > - Currently, memory check in the UB address space uses the physical upper limit as the available space by default.
 
 #### 6.1.3 Interpreting a Memory Exception Report
@@ -317,9 +317,9 @@ This exception occurs when memory that is allocated during operator running has 
 ====== SUMMARY: 1100byte(s) unused memory in 2 allocation(s) // Summary of unused memory, including the number of unused memory blocks and bytes
 ```
 
-##### 6.1.3.7 Atlas 950PR and 950DT SIMT Unit Exception
+##### 6.1.3.7 Ascend 950PR and 950DT SIMT Unit Exception
 
-In the SIMT architecture, the location of the thread where the exception occurs is also provided. The thread ID starts from 0. For example, the following exception occurs at the thread whose ID X=1, ID Y=0, and ID Z=0. When the SIMT unit of the Atlas 950PR and 950DT products is abnormal, the error information is displayed as follows:
+In the SIMT architecture, the location of the thread where the exception occurs is also provided. The thread ID starts from 0. For example, the following exception occurs at the thread whose ID X=1, ID Y=0, and ID Z=0. When the SIMT unit of the Ascend 950PR and 950DT products is abnormal, the error information is displayed as follows:
 
 ```text
 ====== ERROR: illegal read of size 4
@@ -377,7 +377,7 @@ When you develop a custom operator that uses the aicpu tiling downshift function
 > [!NOTE]
 >
 > GM memory safe area out-of-bounds write does not support detection in memory pool scenarios.
-> Currently, only Atlas A2 products, Atlas A3 products, and Atlas 950PR and 950DT products are supported.
+> Currently, only Atlas A2 products, Atlas A3 products, and Ascend 950PR and 950DT products are supported.
 
 ### 6.2 Race Check
 
@@ -482,8 +482,8 @@ mssanitizer --tool=initcheck application   // Application indicates the user pro
 > - After the tool is started, the tool run log file `mssanitizer_{TIMESTAMP}_{PID}.log` is automatically generated in the current directory.
 > - Due to hardware restrictions, some instructions support data transfer only in blocks. If the actual data volume involved in the computation is not an integer multiple of the block size, some invalid data (dirty data) may be inevitably imported. This may trigger tool initialization anomaly reports. You need to determine whether the dirty data affects the computation result.
 > - Accurate uninitialization check results require that no data race exists. Because initialization is essentially a write-before-read operation, the uninitialization check results may be inaccurate if a memory read/write race exists. Therefore, you are advised to resolve race problems before performing the uninitialization check.
-> - Currently, only Atlas A2 products, Atlas A3 products, and Atlas 950PR and 950DT products are supported.
-> - Atlas 950PR and 950DT products do not support uninitialization check in the UB address space.
+> - Currently, only Atlas A2 products, Atlas A3 products, and Ascend 950PR and 950DT products are supported.
+> - Ascend 950PR and 950DT products do not support uninitialization check in the UB address space.
 
 #### 6.3.3 Interpreting an Uninitialized Memory Exception Report
 
@@ -512,13 +512,13 @@ A redundant `SetFlag` instruction does not directly cause a race problem of the 
 
 If there are redundant `SetFlag` instructions, and two or more redundant `SetFlag` instructions exist, synchronization check will trigger both matching exceptions and redundancy exceptions.
 
-For Atlas 950PR and 950DT products, the SIMT unit also supports the inter-thread synchronization instruction `__syncthreads()`, which synchronizes all threads in a block so that subsequent instructions are executed only after all threads reach the synchronization point. Therefore, you must not specify that only some threads execute `__syncthreads()`. The synchronization check function identifies such behavior and reports an error to remind you that a synchronization exception exists.
+For Ascend 950PR and 950DT products, the SIMT unit also supports the inter-thread synchronization instruction `__syncthreads()`, which synchronizes all threads in a block so that subsequent instructions are executed only after all threads reach the synchronization point. Therefore, you must not specify that only some threads execute `__syncthreads()`. The synchronization check function identifies such behavior and reports an error to remind you that a synchronization exception exists.
 
 > [!NOTE]
 >
 > - When synchronization check is enabled independently, memory check and race check are not performed. Therefore, you are advised to enable memory check and race check first. If no exception is reported during race check but operator race occurs, you can use synchronization detection to check the preceding operators.
 > - A redundant `WaitFlag` instruction blocks the subsequent instructions of the current operator, causing the operator to stop running. In this case, developers can detect problems without tool prompts.
-> - Currently, only Atlas A2 products, Atlas A3 products, and Atlas 950PR and 950DT products are supported.
+> - Currently, only Atlas A2 products, Atlas A3 products, and Ascend 950PR and 950DT products are supported.
 
 #### 6.4.1 Synchronization Exception Types
 
@@ -611,7 +611,7 @@ If redundant `SetFlag` instructions exist, all subsequent operator synchronizati
 
 ##### 6.4.3.4 Thread Synchronization Check
 
-If the SIMT unit of the Atlas 950PR and 950DT products incorrectly uses the `__syncthreads()` synchronization instruction, a thread synchronization check alarm is triggered, and the tool prints information about all threads that have not reached the synchronization point.
+If the SIMT unit of the Ascend 950PR and 950DT products incorrectly uses the `__syncthreads()` synchronization instruction, a thread synchronization check alarm is triggered, and the tool prints information about all threads that have not reached the synchronization point.
 
 ```text
 ====== ERROR: Sync error detected. Divergent thread(s) in vec_add
@@ -761,7 +761,7 @@ error  info   warn
 5. After `--check-dcci` is enabled, race check analyzes only DCCI missing and does not display race check results other than DCCI missing.
 6. Programs that are recompiled by using the API header file provided by msSanitizer can be used only for memory leak check on AscendCL APIs and cannot be used on device APIs.
 7. msSanitizer currently supports the check of operators whose `blockDim` is less than 100.
-8. The tool cannot yet detect the read and write behavior of vector computation instructions in SIMD VF functions on the UB for Atlas 950PR and 950DT products. Therefore, uninitialization check for Atlas 950PR and 950DT products does not support the UB space for now.
+8. The tool cannot yet detect the read and write behavior of vector computation instructions in SIMD VF functions on the UB for Ascend 950PR and 950DT products. Therefore, uninitialization check for Ascend 950PR and 950DT products does not support the UB space for now.
 9. The tool does not support exception check for operators launched by configuring CCUs through aclnn for now.
 10. The tool does not support identifying the shared memory provided by HCCL for now.
 11. When an operator uses the `asc_atomic_inc`, `asc_atomic_dec`, `WaitPreBlockCalc`, and `GroupBarrier::Wait` APIs, race check reports read/write races because these APIs use a software synchronization mechanism internally. This message is a benign alarm and does not affect the actual running result of the operator.

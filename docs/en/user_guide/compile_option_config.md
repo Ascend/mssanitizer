@@ -24,7 +24,7 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
     > [!NOTE]
     >
-    > This sample project does not support Atlas A3 products and Atlas 950PR and 950DT products.
+    > This sample project does not support Atlas A3 products and Ascend 950PR and 950DT products.
 
 2. To compile the operator code, add the following compilation options:
 
