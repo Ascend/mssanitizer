@@ -232,7 +232,7 @@ TEST(SyncInstructions, dump_wait_flag_with_memcheck_and_initcheck_expect_get_non
     };
 
     std::vector<uint8_t> memInfo(MEM_INFO_SIZE, 0);
-    
+
     __sanitizer_report_wait_flag(memInfo.data(), record.location.fileNo, record.location.lineNo, record.location.pc,
                                  record.src, record.dst, record.eventID);
     __sanitizer_report_wait_flag(memInfo.data(), record.location.fileNo, record.location.lineNo, record.location.pc,
@@ -429,6 +429,35 @@ TEST(SyncInstructions, sync_all_expect_get_correct_records)
         record.location.pc, 2, false);
     uint8_t* ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
     ASSERT_TRUE(CheckRecordEqual<RecordType::SYNC_ALL_STUB>(ptr, record));
+}
+
+TEST(SyncInstructions, event_t_overloads_and_atomic_modes_expect_record)
+{
+    std::vector<uint8_t> memInfo(MEM_INFO_SIZE, 0);
+    RecordGlobalHead head{};
+    head.checkParms.racecheck = true;
+    std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
+
+    event_t ev = static_cast<event_t>(EventID::EVENT_ID1);
+    pipe_t src = static_cast<pipe_t>(PipeType::PIPE_S);
+    pipe_t dst = static_cast<pipe_t>(PipeType::PIPE_V);
+    mem_t mem = static_cast<mem_t>(MemType::GM);
+
+    __sanitizer_report_hset_flag(memInfo.data(), 1, 1, 0, src, dst, ev, mem, false);
+    __sanitizer_report_hwait_flag(memInfo.data(), 1, 1, 0, src, dst, ev, mem, false);
+    __sanitizer_report_set_flag(memInfo.data(), 1, 1, 0, src, dst, ev);
+    __sanitizer_report_set_flag(memInfo.data(), 1, 1, 0, dst, ev);
+    __sanitizer_report_wait_flag(memInfo.data(), 1, 1, 0, src, dst, ev);
+    __sanitizer_report_wait_flag(memInfo.data(), 1, 1, 0, dst, ev);
+
+    __sanitizer_report_set_atomic_f16(memInfo.data(), 1, 1, 0);
+    __sanitizer_report_set_atomic_s16(memInfo.data(), 1, 1, 0);
+    __sanitizer_report_set_atomic_s32(memInfo.data(), 1, 1, 0);
+    __sanitizer_report_set_atomic_s8(memInfo.data(), 1, 1, 0);
+    __sanitizer_report_set_atomic_bf16(memInfo.data(), 1, 1, 0);
+
+    RecordBlockHead blockHead = *reinterpret_cast<RecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead));
+    ASSERT_GT(blockHead.recordWriteCount, 0u);
 }
 
 }

@@ -50,6 +50,23 @@ TEST(VscatterCalcInstructions, dump_u32_records_and_parse_each_expect_success)
     EXPECT_EQ(unaryOp->dstBlockSize, 32);
 }
 
+TEST(VscatterCalcInstructions, dump_explicit_params_overloads_expect_success) {
+    auto record = CreateRandomUnaryOpRecord();
+    auto run = [&](auto srcType) {
+        using Src = decltype(srcType);
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        __sanitizer_report_vscatter(memInfo.data(), record.location.fileNo, record.location.lineNo, record.location.pc,
+            reinterpret_cast<__ubuf__ uint32_t *>(record.dst), reinterpret_cast<__ubuf__ Src *>(record.src),
+            0U, false, false, 1U, 1U);
+        auto unaryOp = reinterpret_cast<UnaryOpRecord const *>(memInfo.data() + sizeof(RecordGlobalHead) +
+            sizeof(RecordBlockHead) + sizeof(RecordType));
+        EXPECT_EQ(unaryOp->dst, record.dst);
+        EXPECT_EQ(unaryOp->src, record.src);
+    };
+    run(uint16_t{});
+    run(uint32_t{});
+}
+
 TEST(VscatterCalcInstructions, dump_u16_records_and_parse_each_expect_success)
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();

@@ -299,7 +299,7 @@ TEST(DbiDmaMovInstructions, set_l1_2d_b16)
     record.detailedDataType = DetailedDataType::B16;
 
     uint32_t *dst_l1 = (uint32_t *)0x1000;
-    
+
     uint64_t src_l1 = 0;
     SetConfByUint<14, 0>(src_l1, 4); // repeat_time
     SetConfByUint<15, 15>(src_l1, 0); // reserved
@@ -331,7 +331,7 @@ TEST(DbiDmaMovInstructions, set_l1_2d_b32)
     record.detailedDataType = DetailedDataType::B32;
 
     uint32_t *dst_l1 = (uint32_t *)0x1000;
-    
+
     uint64_t src_l1 = 0;
     SetConfByUint<14, 0>(src_l1, 4); // repeat_time
     SetConfByUint<15, 15>(src_l1, 0); // reserved
@@ -359,13 +359,13 @@ void SetL1toUbMovL1UBRecord(const Sanitizer::MovL1UBRecord *record, uint64_t &co
     SetConfByUint<47, 32>(config0, record->srcGap);
     SetConfByUint<63, 48>(config0, record->dstGap);
 }
- 
+
 TEST(DbiDmaMovInstructions, copy_l1_to_ub_expect_get_correct_records)
 {
     auto record = CreateRandomMovL1UBRecord<MemType::L1, MemType::UB>();
- 
+
     std::vector<uint8_t> memInfo = CreateMemInfo();
- 
+
     uint64_t config0{};
     SetL1toUbMovL1UBRecord(&record, config0);
     __sanitizer_report_copy_cbuf_to_ubuf(memInfo.data(),
@@ -379,7 +379,7 @@ TEST(DbiDmaMovInstructions, copy_l1_to_ub_expect_get_correct_records)
     record.location.lineNo = reinterpret_cast<Sanitizer::MovL1UBRecord *>(ptr)->location.lineNo;
     record.location.pc = reinterpret_cast<Sanitizer::MovL1UBRecord *>(ptr)->location.pc;
     ASSERT_TRUE(CheckRecordEqual<RecordType::MOV_L1_TO_UB>(ptr, record));
- 
+
     record = CreateRandomMovL1UBRecord<MemType::L1, MemType::UB>();
     SetL1toUbMovL1UBRecord(&record, config0);
     __sanitizer_report_copy_cbuf_to_ubuf(memInfo.data(),
@@ -402,13 +402,13 @@ void SetUbtoL1MovL1UBRecord(const Sanitizer::MovL1UBRecord *record, uint64_t &co
     SetConfByUint<47, 32>(config0, record->srcGap);
     SetConfByUint<63, 48>(config0, record->dstGap);
 }
- 
+
 TEST(DbiDmaMovInstructions, copy_ub_to_l1_expect_get_correct_records)
 {
     auto record = CreateRandomMovL1UBRecord<MemType::UB, MemType::L1>();
- 
+
     std::vector<uint8_t> memInfo = CreateMemInfo();
- 
+
     uint64_t config0{};
     SetUbtoL1MovL1UBRecord(&record, config0);
     __sanitizer_report_copy_ubuf_to_cbuf(memInfo.data(),
@@ -422,7 +422,7 @@ TEST(DbiDmaMovInstructions, copy_ub_to_l1_expect_get_correct_records)
     record.location.lineNo = reinterpret_cast<Sanitizer::MovL1UBRecord *>(ptr)->location.lineNo;
     record.location.pc = reinterpret_cast<Sanitizer::MovL1UBRecord *>(ptr)->location.pc;
     ASSERT_TRUE(CheckRecordEqual<RecordType::MOV_UB_TO_L1>(ptr, record));
- 
+
     record = CreateRandomMovL1UBRecord<MemType::UB, MemType::L1>();
     SetUbtoL1MovL1UBRecord(&record, config0);
     __sanitizer_report_copy_ubuf_to_cbuf(memInfo.data(),
@@ -437,7 +437,7 @@ TEST(DbiDmaMovInstructions, copy_ub_to_l1_expect_get_correct_records)
     record.location.pc = reinterpret_cast<Sanitizer::MovL1UBRecord *>(ptr)->location.pc;
     ASSERT_TRUE(CheckRecordEqual<RecordType::MOV_UB_TO_L1>(ptr, record));
 }
- 
+
 void SetUbtoUbMovL1UBRecord(const Sanitizer::MovL1UBRecord *record, uint64_t &config0)
 {
     SetConfByUint<15, 0>(config0, record->nBurst);
@@ -445,13 +445,13 @@ void SetUbtoUbMovL1UBRecord(const Sanitizer::MovL1UBRecord *record, uint64_t &co
     SetConfByUint<47, 32>(config0, record->srcGap);
     SetConfByUint<63, 48>(config0, record->dstGap);
 }
- 
+
 TEST(DbiDmaMovInstructions, copy_ub_to_ub_expect_get_correct_records)
 {
     auto record = CreateRandomMovL1UBRecord<MemType::UB, MemType::UB>();
- 
+
     std::vector<uint8_t> memInfo = CreateMemInfo();
- 
+
     uint64_t config0{};
     SetUbtoUbMovL1UBRecord(&record, config0);
     __sanitizer_report_copy_ubuf_to_ubuf(memInfo.data(),
@@ -465,7 +465,7 @@ TEST(DbiDmaMovInstructions, copy_ub_to_ub_expect_get_correct_records)
     record.location.lineNo = reinterpret_cast<Sanitizer::MovL1UBRecord *>(ptr)->location.lineNo;
     record.location.pc = reinterpret_cast<Sanitizer::MovL1UBRecord *>(ptr)->location.pc;
     ASSERT_TRUE(CheckRecordEqual<RecordType::MOV_UB_TO_UB>(ptr, record));
- 
+
     record = CreateRandomMovL1UBRecord<MemType::UB, MemType::UB>();
     SetUbtoUbMovL1UBRecord(&record, config0);
     __sanitizer_report_copy_ubuf_to_ubuf(memInfo.data(),
@@ -558,4 +558,40 @@ TEST(DbiDmaMovInstructions, copy_cbuf_to_fbuf_expect_get_correct_records)
         reinterpret_cast<void*>(record.src), config);
     uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
     ASSERT_TRUE(CheckRecordEqual<RecordType::MOV_CBUF_TO_FB>(ptr, record));
+}
+
+TEST(DbiDmaMovInstructions, basic_dma_mov_and_nd2nz_overloads_expect_record)
+{
+    auto call = [&](auto &&func, RecordType expectType) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), expectType);
+    };
+    auto pc = 0ULL;
+    uint64_t config = 0, xm = 0, xt = 0;
+    auto *ub = reinterpret_cast<__ubuf__ void *>(0x100);
+    auto *gm = reinterpret_cast<__gm__ void *>(0x200);
+    auto *cb = reinterpret_cast<__cbuf__ void *>(0x100);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_ubuf(m, pc, 0, ub, gm, config); }, RecordType::DMA_MOV);
+    call([&](uint8_t *m) { __sanitizer_report_copy_ubuf_to_gm(m, pc, 0, gm, ub, config); }, RecordType::DMA_MOV);
+    call([&](uint8_t *m) { __sanitizer_report_copy_ubuf_to_gm_byte(m, pc, 0, gm, ub, config, static_cast<bm_t>(0)); }, RecordType::DMA_MOV);
+    call([&](uint8_t *m) { __sanitizer_report_copy_cbuf_to_gm(m, pc, 0, gm, cb, config); }, RecordType::DMA_MOV);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf(m, pc, 0, cb, gm, config, static_cast<pad_t>(0)); }, RecordType::DMA_MOV);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_b8(m, pc, 0, cb, gm, xm, xt); }, RecordType::DMA_MOV_ND2NZ);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_b16(m, pc, 0, cb, gm, xm, xt); }, RecordType::DMA_MOV_ND2NZ);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_b32s(m, pc, 0, cb, gm, xm, xt); }, RecordType::DMA_MOV_ND2NZ);
+    call([&](uint8_t *m) { __sanitizer_report_nd_copy_gm_to_ubuf_b8(m, pc, 0, ub, gm, xm, xt); }, RecordType::ND_DMA_OUT_TO_UB);
+    call([&](uint8_t *m) { __sanitizer_report_nd_copy_gm_to_ubuf_b16(m, pc, 0, ub, gm, xm, xt); }, RecordType::ND_DMA_OUT_TO_UB);
+    auto callDav = [&](auto &&func, RecordType expectType) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        __sanitizer_report_set_mte2_nz_para(memInfo.data(), pc, 0, 0);
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), expectType);
+    };
+    callDav([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_d_b16(m, pc, 0, cb, gm, xm, xt); }, RecordType::DMA_MOV_ND2NZ_D);
+    callDav([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_multi_nd2nz_d_b32(m, pc, 0, cb, gm, xm, xt); }, RecordType::DMA_MOV_ND2NZ_D);
+    callDav([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_multi_dn2nz_d_b8(m, pc, 0, cb, gm, xm, xt); }, RecordType::DMA_MOV_DN2NZ_D);
+    callDav([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_multi_dn2nz_d_b16(m, pc, 0, cb, gm, xm, xt); }, RecordType::DMA_MOV_DN2NZ_D);
 }

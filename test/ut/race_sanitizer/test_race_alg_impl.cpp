@@ -676,3 +676,36 @@ TEST(RaceAlgImpl, dynamic_ub_write_event_with_mem_event_expect_race_error)
     alg.WaitFinished();
     ASSERT_EQ(alg.GetRaceCount(), 1U);
 }
+
+TEST(RaceAlgImpl, race_alg_base_process_methods_cover_branches)
+{
+    RaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2);
+    SanEvent e{};
+    e.pipe = PipeType::PIPE_M;
+
+    e.type = EventType::CROSS_CORE_SYNC_EVENT;
+    e.eventInfo.fftsSyncInfo.opType = SyncType::WAIT_INTRA_BLOCK;
+    e.eventInfo.fftsSyncInfo.flagId = 1;
+    EXPECT_EQ(alg.ProcessBlockSyncEvent(e, RaceCheckType::SINGLE_BLOCK_CHECK), ReturnType::PROCESS_STALLED);
+
+    e.type = EventType::MSTX_CROSS_SYNC_EVENT;
+    e.eventInfo.mstxCrossInfo.opType = SyncType::MSTX_SET_CROSS;
+    e.eventInfo.mstxCrossInfo.addr = 0x1000; e.eventInfo.mstxCrossInfo.flagId = 2;
+    alg.CacheMstxCrossSet(e); alg.CacheMstxCrossSet(e);
+    EXPECT_EQ(alg.ProcessMstxCrossSyncEvent(e), ReturnType::PROCESS_OK);
+    e.eventInfo.mstxCrossInfo.opType = SyncType::MSTX_WAIT_CROSS;
+    e.eventInfo.mstxCrossInfo.isMore = true;
+    EXPECT_EQ(alg.ProcessMstxCrossSyncEvent(e), ReturnType::PROCESS_OK);
+
+    e.type = EventType::SYNC_EVENT;
+    auto &buf = e.eventInfo.bufSyncInfo;
+    buf.bufId = 1; buf.mode = BufMode::BLOCK_MODE;
+    buf.opType = SyncType::GET_BUF; buf.rlsCount = 0;
+    EXPECT_EQ(alg.ProcessGetRlsBufSyncEvent(e, RaceCheckType::SINGLE_BLOCK_CHECK), ReturnType::PROCESS_OK);
+    buf.rlsCount = 2;
+    EXPECT_EQ(alg.ProcessGetRlsBufSyncEvent(e, RaceCheckType::SINGLE_BLOCK_CHECK), ReturnType::PROCESS_STALLED);
+    buf.opType = SyncType::RLS_BUF;
+    EXPECT_EQ(alg.ProcessGetRlsBufSyncEvent(e, RaceCheckType::SINGLE_BLOCK_CHECK), ReturnType::PROCESS_OK);
+    buf.opType = SyncType::GET_BUF; buf.rlsCount = 1;
+    EXPECT_EQ(alg.ProcessGetRlsBufSyncEvent(e, RaceCheckType::SINGLE_BLOCK_CHECK), ReturnType::PROCESS_OK);
+}

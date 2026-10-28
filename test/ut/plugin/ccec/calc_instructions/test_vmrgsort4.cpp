@@ -81,7 +81,7 @@ TEST(Vmrgsort4CalcInstructions, dump_records_with_repeat_greater_than_1_and_pars
     __sanitizer_report_vmrgsort4(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
         reinterpret_cast<__ubuf__ float *>(record1.dst), reinterpret_cast<__ubuf__ float *>(record1.src),
         record1.repeat, regionProposalArr[0], regionProposalArr[1], regionProposalArr[2], regionProposalArr[3], 0, 15);
-    
+
     auto record = reinterpret_cast<UnaryOpRecord *>(memInfo.data() + sizeof(RecordGlobalHead) +
                                                     sizeof(RecordBlockHead) + sizeof(RecordType));
     CheckDstPubParm<RecordType::VMRGSORT4_OP_C220, float>(record, record1);
@@ -98,7 +98,7 @@ TEST(Vmrgsort4CalcInstructions, dump_records_with_repeat_equal_1_and_parse_expec
     __sanitizer_report_vmrgsort4(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
         reinterpret_cast<__ubuf__ float *>(record1.dst), reinterpret_cast<__ubuf__ float *>(record1.src),
         record1.repeat, regionProposalArr[0], regionProposalArr[1], regionProposalArr[2], regionProposalArr[3], 0, 15);
-    
+
     auto readRecord0 = reinterpret_cast<ElementRecord *>(memInfo.data() + sizeof(RecordGlobalHead) +
                                                          sizeof(RecordBlockHead) + sizeof(RecordType));
     CheckElementRead<RecordType::VMRGSORT4_OP_C220>(readRecord0, reinterpret_cast<__ubuf__ float *>(record1.src),
@@ -239,4 +239,45 @@ TEST(Vmrgsort4CalcInstructions, dump_float_type_records_with_repeat_equal_1_and_
         sizeof(RecordBlockHead) + sizeof(RecordType) * 5 + sizeof(ElementRecord) * 4);
     CheckElementWrite<RecordType::VMRGSORT4_OP_M200>(writeRecord, reinterpret_cast<__ubuf__ float *>(record1.dst),
                                                      regionProposalArr);
+}
+
+TEST(Vmrgsort4CalcInstructions, dump_c220_config_and_half_explicit_overloads_expect_success) {
+    uint16_t rp[4] = {2, 3, 4, 5};
+    uint64_t src1 = (static_cast<uint64_t>(rp[0]) << 0) | (static_cast<uint64_t>(rp[1]) << 16) |
+                    (static_cast<uint64_t>(rp[2]) << 32) | (static_cast<uint64_t>(rp[3]) << 48);
+
+    {
+        auto record1 = CreateRandomUnaryOpRecord();
+        record1.repeat = RandInt(2, 0xFF);
+        uint64_t config = (record1.repeat & 0xFF) | (uint64_t(0xF) << 8);
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        __sanitizer_report_vmrgsort4(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
+            reinterpret_cast<__ubuf__ half *>(record1.dst), reinterpret_cast<__ubuf__ half *>(record1.src), src1, config);
+        auto record = reinterpret_cast<UnaryOpRecord *>(memInfo.data() + sizeof(RecordGlobalHead) +
+                                                        sizeof(RecordBlockHead) + sizeof(RecordType));
+        CheckDstPubParm<RecordType::VMRGSORT4_OP_C220, half>(record, record1);
+    }
+    {
+        auto record1 = CreateRandomUnaryOpRecord();
+        record1.repeat = RandInt(2, 0xFF);
+        uint64_t config = (record1.repeat & 0xFF) | (uint64_t(0xF) << 8);
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        __sanitizer_report_vmrgsort4(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
+            reinterpret_cast<__ubuf__ float *>(record1.dst), reinterpret_cast<__ubuf__ float *>(record1.src), src1, config);
+        auto record = reinterpret_cast<UnaryOpRecord *>(memInfo.data() + sizeof(RecordGlobalHead) +
+                                                        sizeof(RecordBlockHead) + sizeof(RecordType));
+        CheckDstPubParm<RecordType::VMRGSORT4_OP_C220, float>(record, record1);
+    }
+
+    {
+        auto record1 = CreateRandomUnaryOpRecord();
+        record1.repeat = RandInt(2, 0xFF);
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        __sanitizer_report_vmrgsort4(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
+            reinterpret_cast<__ubuf__ half *>(record1.dst), reinterpret_cast<__ubuf__ half *>(record1.src),
+            record1.repeat, rp[0], rp[1], rp[2], rp[3], 0, 15);
+        auto record = reinterpret_cast<UnaryOpRecord *>(memInfo.data() + sizeof(RecordGlobalHead) +
+                                                        sizeof(RecordBlockHead) + sizeof(RecordType));
+        CheckDstPubParm<RecordType::VMRGSORT4_OP_C220, half>(record, record1);
+    }
 }

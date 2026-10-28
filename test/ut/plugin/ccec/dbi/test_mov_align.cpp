@@ -178,3 +178,58 @@ TEST(DbiMovAlignInstructions, dump_mov_align_v2_gm2ub__expect_get_correct_record
     ASSERT_TRUE(CheckRecordEqual<RecordType::MOV_ALIGN_V2>(ptr, record));
 }
 
+TEST(DbiMovAlignInstructions, dump_loop_out_to_l1_registers_expect_success)
+{
+    std::vector<uint8_t> memInfo = CreateMemInfo();
+    auto *globalHead = reinterpret_cast<Sanitizer::RecordGlobalHead *>(memInfo.data());
+    int64_t regIdx = GetRegisterIdx();
+
+    uint64_t loopSize = 0;
+    SetConfByUint<20, 0>(loopSize, 16U);
+    SetConfByUint<42, 21>(loopSize, 32U);
+    __sanitizer_report_set_loop_size_outtol1(memInfo.data(), 0, 0, loopSize);
+    auto &loopSizeReg = globalHead->registers[regIdx].sprLoopSizeOut2L1;
+    EXPECT_EQ((GetUintFromConf<20, 0>(loopSizeReg)), 16U);
+    EXPECT_EQ((GetUintFromConf<42, 21>(loopSizeReg)), 32U);
+
+    uint64_t loop1Stride = 0;
+    SetConfByUint<39, 0>(loop1Stride, 64U);
+    SetConfByUint<60, 40>(loop1Stride, 128U);
+    __sanitizer_report_set_loop1_stride_outtol1(memInfo.data(), 0, 0, loop1Stride);
+    auto &loop1Reg = globalHead->registers[regIdx].sprLoop1StrideOut2L1;
+    EXPECT_EQ((GetUintFromConf<39, 0>(loop1Reg)), 64U);
+    EXPECT_EQ((GetUintFromConf<60, 40>(loop1Reg)), 128U);
+
+    uint64_t loop2Stride = 0;
+    SetConfByUint<39, 0>(loop2Stride, 256U);
+    SetConfByUint<60, 40>(loop2Stride, 512U);
+    __sanitizer_report_set_loop2_stride_outtol1(memInfo.data(), 0, 0, loop2Stride);
+    auto &loop2Reg = globalHead->registers[regIdx].sprLoop2StrideOut2L1;
+    EXPECT_EQ((GetUintFromConf<39, 0>(loop2Reg)), 256U);
+    EXPECT_EQ((GetUintFromConf<60, 40>(loop2Reg)), 512U);
+}
+
+TEST(DbiMovAlignInstructions, align_basic_and_v2_remaining_overloads_expect_record)
+{
+    auto call = [&](auto &&func, RecordType expectType) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), expectType);
+    };
+    uint64_t config = 0, gapConfig = 0, config1 = 0;
+    auto *ub = reinterpret_cast<__ubuf__ void *>(0x100);
+    auto *gm = reinterpret_cast<__gm__ void *>(0x200);
+    auto *cb = reinterpret_cast<__cbuf__ void *>(0x100);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_ubuf_align_b8(m, 0, 0, ub, gm, config, gapConfig); }, RecordType::MOV_ALIGN);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_ubuf_align_b16(m, 0, 0, ub, gm, config, gapConfig); }, RecordType::MOV_ALIGN);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_ubuf_align_b32(m, 0, 0, ub, gm, config, gapConfig); }, RecordType::MOV_ALIGN);
+    call([&](uint8_t *m) { __sanitizer_report_copy_ubuf_to_gm_align_b8(m, 0, 0, gm, ub, config, gapConfig); }, RecordType::MOV_ALIGN);
+    call([&](uint8_t *m) { __sanitizer_report_copy_ubuf_to_gm_align_b16(m, 0, 0, gm, ub, config, gapConfig); }, RecordType::MOV_ALIGN);
+    call([&](uint8_t *m) { __sanitizer_report_copy_ubuf_to_gm_align_b32(m, 0, 0, gm, ub, config, gapConfig); }, RecordType::MOV_ALIGN);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_ubuf_align_v2_b8(m, 0, 0, ub, gm, config, config1); }, RecordType::MOV_ALIGN_V2);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_ubuf_align_v2_b16(m, 0, 0, ub, gm, config, config1); }, RecordType::MOV_ALIGN_V2);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_align_v2_b8(m, 0, 0, cb, gm, config, config1); }, RecordType::MOV_ALIGN_V2);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_align_v2_b16(m, 0, 0, cb, gm, config, config1); }, RecordType::MOV_ALIGN_V2);
+    call([&](uint8_t *m) { __sanitizer_report_copy_gm_to_cbuf_align_v2_b32(m, 0, 0, cb, gm, config, config1); }, RecordType::MOV_ALIGN_V2);
+}

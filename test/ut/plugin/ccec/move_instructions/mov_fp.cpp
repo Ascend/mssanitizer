@@ -123,4 +123,36 @@ TEST(MovFpInstructions, mov_fp_expect_get_correct_records)
     ptr += sizeof(RecordType) + sizeof(MovFpRecord);
     ASSERT_TRUE(CheckRecordEqual<RecordType::MOV_FP>(ptr, record));
 }
+
+TEST(MovFpInstructions, mov_fp_remaining_overloads_expect_record)
+{
+    auto record = CreateRandomMovFpRecord();
+    uint64_t xm, xt;
+    ExtractConfigFromMovFpRecord(record, xm, xt);
+    uint8_t sid = 0, reLUPRE = 0;
+    uint64_t quantPRE = 0;
+    auto &loc = record.location;
+    auto call = [&](auto &&func) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), RecordType::MOV_FP);
+    };
+    auto s = [&](auto *d, auto *src) { call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_gm(m, loc.fileNo, loc.lineNo, loc.pc, d, src, xm, xt); }); };
+    auto f = [&](auto *d, auto *src) { call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_gm(m, loc.fileNo, loc.lineNo, loc.pc, d, src, sid, record.nSize, record.mSize, record.dstStride, record.srcStride, record.enUnitFlag, quantPRE, reLUPRE, record.channelSplit, record.enNZ2ND); }); };
+    auto *sf = reinterpret_cast<__cc__ float *>(record.src);
+    auto *si = reinterpret_cast<__cc__ int32_t *>(record.src);
+    s(reinterpret_cast<__gm__ float *>(record.dst), sf); f(reinterpret_cast<__gm__ float *>(record.dst), sf);
+    s(reinterpret_cast<__gm__ __bf16 *>(record.dst), sf); f(reinterpret_cast<__gm__ __bf16 *>(record.dst), sf);
+    s(reinterpret_cast<__gm__ int8_t *>(record.dst), sf); f(reinterpret_cast<__gm__ int8_t *>(record.dst), sf);
+    s(reinterpret_cast<__gm__ uint8_t *>(record.dst), sf); f(reinterpret_cast<__gm__ uint8_t *>(record.dst), sf);
+    s(reinterpret_cast<__gm__ half *>(record.dst), si); f(reinterpret_cast<__gm__ half *>(record.dst), si);
+    s(reinterpret_cast<__gm__ int16_t *>(record.dst), si); f(reinterpret_cast<__gm__ int16_t *>(record.dst), si);
+    s(reinterpret_cast<__gm__ int8_t *>(record.dst), si); f(reinterpret_cast<__gm__ int8_t *>(record.dst), si);
+    s(reinterpret_cast<__gm__ uint8_t *>(record.dst), si); f(reinterpret_cast<__gm__ uint8_t *>(record.dst), si);
+    auto b4 = [&](auto *d) { call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_gm_b4(m, loc.fileNo, loc.lineNo, loc.pc, d, si, xm, xt); }); };
+    auto b4f = [&](auto *d) { call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_gm_b4(m, loc.fileNo, loc.lineNo, loc.pc, d, si, sid, record.nSize, record.mSize, record.dstStride, record.srcStride, record.enUnitFlag, quantPRE, reLUPRE, record.channelSplit, record.enNZ2ND); }); };
+    auto *dv = reinterpret_cast<__gm__ void *>(record.dst);
+    b4(dv); b4f(dv);
+}
 }

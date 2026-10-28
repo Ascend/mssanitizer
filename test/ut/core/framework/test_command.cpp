@@ -19,6 +19,8 @@
 #include <fstream>
 #include <climits>
 #include <experimental/filesystem>
+#include <system_error>
+#include <unistd.h>
 
 #include "command.h"
 #include "record_defs.h"
@@ -32,6 +34,11 @@ using namespace Sanitizer;
 using namespace std;
 namespace fs = std::experimental::filesystem;
 constexpr mode_t DIR_DEFAULT_MOD = 0750;
+
+static std::string GetTestLogPath()
+{
+    return std::string("/tmp/mssanitizer_cmd_") + std::to_string(::getpid()) + ".log";
+}
 
 class TestCommand : public testing::Test {
 public:
@@ -49,24 +56,27 @@ public:
 
     static void TearDownTestCase()
     {
-        fs::remove_all(TestCommand::launcherPath_.ToString().c_str());
+        std::error_code ec;
+        fs::remove_all(TestCommand::launcherPath_.ToString().c_str(), ec);
     }
 
     void SetUp() override
     {
         dumpPath_ = "./_temp_dumpDir";
         ASSERT_EQ(mkdir(dumpPath_.c_str(), DIR_DEFAULT_MOD), 0);
+        logPath_ = GetTestLogPath();
     }
 
     void TearDown() override
     {
-        fs::remove_all(dumpPath_.c_str());
-        fs::remove_all("/tmp/test.log");
+        std::error_code ec;
+        fs::remove_all(dumpPath_.c_str(), ec);
     }
 
 public:
     static Path launcherPath_;
     string dumpPath_;
+    string logPath_;
 };
 
 Path TestCommand::launcherPath_{""};
@@ -78,7 +88,7 @@ TEST_F(TestCommand, run_ls_command_expect_success)
         .defaultCheck = true,
         .memCheck = true,
     };
-    Command command(config, false, LogLv::INFO, "/tmp/test.log");
+    Command command(config, false, LogLv::INFO, logPath_);
     command.Exec(paramList);
 }
 
@@ -143,7 +153,7 @@ TEST_F(TestCommand, IPC_functions_basic)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, logPath_);
     Checker checker(config, false);
     IPCMemRecord record1;
     record1.type = IPCOperationType::SET_INFO;
@@ -160,8 +170,8 @@ TEST_F(TestCommand, IPC_functions_basic)
     ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
 
     ChildPidContainer childPidVec{};
-    auto workerJob = [&config, &checker, &ipcMemName]() {
-        ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    auto workerJob = [&config, &checker, &ipcMemName, this]() {
+        ThreadManager threadManager(config, false, LogLv::INFO, logPath_);
         IPCResponse response;
         IPCMemRecord record3;
         record3.type = IPCOperationType::MAP_INFO;
@@ -209,7 +219,7 @@ TEST_F(TestCommand, IPC_function_repeat_operation_expect_fail)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, logPath_);
     Checker checker(config, false);
     IPCMemRecord record1;
     record1.type = IPCOperationType::SET_INFO;
@@ -232,8 +242,8 @@ TEST_F(TestCommand, IPC_function_repeat_operation_expect_fail)
     ASSERT_EQ(response.status, ResponseStatus::FAIL);
 
     ChildPidContainer childPidVec{};
-    auto workerJob = [&config, &checker, &ipcMemName]() {
-        ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    auto workerJob = [&config, &checker, &ipcMemName, this]() {
+        ThreadManager threadManager(config, false, LogLv::INFO, logPath_);
         IPCResponse response;
         IPCMemRecord record3;
         record3.type = IPCOperationType::MAP_INFO;
@@ -299,7 +309,7 @@ TEST(Command, IPC_function_open_without_set_expect_fail)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, GetTestLogPath());
     Checker checker(config, false);
     IPCMemRecord record1;
     record1.type = IPCOperationType::MAP_INFO;
@@ -322,7 +332,7 @@ TEST(Command, IPC_function_destroy_without_set_expect_fail)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, GetTestLogPath());
     Checker checker(config, false);
     IPCMemRecord record1;
     record1.type = IPCOperationType::DESTROY_INFO;
@@ -343,7 +353,7 @@ TEST(Command, IPC_function_close_without_open_expect_fail)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, GetTestLogPath());
     Checker checker(config, false);
     IPCMemRecord record1;
     constexpr uint64_t randAddr = 123;
@@ -366,7 +376,7 @@ TEST(Command, IPC_function_unknown_type_expect_no_response)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, GetTestLogPath());
     Checker checker(config, false);
     IPCMemRecord record1;
     record1.type = static_cast<IPCOperationType>(static_cast<uint32_t>(IPCOperationType::UNMAP_INFO) + 1);
@@ -385,7 +395,7 @@ TEST(Command, IPC_operate_the_wrong_name_expect_fail)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, GetTestLogPath());
     Checker checker(config, false);
     IPCMemRecord record1;
     record1.type = IPCOperationType::SET_INFO;
@@ -403,7 +413,7 @@ TEST(Command, IPC_operate_the_wrong_name_expect_fail)
 
     ChildPidContainer childPidVec{};
     auto workerJob = [&config, &checker, &ipcMemNameWrong]() {
-        ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+        ThreadManager threadManager(config, false, LogLv::INFO, GetTestLogPath());
         IPCResponse response;
         IPCMemRecord record3;
         record3.type = IPCOperationType::MAP_INFO;
@@ -452,7 +462,7 @@ static void FakeConfigFile(const Path &projectPath)
 TEST_F(TestCommand, fake_valid_dump_path_expect_detect_finish_success)
 {
     Config config {};
-    Command command(config, false, LogLv::INFO, "/tmp/test.log");
+    Command command(config, false, LogLv::INFO, logPath_);
     constexpr int loopNum = 3;
     for (size_t i = 0; i < loopNum; i++) {
         Path subDir{dumpPath_ + "/dumpData_0_" + to_string(i)};
@@ -466,7 +476,7 @@ TEST_F(TestCommand, fake_valid_dump_path_expect_detect_finish_success)
 TEST_F(TestCommand, fake_empty_config_dump_project_expect_detect_fail)
 {
     Config config {};
-    Command command(config, false, LogLv::INFO, "/tmp/test.log");
+    Command command(config, false, LogLv::INFO, logPath_);
     Path subDir{dumpPath_ + "/dumpData_0_0"};
     ASSERT_EQ(mkdir(subDir.ToString().c_str(), DIR_DEFAULT_MOD), 0);
     ASSERT_FALSE(DetectDumpProject(command, dumpPath_));
@@ -476,7 +486,7 @@ TEST_F(TestCommand, fake_empty_config_dump_project_expect_detect_fail)
 TEST_F(TestCommand, fake_invalid_number_in_dump_project_expect_detect_fail)
 {
     Config config {};
-    Command command(config, false, LogLv::INFO, "/tmp/test.log");
+    Command command(config, false, LogLv::INFO, logPath_);
     Path subDir{dumpPath_ + "/dumpData_a_0"};
     ASSERT_EQ(mkdir(subDir.ToString().c_str(), DIR_DEFAULT_MOD), 0);
     FakeConfigFile(subDir);
@@ -487,7 +497,7 @@ TEST_F(TestCommand, fake_invalid_number_in_dump_project_expect_detect_fail)
 TEST_F(TestCommand, fake_invalid_lower_line_in_dump_project_expect_detect_fail)
 {
     Config config {};
-    Command command(config, false, LogLv::INFO, "/tmp/test.log");
+    Command command(config, false, LogLv::INFO, logPath_);
     Path subDir{dumpPath_ + "/dump_Data_1_0"};
     ASSERT_EQ(mkdir(subDir.ToString().c_str(), DIR_DEFAULT_MOD), 0);
     FakeConfigFile(subDir);
@@ -498,7 +508,7 @@ TEST_F(TestCommand, fake_invalid_lower_line_in_dump_project_expect_detect_fail)
 TEST_F(TestCommand, test_empty_dump_project_generated_expect_finish_ok)
 {
     Config config {};
-    Command command(config, false, LogLv::INFO, "/tmp/test.log");
+    Command command(config, false, LogLv::INFO, logPath_);
     ASSERT_FALSE(DetectDumpProject(command, dumpPath_));
     ASSERT_FALSE(Path(dumpPath_).Exists());
 }
@@ -543,7 +553,7 @@ TEST(Command, IPC_map_unmap_in_parent_expect_cover_handle_host_mem)
         .defaultCheck = true,
         .memCheck = true,
     };
-    ThreadManager threadManager(config, false, LogLv::INFO, "/tmp/test.log");
+    ThreadManager threadManager(config, false, LogLv::INFO, GetTestLogPath());
     Checker checker(config, false);
     ResetIPCMap();
 

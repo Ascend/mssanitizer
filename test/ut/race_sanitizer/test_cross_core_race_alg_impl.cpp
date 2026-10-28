@@ -18,8 +18,10 @@
 #include <gtest/gtest.h>
 
 #include "rand_data.h"
+#define private public
 #include "alg_framework/cross_core_race_alg_impl.h"
 #include "alg_framework/race_alg_factory.h"
+#undef private
 using namespace Sanitizer;
 
 namespace SanitizerTest {
@@ -1166,6 +1168,65 @@ TEST(CrossCoreRaceAlgImpl, mstx_signal_multi_producer_accumulate_expect_no_race)
     FillFinishEvent(event);
     alg.Do(event);
     ASSERT_EQ(alg.GetRaceCount(), 0U);
+}
+
+TEST(CrossCoreRaceAlgImpl, do_dynamic_mem_non_cross_core_expect_skip)
+{
+    CrossCoreRaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2);
+    SanEvent event{};
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.pipe = PipeType::PIPE_V;
+    event.loc.coreId = 0;
+    event.eventInfo.dynamicOpInfo.memType = MemType::UB;
+    alg.Do(event);
+    SUCCEED();
+}
+
+TEST(CrossCoreRaceAlgImpl, process_event_various_types_expect_no_crash)
+{
+    CrossCoreRaceAlgImpl alg(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2);
+    SanEvent e{};
+    e.loc.coreId = 0; e.loc.blockType = BlockType::AIVEC; e.pipe = PipeType::PIPE_S;
+
+    e.type = EventType::CROSS_CORE_SOFT_SYNC_EVENT;
+    e.eventInfo.softSyncInfo.opType = SyncType::IB_SET;
+    e.eventInfo.softSyncInfo.eventID = 1;
+    EXPECT_EQ(alg.ProcessBlockSoftSyncEvent(e), ReturnType::PROCESS_OK);
+    e.eventInfo.softSyncInfo.opType = SyncType::IB_WAIT;
+    e.eventInfo.softSyncInfo.eventID = 99; e.eventInfo.softSyncInfo.waitCoreID = 0;
+    EXPECT_EQ(alg.ProcessBlockSoftSyncEvent(e), ReturnType::PROCESS_STALLED);
+    e.eventInfo.softSyncInfo.opType = SyncType::SYNC_ALL;
+    e.eventInfo.softSyncInfo.usedCores = 2;
+    EXPECT_EQ(alg.ProcessBlockSoftSyncEvent(e), ReturnType::PROCESS_STALLED);
+
+    e.type = EventType::MSTX_SIGNAL_SET_EVENT;
+    e.eventInfo.mstxSignalSet.addr = 0x200; e.eventInfo.mstxSignalSet.value = 1;
+    EXPECT_EQ(alg.ProcessMstxSignalSetEvent(e), ReturnType::PROCESS_OK);
+
+    e.type = EventType::MSTX_SIGNAL_WAIT_EVENT;
+    e.eventInfo.mstxSignalWait.addr = 0x999;
+    e.eventInfo.mstxSignalWait.cmpOp = CompareOp::GE;
+    e.eventInfo.mstxSignalWait.cmpValue = 1;
+    EXPECT_EQ(alg.ProcessMstxSignalWaitEvent(e), ReturnType::PROCESS_STALLED);
+
+    e.type = EventType::BUF_SYNC_EVENT;
+    e.eventInfo.bufSyncInfo.opType = SyncType::RLS_BUF;
+    e.eventInfo.bufSyncInfo.bufId = 1; e.eventInfo.bufSyncInfo.mode = BufMode::BLOCK_MODE;
+    EXPECT_EQ(alg.ProcessGetRlsBufSyncEvent(e, RaceCheckType::CROSS_BLOCK_CHECK), ReturnType::PROCESS_OK);
+
+    e.type = EventType::MSTX_CROSS_CORE_BARRIER;
+    e.eventInfo.mstxCrossCoreBarrier.usedCoreNum = 2;
+    e.eventInfo.mstxCrossCoreBarrier.isAIVOnly = false;
+    EXPECT_EQ(alg.ProcessMstxCrossCoreBarrier(e), ReturnType::PROCESS_STALLED);
+
+    e.type = EventType::MSTX_CROSS_NPU_BARRIER;
+    e.eventInfo.mstxCrossNpuBarrier.usedCoreNum = 2;
+    e.eventInfo.mstxCrossNpuBarrier.isAIVOnly = false;
+    EXPECT_EQ(alg.ProcessMstxCrossNpuBarrier(e), ReturnType::PROCESS_STALLED);
+
+    e.type = EventType::SYNC_EVENT;
+    e.eventInfo.syncInfo.opType = SyncType::PIPE_BARRIER;
+    EXPECT_EQ(alg.ProcessSyncEvent(e), ReturnType::PROCESS_OK);
 }
 
 }

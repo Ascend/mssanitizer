@@ -91,3 +91,27 @@ TEST(LoadB2Instructions, load_cbuf_to_cb_f16)
     uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
     ASSERT_TRUE(CheckRecordEqual<RecordType::LOAD_B2>(ptr, record));
 }
+
+TEST(LoadB2Instructions, load_cbuf_to_cb_b2_repeat_overloads_expect_record) {
+    auto record = CreateLoadB2Record<MemType::L1, MemType::L0B>();
+    auto call = [&](auto &&func) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), RecordType::LOAD_B2);
+    };
+
+    uint8_t repeat = 4, sid = 0;
+    call([&](uint8_t *m) { __sanitizer_report_load_cbuf_to_cb_b2(m, record.location.fileNo, record.location.lineNo, record.location.pc, reinterpret_cast<__cb__ half *>(record.dst), reinterpret_cast<__cbuf__ half *>(record.src), repeat, sid); });
+    call([&](uint8_t *m) {
+        __sanitizer_report_load_cbuf_to_cb_b2(m, record.location.fileNo, record.location.lineNo, record.location.pc,
+            reinterpret_cast<__cb__ half *>(record.dst), reinterpret_cast<__cbuf__ half *>(record.src), repeat);
+    });
+    call([&](uint8_t *m) { __sanitizer_report_load_cbuf_to_cb_b2(m, record.location.fileNo, record.location.lineNo, record.location.pc, reinterpret_cast<__cb__ int8_t *>(record.dst), reinterpret_cast<__cbuf__ int8_t *>(record.src), repeat, sid); });
+    call([&](uint8_t *m) {
+        __sanitizer_report_load_cbuf_to_cb_b2(m, record.location.fileNo, record.location.lineNo, record.location.pc,
+            reinterpret_cast<__cb__ int8_t *>(record.dst), reinterpret_cast<__cbuf__ int8_t *>(record.src), repeat);
+    });
+    call([&](uint8_t *m) { __sanitizer_report_load_cbuf_to_cb_b2(m, record.location.fileNo, record.location.lineNo, record.location.pc, reinterpret_cast<__cb__ uint8_t *>(record.dst), reinterpret_cast<__cbuf__ uint8_t *>(record.src), repeat, sid); });
+    call([&](uint8_t *m) { __sanitizer_report_load_cbuf_to_cb_b2(m, record.location.fileNo, record.location.lineNo, record.location.pc, reinterpret_cast<__cb__ uint8_t *>(record.dst), reinterpret_cast<__cbuf__ uint8_t *>(record.src), repeat); });
+}

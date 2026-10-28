@@ -219,3 +219,15 @@ TEST(DbiVecInstructions, vms4v2_expect_get_correct_records)
     record.location = x->location;
     ASSERT_TRUE(*x == record);
 }
+
+TEST(DbiVecInstructions, moveva_and_vtranspose_expect_success)
+{
+    std::vector<uint8_t> memInfo = CreateMemInfo();
+    __sanitizer_report_moveva(memInfo.data(), 0, 0,
+        static_cast<uint64_t>(VaAddr8::VA0), 0, 0, 0);
+
+    __sanitizer_report_vtranspose(memInfo.data(), 0, 0,
+        reinterpret_cast<__ubuf__ void *>(0x100), reinterpret_cast<__ubuf__ void *>(0x200));
+    uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    ASSERT_TRUE(*reinterpret_cast<RecordType*>(ptr) == RecordType::UNARY_OP);
+}

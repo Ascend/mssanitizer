@@ -361,4 +361,51 @@ TEST(SyncInstructions, dbi_hwait_flagi_expect_get_correct_records)
     ASSERT_TRUE(CheckRecordEqual<RecordType::HWAIT_FLAGI>(ptr, record));
 }
 
+TEST(SyncInstructions, dbi_remaining_sync_overloads_expect_record) {
+    auto call = [&](auto &&func, RecordType expectType) {
+        std::vector<uint8_t> memInfo(MEM_INFO_SIZE, 0);
+        RecordGlobalHead head{};
+        head.checkParms.racecheck = true;
+        std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), expectType);
+    };
+
+    auto pc = 0ULL;
+    auto pipeS = static_cast<pipe_t>(PipeType::PIPE_S);
+    auto pipeV = static_cast<pipe_t>(PipeType::PIPE_V);
+    uint64_t eventID = 1;
+    mem_t mem = static_cast<mem_t>(MemType::GM);
+
+    call([&](uint8_t *m) { __sanitizer_report_set_flag(m, pc, 0, pipeS, pipeV, eventID); }, RecordType::SET_FLAG);
+    call([&](uint8_t *m) { __sanitizer_report_set_flagi(m, pc, 0, pipeS, pipeV, eventID); }, RecordType::SET_FLAGI);
+    call([&](uint8_t *m) { __sanitizer_report_wait_flag(m, pc, 0, pipeS, pipeV, eventID); }, RecordType::WAIT_FLAG);
+    call([&](uint8_t *m) { __sanitizer_report_wait_flagi(m, pc, 0, pipeS, pipeV, eventID); }, RecordType::WAIT_FLAGI);
+
+    call([&](uint8_t *m) { __sanitizer_report_get_buf(m, pc, 0, pipeS, 1, false); }, RecordType::GET_BUF);
+    call([&](uint8_t *m) { __sanitizer_report_get_bufi(m, pc, 0, pipeS, 1, false); }, RecordType::GET_BUFI);
+    call([&](uint8_t *m) { __sanitizer_report_rls_buf(m, pc, 0, pipeS, 1, false); }, RecordType::RLS_BUF);
+    call([&](uint8_t *m) { __sanitizer_report_rls_bufi(m, pc, 0, pipeS, 1, false); }, RecordType::RLS_BUFI);
+    call([&](uint8_t *m) { __sanitizer_report_get_buf_v(m, pc, 0, 1, false); }, RecordType::GET_BUF_V);
+    call([&](uint8_t *m) { __sanitizer_report_get_bufi_v(m, pc, 0, 1, false); }, RecordType::GET_BUFI_V);
+    call([&](uint8_t *m) { __sanitizer_report_rls_buf_v(m, pc, 0, 1, false); }, RecordType::RLS_BUF_V);
+    call([&](uint8_t *m) { __sanitizer_report_rls_bufi_v(m, pc, 0, 1, false); }, RecordType::RLS_BUFI_V);
+
+    call([&](uint8_t *m) { __sanitizer_report_set_flag_v(m, pc, 0, pipeV, eventID); }, RecordType::SET_FLAG_V);
+    call([&](uint8_t *m) { __sanitizer_report_set_flagi_v(m, pc, 0, pipeV, eventID); }, RecordType::SET_FLAGI_V);
+    call([&](uint8_t *m) { __sanitizer_report_wait_flag_v(m, pc, 0, pipeS, eventID); }, RecordType::WAIT_FLAG_V);
+    call([&](uint8_t *m) { __sanitizer_report_wait_flagi_v(m, pc, 0, pipeS, eventID); }, RecordType::WAIT_FLAGI_V);
+
+    call([&](uint8_t *m) { __sanitizer_report_pipe_barrier(m, pc, 0, pipeV); }, RecordType::PIPE_BARRIER);
+    call([&](uint8_t *m) { __sanitizer_report_dsb(m, pc, 0, 0); }, RecordType::DSB);
+    call([&](uint8_t *m) { __sanitizer_report_set_cross_core_v(m, pc, 0, 0); }, RecordType::FFTS_SYNC_V);
+    call([&](uint8_t *m) { __sanitizer_report_wait_flag_dev_pipe_v(m, pc, 0, 2); }, RecordType::WAIT_FLAG_DEV_PIPE_V);
+    call([&](uint8_t *m) { __sanitizer_report_wait_flag_devi_pipe_v(m, pc, 0, 2); }, RecordType::WAIT_FLAG_DEVI_PIPE_V);
+
+    call([&](uint8_t *m) { __sanitizer_report_set_intra_block_v(m, pc, 0, 2); }, RecordType::SET_INTRA_BLOCK_V);
+    call([&](uint8_t *m) { __sanitizer_report_set_intra_blocki_v(m, pc, 0, 2); }, RecordType::SET_INTRA_BLOCKI_V);
+    call([&](uint8_t *m) { __sanitizer_report_wait_intra_block_v(m, pc, 0, 2); }, RecordType::WAIT_INTRA_BLOCK_V);
+    call([&](uint8_t *m) { __sanitizer_report_wait_intra_blocki_v(m, pc, 0, 2); }, RecordType::WAIT_INTRA_BLOCKI_V);
+}
 }

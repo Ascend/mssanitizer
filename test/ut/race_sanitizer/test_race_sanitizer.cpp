@@ -25,6 +25,7 @@
 #include "alg_framework/single_pipe_race_alg_impl.h"
 #include "rand_data.h"
 #include "sanitizer_report.h"
+#include "race_info_display.h"
 #define private public
 #include "race_sanitizer.h"
 #undef private
@@ -513,5 +514,185 @@ TEST(RaceSanitizer, IsTargetEvent_AllPaths_expect_correct)
 
     event.eventInfo.mstxCrossInfo.opType = SyncType::SET_FLAG;
     EXPECT_FALSE(alg.IsTargetEvent(event, BlockType::AIVEC));
+}
+
+namespace {
+RaceSanitizer MakeAlg()
+{
+    RaceSanitizer alg;
+    DeviceInfoSummary info{};
+    info.device = DeviceType::ASCEND_910B1;
+    alg.SetDeviceInfo(info, Config{});
+    return alg;
+}
+}  // namespace
+
+TEST(RaceSanitizer, ParseOnlineError_AllRaceTypes_expect_success)
+{
+    RaceSanitizer alg = MakeAlg();
+    KernelSummary ks{};
+    ks.kernelType = KernelType::AIVEC;
+    ks.blockDim = 1;
+    alg.SetKernelInfo(ks);
+    auto mk = [](KernelErrorType t) {
+        KernelErrorDesc d{};
+        d.errorType = t; d.space = AddressSpace::GM;
+        d.location = {1, 2, 3};
+        d.payload.raceDesc.addr = 0x1000;
+        d.payload.raceDesc.conflictedLocation = {4, 5, 6};
+        return d;
+    };
+    KernelErrorDesc a[] = { mk(KernelErrorType::THREAD_RW_RACE),
+                            mk(KernelErrorType::THREAD_WR_RACE),
+                            mk(KernelErrorType::THREAD_WW_RACE) };
+    KernelErrorRecord r{}; r.errorNum = 3; r.kernelErrorDesc = a;
+    alg.ParseOnlineError(r, BlockType::AIVEC, 1);
+    EXPECT_EQ(alg.simtErrors_->size(), 3u);
+    KernelErrorDesc b[] = { mk(KernelErrorType::MAX) };
+    KernelErrorRecord r2{}; r2.errorNum = 1; r2.kernelErrorDesc = b;
+    alg.ParseOnlineError(r2, BlockType::AIVEC, 2);
+    EXPECT_EQ(alg.simtErrors_->size(), 3u);
+}
+
+TEST(RaceSanitizer, MergeSimtErrors_expect_dedup_and_null_check)
+{
+    RaceSanitizer alg = MakeAlg();
+    alg.simtErrors_ = nullptr;
+    alg.MergeSimtErrors();
+    alg.simtErrors_ = std::make_shared<std::vector<RaceDispInfo>>();
+    RaceDispInfo e1{}; e1.p1.pc = 0x100; e1.p2.pc = 0x200;
+    e1.p1.addr = 0x1000; e1.p2.addr = 0x1000;
+    alg.simtErrors_->push_back(e1);
+    alg.simtErrors_->push_back(e1);
+    alg.MergeSimtErrors();
+    EXPECT_LE(alg.simtErrors_->size(), 2u);
+}
+
+TEST(RaceSanitizer, IsTargetBlockId_expect_correct)
+{
+    RaceSanitizer alg = MakeAlg();
+    Config cfg{}; cfg.checkBlockId = 5;
+    alg.SetDeviceInfo({[] { DeviceInfoSummary i{}; i.device = DeviceType::ASCEND_910B1; return i; }()}, cfg);
+    EXPECT_TRUE(alg.IsTargetBlockId(5));
+    EXPECT_FALSE(alg.IsTargetBlockId(3));
+    Config all{}; all.checkBlockId = CHECK_ALL_BLOCK;
+    alg.SetDeviceInfo({[] { DeviceInfoSummary i{}; i.device = DeviceType::ASCEND_910B1; return i; }()}, all);
+    EXPECT_TRUE(alg.IsTargetBlockId(alg.defaultCheckBlockId_));
+    EXPECT_FALSE(alg.IsTargetBlockId(999));
+}
+
+TEST(RaceSanitizer, DcciDistanceAndEffect_expect_correct)
+{
+    RaceSanitizer alg = MakeAlg();
+    SanEvent event{};
+    event.type = EventType::MEM_EVENT;
+    event.eventInfo.memInfo.opType = AccessType::READ;
+    event.eventInfo.memInfo.memType = MemType::GM;
+    event.eventInfo.memInfo.addr = 0x1000;
+    DcciRecord dcci{};
+    dcci.type = DcciDstType::CACHE_LINE_UB; dcci.space = AddressSpace::GM; dcci.addr = 0x1000;
+    EXPECT_FALSE(alg.DoesDcciHaveEffect(event, dcci));
+    dcci.type = DcciDstType::CACHE_LINE_OUT; dcci.space = AddressSpace::UB;
+    EXPECT_FALSE(alg.DoesDcciHaveEffect(event, dcci));
+    event.eventInfo.memInfo.memType = MemType::L1; dcci.space = AddressSpace::GM;
+    EXPECT_FALSE(alg.DoesDcciHaveEffect(event, dcci));
+    event.eventInfo.memInfo.memType = MemType::GM;
+    dcci.entire = DcciEntireType::ENTIRE_DATA_CACHE;
+    EXPECT_TRUE(alg.DoesDcciHaveEffect(event, dcci));
+    dcci.entire = DcciEntireType::SINGLE_CACHE_LINE;
+    EXPECT_TRUE(alg.DoesDcciHaveEffect(event, dcci));
+    event.eventInfo.memInfo.addr = 0x2000;
+    EXPECT_FALSE(alg.DoesDcciHaveEffect(event, dcci));
+    event.eventInfo.memInfo.opType = AccessType::MEMCPY_BLOCKS;
+    KernelRecord kr{};
+    std::deque<KernelRecord> ahead, after;
+    EXPECT_EQ(alg.NearestDcciDistance(kr, event, ahead, after), 0u);
+}
+
+TEST(RaceSanitizer, Do_with_memory_record_expect_skip)
+{
+    RaceSanitizer alg = MakeAlg();
+    KernelSummary ks{}; ks.kernelType = KernelType::AIVEC; ks.blockDim = 1;
+    alg.SetKernelInfo(ks);
+    SanitizerRecord record{};
+    record.version = RecordVersion::MEMORY_RECORD;
+    std::vector<SanEvent> events;
+    alg.Do(record, events);
+    SUCCEED();
+}
+
+TEST(RaceInfoDisplay, format_and_print_functions_expect_success)
+{
+    namespace S = Sanitizer;
+    std::stringstream ss;
+    S::PrintClassicLocation(ss, 9999, 10, 1, "");
+    EXPECT_FALSE(ss.str().empty());
+
+    S::ErrorEvent ev{};
+    ev.pc = 0; ev.fileNo = 9999; ev.lineNo = 5; ev.serialNo = 2;
+    S::PrintLocationInfo(ss, ev, 2);
+    ev.pc = 0x100; ev.isSimt = true; ev.deviceId = 0; ev.kernelIdx = 0;
+    S::PrintLocationInfo(ss, ev, 3, false);
+
+    S::SimtThreadLocation tl{};
+    tl.idX = 1; tl.idY = 2; tl.idZ = 3;
+    std::stringstream s2;
+    s2 << tl;
+    EXPECT_FALSE(s2.str().empty());
+
+    ss.str("");
+    ss << S::RaceFormatKernelName{0, 0};
+    EXPECT_NE(ss.str().find("in"), std::string::npos);
+
+    S::ErrorEvent fe{};
+    fe.pc = 0; fe.fileNo = 9999; fe.addr = 0x200; fe.coreId = 1;
+    fe.blockType = BlockType::AIVEC;
+    S::FormatEvent(ss, fe, " Write", "WA");
+    fe.accessType = static_cast<uint8_t>(AccessType::WRITE);
+    S::FormatEvent(ss, fe);
+
+    S::RaceDispInfo ri{};
+    ri.p1.serialNo = 2; ri.p2.serialNo = 1;
+    ri.p1.accessType = static_cast<uint8_t>(AccessType::WRITE);
+    ri.p2.accessType = static_cast<uint8_t>(AccessType::READ);
+    ri.p1.memType = static_cast<uint8_t>(MemType::GM);
+    ri.p1.pc = 0; ri.p2.pc = 0;
+    S::FormatRaceInfo(ss, ri);
+    ri.p1.isSimt = true; ri.p2.isSimt = true;
+    S::FormatRaceInfo(ss, ri);
+    ri.isMissDcci = true; ri.p1.isSimt = false; ri.p2.isSimt = false;
+    ri.p1.accessType = static_cast<uint8_t>(AccessType::READ);
+    ri.p2.accessType = static_cast<uint8_t>(AccessType::WRITE);
+    S::FormatMissDcciInfo(ss, ri);
+    ss << ri;
+    ri.isMissDcci = false;
+    ss << ri;
+
+    S::CrossCoreSyncWarnInfo warn{};
+    warn.flagId = 3; warn.baseEvent.pc = 0; warn.baseEvent.coreId = 2;
+    warn.baseEvent.blockType = BlockType::AIVEC;
+    ss << warn;
+    SUCCEED();
+}
+
+TEST(RaceInfoDisplay, report_flag_id_warn_infos_expect_correct)
+{
+    namespace S = Sanitizer;
+    std::vector<std::string> msgs;
+    auto msgFunc = [&msgs](const S::LogLv &, S::Generator<S::DetectionInfo> &&gen) {
+        msgs.push_back(gen().message);
+    };
+
+    S::ReportFlagIdWarnInfos({}, "kernel", msgFunc);
+    EXPECT_TRUE(msgs.empty());
+
+    S::CrossCoreSyncWarnInfo w1{};
+    w1.flagId = 1;
+    w1.baseEvent.pc = 0;
+    w1.baseEvent.serialNo = 1;
+    S::CrossCoreSyncWarnInfo w2 = w1;  // 重复项
+    std::vector<S::CrossCoreSyncWarnInfo> infos = {w1, w2};
+    S::ReportFlagIdWarnInfos(infos, "kernel", msgFunc);
+    EXPECT_EQ(msgs.size(), 1u);
 }
 }

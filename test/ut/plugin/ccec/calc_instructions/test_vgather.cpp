@@ -32,7 +32,7 @@ TEST(VgatherCalcInstructions, dump_u32_type_records_and_parse_expect_success)
     __sanitizer_report_vgather(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
                 reinterpret_cast<__ubuf__ uint32_t*>(record1.dst), reinterpret_cast<__ubuf__ uint32_t *>(record1.src),
                 offsetAddr, dstRepeatStride, repeat);
-    
+
     auto record = reinterpret_cast<VgatherRecord *>(memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
                                                     sizeof(RecordType));
     ASSERT_EQ(record->location, record1.location);
@@ -60,7 +60,7 @@ TEST(VgatherCalcInstructions, dump_u32_type_input_repeat_records_and_parse_expec
     __sanitizer_report_vgather(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
                 reinterpret_cast<__ubuf__ uint32_t*>(record1.dst), reinterpret_cast<__ubuf__ uint32_t *>(record1.src),
                 offsetAddr, dstRepeatStride, repeat);
-    
+
     auto record = reinterpret_cast<VgatherRecord *>(memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
                                                     sizeof(RecordType));
     ASSERT_EQ(record->location, record1.location);
@@ -88,7 +88,7 @@ TEST(VgatherCalcInstructions, dump_u16_type_records_and_parse_expect_success)
     __sanitizer_report_vgather(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
                 reinterpret_cast<__ubuf__ uint16_t*>(record1.dst), reinterpret_cast<__ubuf__ uint32_t *>(record1.src),
                 offsetAddr, dstRepeatStride, repeat);
-    
+
     auto record = reinterpret_cast<VgatherRecord *>(memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
                                                     sizeof(RecordType));
     ASSERT_EQ(record->location, record1.location);
@@ -116,7 +116,7 @@ TEST(VgatherCalcInstructions, dump_u16_type_input_repeat_records_and_parse_expec
     __sanitizer_report_vgather(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
                 reinterpret_cast<__ubuf__ uint16_t*>(record1.dst), reinterpret_cast<__ubuf__ uint32_t *>(record1.src),
                 offsetAddr, dstRepeatStride, repeat);
-    
+
     auto record = reinterpret_cast<VgatherRecord *>(memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
                                                     sizeof(RecordType));
     ASSERT_EQ(record->location, record1.location);
@@ -146,7 +146,7 @@ TEST(VgatherCalcInstructions, dump_u16_type_input_config_records_and_parse_expec
     __sanitizer_report_vgather(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
                 reinterpret_cast<__ubuf__ uint16_t*>(record1.dst), reinterpret_cast<__ubuf__ uint32_t *>(record1.src),
                 config);
-    
+
     auto record = reinterpret_cast<VgatherRecord *>(memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
                                                     sizeof(RecordType));
     ASSERT_EQ(record->location, record1.location);
@@ -176,7 +176,7 @@ TEST(VgatherCalcInstructions, dump_u32_type_input_config_records_and_parse_expec
     __sanitizer_report_vgather(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
                 reinterpret_cast<__ubuf__ uint32_t*>(record1.dst), reinterpret_cast<__ubuf__ uint32_t *>(record1.src),
                 config);
-    
+
     auto record = reinterpret_cast<VgatherRecord *>(memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
                                                     sizeof(RecordType));
     ASSERT_EQ(record->location, record1.location);
@@ -192,4 +192,21 @@ TEST(VgatherCalcInstructions, dump_u32_type_input_config_records_and_parse_expec
     ASSERT_EQ(record->dstBlockStride, 1);
     ASSERT_EQ(record->dstRepeat, 2);
     ASSERT_EQ(record->dstDataBits, 32);
+}
+
+TEST(VgatherCalcInstructions, dump_repeat_stride_mode_overloads_expect_success) {
+    auto record1 = CreateRandomVgatherRecord();
+    auto run = [&](auto dstType) {
+        using Dst = decltype(dstType);
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        __sanitizer_report_vgather(memInfo.data(), record1.location.fileNo, record1.location.lineNo, record1.location.pc,
+            reinterpret_cast<__ubuf__ Dst *>(record1.dst), reinterpret_cast<__ubuf__ uint32_t *>(record1.src),
+            0U, true);
+        auto record = reinterpret_cast<VgatherRecord *>(memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead) +
+                                                        sizeof(RecordType));
+        EXPECT_EQ(record->dst, record1.dst);
+        EXPECT_EQ(record->src, record1.src);
+    };
+    run(uint16_t{});
+    run(uint32_t{});
 }

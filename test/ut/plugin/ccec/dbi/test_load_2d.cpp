@@ -22,6 +22,32 @@
 #define BUILD_DYNAMIC_PROBE
 #include "plugin/ccec/dbi/probes/load_2d.cpp"
 
+TEST(Load2DInstructions, load_gm_to_l0_and_l1_expect_record) {
+    auto callAndCheck = [&](auto &&func) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        ASSERT_EQ(*reinterpret_cast<RecordType *>(ptr), RecordType::LOAD_2D);
+    };
+
+    callAndCheck([&](uint8_t *m) {
+        __sanitizer_report_load_gm_to_ca(m, 0, 0,
+            reinterpret_cast<__ca__ void *>(0x100), reinterpret_cast<__gm__ void *>(0x200), 0, static_cast<addr_cal_mode_t>(0));
+    });
+    callAndCheck([&](uint8_t *m) {
+        __sanitizer_report_load_gm_to_cb(m, 0, 0,
+            reinterpret_cast<__cb__ void *>(0x100), reinterpret_cast<__gm__ void *>(0x200), 0, static_cast<addr_cal_mode_t>(0));
+    });
+    callAndCheck([&](uint8_t *m) {
+        __sanitizer_report_load_gm_to_cbuf(m, 0, 0,
+            reinterpret_cast<__cbuf__ void *>(0x100), reinterpret_cast<__gm__ void *>(0x200), 0, static_cast<addr_cal_mode_t>(0));
+    });
+    callAndCheck([&](uint8_t *m) {
+        __sanitizer_report_load_gm_to_cbuf_2dv2(m, 0, 0,
+            reinterpret_cast<__cbuf__ void *>(0x100), reinterpret_cast<__gm__ void *>(0x200), 0, 0);
+    });
+}
+
 TEST(Load2DInstructions, load_cbuf_to_ca_2dv2_b32)
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();

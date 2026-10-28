@@ -28,7 +28,7 @@ TEST(VselCalcInstructions, dump_records_and_parse_each_expect_success)
     std::vector<CheckBinaryOpBlockInfo> blockInfoVec(18);
     CheckBinaryOpBlockInfo initialValue = {8, 8, 8, 32, 32, 32};
     std::fill_n(blockInfoVec.begin(), blockInfoVec.size(), initialValue);
- 
+
     CallBinaryConfigFunc<half>(memInfo.data(), records, idx++, __sanitizer_report_vsel);
     CallBinaryConfigFunc<half, half, void>(memInfo.data(), records, idx++, __sanitizer_report_vsel);
     CallBinaryFunc<half, half, void>(memInfo.data(), records, idx++, __sanitizer_report_vsel);
@@ -90,4 +90,26 @@ TEST(VselCalcInstructions, dump_records_with_float_mode1_and_parse_expect_succes
     ASSERT_EQ(actualRecord.src0DataBits, sizeof(float) * BITS_EACH_BYTE);
     ASSERT_EQ(actualRecord.src1DataBits, sizeof(float) * BITS_EACH_BYTE);
     ASSERT_EQ(actualRecord.dstDataBits, sizeof(float) * BITS_EACH_BYTE);
+}
+
+TEST(VselCalcInstructions, config_overloads_with_all_select_modes_expect_success) {
+    auto record = CreateRandomBinaryOpRecord();
+    uint64_t ubufAddr = 0x1000;
+    auto setup = [&](std::vector<uint8_t> &memInfo) {
+        __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo.data());
+        globalHead->registers[GetRegisterIdx()].cmpMaskAddr = ubufAddr;
+    };
+
+    auto callConfig = [&](uint8_t selectMode) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        setup(memInfo);
+        uint64_t config = (static_cast<uint64_t>(selectMode) & 0x3) << VSEL_MODESHIFT;
+        __sanitizer_report_vsel(memInfo.data(), record.location.fileNo, record.location.lineNo, record.location.pc,
+            reinterpret_cast<__ubuf__ half *>(record.dst), reinterpret_cast<__ubuf__ half *>(record.src0),
+            reinterpret_cast<__ubuf__ half *>(record.src1), config);
+    };
+
+    callConfig(VSEL_MODE0);
+    callConfig(VSEL_MODE1);
+    callConfig(VSEL_MODE2);
 }

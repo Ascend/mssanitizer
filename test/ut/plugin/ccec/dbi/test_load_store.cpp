@@ -37,7 +37,7 @@ TEST(DbiLoadStore, st_b64_imm_expect_correct_record)
     ASSERT_TRUE(*reinterpret_cast<RecordType*>(ptr) == RecordType::ST_IO);
 
     auto record = reinterpret_cast<LoadStoreRecord*>(ptr + sizeof(RecordType));
-    
+
     ASSERT_TRUE(record->addr == addr + offset);
     ASSERT_TRUE(record->size == sizeof(uint64_t));
     ASSERT_TRUE(record->dataType == DetailedDataType::B64);
@@ -268,4 +268,66 @@ TEST(DbiLoadStore, multiple_load_store_expect_correct_sequence)
     auto record3 = reinterpret_cast<LoadStoreRecord*>(ptr + sizeof(RecordType));
     ASSERT_TRUE(record3->addr == 0x3010);
     ASSERT_TRUE(record3->dataType == DetailedDataType::B64);
+}
+
+TEST(DbiLoadStore, remaining_load_store_variants_expect_record)
+{
+    auto call = [&](auto &&func, RecordType expectType) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), expectType);
+    };
+    uint64_t addr = 0x1000;
+    int64_t offset = 4;
+    uint64_t post = 0;
+    call([&](uint8_t *m) { __sanitizer_report_st_b32_reg(m, 0, 0, addr, offset, post); }, RecordType::ST);
+    call([&](uint8_t *m) { __sanitizer_report_st_b16_imm(m, 0, 0, addr, offset, post); }, RecordType::ST_IO);
+    call([&](uint8_t *m) { __sanitizer_report_st_b16_reg(m, 0, 0, addr, offset, post); }, RecordType::ST);
+    call([&](uint8_t *m) { __sanitizer_report_st_b8_imm(m, 0, 0, addr, offset, post); }, RecordType::ST_IO);
+    call([&](uint8_t *m) { __sanitizer_report_st_b8_reg(m, 0, 0, addr, offset, post); }, RecordType::ST);
+    call([&](uint8_t *m) { __sanitizer_report_stp_b32(m, 0, 0, addr, offset); }, RecordType::STP);
+    call([&](uint8_t *m) { __sanitizer_report_stp_b16(m, 0, 0, addr, offset); }, RecordType::STP);
+    call([&](uint8_t *m) { __sanitizer_report_stp_b8(m, 0, 0, addr, offset); }, RecordType::STP);
+    call([&](uint8_t *m) { __sanitizer_report_sti_b32_imm(m, 0, 0, addr, offset, post); }, RecordType::STI_IO);
+    call([&](uint8_t *m) { __sanitizer_report_sti_b16_imm(m, 0, 0, addr, offset, post); }, RecordType::STI_IO);
+    call([&](uint8_t *m) { __sanitizer_report_sti_b8_imm(m, 0, 0, addr, offset, post); }, RecordType::STI_IO);
+    call([&](uint8_t *m) { __sanitizer_report_sti_b32_reg(m, 0, 0, addr, offset, post); }, RecordType::STI);
+    call([&](uint8_t *m) { __sanitizer_report_sti_b16_reg(m, 0, 0, addr, offset, post); }, RecordType::STI);
+    call([&](uint8_t *m) { __sanitizer_report_sti_b8_reg(m, 0, 0, addr, offset, post); }, RecordType::STI);
+    call([&](uint8_t *m) { __sanitizer_report_ld_b32_imm(m, 0, 0, addr, offset, post); }, RecordType::LD_IO);
+    call([&](uint8_t *m) { __sanitizer_report_ld_b16_imm(m, 0, 0, addr, offset, post); }, RecordType::LD_IO);
+    call([&](uint8_t *m) { __sanitizer_report_ld_b8_imm(m, 0, 0, addr, offset, post); }, RecordType::LD_IO);
+    call([&](uint8_t *m) { __sanitizer_report_ld_b16_reg(m, 0, 0, addr, offset, post); }, RecordType::LD);
+    call([&](uint8_t *m) { __sanitizer_report_ld_b8_reg(m, 0, 0, addr, offset, post); }, RecordType::LD);
+    call([&](uint8_t *m) { __sanitizer_report_ldp_b32(m, 0, 0, addr, offset); }, RecordType::LDP);
+    call([&](uint8_t *m) { __sanitizer_report_ldp_b16(m, 0, 0, addr, offset); }, RecordType::LDP);
+    call([&](uint8_t *m) { __sanitizer_report_ldp_b8(m, 0, 0, addr, offset); }, RecordType::LDP);
+    call([&](uint8_t *m) { __sanitizer_report_st_atomic_b16(m, 0, 0, addr, offset, post); }, RecordType::ST_ATOMIC);
+    call([&](uint8_t *m) { __sanitizer_report_st_atomic_b8(m, 0, 0, addr, offset, post); }, RecordType::ST_ATOMIC);
+    call([&](uint8_t *m) { __sanitizer_report_sti_atomic_b32(m, 0, 0, addr, offset, post); }, RecordType::STI_ATOMIC);
+    call([&](uint8_t *m) { __sanitizer_report_sti_atomic_b16(m, 0, 0, addr, offset, post); }, RecordType::STI_ATOMIC);
+    call([&](uint8_t *m) { __sanitizer_report_sti_atomic_b8(m, 0, 0, addr, offset, post); }, RecordType::STI_ATOMIC);
+    call([&](uint8_t *m) { __sanitizer_report_st_dev_b32(m, 0, 0, addr, offset); }, RecordType::ST_DEV);
+    call([&](uint8_t *m) { __sanitizer_report_st_dev_b16(m, 0, 0, addr, offset); }, RecordType::ST_DEV);
+    call([&](uint8_t *m) { __sanitizer_report_st_dev_b8(m, 0, 0, addr, offset); }, RecordType::ST_DEV);
+    call([&](uint8_t *m) { __sanitizer_report_ld_dev_b32(m, 0, 0, addr, offset); }, RecordType::LD_DEV);
+    call([&](uint8_t *m) { __sanitizer_report_ld_dev_b16(m, 0, 0, addr, offset); }, RecordType::LD_DEV);
+    call([&](uint8_t *m) { __sanitizer_report_ld_dev_b8(m, 0, 0, addr, offset); }, RecordType::LD_DEV);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_atom_u32(m, 0, 0, addr); }, RecordType::SCALAR_ATOM);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_atom_s32(m, 0, 0, addr); }, RecordType::SCALAR_ATOM);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_atom_u64(m, 0, 0, addr); }, RecordType::SCALAR_ATOM);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_atom_s64(m, 0, 0, addr); }, RecordType::SCALAR_ATOM);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_red_u32(m, 0, 0, addr); }, RecordType::SCALAR_RED);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_red_s32(m, 0, 0, addr); }, RecordType::SCALAR_RED);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_red_f16(m, 0, 0, addr); }, RecordType::SCALAR_RED);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_red_bf16(m, 0, 0, addr); }, RecordType::SCALAR_RED);
+    call([&](uint8_t *m) { __sanitizer_report_scalar_red_f32(m, 0, 0, addr); }, RecordType::SCALAR_RED);
+    {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        uint8_t buf[8] = {0};
+        __sanitizer_report___mstx_dfx_report_stub_calli(memInfo.data(), 0, 0, 0, sizeof(buf), buf);
+        __sanitizer_report___mstx_dfx_report_stub_call(memInfo.data(), 0, 0, 0, sizeof(buf), buf);
+        SUCCEED();
+    }
 }

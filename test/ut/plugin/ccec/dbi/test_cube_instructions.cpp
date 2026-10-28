@@ -61,3 +61,35 @@ TEST(DbiCubeInstructions, mmad_expect_get_correct_records)
     record.location = x->location;
     ASSERT_TRUE(*x == record);
 }
+
+TEST(DbiCubeInstructions, all_mad_variants_expect_record) {
+    auto record = CreateRandomBinaryOpRecord();
+    uint64_t config{};
+    SetConfByUint<11, 0>(config, 64);   // m
+    SetConfByUint<23, 12>(config, 128); // k
+    SetConfByUint<35, 24>(config, 64);  // n
+    SetConfByUint<63, 63>(config, 1);
+
+    auto run = [&](auto &&func) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        func(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        EXPECT_EQ(*reinterpret_cast<RecordType *>(ptr), RecordType::MMAD_A5);
+    };
+
+    run([&](uint8_t *m) { __sanitizer_report_mad_s8(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_bf16_f32(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_f32_f32(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_e4m3_e4m3(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_e4m3_e5m2(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_e5m2_e4m3(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_e5m2_e5m2(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e1m2_e1m2(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e1m2_e2m1(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e2m1_e1m2(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e2m1_e2m1(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e4m3_e4m3(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e4m3_e5m2(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e5m2_e4m3(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+    run([&](uint8_t *m) { __sanitizer_report_mad_mx_e5m2_e5m2(m, record.location.pc, 0, nullptr, nullptr, nullptr, config); });
+}
