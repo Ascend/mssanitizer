@@ -213,6 +213,19 @@ uint64_t PM::UnifiedSizeAfter(uint64_t baseAddr, uint64_t size, uint64_t addr) c
         // 比较完整影子字节（包含归属信息），每次跳过一个同值整数宽度。
         // 不跨越当前 SM 或请求区间；遇到差异后逐字节确定准确边界。
         const uint64_t headBytes = static_cast<uint64_t>(head) * BYTE_ONES;
+        // Compare four words per iteration, without crossing the SM or request boundary.
+        constexpr size_t WORDS_PER_BATCH = 4;
+        constexpr size_t BATCH_BYTES = WORDS_PER_BATCH * sizeof(uint64_t);
+        while (offset + BATCH_BYTES <= commonSize) {
+            uint64_t chunks[WORDS_PER_BATCH];
+            std::copy_n(&sm.vabits8[blockOffset + offset], sizeof(chunks),
+                reinterpret_cast<unsigned char *>(chunks));
+            if (chunks[0] != headBytes || chunks[1] != headBytes ||
+                chunks[2] != headBytes || chunks[3] != headBytes) {
+                break;
+            }
+            offset += BATCH_BYTES;
+        }
         while (offset + sizeof(uint64_t) <= commonSize) {
             const uint64_t chunk = ReadShadowWord(&sm.vabits8[blockOffset + offset]);
             if (chunk != headBytes) {
@@ -250,6 +263,7 @@ bool PM::RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const
             const uint8_t *p = smList_[bi]->vabits8 + offsetInBlock;
             const uint64_t status8 = static_cast<uint64_t>(status) * BYTE_ONES;
             uint64_t i = 0;
+            // 使用标准 C++ 每次检查 8 个状态字节，不足 8 字节的尾部逐字节检查。
             for (; i + sizeof(uint64_t) <= blockLen; i += sizeof(uint64_t)) {
                 const uint64_t diff = (ReadShadowWord(p + i) ^ status8) & BYTE_STATUS_MASKS;
                 if (HasZeroByte(diff)) {

@@ -70,6 +70,7 @@ public:
     // 在调用方独占的事件副本上原地移除匹配事件并返回移除数量。
     static size_t FilterInPlace(RecordType recordType, std::vector<SanEvent> &events);
     static size_t FilterInPlace(RecordType recordType, std::vector<SanEvent> &events, const RuleTable &rules);
+    static size_t FilterInPlace(RecordType recordType, SanEvent *events, size_t &size, const RuleTable &rules);
 };
 
 } // namespace Sanitizer

@@ -52,7 +52,7 @@ CrossNpuChecker::CrossNpuChecker(Config const &config) : config_{config}
 
 CrossNpuChecker::RecordArray &CrossNpuChecker::GetRecordArray(uint32_t deviceId)
 {
-    std::unique_lock<std::mutex> guard;
+    std::lock_guard<std::mutex> guard(mtx_);
     return recordMap_[deviceId];
 }
 

@@ -150,6 +150,14 @@ std::shared_ptr<Checker> GetNewChecker(std::stringstream &ss)
 
 class RecordingSanitizer final : public SanitizerBase {
 public:
+    void DoEvents(const SanitizerRecord &record, EventRange events) override {
+        rangePointers.push_back(events.begin());
+        std::vector<SanEvent> copy;
+        if (!events.empty()) {
+            copy.assign(events.begin(), events.end());
+        }
+        Do(record, copy);
+    }
     bool SetDeviceInfo(DeviceInfoSummary const &, Config const &) override { return true; }
     bool SetKernelInfo(KernelSummary const &) override { return true; }
     void ParseOnlineError(const KernelErrorRecord &, BlockType, uint64_t) override {}
@@ -173,6 +181,7 @@ public:
     std::vector<std::vector<SanEvent>> consumedEvents;
     size_t checkRecordCount = 0;
     bool allowProcess = true;
+    std::vector<const SanEvent *> rangePointers;
     std::function<void()> beforeRecord;
 };
 
@@ -232,13 +241,15 @@ TEST(Checker, batch_parse_preserves_empty_and_multiple_event_boundaries) {
     auto parsed = checker.ParseRecords(std::move(task));
 
     ASSERT_EQ(parsed.records.size(), 4U);
-    ASSERT_EQ(parsed.events.size(), 4U);
-    EXPECT_TRUE(parsed.events[0].empty());
-    ASSERT_EQ(parsed.events[1].size(), 1U);
-    EXPECT_GT(parsed.events[2].size(), 1U);
-    ASSERT_EQ(parsed.events[3].size(), 1U);
-    EXPECT_EQ(parsed.events[1][0].serialNo, 17U);
-    EXPECT_EQ(parsed.events[3][0].type, EventType::SANITIZER_CONTROL_EVENT);
+    ASSERT_EQ(parsed.eventOffsets.size(), parsed.records.size() + 1);
+    EXPECT_EQ(parsed.eventOffsets[0], 0U);
+    EXPECT_EQ(parsed.eventOffsets[1], 0U);
+    EXPECT_EQ(parsed.eventOffsets[2], 1U);
+    EXPECT_GT(parsed.eventOffsets[3] - parsed.eventOffsets[2], 1U);
+    EXPECT_EQ(parsed.eventOffsets[4] - parsed.eventOffsets[3], 1U);
+    EXPECT_EQ(parsed.eventOffsets.back(), parsed.events.size());
+    EXPECT_EQ(parsed.events[0].serialNo, 17U);
+    EXPECT_EQ(parsed.events.back().type, EventType::SANITIZER_CONTROL_EVENT);
 }
 
 TEST(Checker, batch_handoff_keeps_records_without_events_for_every_consumer) {
@@ -263,6 +274,30 @@ TEST(Checker, batch_handoff_keeps_records_without_events_for_every_consumer) {
         ASSERT_EQ(consumer->consumedEvents[2].size(), 1U);
         EXPECT_EQ(consumer->consumedEvents[2][0].type, EventType::SANITIZER_CONTROL_EVENT);
     }
+}
+
+TEST(Checker, batch_with_only_empty_events_reaches_all_consumers) {
+    auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
+    Config config{.defaultCheck = true, .memCheck = true, .raceCheck = true, .syncCheck = true};
+    Checker checker(config, false);
+    const std::array<std::shared_ptr<RecordingSanitizer>, 3> consumers{memChecker, raceChecker, syncChecker};
+    for (size_t i = 0; i < consumers.size(); ++i) {
+        checker.sanitizerArr_[i] = consumers[i];
+    }
+    SetCheckerContext(checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
+    checker.Do(std::vector<SanitizerRecord>{MakeMemoryRecord(), MakeMemoryRecord()});
+    checker.Finish();
+
+    for (const auto &consumer : consumers) {
+        ASSERT_EQ(consumer->records.size(), 2U);
+        ASSERT_EQ(consumer->consumedEvents.size(), 2U);
+        EXPECT_TRUE(consumer->consumedEvents[0].empty());
+        EXPECT_TRUE(consumer->consumedEvents[1].empty());
+        EXPECT_EQ(consumer->checkRecordCount, 2U);
+    }
+    ASSERT_EQ(memChecker->rangePointers.size(), 2U);
+    EXPECT_EQ(memChecker->rangePointers[0], nullptr);
+    EXPECT_EQ(memChecker->rangePointers[1], nullptr);
 }
 
 SanitizerRecord MakeMstxTensorRecord() {
@@ -394,6 +429,48 @@ TEST(Checker, filters_private_events_in_batch_and_preserves_order_for_other_cons
     }
 }
 
+TEST(Checker, event_range_borrows_work_buffer_and_preserves_empty_records_and_boundaries) {
+    auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
+    auto checker = MakeRecordingChecker(memChecker, raceChecker, syncChecker);
+    memChecker->beforeRecord = {};
+    WorkArgs args{};
+    args.records = {MakeMemoryRecord(),
+        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 17),
+        MakeKernelFinishRecord()};
+    args.events.resize(3);
+    args.eventOffsets = {0, 0, 2, 3};
+    auto &first = args.events[0];
+    first.type = EventType::MEM_EVENT;
+    first.loc.blockType = BlockType::AIVEC;
+    first.pipe = PipeType::PIPE_S_CAL;
+    first.eventInfo.memInfo.memType = MemType::UB;
+    first.eventInfo.memInfo.opType = AccessType::WRITE;
+    first.serialNo = 17;
+    args.events[1] = first;
+    args.events[1].serialNo = 18;
+    args.events[2].type = EventType::SANITIZER_CONTROL_EVENT;
+    uint64_t removed = 0;
+
+    for (const auto &[tool, consumer] :
+        std::array<std::pair<ToolType, std::shared_ptr<RecordingSanitizer>>, 3>{{
+            {ToolType::MEMCHECK, memChecker}, {ToolType::RACECHECK, raceChecker},
+            {ToolType::SYNCCHECK, syncChecker}}}) {
+        consumer->beforeRecord = {};
+        checker->ConsumeKernelBlock(static_cast<uint8_t>(tool), args, removed);
+
+        ASSERT_EQ(consumer->consumedEvents.size(), 3U);
+        EXPECT_TRUE(consumer->consumedEvents[0].empty());
+        ASSERT_EQ(consumer->consumedEvents[1].size(), 2U);
+        EXPECT_EQ(consumer->consumedEvents[1][0].serialNo, 17U);
+        EXPECT_EQ(consumer->consumedEvents[1][1].serialNo, 18U);
+        ASSERT_EQ(consumer->rangePointers.size(), 3U);
+        EXPECT_EQ(consumer->rangePointers[0], args.events.data());
+        EXPECT_EQ(consumer->rangePointers[1], args.events.data());
+        EXPECT_EQ(consumer->rangePointers[2], args.events.data() + 2);
+        EXPECT_EQ(consumer->checkRecordCount, 3U);
+    }
+}
+
 TEST(Checker, address_consumer_filters_before_init_pipeline_replay) {
     Config config{.defaultCheck = true, .memCheck = true, .raceCheck = false, .initCheck = true};
     Checker checker(config, false);
@@ -407,8 +484,40 @@ TEST(Checker, address_consumer_filters_before_init_pipeline_replay) {
     auto addressSanitizer =
         std::dynamic_pointer_cast<AddressSanitizer>(checker.sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
     ASSERT_NE(addressSanitizer, nullptr);
-    ASSERT_EQ(addressSanitizer->replayedEvents_.size(), 1U);
-    EXPECT_EQ(addressSanitizer->replayedEvents_[0].serialNo, 2U);
+    ASSERT_EQ(addressSanitizer->replayedRecords_.size(), 1U);
+    EXPECT_EQ(addressSanitizer->replayedRecords_[0].serialNo, 2U);
+    EXPECT_EQ(addressSanitizer->replayedEventCount_, 1U);
+}
+
+TEST(Checker, init_replay_merges_in_callback_order_and_clears_between_kernels) {
+    Config config{.defaultCheck = true, .memCheck = true, .raceCheck = false, .initCheck = true};
+    Checker checker(config, false);
+    SetCheckerContext(checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
+    auto asan = std::dynamic_pointer_cast<AddressSanitizer>(
+        checker.sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
+    ASSERT_NE(asan, nullptr);
+
+    checker.Do(MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 11, 0x1000));
+    checker.Do(MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 12, 0x1001));
+    checker.Do(MakeKernelFinishRecord());
+    ASSERT_EQ(asan->replayedRecords_.size(), 1U);
+    EXPECT_EQ(asan->replayedRecords_[0].dstAddr, 0x1000U);
+    EXPECT_EQ(asan->replayedRecords_[0].memSize, 2U);
+    EXPECT_EQ(asan->replayedRecords_[0].serialNo, 11U);
+    EXPECT_EQ(asan->replayedEventCount_, 2U);
+
+    KernelSummary next{};
+    next.kernelType = KernelType::AIVEC;
+    next.blockDim = 1;
+    checker.SetKernelInfo(next);
+    EXPECT_TRUE(asan->replayedRecords_.empty());
+    EXPECT_EQ(asan->replayedEventCount_, 0U);
+    checker.Do(MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 21, 0x1002));
+    checker.Do(MakeKernelFinishRecord());
+    ASSERT_EQ(asan->replayedRecords_.size(), 1U);
+    EXPECT_EQ(asan->replayedRecords_[0].memSize, 1U);
+    EXPECT_EQ(asan->replayedRecords_[0].serialNo, 21U);
+    EXPECT_EQ(asan->replayedEventCount_, 1U);
 }
 
 TEST(Checker, keeps_mstx_tensor_events_for_original_consumer_processing) {

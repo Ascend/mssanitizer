@@ -136,7 +136,9 @@ void HandleKernelInfo(Checker &checker, CrossNpuChecker &crossNpuChecker,
     RuntimeContext::Instance().kernelNameDisplay = GetDisplayKernelName(kernelSummary, config.demangleMode);
     KernelManager::Instance().Add(RuntimeContext::Instance().GetDeviceId(), kernelSummary);
     checker.SetKernelInfo(kernelSummary);
-    crossNpuChecker.GetRecordArray(RuntimeContext::Instance().GetDeviceId()).CreateNewKernel();
+    if (auto *records = crossNpuChecker.GetRecordArrayForCollection(RuntimeContext::Instance().GetDeviceId())) {
+        records->CreateNewKernel();
+    }
 }
 
 void HandleHostMemRecord(Checker &checker, HostMemRecord const &record)
@@ -277,10 +279,12 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     std::vector<SanitizerRecord> records;
     records.reserve(kernelBlock->GetRecordNum());
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
-    CrossNpuChecker::RecordArray &recordArray = crossNpuChecker.GetRecordArray(runtimeContext.GetDeviceId());
+    auto *recordArray = crossNpuChecker.GetRecordArrayForCollection(runtimeContext.GetDeviceId());
     while (kernelBlock->NextSimd(sanitizerRecord.payload.kernelRecord)) {
         records.emplace_back(sanitizerRecord);
-        recordArray.Push(sanitizerRecord);
+        if (recordArray != nullptr) {
+            recordArray->Push(sanitizerRecord);
+        }
 
         // 如果simd记录为SIMT_CALL，则当前记录后插入simt_entry动态记录，将记录执行序还原为发射序
         if (sanitizerRecord.payload.kernelRecord.recordType == RecordType::SIMT_CALL) {
@@ -317,7 +321,9 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     sanitizerRecord.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
     sanitizerRecord.payload.kernelRecord.serialNo = ++runtimeContext.serialNo_;
     records.emplace_back(sanitizerRecord);
-    recordArray.Push(sanitizerRecord);
+    if (recordArray != nullptr) {
+        recordArray->Push(sanitizerRecord);
+    }
 
     // wait for next block
     ++runtimeContext.currentBlockIdx_;
@@ -329,7 +335,9 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
         sanitizerRecord.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
         sanitizerRecord.payload.kernelRecord.serialNo = ++runtimeContext.serialNo_;
         records.emplace_back(sanitizerRecord);
-        recordArray.Push(sanitizerRecord);
+        if (recordArray != nullptr) {
+            recordArray->Push(sanitizerRecord);
+        }
         SAN_INFO_LOG("Finish processing the last kernel block.");
     }
 

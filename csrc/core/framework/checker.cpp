@@ -284,11 +284,35 @@ void Checker::ConsumeRecord(uint8_t consumeId, const SanitizerRecord &record, st
     }
 }
 
-void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount) {
-    for (std::size_t i = 0; i < args.records.size(); ++i) {
-        ConsumeRecord(consumeId, args.records[i], args.events[i], removedPathwayEventCount);
+void Checker::ConsumeEventRange(uint8_t consumeId, const SanitizerRecord &record, SanEvent *events, size_t count,
+    uint64_t &removedPathwayEventCount) {
+    const bool initialized = initWithDeviceInfoDone_[consumeId] || initWithKernelInfoDone_[consumeId];
+    if (initialized && sanitizerArr_[consumeId]->CheckRecordBeforeProcess(record)) {
+        const bool shouldFilter = consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) ||
+            consumeId == static_cast<uint8_t>(ToolType::RACECHECK);
+        if (shouldFilter && record.version == RecordVersion::KERNEL_RECORD) {
+            removedPathwayEventCount += PathwayFilter::FilterInPlace(
+                record.payload.kernelRecord.recordType, events, count, PathwayFilter::GetRules());
+        }
+        sanitizerArr_[consumeId]->DoEvents(record, EventRange(events, count));
     }
+    if (record.version == RecordVersion::KERNEL_RECORD &&
+        record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH &&
+        (consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) ||
+         consumeId == static_cast<uint8_t>(ToolType::RACECHECK))) {
+        ReportPathwayFilterSummary(consumeId, removedPathwayEventCount);
+        removedPathwayEventCount = 0;
+    }
+}
 
+void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount) {
+    // Each record borrows its event slice directly from the work buffer.
+    for (std::size_t i = 0; i < args.records.size(); ++i) {
+        const size_t begin = args.eventOffsets[i];
+        const size_t count = args.eventOffsets[i + 1] - begin;
+        auto *first = args.events.empty() ? nullptr : args.events.data() + begin;
+        ConsumeEventRange(consumeId, args.records[i], first, count, removedPathwayEventCount);
+    }
     if (finishProduce_) {
         WaitAfterConsumed(consumeId);
     }
@@ -555,9 +579,23 @@ ParseOut Checker::ParseRecords(ParseTask &&task) {
     ParseOut out;
     out.ctx = std::move(task.ctx);
     out.records = std::move(task.records);
-    out.events.resize(out.records.size());
-    for (std::size_t i = 0; i < out.records.size(); ++i) {
-        RecordPreProcess::GetInstance().Process(out.records[i], out.events[i]);
+    out.events.reserve(out.records.size());
+    out.eventOffsets.reserve(out.records.size() + 1);
+    out.eventOffsets.push_back(0);
+    std::vector<SanEvent> recordEvents;
+    recordEvents.reserve(4U);
+    for (const auto &record : out.records) {
+        // 解析当前记录，复用临时缓冲区的容量。
+        recordEvents.clear();
+        RecordPreProcess::GetInstance().Process(record, recordEvents);
+
+        // 将当前记录的事件按原顺序移动追加到一维事件数组。
+        const auto moveBegin = std::make_move_iterator(recordEvents.begin());
+        const auto moveEnd = std::make_move_iterator(recordEvents.end());
+        out.events.insert(out.events.end(), moveBegin, moveEnd);
+
+        // 保存当前记录的结束偏移；没有事件时与上一个偏移相同。
+        out.eventOffsets.push_back(out.events.size());
     }
     return out;
 }
@@ -586,6 +624,7 @@ void Checker::DispatchParsed(ParseOut &out) {
             workargs.eventType = BroadcastEvent::KERNEL_BLOCK_ARRIVED;
             workargs.records = records;
             workargs.events = canMoveEvents ? std::move(out.events) : out.events;
+            workargs.eventOffsets = canMoveEvents ? std::move(out.eventOffsets) : out.eventOffsets;
             workerArgs_[i].push(std::move(workargs));
         }
     }

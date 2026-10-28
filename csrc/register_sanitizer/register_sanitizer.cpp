@@ -67,6 +67,10 @@ bool RegisterSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
 
 void RegisterSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events)
 {
+    DoEvents(record, EventRange(events));
+}
+
+void RegisterSanitizer::DoEvents(const SanitizerRecord &record, EventRange events) {
     (void)record;
 
     if (events.empty()) {

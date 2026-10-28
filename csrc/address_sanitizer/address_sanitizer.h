@@ -42,6 +42,7 @@ public:
     bool SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config) override;
     bool SetKernelInfo(KernelSummary const &kernelInfo) override;
     void Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) override;
+    void DoEvents(const SanitizerRecord &record, EventRange events) override;
     void ParseOnlineError(const KernelErrorRecord &record, BlockType blockType, uint64_t serialNo) override;
     bool CheckRecordBeforeProcess(const SanitizerRecord &record) override;
     void RegisterNotifyFunc(const MSG_FUNC &func) override;
@@ -64,7 +65,7 @@ private:
     static void ConvertMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records);
     static void ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records);
     void DoMemOpRecord(MemOpRecord const &record, bool reduce);
-    size_t GetRecordsNum(const std::vector<SanEvent> &events) const;
+    size_t GetRecordsNum(EventRange events) const;
     void ReportErrorMsg();
     void ReportAfterKernelFinish();
     void CheckNonDefaultReg(const SanEvent &event);
@@ -78,7 +79,7 @@ private:
     void DoWithLocalTensor(const MstxRecord &record, const std::vector<MemOpRecord> &records);
     void AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord);
     void SetPermission(MemRegionPermissionDesc const &desc);
-    void ConvertEventsToRecords(const std::vector<SanEvent> &events, std::vector<MemOpRecord> &records);
+    void ConvertEventsToRecords(EventRange events, std::vector<MemOpRecord> &records);
 
     std::unique_ptr<ShadowMemory> shadowMemory_;
     MSG_FUNC msgFunc_;
@@ -90,7 +91,8 @@ private:
     BoundsCheck boundsCheckDfx_;
     std::map<uint64_t, uint64_t> mstxHeapCacheMap_;
     PipelineReplayer pipelineReplayer_;
-    std::vector<SanEvent> replayedEvents_;
+    std::vector<MemOpRecord> replayedRecords_;
+    size_t replayedEventCount_{};
     DeviceType deviceType_ = DeviceType::INVALID;
     uint64_t preSerialNo_{0};
 };

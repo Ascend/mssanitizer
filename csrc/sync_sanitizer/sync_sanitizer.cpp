@@ -285,6 +285,10 @@ void SyncSanitizer::DoRedundancyCheck(SanEvent const &event)
 }
 
 void SyncSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
+    DoEvents(record, EventRange(events));
+}
+
+void SyncSanitizer::DoEvents(const SanitizerRecord &record, EventRange events) {
     if (IsMstxRecordWithTensor(record)) {
         return;
     }

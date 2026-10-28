@@ -362,6 +362,30 @@ TEST(RaceSanitizer, race_sanitizer_with_single_block_check_cant_detect_target_ev
     }
 }
 
+TEST(RaceSanitizer, dcci_window_owns_events_after_borrowed_input_is_destroyed) {
+    auto &config = ConfigManager::Instance().Get();
+    const bool originalCheckDcci = config.checkDcci;
+    config.checkDcci = true;
+    RaceSanitizer sanitizer;
+    SanitizerRecord record{};
+    record.version = RecordVersion::KERNEL_RECORD;
+    record.payload.kernelRecord.recordType = RecordType::STORE;
+    {
+        std::vector<SanEvent> events(1);
+        events[0].serialNo = 42;
+        sanitizer.DoEvents(record, EventRange(events));
+        events[0].serialNo = 99;
+    }
+    sanitizer.DoEvents(record, EventRange(nullptr, 0));
+    config.checkDcci = originalCheckDcci;
+
+    ASSERT_EQ(sanitizer.recordWindow_.size(), 2U);
+    const auto &savedEvents = sanitizer.recordWindow_.front().second;
+    ASSERT_EQ(savedEvents.size(), 1U);
+    EXPECT_EQ(savedEvents[0].serialNo, 42U);
+    EXPECT_TRUE(sanitizer.recordWindow_.back().second.empty());
+}
+
 TEST(RaceSanitizer, race_sanitizer_detect_load_store_missing_dcci_expect_get_miss_dcci_error) {
     ConfigManager::Instance().Get().checkDcci = true;
 

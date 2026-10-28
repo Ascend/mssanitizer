@@ -13,6 +13,7 @@ target_sources(ascend_hal_hook PRIVATE
   ${HOOK_INC_DIR}/hooks_verify.cpp
 )
 target_include_directories(ascend_hal_hook PUBLIC
+  ${CSRC_INC_DIR}
   ${FRAMEWORK_INC_DIR}
   ${SECUREC_INC_DIR}
   ${HOOK_INC_DIR}

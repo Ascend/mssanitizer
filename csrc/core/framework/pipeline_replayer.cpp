@@ -45,7 +45,7 @@ void PipelineReplayer::Do(const SanEvent& event)
         event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         // 收集阶段：缓存 MSTX set 计数，并将事件推入 eventContainer_
         CacheMstxCrossSet(event);
-        // 统计内存事件数，供回放前预分配 replayedEvents_
+        // 统计内存事件数，供回放前预分配输出缓冲区
         if (event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT) {
             ++memEventCount_;
         }

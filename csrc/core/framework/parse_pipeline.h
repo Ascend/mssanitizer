@@ -53,8 +53,9 @@ struct ParseTask {
 
 struct ParseOut {
     std::vector<SanitizerRecord> records;
-    // 每条 record 独占一个事件容器，可直接传给过滤和检测接口。
-    std::vector<std::vector<SanEvent>> events;
+    // Record i owns events[eventOffsets[i], eventOffsets[i + 1]); empty records repeat the offset.
+    std::vector<SanEvent> events;
+    std::vector<size_t> eventOffsets;
     // 随解析结果带回 committer 线程：收尾(DisplaySanitizerEnd 等)需用同一份 device/kernel 上下文
     ParseContext ctx;
 };

@@ -48,6 +48,13 @@ size_t PathwayFilter::FilterInPlace(RecordType recordType, std::vector<SanEvent>
 }
 
 size_t PathwayFilter::FilterInPlace(RecordType recordType, std::vector<SanEvent> &events, const RuleTable &rules) {
+    size_t size = events.size();
+    const size_t removed = FilterInPlace(recordType, events.data(), size, rules);
+    events.resize(size);
+    return removed;
+}
+
+size_t PathwayFilter::FilterInPlace(RecordType recordType, SanEvent *events, size_t &size, const RuleTable &rules) {
     // A record type that no rule can match is a common fast path. Keep this check
     // derived from the rule table so adding a rule cannot make it stale.
     if (std::none_of(rules.cbegin(), rules.cend(),
@@ -55,14 +62,17 @@ size_t PathwayFilter::FilterInPlace(RecordType recordType, std::vector<SanEvent>
         return 0;
     }
 
-    const size_t oldSize = events.size();
-    const auto newEnd = std::remove_if(events.begin(), events.end(), [recordType, &rules](const SanEvent &event) {
+    if (size == 0) {
+        return 0;
+    }
+    const size_t oldSize = size;
+    const auto newEnd = std::remove_if(events, events + size, [recordType, &rules](const SanEvent &event) {
         return std::any_of(rules.cbegin(), rules.cend(), [recordType, &event](const PathwayFilterRule &rule) {
             return PathwayFilter::Matches(rule, recordType, event);
         });
     });
-    events.erase(newEnd, events.end());
-    return oldSize - events.size();
+    size = static_cast<size_t>(newEnd - events);
+    return oldSize - size;
 }
 
 } // namespace Sanitizer

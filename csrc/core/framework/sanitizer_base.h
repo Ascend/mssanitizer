@@ -27,6 +27,7 @@
 #include "utility/log.h"
 #include "utility/types.h"
 #include "event_def.h"
+#include "utility/event_range.h"
 
 namespace Sanitizer {
 // SanitizerBase接口类用于内存检测和竞争检测等接入mssanitizer框架
@@ -40,6 +41,13 @@ public:
     virtual bool SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config) = 0;
     virtual bool SetKernelInfo(KernelSummary const &kernelInfo) = 0;
     virtual void Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) = 0;
+    virtual void DoEvents(const SanitizerRecord &record, EventRange events) {
+        std::vector<SanEvent> copy;
+        if (!events.empty()) {
+            copy.assign(events.begin(), events.end());
+        }
+        Do(record, copy);
+    }
     virtual void ParseOnlineError(const KernelErrorRecord &record, BlockType blockType, uint64_t serialNo) = 0;
     virtual bool CheckRecordBeforeProcess(const SanitizerRecord &record) = 0;
     virtual void RegisterNotifyFunc(const MSG_FUNC &func) = 0;
@@ -54,7 +62,7 @@ public:
     std::shared_ptr<SanitizerBase> Create(const ToolType tool);
     void RegisteCreater(const ToolType tool, const SanitizerCreater& func);
     virtual ~SanitizerFactory() = default;
-    
+
 private:
     SanitizerFactory() = default;
     SanitizerFactory(const SanitizerFactory&) = delete;
@@ -70,7 +78,7 @@ public:
         SanitizerFactory::GetInstance().RegisteCreater(tool, func);
     }
     virtual ~RegisteSanitizer() = default;
-    
+
     RegisteSanitizer(const RegisteSanitizer&) = delete;
     RegisteSanitizer& operator=(const RegisteSanitizer&)& = delete;
 };

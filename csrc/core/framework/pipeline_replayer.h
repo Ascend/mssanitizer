@@ -55,7 +55,7 @@ public:
     // 是否已完成回放
     bool IsFinished() const;
 
-    // 收集阶段统计到的内存事件总数，供外部在回放前预分配 replayedEvents_（避免 push_back 反复扩容拷贝）
+    // 收集阶段统计到的内存事件总数，供外部在回放前预分配 replayedRecords_（避免 push_back 反复扩容拷贝）
     uint64_t GetMemEventCount() const;
 
     // 注册外部回调，用于感知事件处理顺序及卡死状态
@@ -85,7 +85,7 @@ private:
     std::vector<SyncEventDataBase> syncDB_;
     CrossCoreSyncInfoContainer crossCoreSyncInfoContainer_;
 
-    // 收集阶段内存事件总数（replayedEvents_ 预分配用）
+    // 收集阶段内存事件总数（replayedRecords_ 预分配用）
     uint64_t memEventCount_ = 0U;
 
     using CrossCoreBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, uint32_t>;

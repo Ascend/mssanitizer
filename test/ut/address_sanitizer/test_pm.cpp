@@ -17,6 +17,8 @@
 
 #include <gtest/gtest.h>
 #include <any>
+#include <algorithm>
+#include <random>
 #include <mutex>
 
 #define private public
@@ -200,6 +202,52 @@ TEST(GMPM, set_large_size_then_get_expect_correct)
     ASSERT_EQ(it, range.End());
 }
 
+TEST(PM, bulk_scans_match_byte_oracle_for_unaligned_ranges_and_block_boundaries)
+{
+    constexpr uint64_t bytes = 2 * 65536 + 64;
+    PM pm(bytes, 0xFE);
+    std::vector<uint8_t> expected(bytes, 0xFE);
+    std::mt19937 rng(20261020);
+    for (size_t i = 0; i < 120; ++i) {
+        const uint64_t addr = rng() % bytes;
+        const uint64_t size = std::min<uint64_t>(1 + rng() % 4096, bytes - addr);
+        const uint8_t bits = static_cast<uint8_t>(rng());
+        pm.Set(addr, size, bits);
+        std::fill(expected.begin() + addr, expected.begin() + addr + size, bits);
+    }
+    for (size_t i = 0; i < 1200; ++i) {
+        SCOPED_TRACE(i);
+        const uint64_t addr = i < 32 ? 65520 + i : rng() % bytes;
+        const uint64_t size = std::min<uint64_t>(1 + rng() % 4096, bytes - addr);
+        for (uint8_t status = 0; status < 4; ++status) {
+            const bool any = std::any_of(expected.begin() + addr, expected.begin() + addr + size,
+                [status](uint8_t value) { return (value & 3) == status; });
+            EXPECT_EQ(pm.RangeHasStatus(addr, size, status), any);
+        }
+        const uint64_t end = std::min<uint64_t>(addr + size, (addr / 65536 + 1) * 65536);
+        uint64_t same = 1;
+        while (addr + same < end && expected[addr + same] == expected[addr]) {
+            ++same;
+        }
+        EXPECT_EQ(pm.UnifiedSizeAfter(addr, size, addr), same);
+    }
+}
+
+TEST(PM, bulk_status_scan_ignores_owner_bits_and_checks_every_tail_byte)
+{
+    PM pm(256, 0xFD);
+    pm.Set(1, 254, 0xFD);
+    for (uint64_t position = 0; position < 96; ++position) {
+        pm.Set(position, 1, 0xFE);
+        for (uint64_t offset = 0; offset < 16; ++offset) {
+            for (uint64_t size = 1; size <= 64; ++size) {
+                EXPECT_EQ(pm.RangeHasStatus(offset, size, 2),
+                    position >= offset && position < offset + size);
+            }
+        }
+        pm.Set(position, 1, 0xFD);
+    }
+}
 TEST(PM, status_scan_matches_scalar_oracle_with_owner_bits_and_tails)
 {
     PM pm(Sanitizer::ONE_SM_STAND_FOR_BYTE * 2, 0xFE);

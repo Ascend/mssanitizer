@@ -56,7 +56,9 @@ struct WorkArgs {
     KernelSummary kernelSummary;
     std::string kernelNameDisplay;
     std::vector<SanitizerRecord> records;
-    std::vector<std::vector<SanEvent>> events;
+    // Record i owns events[eventOffsets[i], eventOffsets[i + 1]).
+    std::vector<SanEvent> events;
+    std::vector<size_t> eventOffsets;
 };
 
 // Checker类主要用于将单条解析信息分发给合适的sanitier工具
@@ -84,6 +86,8 @@ public:
 private:
     void ConsumeRecordThread(uint8_t consumeId, const std::thread::id &rootTid);
     void ConsumeRecord(uint8_t consumeId, const SanitizerRecord &record, std::vector<SanEvent> &events,
+        uint64_t &removedPathwayEventCount);
+    void ConsumeEventRange(uint8_t consumeId, const SanitizerRecord &record, SanEvent *events, size_t count,
         uint64_t &removedPathwayEventCount);
     void ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount);
     void ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPathwayEventCount) const;
