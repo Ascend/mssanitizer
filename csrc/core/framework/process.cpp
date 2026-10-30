@@ -18,6 +18,8 @@
 #include "process.h"
 
 #include <cstdlib>
+#include <cerrno>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <unistd.h>
@@ -113,6 +115,8 @@ void Process::Launch(const ExecCmd &cmd)
     ::pid_t pid = ::fork();
     if (pid == -1) {
         SAN_ERROR_LOG("Fork failed.");
+        // 拉起失败，上层据此返回错误码
+        programStatus_.launchError = true;
         return;
     } else if (pid == 0) {
         // child process
@@ -147,20 +151,27 @@ void Process::PreProcess(Config const &config)
 void Process::PostProcess(pid_t child, ExecCmd const &cmd)
 {
     // 可能存在后处理，比如，完成最后一次数据搬运的确认等
-    auto status = int32_t {};
-    waitpid(child, &status, 0);
-    uint32_t ustatus = static_cast<uint32_t>(status);
-    if (WIFEXITED(ustatus)) {
-        if (WEXITSTATUS(ustatus) != EXIT_SUCCESS) {
+    int32_t status = 0;
+    if (WaitChild(child, status)) {
+        uint32_t ustatus = static_cast<uint32_t>(status);
+        if (WIFEXITED(ustatus)) {
+            programStatus_.exitedNormally = true;
+            programStatus_.exitCode = static_cast<int32_t>(WEXITSTATUS(ustatus));
+            if (programStatus_.exitCode != EXIT_SUCCESS) {
+                std::cout << "[mssanitizer] user program " << Utility::ReplaceInvalidChar(cmd.ExecPath())
+                          << " exited abnormally" << std::endl;
+            } else {
+                SAN_INFO_LOG("User program exited normally.");
+            }
+        } else if (WIFSIGNALED(ustatus)) {
+            programStatus_.termSignal = static_cast<int32_t>(WTERMSIG(ustatus));
             std::cout << "[mssanitizer] user program " << Utility::ReplaceInvalidChar(cmd.ExecPath())
-                      << " exited abnormally" << std::endl;
-        } else {
-            SAN_INFO_LOG("User program exited normally.");
+                      << " exited by signal(" << programStatus_.termSignal << ")" << std::endl;
         }
-    } else if (WIFSIGNALED(ustatus)) {
-        int sig = WTERMSIG(ustatus);
-        std::cout << "[mssanitizer] user program " << Utility::ReplaceInvalidChar(cmd.ExecPath())
-                  << " exited by signal(" << sig << ")" << std::endl;
+    } else {
+        // 拿不到子进程状态，按拉起失败处理
+        SAN_ERROR_LOG("waitpid failed: %s", std::strerror(errno));
+        programStatus_.launchError = true;
     }
 
     // 子进程退出后，认为数据搬运已结束
@@ -168,6 +179,14 @@ void Process::PostProcess(pid_t child, ExecCmd const &cmd)
         server_->Close();
         SAN_INFO_LOG("Server is closed.");
     }
+}
+
+bool WaitChild(pid_t child, int32_t &status) {
+    pid_t ret = 0;
+    do {
+        ret = ::waitpid(child, &status, 0);
+    } while (ret == -1 && errno == EINTR);
+    return ret == child;
 }
 
 void Process::DoLaunch(const ExecCmd &cmd) const

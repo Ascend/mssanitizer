@@ -50,7 +50,7 @@ class Command {
 public:
     Command(Config const &config, bool enableDebugLog, const LogLv &lv, const std::string &logFile);
     using ParamList = std::vector<std::string>;
-    void Exec(const ParamList &execParams);
+    ProgramStatus Exec(const ParamList &execParams);
     static SharedMemInfoMpType sharedMemInfoMp;
     thread_local static ShareeMemMpType shareeMemInfoMp;
 

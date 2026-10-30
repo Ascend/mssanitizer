@@ -81,6 +81,8 @@ struct Config {
 /// 用户命令结构体，用于承载用户命令行参数的解析结果
 struct UserCommand {
     bool printHelpInfo{false};
+    // 仅当用户显式请求 --help/-h 时为 true；因参数错误而打印帮助时保持 false
+    bool helpExplicit{false};
     bool printVersionInfo{false};
     bool enableDebugLog{false};
     bool logFileAvailable{true};
@@ -88,6 +90,7 @@ struct UserCommand {
     Config config{};
     std::string logFile;
     std::vector<std::string> cmd;
+    int32_t errorExitCode{0}; // --error-exitcode，0 表示不改变工具退出码
 };
 
 }  // namespace Sanitizer

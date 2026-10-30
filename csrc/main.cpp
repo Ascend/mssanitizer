@@ -21,6 +21,5 @@
 int32_t main(int32_t argc, char **argv)
 {
     Sanitizer::CliParser cli;
-    cli.Interpretor(argc, argv);
-    return 0;
+    return cli.Interpretor(argc, argv);
 }

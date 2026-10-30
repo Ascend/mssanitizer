@@ -445,8 +445,7 @@ Command::Command(Config const &config, bool enableDebugLog, const LogLv &lv, con
     ConfigManager::Instance().Set(config);
 }
 
-void Command::Exec(const ParamList &execParams)
-{
+ProgramStatus Command::Exec(const ParamList &execParams) {
     Process process(config_);
     auto socketPath = process.CreateSockPath();
     // 线程管理类，负责多线程开始前和结束后的工作
@@ -505,6 +504,7 @@ void Command::Exec(const ParamList &execParams)
     process.Launch(cmd); // 子进程结束后，Launch函数返回
     threadManager.ThreadFinish();
     threadManager.PostLog();
+    return process.GetProgramStatus();
 }
 
 std::vector<std::string> GetSortedProjects(const std::string &dumpPath)
@@ -587,7 +587,7 @@ bool DetectDumpProject(Command &cmd, const std::string &dumpPath)
         auto name = Path(path).Name();
         std::vector<std::string> execCmd{launcherPath, "-c", configPath.ToString()};
         SAN_LOG("================= Start detect for %s project. ==============", name.c_str());
-        cmd.Exec(execCmd);
+        (void)cmd.Exec(execCmd);
         SAN_LOG("================= End detect for %s project. ==============", name.c_str());
     }
     return true;

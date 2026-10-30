@@ -20,7 +20,7 @@ function _mssanitizer_complete_arguments() {
         --log-level)
             COMPREPLY=($(compgen -W "${log_level_arguments[*]}" -- "${argument}"))
             ;;
-        --max-debuglog-size | --kernel-name | --block-id | --cache-size)
+        --max-debuglog-size | --kernel-name | --block-id | --cache-size | --error-exitcode)
             COMPREPLY=()
             ;;
         --leak-check | --check-unused-memory | --check-device-heap | --check-cann-heap | --check-cross-npu-races | \
@@ -66,6 +66,7 @@ _mssanitizer() {
                   "--full-backtrace"
                   "--demangle"
                   "--trace-non-default-spr-reg"
+                  "--error-exitcode"
                   )
 
     # Complete based on the current word

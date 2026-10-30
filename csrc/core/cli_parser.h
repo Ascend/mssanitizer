@@ -27,7 +27,9 @@ namespace Sanitizer {
 class CliParser {
 public:
     CliParser() = default;
-    void Interpretor(int32_t argc, char **argv) const;
+    // 返回 mssanitizer 进程的最终退出码
+    int32_t Interpretor(int32_t argc, char **argv) const;
+
 private:
     UserCommand Parse(int32_t argc, char **argv) const;
 };

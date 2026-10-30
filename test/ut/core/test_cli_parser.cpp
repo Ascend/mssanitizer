@@ -1156,4 +1156,211 @@ TEST(CliParser, trace_non_default_spr_reg_uppercase_vector_expect_print_help) {
     ASSERT_FALSE(cmd.config.traceNonDefaultSprReg);
     ASSERT_TRUE(cmd.printHelpInfo);
 }
+
+TEST(CliParser, not_set_error_exitcode_expect_default_zero) {
+    std::vector<const char *> argv = {"mssanitizer"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 0);
+}
+
+TEST(CliParser, set_error_exitcode_expect_get_value) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=5"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 5);
+    ASSERT_FALSE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, set_error_exitcode_zero_expect_not_print_help) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=0"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 0);
+    ASSERT_FALSE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, set_error_exitcode_max_value_expect_get_value) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=255"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 255);
+}
+
+TEST(CliParser, set_error_exitcode_256_expect_truncated_to_zero) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=256"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 0);
+    ASSERT_FALSE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, set_error_exitcode_300_expect_truncated_to_44) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=300"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 44);
+    ASSERT_FALSE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, set_error_exitcode_large_value_expect_truncated) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=2147483648"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 0);
+    ASSERT_FALSE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, set_error_exitcode_non_number_expect_print_help) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=abc"};
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_TRUE(cmd.printHelpInfo);
+    ASSERT_NE(capture.find("--error-exitcode param is invalid"), std::string::npos);
+}
+
+TEST(CliParser, set_error_exitcode_minus_two_expect_truncated_to_254) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=-2"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 254);
+    ASSERT_FALSE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, set_error_exitcode_minus_one_expect_truncated_to_255) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=-1"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 255);
+    ASSERT_FALSE(cmd.printHelpInfo);
+}
+
+TEST(CliParser, set_error_exitcode_mixed_sign_expect_print_help) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=5-3"};
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_TRUE(cmd.printHelpInfo);
+    ASSERT_NE(capture.find("--error-exitcode param is invalid"), std::string::npos);
+}
+
+TEST(CliParser, set_error_exitcode_twice_expect_last_value_wins) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=3", "--error-exitcode=9"};
+
+    optind = 1;
+    CliParser cliParser;
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    ASSERT_EQ(cmd.errorExitCode, 9);
+}
+
+TEST(CliParser, set_error_exitcode_one_expect_no_warning_output) {
+    std::vector<const char *> argv = {"mssanitizer", "--error-exitcode=1"};
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    UserCommand cmd = cliParser.Parse(argv.size(), const_cast<char **>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_EQ(cmd.errorExitCode, 1);
+    ASSERT_EQ(capture.find("WARNING"), std::string::npos);
+}
+
+TEST(CliParser, help_info_expect_contains_error_exitcode) {
+    std::vector<const char *> argv = {"mssanitizer", "--help"};
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    cliParser.Interpretor(argv.size(), const_cast<char **>(argv.data()));
+    std::string capture = testing::internal::GetCapturedStdout();
+    ASSERT_NE(capture.find("--error-exitcode"), std::string::npos);
+}
+
+namespace {
+int32_t RunInterpretorForExitCode(const std::vector<std::string> &args) {
+    std::vector<const char *> argv = {"mssanitizer"};
+    for (const auto &arg : args) {
+        argv.push_back(arg.c_str());
+    }
+
+    optind = 1;
+    CliParser cliParser;
+    testing::internal::CaptureStdout();
+    int32_t exitCode = cliParser.Interpretor(argv.size(), const_cast<char **>(argv.data()));
+    (void)testing::internal::GetCapturedStdout();
+    return exitCode;
+}
+}
+
+TEST(CliParser, invalid_tool_argument_expect_invalid_argument_exit_code) {
+    ASSERT_EQ(RunInterpretorForExitCode({"--tool=abc"}), 255);
+}
+
+TEST(CliParser, invalid_error_exitcode_argument_expect_invalid_argument_exit_code) {
+    ASSERT_EQ(RunInterpretorForExitCode({"--error-exitcode=abc"}), 255);
+}
+
+TEST(CliParser, no_program_specified_expect_invalid_argument_exit_code) {
+    ASSERT_EQ(RunInterpretorForExitCode({}), 255);
+}
+
+TEST(CliParser, program_not_found_expect_launch_error_exit_code) {
+    ASSERT_EQ(RunInterpretorForExitCode({"./not_exist_sanitizer_program"}), 1);
+    ASSERT_EQ(RunInterpretorForExitCode({"not_exist_sanitizer_command"}), 1);
+}
+
+TEST(CliParser, no_execute_permission_expect_launch_error_exit_code) {
+    std::string tempFile = "./sanitizer_test_no_exec";
+    TempFileGuard guard(tempFile);
+    ChangeMode(tempFile, 0644);
+
+    ASSERT_EQ(RunInterpretorForExitCode({tempFile}), 1);
+}
+
+TEST(CliParser, conflicting_heap_options_expect_invalid_argument_exit_code) {
+    std::string tempFile = "./sanitizer_test_conflict";
+    TempFileGuard guard(tempFile);
+    ChangeMode(tempFile, 0755);
+
+    ASSERT_EQ(RunInterpretorForExitCode({"--check-cann-heap=yes", "--check-device-heap=yes", tempFile}), 255);
+}
+
+TEST(CliParser, invalid_argument_before_help_expect_invalid_argument_exit_code) {
+    // --help 出现在非法参数之后：Parse 遇错即返回，不可因原始 argv 里有 help 而吞掉参数错误
+    ASSERT_EQ(RunInterpretorForExitCode({"--error-exitcode=abc", "--help"}), 255);
+}
+
+TEST(CliParser, program_help_argument_before_invalid_option_expect_invalid_argument_exit_code) {
+    // -h 属于用户程序参数：不得把后续的参数错误吞成 0
+    ASSERT_EQ(RunInterpretorForExitCode({"--tool=abc", "./prog", "-h"}), 255);
+}
+
+TEST(CliParser, help_requested_expect_zero_exit_code) { ASSERT_EQ(RunInterpretorForExitCode({"--help"}), 0); }
+
+TEST(CliParser, version_requested_expect_zero_exit_code) { ASSERT_EQ(RunInterpretorForExitCode({"--version"}), 0); }
 }

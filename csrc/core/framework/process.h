@@ -36,6 +36,17 @@ private:
     std::vector<std::string> args_;
 };
 
+// 被检测程序的退出状态
+struct ProgramStatus {
+    bool launchError{false}; // 拉起失败（fork 失败等）
+    bool exitedNormally{false}; // WIFEXITED；false 表示被信号终止
+    int32_t exitCode{0}; // WEXITSTATUS，0~255
+    int32_t termSignal{0}; // WTERMSIG
+};
+
+// 等待子进程结束，EINTR 时重试；返回 false 表示拿不到有效状态
+bool WaitChild(pid_t child, int32_t &status);
+
 // Process类将整个流程伪装成一个普通的进程拉起过程
 // 其中：
 // Launch函数将被检测程序拉起
@@ -51,6 +62,7 @@ public:
     // 说明：此处的信息可能是非完整的数据，处理方需要记录历史信息
     void RegisterMsgTrap(const ANALYSIS_FUNC& analysisFunc, const std::string &socketPath);
     std::string CreateSockPath() const;
+    ProgramStatus const &GetProgramStatus() const { return programStatus_; }
 
 private:
     void PreProcess(Config const &config);
@@ -61,6 +73,7 @@ private:
     Config config_;
     pid_t mainPid_;
     std::shared_ptr<CommunicationServer> server_;
+    ProgramStatus programStatus_{};
 }; // class Process
 
 } // namespace Framwork

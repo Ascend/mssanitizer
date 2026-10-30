@@ -89,7 +89,23 @@ TEST_F(TestCommand, run_ls_command_expect_success)
         .memCheck = true,
     };
     Command command(config, false, LogLv::INFO, logPath_);
-    command.Exec(paramList);
+    ProgramStatus status = command.Exec(paramList);
+    ASSERT_FALSE(status.launchError);
+    ASSERT_TRUE(status.exitedNormally);
+    ASSERT_EQ(status.exitCode, 0);
+}
+
+TEST_F(TestCommand, run_false_command_expect_exit_code_one) {
+    std::vector<std::string> paramList = {"/bin/false"};
+    Config config{
+        .defaultCheck = true,
+        .memCheck = true,
+    };
+    Command command(config, false, LogLv::INFO, logPath_);
+    ProgramStatus status = command.Exec(paramList);
+    ASSERT_FALSE(status.launchError);
+    ASSERT_TRUE(status.exitedNormally);
+    ASSERT_EQ(status.exitCode, 1);
 }
 
 void ParseIPCResponse(const std::string &msg, IPCResponse &response)

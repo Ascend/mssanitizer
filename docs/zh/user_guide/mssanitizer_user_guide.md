@@ -656,7 +656,15 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | --full-backtrace | 显示 AscendC API 内的调用栈回溯。 | yes：显示完整的调用栈回溯。<br>no（默认）：不显示 AscendC API 内的调用栈。 | 否 |
 | --demangle | 设置输出中函数名显示的 demangle 模式。 | full（默认）：显示完整的 demangle 后的函数名。<br>simple：仅显示函数名，不包含返回值、参数列表。<br>no：显示未 demangle 的函数名。 | 否 |
 | --padding | 指定GM内存安全区长度 | 可设定范围为 32~1024 之间的整数，单位为字节。<br>默认值为32。| 否 |
+| --error-exitcode | 指定当算子程序返回成功且工具检出error类异常时，msSanitizer的退出码。 | 可设定为整数，按低8位截断（进程退出码仅低8位有效）。<br>默认值为0，表示不改变工具的退出码。<br>说明：<br>仅error类异常（报告中以ERROR开头）生效，warning类异常不生效。<br>算子程序自身返回非0时，工具退出码与算子程序相同，该选项不生效。 | 否 |
 | -h，--help | 输出帮助信息。 | - | 否 |
+
+> [!NOTE]
+>
+> msSanitizer 退出码约定如下：
+>
+> - `255`：工具参数或配置错误（选项取值非法、互斥选项冲突、日志文件非法、未指定被检测程序等）。
+> - `1`：拉起算子程序失败（程序不存在、无执行权限、进程创建失败等）。
 
 **表2：内存检测参数说明**
 

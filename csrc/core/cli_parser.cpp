@@ -32,6 +32,7 @@
 
 #include "cli_logo.h"
 #include "core/framework/config.h"
+#include "core/framework/error_exitcode.h"
 #include "core/framework/utility/file_system.h"
 #include "core/framework/utility/path.h"
 #include "core/framework/utility/ustring.h"
@@ -61,6 +62,7 @@ enum class OptVal : int32_t {
     GM_BUFFER_GUARD_SIZE,
     CHECK_DCCI,
     TRACE_NON_DEFAULT_SPR_REG,
+    ERROR_EXIT_CODE,
 };
 
 static const std::map<std::string, LogLv> LOG_LV_LOOKUP_TABLE = {
@@ -90,7 +92,9 @@ std::vector<option> GetLongOptArray()
         {"check-cross-npu-races", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_CROSS_NPU_RACES)},
         {"padding", required_argument, nullptr, static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE)},
         {"check-dcci", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_DCCI)},
-        {"trace-non-default-spr-reg", required_argument, nullptr, static_cast<int32_t>(OptVal::TRACE_NON_DEFAULT_SPR_REG)},
+        {"trace-non-default-spr-reg", required_argument, nullptr,
+            static_cast<int32_t>(OptVal::TRACE_NON_DEFAULT_SPR_REG)},
+        {"error-exitcode", required_argument, nullptr, static_cast<int32_t>(OptVal::ERROR_EXIT_CODE)},
         {nullptr, 0, nullptr, 0},
     };
     return longOpts;
@@ -317,6 +321,7 @@ void ParseUnrecognized(const std::string &param, UserCommand &userCommand)
 void ParseHelp(const std::string &param, UserCommand &userCommand)
 {
     userCommand.printHelpInfo = true;
+    userCommand.helpExplicit = true;
 }
 
 void ParseVersion(const std::string &param, UserCommand &userCommand)
@@ -485,6 +490,35 @@ void ParseTraceNonDefaultSprReg(const std::string &param, UserCommand &userComma
     }
 }
 
+void ParseErrorExitCode(const std::string &param, UserCommand &userCommand) {
+    // 退出状态仅低 8 bit 可观测，按低 8 位截断
+    constexpr long long maxExitCode = 255LL;
+    auto parseFailed = [&userCommand](void) {
+        std::cout << "[mssanitizer] ERROR: --error-exitcode param is invalid. "
+                  << "it should be an integer" << std::endl;
+        userCommand.printHelpInfo = true;
+    };
+
+    long long exitCode{};
+    size_t parsedLen = 0;
+    try {
+        exitCode = std::stoll(param, &parsedLen);
+    } catch (std::exception &) {
+        return parseFailed();
+    }
+    // 整串必须为合法整数，避免 "5-3" 被解析成 5
+    if (parsedLen != param.size()) {
+        return parseFailed();
+    }
+
+    int32_t truncatedCode = static_cast<int32_t>(exitCode & maxExitCode);
+    userCommand.errorExitCode = truncatedCode;
+    if (exitCode < 0 || exitCode > maxExitCode) {
+        SAN_BUFF_INFO_LOG("--error-exitcode %lld is truncated to %d", exitCode, truncatedCode);
+    }
+    SAN_BUFF_INFO_LOG("Set error-exitcode: %d", truncatedCode);
+}
+
 using ParseHandler = std::function<void(const std::string &, UserCommand &)>;
 std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
 {
@@ -510,6 +544,7 @@ std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
         {static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE), ParseGMBufferGuardSize},
         {static_cast<int32_t>(OptVal::CHECK_DCCI), ParseCheckDcci},
         {static_cast<int32_t>(OptVal::TRACE_NON_DEFAULT_SPR_REG), ParseTraceNonDefaultSprReg},
+        {static_cast<int32_t>(OptVal::ERROR_EXIT_CODE), ParseErrorExitCode},
     };
 
     return handlers;
@@ -596,21 +631,27 @@ void ShowHelpInfo()
         << "  -t, --tool {memcheck,racecheck,initcheck,synccheck}  Select the sanitizer tool [default: memcheck]\n"
         << "      --log-file <FILE>                                Write log messages to a file.\n"
         << "      --log-level {info,warn,error}                    Set the log level [default: warn]\n"
-        << "      --max-debuglog-size <N>                          Maximum debug log file size in MB (1-10240) [default: 1024]\n"
+        << "      --max-debuglog-size <N>                          Maximum debug log file size in MB (1-10240) "
+           "[default: 1024]\n"
         << "      --block-id <ID>                                  Block ID to check (0-200) [default: all]\n"
         << "      --cache-size <N>                                 Record buffer size per block in MB (1-"
         << MAX_RECORD_BUF_SIZE_EACH_BLOCK << ") [default: 100]\n"
         << "      --kernel-name <NAME>                             Check only the specified kernel.\n"
-        << "      --full-backtrace {yes,no}                        Print Ascend C internal calls in backtraces [default: no]\n"
+        << "      --full-backtrace {yes,no}                        Print Ascend C internal calls in backtraces "
+           "[default: no]\n"
         << "      --demangle {full,simple,no}                      Demangle device function names [default: full]\n"
         << "      --padding <N>                                    GM safe-zone size in bytes (32-1024) [default: 32]\n"
+        << "      --error-exitcode <N>                             Exit code when errors (ERROR level) are detected\n"
+        << "                                                       and the program exits successfully (any integer,\n"
+        << "                                                       only the low 8 bits are used) [default: 0]\n"
         << "      --leak-check {yes,no}                            Search for memory leaks at exit [default: no]\n"
         << "      --check-unused-memory {yes,no}                   Search for unused memory allocations [default: no]\n"
         << "      --check-device-heap {yes,no}                     Enable device heap checks [default: no]\n"
         << "      --check-cann-heap {yes,no}                       Enable CANN heap checks [default: no]\n"
         << "      --trace-non-default-spr-reg {vector}             Trace non-default vector register values.\n"
         << "      --check-cross-npu-races {yes,no}                 Check races across different NPUs [default: no]\n"
-        << "      --check-dcci {yes,no}                            Check for missing DCCIs leading to unexpected value read from another block [default: no]\n\n"
+        << "      --check-dcci {yes,no}                            Check for missing DCCIs leading to unexpected value "
+           "read from another block [default: no]\n\n"
         << "Examples:\n"
         << "  # Run the default memcheck tool.\n"
         << "  mssanitizer ./my_program\n\n"
@@ -730,12 +771,12 @@ bool FindExe(std::string const &exeName, Path &exePath)
     return false;
 }
 
-bool ResolveExePath(UserCommand &userCommand, std::string &msg)
-{
+// 返回 0 表示校验通过；非 0 为 mssanitizer 应返回的错误码
+int32_t ResolveExePath(UserCommand &userCommand, std::string &msg) {
     /// 检查用户命令行参数是否未指定用户程序
     if (userCommand.cmd.empty()) {
         msg = "ERROR: no program specified";
-        return false;
+        return SANITIZER_INVALID_ARGUMENT_EXIT_CODE;
     }
 
     std::string &cmd = userCommand.cmd[0];
@@ -743,13 +784,13 @@ bool ResolveExePath(UserCommand &userCommand, std::string &msg)
     if (cmd.find("/") == std::string::npos) {
         if (!FindExe(cmd, exePath)) {
             msg = "ERROR: find executable from PATH environment FAILED";
-            return false;
+            return SANITIZER_LAUNCH_ERROR_EXIT_CODE;
         }
     } else {
         exePath = Path(cmd);
         if (!exePath.Exists()) {
             msg = "ERROR: program path NOT found";
-            return false;
+            return SANITIZER_LAUNCH_ERROR_EXIT_CODE;
         }
     }
 
@@ -760,11 +801,11 @@ bool ResolveExePath(UserCommand &userCommand, std::string &msg)
         SAN_BUFF_WARN_LOG("Executable path exceeds the limit (%u), no record here", MAX_FILE_PATH_LEN);
     }
 
-    return true;
+    return 0;
 }
 
-bool CheckUserCommand(UserCommand const &userCommand, std::string &msg)
-{
+// 返回 0 表示校验通过；非 0 为 mssanitizer 应返回的错误码
+int32_t CheckUserCommand(UserCommand const &userCommand, std::string &msg) {
     std::string const &cmd = userCommand.cmd[0];
 
     std::string fmtCmd = Utility::ReplaceInvalidChar(cmd);
@@ -772,49 +813,56 @@ bool CheckUserCommand(UserCommand const &userCommand, std::string &msg)
     struct stat progStat{};
     if (!Path(fmtCmd).GetStat(progStat)) {
         msg = "ERROR: FAILED to get user program (" + fmtCmd + ") stat";
-        return false;
+        return SANITIZER_LAUNCH_ERROR_EXIT_CODE;
     }
     // 检查用户程序是否具有可执行权限
     if (!IsFileExecutable(progStat)) {
         msg = "ERROR: User program (" + fmtCmd + ") has no execute permission";
-        return false;
+        return SANITIZER_LAUNCH_ERROR_EXIT_CODE;
     }
     if (userCommand.config.checkCannHeap && userCommand.config.checkDeviceHeap) {
         msg = "ERROR: CANNOT specify both '--check-cann-heap=yes' and '--check-device-heap=yes'";
-        return false;
+        return SANITIZER_INVALID_ARGUMENT_EXIT_CODE;
     }
     if (userCommand.config.initCheck && userCommand.config.checkBlockId != -1) {
         msg = "ERROR: CANNOT specify both '--tool=initcheck' and '--block-id=<id>'";
-        return false;
+        return SANITIZER_INVALID_ARGUMENT_EXIT_CODE;
     }
 
-    return true;
+    return 0;
 }
 
-void DoUserCommand(const UserCommand &userCommand)
-{
+// 执行用户命令并返回退出码：显式 help 返回 0，参数错误打印帮助后返回参数错误码
+int32_t DoUserCommand(const UserCommand &userCommand) {
     if (userCommand.printHelpInfo) {
         ShowHelpInfo();
-        return;
+        return userCommand.helpExplicit ? 0 : SANITIZER_INVALID_ARGUMENT_EXIT_CODE;
     }
     if (userCommand.printVersionInfo) {
         ShowVersion();
-        return;
+        return 0;
     }
     if (!userCommand.logFileAvailable) {
-        return;
+        // --log-file 非法或不可写
+        return SANITIZER_INVALID_ARGUMENT_EXIT_CODE;
     }
 
     std::string msg;
     UserCommand resolvedCommand(userCommand);
-    if (!ResolveExePath(resolvedCommand, msg) || !CheckUserCommand(resolvedCommand, msg)) {
+    int32_t checkCode = ResolveExePath(resolvedCommand, msg);
+    if (checkCode == 0) {
+        checkCode = CheckUserCommand(resolvedCommand, msg);
+    }
+    if (checkCode != 0) {
         std::cout << "[mssanitizer] " << msg << std::endl;
         std::cout << "[mssanitizer] Use --help for more information" << std::endl;
-        return;
+        return checkCode;
     }
+
     Command cmd(resolvedCommand.config, resolvedCommand.enableDebugLog, resolvedCommand.logLv, resolvedCommand.logFile);
-    cmd.Exec(resolvedCommand.cmd);
+    ProgramStatus status = cmd.Exec(resolvedCommand.cmd);
     DetectDumpProject(cmd, resolvedCommand.config.dumpPath);
+    return ResolveExitCode(resolvedCommand.errorExitCode, status);
 }
 }
 
@@ -827,6 +875,8 @@ void SigIntHandler(int signo)
 
 namespace Sanitizer {
 
+// 仅用于抑制 help 场景的 logo，不能用于退出码判定：扫描的是原始 argv，
+// 无法区分 --help 是工具选项还是被测程序参数
 static bool IsHelpRequested(int32_t argc, char **argv) {
     for (int32_t i = 1; i < argc; ++i) {
         if (argv[i] != nullptr && (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0)) {
@@ -836,8 +886,7 @@ static bool IsHelpRequested(int32_t argc, char **argv) {
     return false;
 }
 
-void CliParser::Interpretor(int32_t argc, char **argv) const
-{
+int32_t CliParser::Interpretor(int32_t argc, char **argv) const {
     // 主进程忽略 SIGINT 信号，确保第一次 ctrlc 后不立即退出以完成当前算子的检测
     signal(SIGINT, SigIntHandler);
 
@@ -846,7 +895,7 @@ void CliParser::Interpretor(int32_t argc, char **argv) const
     }
 
     auto userCommand = Parse(argc, argv);
-    DoUserCommand(userCommand);
+    return DoUserCommand(userCommand);
 }
 
 // 日志黑名单和长度校验
@@ -904,11 +953,14 @@ bool IsSatisfyKernelName(int32_t opt, char ch)
 
 bool IsSupportDigital(int32_t opt, char ch)
 {
-    if ((opt == static_cast<int32_t>(OptVal::LOG_FILE) ||
-        opt == static_cast<int32_t>(OptVal::MAX_DEBUGLOG_SIZE) ||
-        opt == static_cast<int32_t>(OptVal::BLOCK_ID) ||
-        opt == static_cast<int32_t>(OptVal::CACHE_SIZE) ||
-        opt == static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE)) &&
+    // --error-exitcode 允许负数取值
+    if (opt == static_cast<int32_t>(OptVal::ERROR_EXIT_CODE) && ch == '-') {
+        return true;
+    }
+    if ((opt == static_cast<int32_t>(OptVal::LOG_FILE) || opt == static_cast<int32_t>(OptVal::MAX_DEBUGLOG_SIZE) ||
+            opt == static_cast<int32_t>(OptVal::BLOCK_ID) || opt == static_cast<int32_t>(OptVal::CACHE_SIZE) ||
+            opt == static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE) ||
+            opt == static_cast<int32_t>(OptVal::ERROR_EXIT_CODE)) &&
         IsDigital(ch)) {
         return true;
     }

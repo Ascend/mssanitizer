@@ -75,7 +75,7 @@ mssanitizer --tool=memcheck ./add_npu
 ```
 
 > [!NOTE]
-> 
+>
 > When the custom operators are launched through `<<<>>>` and integrated by torch, the GM is managed in memory pool mode by default, which may cause inaccurate out-of-bounds check results. Therefore, you need to set the following environment variable to disable the memory pool before the check to obtain more accurate check results:
 >
 > ```shell
@@ -119,7 +119,7 @@ To ensure check accuracy and avoid cache interference, set the following environ
 | `PYTORCH_NO_NPU_MEMORY_CACHING=1` | Disables the NPU memory pool mechanism of PyTorch to prevent it from interfering with the memory check result.|
 
 > [!NOTE]
-> 
+>
 > In a Triton scenario, PyTorch is used to create tensors. In the PyTorch framework, the GM is managed in memory pool mode by default, which interferes with memory check. Therefore, the memory cache must be disabled to ensure the validity of the check.
 
 For details, see section "Detecting Triton Operators" in [Basic Scenario Cases](../best_practices/mssanitizer_basic_cases.md).
@@ -641,7 +641,15 @@ The configuration of each part is described as follows:
 | --full-backtrace | Displays the call stack backtrace within the AscendC API.| `yes`: Displays the complete call stack backtrace.<br>`no` (default): Does not display the call stack of the AscendC API.| No|
 | --demangle | Sets the demangle mode for displaying function names in the output.| `full` (default): Displays the complete demangled function name.<br>`simple`: Displays only the function name, excluding the return value and parameter list.<br>`no`: Displays the function name that is not demangled.| No|
 | --padding | Specifies the length of the GM memory safe area.| The value is an integer ranging from 32 to 1024, in bytes.<br>Defaults to 32.| No|
+| --error-exitcode | Specifies the exit code of msSanitizer when the operator program exits successfully and errors are detected.| The value is an integer, truncated to the low 8 bits (only the low 8 bits of a process exit code are effective).<br>Defaults to 0, which means the exit code is not changed.<br>Note:<br>Only errors (reports starting with `ERROR`) take effect; warnings do not.<br>If the operator program itself returns a non-zero code, msSanitizer returns the same code and this option does not take effect.| No|
 | -h, --help| Outputs help information.| - | No|
+
+> [!NOTE]
+>
+> Exit code conventions of msSanitizer:
+>
+> - `255`: Invalid tool arguments or configuration (invalid option value, conflicting options, invalid log file, no program specified, etc.).
+> - `1`: Failed to launch the operator program (program does not exist, no execute permission, process creation failure, etc.).
 
 **Table 2: Memory check options**
 

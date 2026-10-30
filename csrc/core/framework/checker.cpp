@@ -35,6 +35,7 @@
 #include "record_pre_process.h"
 #include "kernel_block.h"
 #include "file_mapping.h"
+#include "error_exitcode.h"
 #include "utility/ustring.h"
 #include "utility/serializer.h"
 #include "utility/umask_guard.h"
@@ -449,6 +450,10 @@ void Checker::SetDetectionInfo(const LogLv &expectLv, std::ostream &detectionOst
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
         if (sanitizerArr_[i] != nullptr) {
             auto func = [expectLv, i, &detectionOstream, this](const LogLv &lv, SanitizerBase::MSG_GEN &&gen) {
+                if (IsErrorDetectionLevel(lv)) {
+                    // 计入 --error-exitcode，与 --log-level 无关
+                    ErrorDetectionSummary::Instance().MarkErrorDetected();
+                }
                 if (lv >= expectLv) {
                     TryPrintMissDebugLine();
                     ++errorCounts_[i];

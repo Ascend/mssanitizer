@@ -20,6 +20,7 @@
 #include "core/framework/platform_config.h"
 #include "core/framework/utility/type_traits.h"
 #include "device_manager.h"
+#include "error_exitcode.h"
 #include "event_def.h"
 #include "kernel_manager.h"
 #include "record_defs.h"
@@ -61,6 +62,10 @@ void CrossNpuChecker::SetDetectionInfo(const LogLv &expectLv, std::ostream &dete
     detectionOstream_ = &detectionOstream;
 
     auto func = [expectLv, &detectionOstream, this](const LogLv &lv, SanitizerBase::MSG_GEN &&gen) {
+        if (IsErrorDetectionLevel(lv)) {
+            // 计入 --error-exitcode
+            ErrorDetectionSummary::Instance().MarkErrorDetected();
+        }
         if (lv >= expectLv) {
             ++errorCount_;
             detectionOstream << gen().message << std::flush;
