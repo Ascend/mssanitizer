@@ -56,7 +56,9 @@ During tool use, some functions related to code lines may access customer operat
 
 ## Build Security
 
-This project supports building from source. During the build process, the system downloads third-party dependencies, executes shell build scripts, and generates temporary program files and build directories. To reduce security risks, you can perform permission control on files within the source code directory. During the build process, you can modify build scripts as needed to avoid security risks and ensure the security of the build results.
+- This project supports building from source. During the build process, the system downloads third-party dependencies, executes shell build scripts, and generates temporary program files and build directories. To reduce security risks, you can perform permission control on files within the source code directory. During the build process, you can modify build scripts as needed to avoid security risks and ensure the security of the build results.
+
+- This repository provides reference VS Code and DevContainer configurations for development and debugging. They are only for developing and debugging this repository in a secure debugging environment. In addition, check the security of the configurations yourself and adjust them based on actual requirements.
 
 ## Runtime Security
 

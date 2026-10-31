@@ -645,7 +645,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 
 | 参数名称 | 参数描述 | 参数取值 | 必选 |
 | --- | --- | --- | --- |
-| -V，--version | 查询msSanitizer工具版本信息。<br>-V：作为标准版本参数。<br>-v：作为兼容参数，不影响旧脚本，但不在出现在帮助信息中。| - | 否 |
+| -V，--version | 查询msSanitizer工具版本信息。<br>-V：作为标准版本参数。<br>-v：作为兼容参数，不影响旧脚本，但不再出现在帮助信息中。| - | 否 |
 | -t，--tool | 指定异常检测的子工具。 | memcheck：内存检测（默认）<br>racecheck：竞争检测<br>initcheck：未初始化检测<br>synccheck：同步检测 | 否 |
 | --log-file | 指定检测报告输出到文件。 | {file_name}，如配置为test_log。<br>说明：<br>仅支持数字、大小写字母和- . / _四种符号。<br>为避免日志泄漏风险，建议限制该文件权限，确保只有授权人员才能访问该文件。<br>工具会以覆盖的方式将报告输出到test_log文件。若test_log文件中已有内容，这些内容将会被清空。因此，建议指定一个空文件用于输出报告。 | 否 |
 | --log-level | 指定检测报告输出等级。 | info：输出INFO/WARNING/ERROR级别的检测结果。<br>warn（默认）：输出WARNING/ERROR级别的检测结果。<br>error：输出ERROR级别的检测结果。 | 否 |

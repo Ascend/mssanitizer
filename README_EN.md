@@ -3,14 +3,16 @@
 <div align="center">
 <p><b><span style="font-size:24px;">Ascend AI Operator Exception Check Tool</span></b></p>
 
- [![License](https://badgen.net/badge/快速入门/QuickStart/blue)](./docs/en/quick_start/mssanitizer_quick_start.md)
- [![License](https://badgen.net/badge/精确搜索/ReadTheDocs/blue)](https://mindstudio-operator-tools-docs.readthedocs.io/zh-cn/latest/)
- [![License](https://badgen.net/badge/AI问答/DeepWiki/blue)](https://deepwiki.com/mindstudio-docs/master)
- [![License](https://badgen.net/badge/AI问答/ZRead/blue)](https://zread.ai/mindstudio-docs/master)
- [![License](https://badgen.net/badge/昇腾社区/Community/blue)](https://www.hiascend.com/cn/developer/software/mindstudio)
- [![License](https://badgen.net/badge/报告问题/Issues/blue)](https://gitcode.com/Ascend/mssanitizer/issues)
+ [![Quick Start](https://badgen.net/badge/Quick%20Start/QuickStart/blue)](./docs/en/quick_start/mssanitizer_quick_start.md)
+ [![Exact Search](https://badgen.net/badge/Exact%20Search/ReadTheDocs/blue)](https://mindstudio-operator-tools-docs.readthedocs.io/zh-cn/latest/)
+ [![AI Q&A (DeepWiki)](https://badgen.net/badge/AI%20Q%26A/DeepWiki/blue)](https://deepwiki.com/mindstudio-docs/master)
+ [![AI Q&A (ZRead)](https://badgen.net/badge/AI%20Q%26A/ZRead/blue)](https://zread.ai/mindstudio-docs/master)
+ [![Ascend Community](https://badgen.net/badge/Ascend%20Community/Community/blue)](https://www.hiascend.com/eng/developer/software/mindstudio)
+ [![Report Issues](https://badgen.net/badge/Report%20Issues/Issues/blue)](https://gitcode.com/Ascend/mssanitizer/issues)
 
 </div>
+
+English | [简体中文](./README.md)
 
 ## ✨ Latest Updates
 
@@ -47,7 +49,7 @@ For details about how to quickly experience core functions through a simple addi
 
 ## 📦 Installation Guide
 
-For details about the environment dependencies and installation methods of the tool, see the [msSanitizer Installation Guide](docs/en/install_guide/mssanitizer_install_guide.md).
+The tool supports online installation, offline installation, and source code installation. For details, see the [msSanitizer Installation Guide](docs/en/install_guide/mssanitizer_install_guide.md).
 
 ## 📘 User Guide
 
@@ -93,10 +95,6 @@ You are welcome to contribute to the community. If you have any questions or sug
 
 ## 🙏 Acknowledgements
 
-This tool is jointly developed by the following Huawei departments:   
-🔹 Ascend Computing MindStudio Development Department  
-🔹 Ascend Computing Ecosystem Enablement Department  
-🔹 Huawei Cloud AI Compute Service  
-🔹 Compiler Technologies Lab, 2012 Labs  
-🔹 Markov Lab, 2012 Labs  
-Thank you to everyone in the community for your PRs. We warmly welcome your contributions.
+This tool is jointly contributed by Huawei Technologies Co., Ltd. and developers.
+
+Thanks for every PR from the community, and contributions are welcome.

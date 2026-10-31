@@ -36,7 +36,7 @@ Before the hands-on experience, **copy the entire script**, paste it into the te
 
 ### 2.2 [Prerequisite] Completing Operator Project Preparation
 
-Follow Section 2.3 in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md#23-developing-and-building-the-operator-project-msopgen" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete the operator project preparation.
+Follow Section 2.3 in <a href="https://gitcode.com/Ascend/msot/blob/master/docs/en/quick_start/op_tool_quick_start.md#23-development-building-the-operator-project-msopgen" target="_blank">Ascend Operator Development Toolchain Quick Start</a> to complete the operator project preparation.
 
 ### 2.3 [Check] msSanitizer
 

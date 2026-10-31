@@ -180,7 +180,7 @@ You need to uninstall the installed msSanitizer tool.
 1. Download the uninstall script (a network connection is required):
 
    ```bash
-   curl -O https://inst.obs.cn-north-4.myhuaweicloud.com/26.1.0/ms_install.py
+   curl -O https://inst.obs.cn-north-4.myhuaweicloud.com/26.0.0/ms_install.py
    ```
 
    > [!NOTE]

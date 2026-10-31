@@ -66,7 +66,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 
 > [!NOTE]
 >
-> - This sample project does not support Atlas A3 training products and Atlas A3 inference products.
+> - This sample project does not support Atlas A3 products.
 > - When downloading the code sample, run the following command to specify the branch version:
 >
 > ```shell
@@ -131,14 +131,14 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 > [!NOTE]
 >
 > - This sample project supports only Python 3.9. To run this sample project in other Python versions, change the Python version in the `run_op_plugin.sh` file in the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/PytorchInvocation` directory.
-> - This sample project does not support Atlas A3 training products and Atlas A3 inference products.
+> - This sample project does not support Atlas A3 products.
 > - When downloading the code sample, run the following command to specify the branch version:
 >
 > ```shell
 > git clone https://gitee.com/ascend/samples.git -b master
 > ```
 
-- You have installed the PyTorch framework and TorchNPU plugin by referring to [TorchNPU Software Installation](https://www.hiascend.com/document/detail/en/Pytorch/2610/installguide/swinstall/docs/en/installation_guide/installation_description.md).
+- You have installed the PyTorch framework and TorchNPU plugin by referring to [TorchNPU Software Installation](https://gitcode.com/Ascend/pytorch/blob/v2.7.1-26.1.0/docs/en/installation_guide/installation_description.md).
 
 ### 3.2 Procedure
 
@@ -207,9 +207,13 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 ### 4.1 Prerequisites
 
 - The Triton and Triton-Ascend plugin have been installed and configured by referring to [triton-ascend repository](https://gitcode.com/Ascend/triton-ascend).
-- Enable the following environment variables to prevent un-recompiled operators from causing issues.
+- Enable the following environment variables to turn on the exception check function for Triton operators.
 
     ```sh
+    # Enable exception check
+    export TRITON_ENABLE_SANITIZER=1
+ 
+    # Force operator recompilation so that exception check takes effect
     export TRITON_ALWAYS_COMPILE=1
     ```
 
@@ -335,7 +339,7 @@ To identify a memory leak, perform the following steps:
           mssanitizer --check-device-heap=yes --leak-check=yes ./add_npu
         ```
 
-        The path of the program to be checked (for example, *_add_custom_npu_*) can be set to either an absolute path or a relative path according to the actual situation.
+        The path of the program to be checked (for example, `*_add_custom_npu_*`) can be set to either an absolute path or a relative path according to the actual situation.
 
     2. If no exception information is displayed, the check program is running properly and no memory leak occurs on the host. If the following exception information is displayed, memory leak occurs on the host.
 

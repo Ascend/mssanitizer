@@ -9,7 +9,7 @@ MindStudio Sanitizer (msSanitizer) is a tool based on AI Processors. It provides
 | Function    | Description                                                                                              |
 | ---------- |--------------------------------------------------------------------------------------------------|
 | Memory check  | During operator development, the tool can locate memory problems such as illegal read/write, multi-core corruption, non-aligned access, memory leak, and illegal release.<br>In addition, the tool can detect the memory of the CANN software stack, helping users locate the module with memory exception in the software stack.|
-| Contention check  | The tool helps users locate data contention problems that may be caused by contention risks, including intra-core contention and inter-core contention. Intra-core contention includes inter-pipeline contention and intra-pipeline contention.                                 |
+| Race check  | The tool helps users locate data race problems that may be caused by race risks, including intra-core races and inter-core races. Intra-core races include inter-pipeline races and intra-pipeline races.                                 |
 | Uninitialization check| The tool helps users locate dirty data read problems that may be caused by uninitialized memory.                                                                 |
 | Synchronization check  | The tool helps users locate synchronization failures in subsequent operators due to unpaired synchronization instructions in the preceding operators.                                                        |
 
@@ -21,10 +21,10 @@ MindStudio Sanitizer (msSanitizer) is a tool based on AI Processors. It provides
 
 | Check Tool| Target Issues| Quick Start Command|
 | --- | --- | --- |
-| `memcheck` (default)| Memory overwriting, multi-core corruption, unaligned access, memory leak, and illegal release| `mssanitizer --tool=memcheck ./application` |
-| `racecheck` | Data races (WAW/WAR/RAW)| `mssanitizer --tool=racecheck ./application` |
-| `initcheck` | Dirty data caused by reading uninitialized memory| `mssanitizer --tool=initcheck ./application` |
-| `synccheck` | Synchronization failure caused by incorrect use of synchronization instructions| `mssanitizer --tool=synccheck ./application` |
+| memcheck (default)| Out-of-bounds access, multi-core corruption, unaligned access, memory leak, and illegal release| `mssanitizer --tool=memcheck ./application` |
+| racecheck | Data races (WAW/WAR/RAW)| `mssanitizer --tool=racecheck ./application` |
+| initcheck | Dirty data caused by reading uninitialized memory| `mssanitizer --tool=initcheck ./application` |
+| synccheck | Synchronization failure caused by incorrect use of synchronization instructions| `mssanitizer --tool=synccheck ./application` |
 
 ### Application Scenario
 
@@ -39,13 +39,13 @@ MindStudio Sanitizer (msSanitizer) is a tool based on AI Processors. It provides
 
 | Options| Function| Example|
 | --- | --- | --- |
-| `--tool`/`-t` | Specifies the check tool (memcheck by default).| `-t racecheck` |
-| `--leak-check=yes` | Enables memory leak check.| `--leak-check=yes` |
-| `--check-unused-memory=yes` | Enables the check for unused allocated memory.| `--check-unused-memory=yes` |
-| `--log-file` | Exports the report to a file.| `--log-file=result.log` |
-| `--kernel-name` | Checks only the operator with the specified name (fuzzy match supported).| `--kernel-name="add"` |
-| `--block-id` | Checks only the specified block (single-block debugging mode).| `--block-id=0` |
-| `--full-backtrace=yes` | Shows the complete call stack of the AscendC API.| `--full-backtrace=yes` |
+| --tool/-t | Specifies the check tool (memcheck by default).| `-t racecheck` |
+| --leak-check=yes | Enables memory leak check.| `--leak-check=yes` |
+| --check-unused-memory=yes | Enables the check for unused allocated memory.| `--check-unused-memory=yes` |
+| --log-file | Exports the report to a file.| `--log-file=result.log` |
+| --kernel-name | Checks only the operator with the specified name (fuzzy match supported).| `--kernel-name="add"` |
+| --block-id | Checks only the specified block (single-block debugging mode).| `--block-id=0` |
+| --full-backtrace=yes | Shows the complete call stack of the AscendC API.| `--full-backtrace=yes` |
 
 > [!NOTE]
 >
@@ -100,14 +100,14 @@ mssanitizer --tool=memcheck ./add_npu
 
 1. In PyTorch graph mode (TorchAir), the check can be performed only when no compilation option is added to msSanitizer. For details, see [5. (Optional) Configuring Operator Compilation Options](#5-optional-configuring-operator-compilation-options).
 2. In PyTorch graph mode (TorchAir), the Ascend IR graph execution mode and aclgraph graph execution mode are supported. For details, see "PyTorch Graph Mode (TorchAir)" > "Reduce-Overhead Mode" > "Configuring the Reduce-Overhead Mode" in the [TorchNPU](https://www.hiascend.com/document/detail/en/Pytorch/720/modthirdparty/torchairuseguide/torchair_00015.html).
-3. For details about the PyTorch framework calling scenario, see "PyTorch Framework Feature Guide" > "Custom Operator Adaptation Development" > "OpPlugin-based Operator Adaptation Development" in [TorchNPU](https://www.hiascend.com/document/detail/en/Pytorch/2610/devguide/fwfeatures/docs/en/framework_feature_guide_pytorch/adaptation_overview_opplugin.md). For details, see "Checking Operators Called by PyTorch APIs" in [example](../best_practices/mssanitizer_basic_cases.md).
+3. For details about the PyTorch framework calling scenario, see "PyTorch Framework Feature Guide" > "Custom Operator Adaptation Development" > "OpPlugin-based Operator Adaptation Development" in [TorchNPU](https://www.hiascend.com/document/detail/en/Pytorch/latest/ptmoddevg/Frameworkfeatures/docs/en/framework_feature_guide_pytorch/adaptation_overview_opplugin.md). For details, see "Checking Operators Called by PyTorch APIs" in the [example](../best_practices/mssanitizer_basic_cases.md).
 
 ### 4.4 Triton Operator Calling Scenario
 
 #### Prerequisites
 
 - The Triton and Triton-Ascend plugins have been installed and configured. For details, see [Triton-Ascend project repository](https://gitcode.com/Ascend/triton-ascend).
-- **Atlas inference series products are not supported.**
+- **Atlas inference products are not supported.**
 
 #### Configuring Environment Variables
 
@@ -115,14 +115,15 @@ To ensure check accuracy and avoid cache interference, set the following environ
 
 | Environment Variable| Description|
 | --- | --- |
-| `TRITON_ALWAYS_COMPILE=1` | Forcibly recompiles the Triton operator to avoid using the cached old version.|
-| `PYTORCH_NO_NPU_MEMORY_CACHING=1` | Disables the NPU memory pool mechanism of PyTorch to prevent it from interfering with the memory check result.|
+| TRITON_ALWAYS_COMPILE=1 | Forcibly recompiles the Triton operator to avoid using the cached old version.|
+| PYTORCH_NO_NPU_MEMORY_CACHING=1 | Disables the NPU memory pool mechanism of PyTorch to prevent it from interfering with the memory check result.|
+| TRITON_ENABLE_SANITIZER=1 | Enables the check tool.|
 
 > [!NOTE]
 >
 > In a Triton scenario, PyTorch is used to create tensors. In the PyTorch framework, the GM is managed in memory pool mode by default, which interferes with memory check. Therefore, the memory cache must be disabled to ensure the validity of the check.
 
-For details, see section "Detecting Triton Operators" in [Basic Scenario Cases](../best_practices/mssanitizer_basic_cases.md).
+For details, see section "Detecting Triton Operators" in [Basic Cases](../best_practices/mssanitizer_basic_cases.md).
 
 ## 5. (Optional) Configuring Operator Compilation Options
 
@@ -132,12 +133,12 @@ You can determine whether to modify the compilation options and recompile the op
 
 - **Instruction check scope:** GM-related transfer instructions
 - **Exception check scope:** Only invalid read/write and unaligned access in memory check are supported. The call stack information is not displayed in the exception report.
-- **Application scenario**: Applicable only to quickly identify invalid read/write and unaligned access exceptions in operator memory.
+- **Application scenario**: The functions supported in this scenario are limited. It is applicable only to quickly identify invalid read/write and unaligned access exceptions in operator memory.
 
 > [!NOTE]
 >
 > - In this scenario, the optimization level of the operator must be `O2`, and the `-q` option must be added in the operator linking phase to retain the symbol relocation information. Otherwise, the check function will fail.
-> - This scenario is not applicable to Atlas inference series products.
+> - This scenario is not applicable to Atlas inference products.
 > - This scenario applies only to the operator kernel launch scenario.
 
 ### 5.2 Modification Required (Full Check)
@@ -156,7 +157,7 @@ To enable full check, modify the compilation options by referring to [Enabling F
 >
 > Exception reports are classified into the following levels:
 >
-> - **WARNING**: This level indicates an unclear risk. Possible exceptions, such as multi-core corruption and unused memory allocation, depend on the real situation. The risk of multi-core corruption involves operations on the same memory block by multiple cores. Experienced users can avoid this risk by means of inter-core synchronization. But this exception for beginners is a high risk. Currently, the WARNING-level report of multi-core corruption can be generated only for inter-core synchronization of the atomic type.
+> - **WARNING**: This level indicates an unclear risk. Possible exceptions, such as multi-core corruption and unused memory allocation, depend on the real situation. The risk of multi-core corruption involves operations on the same memory block by multiple cores. You can avoid this risk by means of inter-core synchronization. Therefore, you need to determine, in combination with race check, whether the risk is eliminated. If a race alarm also exists for the address corresponding to the multi-core corruption, the multi-core corruption risk does exist. If no race exists, inter-core synchronization exists to avoid the risk, and you can ignore this WARNING. Currently, the WARNING-level report of multi-core corruption can be generated only for inter-core synchronization of the atomic type.
 > - **ERROR**: This is the highest severity level of exceptions, which are deterministic memory errors, such as invalid read/write, memory leak, unaligned access, memory not initialized, and contention exceptions. It is strongly recommended that you check for exceptions at this level.
 
 ### 6.1 Memory Check
@@ -177,14 +178,14 @@ The following table lists memory exception types supported by memory check, incl
 | [Illegal Release](#6135-illegal-release)| This exception occurs when the memory address that is not allocated or has been released is released.| Host | GM |
 | [Memory Leak](#6134-memory-leak)| This exception occurs when the memory usage keeps increasing during program running after the allocated memory is not released after being used.| Host | GM |
 | [Allocated Memory Unused](#6136-allocated-memory-unused)| This exception occurs when memory is not used after being allocated.| Kernel, Host| GM |
-| [Ascend 950 SIMT unit exception](#6137-ascend-950-simt-unit-exception)| Displays the thread where the exception occurs in the SIMT architecture.| Kernel | GM |
+| [Ascend 950PR and 950DT SIMT unit exception](#6137-atlas-950pr-and-950dt-simt-unit-exception)| Displays the thread where the exception occurs in the SIMT architecture.| Kernel | GM|
 | [Inter-Thread Corruption](#6138-inter-thread-corruption)| This exception occurs when threads in the AI Core access overlapped memory.| Kernel | GM |
 | [Register Alarm](#6139-register-alarm)| If the register value is not restored to the default value, an alarm is generated, indicating that there is residual register value.| Kernel | GM |
 | [GM Memory Safe Area Out-of-Bounds Write](#61310-gm-memory-safe-area-out-of-bounds-write)| When the aicpu tiling downshift function is used, the out-of-bounds write behavior of the tiling function may occur.| Host | GM |
 
 #### 6.1.2 Enabling Memory Check
 
-When msSanitizer is running, memory check is enabled by default. In the command, `application` indicates the user program.
+When msSanitizer is running, the memory check function (`memcheck`) is enabled by default. In the command, `application` indicates the user program.
 
 | Function| Command|
 | --- | --- |
@@ -196,9 +197,10 @@ When msSanitizer is running, memory check is enabled by default. In the command,
 >
 > - After the user program is complete, an exception report is displayed on the GUI.
 > - When you use a framework such as PyTorch to access an operator, the framework may use a memory pool to manage the GM. However, the memory pool usually allocates a large amount of the GM at a time and reuses the memory during running. In this case, if you check the operator and record all memory allocation and release information about the GM, the check may be inaccurate due to the memory management mode of the memory pool. Therefore, the check tool provides APIs for manually reporting the GM allocation information so that you can manually report the GM range used by an operator when the operator is called. For details about the APIs, see the `sanitizerReportMalloc` and `sanitizerReportFree` APIs in [MindStudio Sanitizer External API Reference](../api_reference/mssanitizer_api_reference.md).
-> - msSanitizer also supports the invalid read and write check for the `AllReduce`, `AllGather`, `ReduceScatter`, and `AlltoAll` APIs of Atlas A2 training products/Atlas A2 inference products and the `AllGather`, `ReduceScatter`, and `AlltoAllV` APIs of Atlas A3 training products/Atlas A3 inference products. For details, see "Advanced APIs" > "HCCL" > "HCCL Kernel APIs" in [Ascend C Operator Development APIs](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/ascendcopapi/docs/api/SIMD-API/%E9%AB%98%E9%98%B6API/HCCL%E9%80%9A%E4%BF%A1%E7%B1%BB/HCCL-Kernel%E4%BE%A7%E6%8E%A5%E5%8F%A3/HCCL%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md).
+> - msSanitizer also supports the invalid read and write check for the `AllReduce`, `AllGather`, `ReduceScatter`, and `AlltoAll` APIs of Atlas A2 products and the `AllGather`, `ReduceScatter`, and `AlltoAllV` APIs of Atlas A3 products. For details, see "Advanced APIs" > "HCCL" > "HCCL Kernel APIs" in [Ascend C Operator Development APIs](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi).
 > - msSanitizer can also check invalid read and write operations of MC2 operators.
-> - Currently, Ascend 950 products support GM/UB/L1/L0A/L0B/L0C in memory check. Other types are not supported.
+> - Currently, Ascend 950PR and 950DT products support GM/UB/L1/L0A/L0B/L0C in memory check. Other types are not supported.
+> - Currently, memory check in the UB address space uses the physical upper limit as the available space by default.
 
 #### 6.1.3 Interpreting a Memory Exception Report
 
@@ -226,7 +228,7 @@ In the preceding example, the 0x12c0c0015000 address on GM is illegally read, an
 > If no compilation option is added, the following call stack information is not displayed in the exception report:
 >
 > ```text
-> ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:58:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
+> ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:58:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number
 > ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:58:9
 > ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:443:5
 > ======    #3 illegal_read_and_write/add_custom.cpp:18:5
@@ -271,7 +273,7 @@ In the preceding example, the alignment exception occurs on 13 bytes when the 0x
 > If no compilation option is added, the following call stack information is not displayed in the exception report:
 >
 > ```text
-> ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number.
+> ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:103:9  // The following is the code call stack where the exception occurs, including the file name, line number, and column number
 > ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:155:9
 > ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:461:5
 > ======    #3 illegal_align/add_custom.cpp:18:5
@@ -315,9 +317,9 @@ This exception occurs when memory that is allocated during operator running has 
 ====== SUMMARY: 1100byte(s) unused memory in 2 allocation(s) // Summary of unused memory, including the number of unused memory blocks and bytes
 ```
 
-##### 6.1.3.7 Ascend 950 SIMT Unit Exception
+##### 6.1.3.7 Ascend 950PR and 950DT SIMT Unit Exception
 
-In the SIMT architecture, the location of the thread where the exception occurs is also provided. The thread ID starts from 0. For example, the following exception occurs at the thread whose ID X=1, ID Y=0, and ID Z=0. When the SIMT unit of the Ascend 950 products is abnormal, the error information is displayed as follows:
+In the SIMT architecture, the location of the thread where the exception occurs is also provided. The thread ID starts from 0. For example, the following exception occurs at the thread whose ID X=1, ID Y=0, and ID Z=0. When the SIMT unit of the Ascend 950PR and 950DT products is abnormal, the error information is displayed as follows:
 
 ```text
 ====== ERROR: illegal read of size 4
@@ -341,15 +343,25 @@ In the SIMT architecture, when programming with multiple threads, improper handl
 
 ##### 6.1.3.9 Register Alarm
 
-When a register is found not to have its default value, an alarm is generated to notify the user. The alert displays the name of the non-reset register, the associated core number, the operator name, the expected default value, and the current actual value.
+When the operator finishes running, if a register is found not to have its default value, an alarm is generated to notify the user. The alert displays the name of the non-reset register, the associated core number, the operator name, the expected default value, and the current actual value.
 
 ```text
 [mssanitizer]Warning:Register XXX was not reset to default in block aiv(XXX) on kernel XXX. Expected default value is (XXX), but current value is (XXX)
 ```
 
+When you enable `--trace-non-default-spr-reg=vector` on the CLI, the tool traces all instructions that use non-default registers at runtime and displays the code call stack and register values corresponding to these instructions. Because the alarm level of this function is INFO, the tool sets `--log-level` to `info`. Even if you set `--log-level` to another level (for example, `error`) on the CLI, `--log-level` becomes `info` as long as `--trace-non-default-spr-reg=vector` is enabled.
+
+```text
+====== INFO: VADD is using non-default mask. MaskMode: Counter, MaskHigh: 0x0, MaskLow: 0x64
+======    in kernel vec_add on device 0
+======    code in pc current 0x198 (serialNo:17)
+======    #0 vec_add.cpp:26:5
+```
+
 > [!NOTE]
 >
 > Currently, only memory check supports register alarms.
+> The `--trace-non-default-spr-reg=vector` function currently supports only Atlas A2 products and Atlas A3 products.
 
 ##### 6.1.3.10 GM Memory Safe Area Out-of-Bounds Write
 
@@ -365,7 +377,7 @@ When you develop a custom operator that uses the aicpu tiling downshift function
 > [!NOTE]
 >
 > GM memory safe area out-of-bounds write does not support detection in memory pool scenarios.
-> Currently, only Atlas A2 training products/Atlas A2 inference products, Atlas A3 training products/Atlas A3 inference products, and Ascend 950 products are supported.
+> Currently, only Atlas A2 products, Atlas A3 products, and Ascend 950PR and 950DT products are supported.
 
 ### 6.2 Race Check
 
@@ -387,7 +399,7 @@ When race check identifies an exception, you can modify the program to ensure th
 
 #### 6.2.2 Enabling Race Check
 
-When running the msSanitizer tool, run the following command to enable race check. In the command, `application` indicates the user program:
+When running the msSanitizer tool, run the following command to enable race check (`racecheck`). In the command, `application` indicates the user program:
 
 ```shell
 mssanitizer --tool=racecheck application
@@ -401,7 +413,7 @@ mssanitizer --tool=racecheck --check-cross-npu-races=yes application
 
 > [!NOTE]
 >
-> - Race check does not check for memory errors. You are advised to perform memory check first to ensure that the operator program can be executed properly.
+> - Race check does not check for memory errors. You are advised to perform memory check first to ensure that the operator program can be executed properly and runs without exceptions.
 > - After the user program is complete, an exception report is displayed on the GUI.
 > - After the tool is started, the tool run log file `mssanitizer_{TIMESTAMP}_{PID}.log` is automatically generated in the current directory.
 
@@ -459,7 +471,7 @@ Uninitialization check is an important memory security protection mechanism desi
 
 #### 6.3.2 Enabling Uninitialization Check
 
-When running the msSanitizer tool, run the following command to enable the uninitialization check function:
+When running the msSanitizer tool, run the following command to enable the uninitialization check function (`initcheck`):
 
 ```shell
 mssanitizer --tool=initcheck application   // Application indicates the user program
@@ -470,7 +482,8 @@ mssanitizer --tool=initcheck application   // Application indicates the user pro
 > - After the tool is started, the tool run log file `mssanitizer_{TIMESTAMP}_{PID}.log` is automatically generated in the current directory.
 > - Due to hardware restrictions, some instructions support data transfer only in blocks. If the actual data volume involved in the computation is not an integer multiple of the block size, some invalid data (dirty data) may be inevitably imported. This may trigger tool initialization anomaly reports. You need to determine whether the dirty data affects the computation result.
 > - Accurate uninitialization check results require that no data race exists. Because initialization is essentially a write-before-read operation, the uninitialization check results may be inaccurate if a memory read/write race exists. Therefore, you are advised to resolve race problems before performing the uninitialization check.
-> - Currently, only Atlas A2 training products/Atlas A2 inference products, Atlas A3 training products/Atlas A3 inference products, and Ascend 950 products are supported.
+> - Currently, only Atlas A2 products, Atlas A3 products, and Ascend 950PR and 950DT products are supported.
+> - Ascend 950PR and 950DT products do not support uninitialization check in the UB address space.
 
 #### 6.3.3 Interpreting an Uninitialized Memory Exception Report
 
@@ -499,13 +512,13 @@ A redundant `SetFlag` instruction does not directly cause a race problem of the 
 
 If there are redundant `SetFlag` instructions, and two or more redundant `SetFlag` instructions exist, synchronization check will trigger both matching exceptions and redundancy exceptions.
 
-For Ascend 950 products, the SIMT unit also supports the inter-thread synchronization instruction `__syncthreads()`, which synchronizes all threads in a block so that subsequent instructions are executed only after all threads reach the synchronization point. Therefore, you must not specify that only some threads execute `__syncthreads()`. The synchronization check function identifies such behavior and reports an error to remind you that a synchronization exception exists.
+For Ascend 950PR and 950DT products, the SIMT unit also supports the inter-thread synchronization instruction `__syncthreads()`, which synchronizes all threads in a block so that subsequent instructions are executed only after all threads reach the synchronization point. Therefore, you must not specify that only some threads execute `__syncthreads()`. The synchronization check function identifies such behavior and reports an error to remind you that a synchronization exception exists.
 
 > [!NOTE]
 >
 > - When synchronization check is enabled independently, memory check and race check are not performed. Therefore, you are advised to enable memory check and race check first. If no exception is reported during race check but operator race occurs, you can use synchronization detection to check the preceding operators.
 > - A redundant `WaitFlag` instruction blocks the subsequent instructions of the current operator, causing the operator to stop running. In this case, developers can detect problems without tool prompts.
-> - Currently, only Atlas A2 training products/Atlas A2 inference products, Atlas A3 training products/Atlas A3 inference products, and Ascend 950 products are supported.
+> - Currently, only Atlas A2 products, Atlas A3 products, and Ascend 950PR and 950DT products are supported.
 
 #### 6.4.1 Synchronization Exception Types
 
@@ -520,7 +533,7 @@ For Ascend 950 products, the SIMT unit also supports the inter-thread synchroniz
 
 #### 6.4.2 Enabling Synchronization Check
 
-When running the msSanitizer tool, run the following command to enable synchronization check:
+When running the msSanitizer tool, run the following command to enable synchronization check (`synccheck`):
 
 ```shell
 mssanitizer --tool=synccheck application // Application indicates the user program
@@ -598,7 +611,7 @@ If redundant `SetFlag` instructions exist, all subsequent operator synchronizati
 
 ##### 6.4.3.4 Thread Synchronization Check
 
-If the SIMT unit of the Ascend 950 products incorrectly uses the `__syncthreads()` synchronization instruction, a thread synchronization check alarm is triggered, and the tool prints information about all threads that have not reached the synchronization point.
+If the SIMT unit of the Ascend 950PR and 950DT products incorrectly uses the `__syncthreads()` synchronization instruction, a thread synchronization check alarm is triggered, and the tool prints information about all threads that have not reached the synchronization point.
 
 ```text
 ====== ERROR: Sync error detected. Divergent thread(s) in vec_add
@@ -620,8 +633,8 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 The configuration of each part is described as follows:
 
 1. `options`: CLI options of the tool. For details about the options and their default arguments, see [7.2 Options](#72-options).
-2. `user_program`: user operator program.
-3. `user_options`: CLI options of the user program.
+2. `user_program`: user operator program
+3. `user_options`: CLI options of the user program
 4. `--`: If the program to be loaded contains CLI options, use `--` to separate the tool from the user program before the program, for example, `mssanitizer -- application parameter1 parameter2 ...`.
 
 ### 7.2 Options
@@ -630,12 +643,12 @@ The configuration of each part is described as follows:
 
 | Option| Description| Value| Mandatory (Yes or No)|
 | --- | --- | --- | --- |
-| -v, --version| Queries the msSanitizer version.| - | No|
+| -V, --version| Queries the msSanitizer version information.<br>-V: A standard version parameter.<br>-v: A compatibility parameter that does not affect old scripts, but is no longer displayed in the help information.| - | No|
 | -t, --tool| Specifies the sub-tool for exception check.| `memcheck`: memory check (default)<br>`racecheck`: race check<br>`initcheck`: uninitialization check<br>`synccheck`: synchronization check| No|
-| --log-file | Exports the check report to a file.| `{file_name}`, for example, `test_log`<br>Note:<br>Only digits, uppercase letters, lowercase letters, and the following special characters are supported -./_<br>To prevent log leakage, you are advised to restrict the file permission to ensure that only authorized personnel can access the file.<br>The tool exports the report to the `test_log` file in overwriting mode. If the `test_log` file contains content, the content will be cleared. You are advised to specify an empty file for exporting the report.| No|
-| --log-level | Specifies the output level of the check report.| `info`: outputs running information at the info, warn, and error levels.<br>`warn`: outputs running information at the warn and error levels (default).<br>`error`: outputs running information at the error level.| No|
-| --max-debuglog-size | Specifies the maximum size of a single debug log file output by the check tool.| The value is an integer ranging from 1 to 10240, in MB.<br>Defaults to `1024`.<br>Note:<br>`--max-debuglog-size=100` indicates that the maximum size of a debug log file is 100 MB.| No|
-| --block-id | Enables the single-block check function or not.| The value is an integer ranging from 0 to 200.<br>Disabled<br>Memory check, uninitialized check, and synchronization check: all blocks are checked by default.<br>Race check: By default, inter-core check covers all blocks, while intra-core check covers race within and between the pipelines of block 0.<br>Enabled<br>Memory check, uninitialized check, and synchronization check: Specified blocks are checked.<br>Race check: Inter-core check is not performed. The race within and between the pipelines of a specified block is checked.| No|
+| --log-file | Exports the check report to a file.| `{file_name}`, for example, `test_log`<br>Note:<br>Only digits, uppercase letters, lowercase letters, and the following special characters are supported -./_.<br>To prevent log leakage, you are advised to restrict the file permission to ensure that only authorized personnel can access the file.<br>The tool exports the report to the `test_log` file in overwriting mode. If the `test_log` file contains content, the content will be cleared. You are advised to specify an empty file for exporting the report.| No|
+| --log-level | Specifies the output level of the check report.| `info`: outputs check results at the INFO, WARNING, and ERROR levels.<br>`warn` (default): outputs check results at the WARNING and ERROR levels.<br>`error`: outputs check results at the ERROR level.| No|
+| --max-debuglog-size | Specifies the maximum size of a single debug log file output by the check tool.| The value is an integer ranging from 1 to 10240, in MB.<br>Defaults to 1024.<br>Note:<br>`--max-debuglog-size=100` indicates that the maximum size of a debug log file is 100 MB.| No|
+| --block-id | Enables the single-block check function or not.| The value is an integer ranging from 0 to 200.<br>Cannot be enabled at the same time as uninitialization check.<br>Disabled:<br>Memory check, uninitialization check, and synchronization check: all blocks are checked by default.<br>Race check: By default, inter-core check covers all blocks, while intra-core check covers race within and between the pipelines of block 0.<br>Enabled:<br>Memory check and synchronization check: Specified blocks are checked.<br>Race check: Inter-core check is not performed. The race within and between the pipelines of a specified block is checked.| No|
 | --cache-size | Specifies the GM size of a single block.| The value is an integer ranging from 1 to 8192, in MB.<br>The default value for a single block is 100 MB, indicating that a single block can be allocated with 100 MB of memory.<br>Note:<br>When single-block check is enabled, the maximum value of `--cache-size` is 8192 MB. If single-block check is disabled, the maximum value of `--cache-size` is (24 × 1024/Number of blocks).<br>If the value of `--cache-size` does not meet the requirements, the exception check tool will print a message prompting you to reset the value of `--cache-size`. For details, see the description of the msSanitizer tool prompting that `--cache-size` is abnormal in the MindStudio Sanitizer FAQs.| No|
 | --kernel-name | Specifies the name of the operator to be checked.| Partial strings within operator names can be used for fuzzy matching. If this option is not specified, the system checks all operators scheduled during the execution of the program by default.<br>For example, to check operators named `abcd` and `bcd` at the same time, you can set `--kernel-name="bc"`. The system will automatically identify and check all operators containing the string "bc".| No|
 | --full-backtrace | Displays the call stack backtrace within the AscendC API.| `yes`: Displays the complete call stack backtrace.<br>`no` (default): Does not display the call stack of the AscendC API.| No|
@@ -659,22 +672,26 @@ The configuration of each part is described as follows:
 | --leak-check | Enables memory leak check.| `yes`/`no` (default)| No|
 | --check-device-heap | Enables device memory check.| `yes`/`no` (default)| No|
 | --check-cann-heap | Enables memory check for the CANN software stack.| `yes`/`no` (default)| No|
+| --trace-non-default-spr-reg | Tracks instructions that use non-default registers.| `vector`<br>Note:<br>Currently, only vector instructions are supported. This function must be enabled together with memcheck. If memcheck is not enabled, this function does not take effect.| No|
 
 **Table 3: Race check options**
 
 | Option| Description| Value| Mandatory (Yes or No)|
 | --- | --- | --- | --- |
 | --check-cross-npu-races | Enables cross-NPU race check.| `yes`/`no` (default)| No|
+| --check-dcci | Enables DCCI missing check.| `yes`/`no` (default)| No|
 
 > [!NOTE]
 >
 > - After `--check-device-heap` or `--check-cann-heap` is enabled, the kernel will not be checked.
-> - The device memory check and CANN software stack memory check cannot be enabled at the same time. If they are enabled at the same time, the error message `CANNOT enable both --check-cann-heap and --check-device-heap` is displayed.
+> - The device memory check and CANN software stack memory check cannot be enabled at the same time. If they are enabled at the same time, the error message `CANNOT specify both '--check-cann-heap=yes' and '--check-device-heap=yes'` is displayed.
+> - Uninitialization check must check all blocks and does not support the single-block check function. If they are enabled at the same time, the error message `CANNOT specify both '--tool=initcheck' and '--block-id=<id>'` is displayed.
+> - After `--check-dcci` is enabled, race check enables only the DCCI missing check sub-function and no longer performs the main data race check function.
 > - Programs that are recompiled by using the API header file provided by msSanitizer can be used only for leak check on AscendCL-series APIs and cannot be used for leak check on device APIs.
 
 ### 7.3 Rules for Combining Check Functions
 
-The exception check tool provides memory check, race check, uninitialization check, and synchronization check. Multiple check functions can be combined and enabled based on the following principles:
+The exception check tool provides four check functions: memory check (`memcheck`), race check (`racecheck`), uninitialization check (`initcheck`), and synchronization check (`synccheck`). Multiple check functions can be combined and enabled based on the following principles:
 
 - Multiple check functions can be enabled at the same time by specifying the `--tool` option for multiple times. For example, you can run the following command to enable memory check and race check at the same time:
 
@@ -682,19 +699,13 @@ The exception check tool provides memory check, race check, uninitialization che
     mssanitizer -t memcheck -t racecheck ./application
     ```
 
-- If the sub-option corresponding to the check function is enabled, the corresponding check function is also enabled by default. For example, if the leak check sub-option corresponding to memory check is enabled, the memory check function is automatically enabled.
+- If you enable the sub-option corresponding to a check function, you also need to enable the corresponding check function. Otherwise, the sub-option does not take effect. For example, if you enable the cross-NPU race sub-option corresponding to race check, you also need to enable the race check function:
 
     ```shell
-    mssanitizer -t racecheck --leak-check=yes ./application
+    mssanitizer -t racecheck --check-cross-npu-races=yes ./application
     ```
 
-    The preceding command is equivalent to:
-
-    ```shell
-    mssanitizer -t racecheck -t memcheck --leak-check=yes ./application
-    ```
-
-- If no check function is specified, memory check is enabled by default.
+- Specifically, if no check function is specified, memory check is enabled by default:
 
     ```shell
     mssanitizer ./application
@@ -704,6 +715,12 @@ The exception check tool provides memory check, race check, uninitialization che
 
     ```shell
     mssanitizer -t memcheck ./application
+    ```
+
+    Therefore, in this case, the sub-option also takes effect:
+
+    ```shell
+    mssanitizer --trace-non-default-spr-reg=vector ./application
     ```
 
 ### 7.4 CLI Parameter Auto-Completion
@@ -740,13 +757,19 @@ error  info   warn
 | Result File| Description|
 | --- | --- |
 | mssanitizer_{TIMESTAMP}_{PID}.log | msSanitizer logs generated in the `mindstudio_sanitizer_log` directory during the running of the tool. `TIMESTAMP` indicates the current timestamp, and `PID` indicates the PID of the current check tool.|
-| kernel.{PID}.o | Operator cache files generated during the running of the msSanitizer tool. `PID` indicates the PID of the current check tool. The operator cache files are used to parse the abnormal call stack. In normal cases, the operator cache file is automatically cleared when msSanitizer exits. When msSanitizer exits abnormally (for example, terminated by pressing **CTRL+C**), the operator cache files are retained in the file system. The operator cache file contains the debug information of the operator. You are advised to restrict the access permission of other users to the file, and delete the file as soon as possible after the check tool is executed.|
+| kernel.{PID}.o | Operator cache files generated during the running of the msSanitizer tool. `PID` indicates the PID of the current check tool. The operator cache files are used to parse the abnormal call stack. In normal cases, the operator cache file is automatically cleared when msSanitizer exits. When msSanitizer exits abnormally (for example, terminated by pressing **Ctrl+C**), the operator cache files are retained in the file system. The operator cache file contains the debug information of the operator. You are advised to restrict the access permission of other users to the file, and delete the file as soon as possible after the check tool is executed.|
 | tmp_{PID}_{TIMESTAMP} | Temporary folder generated during the running of the msSanitizer tool. `PID` indicates the PID of the current check tool, and `TIMESTAMP` indicates the current timestamp. This folder is used to generate the operator kernel binary file. In normal cases, the folder is automatically cleared when the msSanitizer exits. When the environment variable `export INJ_LOG_LEVEL=0` is used to enable the debug log function or the tool exits abnormally (for example, the tool is stopped by pressing **Ctrl+C**), the folder is retained in the file system for debugging. This folder contains the operator debug information. You are advised to restrict the access permission of other users to the folder, and delete it as soon as possible after the debugging is complete.|
 
 ## 8. Restrictions and Precautions
 
 1. msSanitizer does not support the check of multi-thread operators and vector instructions that use masks.
 2. After `--check-device-heap` or `--check-cann-heap` is enabled, the kernel will not be checked.
-3. The device memory check and CANN software stack memory check cannot be enabled at the same time. If they are enabled at the same time, the error message `CANNOT enable both --check-cann-heap and --check-device-heap` is displayed.
-4. Programs that are recompiled by using the API header file provided by msSanitizer can be used only for memory leak check on AscendCL APIs and cannot be used on device APIs.
-5. msSanitizer currently supports the check of operators whose `blockDim` is less than 100.
+3. The device memory check and CANN software stack memory check cannot be enabled at the same time. If they are enabled at the same time, the error message `CANNOT specify both '--check-cann-heap=yes' and '--check-device-heap=yes'` is displayed.
+4. Uninitialization check must check all blocks and does not support the single-block check function. If they are enabled at the same time, the error message `CANNOT specify both '--tool=initcheck' and '--block-id=<id>'` is displayed.
+5. After `--check-dcci` is enabled, race check analyzes only DCCI missing and does not display race check results other than DCCI missing.
+6. Programs that are recompiled by using the API header file provided by msSanitizer can be used only for memory leak check on AscendCL APIs and cannot be used on device APIs.
+7. msSanitizer currently supports the check of operators whose `blockDim` is less than 100.
+8. The tool cannot yet detect the read and write behavior of vector computation instructions in SIMD VF functions on the UB for Ascend 950PR and 950DT products. Therefore, uninitialization check for Ascend 950PR and 950DT products does not support the UB space for now.
+9. The tool does not support exception check for operators launched by configuring CCUs through aclnn for now.
+10. The tool does not support identifying the shared memory provided by HCCL for now.
+11. When an operator uses the `asc_atomic_inc`, `asc_atomic_dec`, `WaitPreBlockCalc`, and `GroupBarrier::Wait` APIs, race check reports read/write races because these APIs use a software synchronization mechanism internally. This message is a benign alarm and does not affect the actual running result of the operator.

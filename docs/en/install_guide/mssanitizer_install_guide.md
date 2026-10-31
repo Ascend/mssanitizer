@@ -1,4 +1,4 @@
-# MindStudio Sanitizer Installation Guide
+# msSanitizer Installation Guide
 
 <br>
 
@@ -6,7 +6,7 @@
 
 This tool is integrated into CANN. If CANN is already installed and you do not need to update this tool, you can use it directly without following this document for installation.
 
-If CANN is not yet installed in your environment, see [CANN Quick Install](https://www.hiascend.com/en/cann/download) to install the Ascend NPU driver and CANN software (including the Toolkit and ops packages), and configure the environment variables.
+If CANN is not yet installed in your environment, see [CANN Quick Install](https://www.hiascend.com/cann/download) to install the Ascend NPU driver and CANN software (including the Toolkit and ops packages), and configure the environment variables.
 
 To upgrade this tool separately or use the latest version, you can install it in one of the following ways: [Online Installation](#21-online-installation), [Offline Installation](#22-offline-installation), [Source Code Installation](#23-source-code-installation).
 
@@ -14,45 +14,67 @@ To upgrade this tool separately or use the latest version, you can install it in
 
 ### 2.1 Online Installation
 
-If your device has internet access, you can automatically download and install the tool with a single command. Go to the MindStudio [Download](https://www.hiascend.com/en/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Online Installation" as the installation method. The system then guides you through the remaining steps.
+If your device has internet access, you can automatically download and install the tool with a single command. Go to the MindStudio [Download](https://www.hiascend.com/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Online Installation" as the installation method. The system then guides you through the remaining steps.
 
 ### 2.2 Offline Installation
 
-For devices in an enterprise intranet or other environments without internet access, first download the complete offline installation package on a machine with internet access, and then transfer it to the target device for installation. Go to the MindStudio [Download](https://www.hiascend.com/en/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Offline Installation" to obtain the installation package and instructions.
+For devices in an enterprise intranet or other environments without internet access, first download the complete offline installation package on a machine with internet access, and then transfer it to the target device for installation. Go to the MindStudio [Download](https://www.hiascend.com/developer/software/mindstudio/download) page on the Ascend community, select the corresponding CANN version, and choose "Offline Installation" to obtain the installation package and instructions.
 
 ### 2.3 Source Code Installation
 
+To use the functions of the latest code or modify the source code to enhance functions, you can download the code from this repository, build and package the tool, and install it.
+
 #### 2.3.1 Environment Setup
 
-Set up the environment by referring to the [Operator Tool Development Environment Setup Guide](https://gitcode.com/Ascend/msot/blob/master/docs/en/common/dev_env_setup.md).
+All source code compilation uses the standard MindStudio build environment.
 
-#### 2.3.2 Building and Packaging
+- For daily development or when you use a released image, refer to the [MindStudio Tool Development Environment Installation Guide](https://gitcode.com/Ascend/msot/blob/master/docs/en/common/dev_env_setup.md).
+- If you need to reproduce the environment from a base operating system, or to perform source code build verification or unit test verification, you must refer to the [MindStudio Unified Build Image Creation Guide](https://gitcode.com/Ascend/msot/blob/master/docs/en/common/docker_image_build_guide.md) to build the environment image on site from the openEuler base image.
 
-- Clone this repository.
+The source code compilation and unit test commands later in this document are all run in the container of the specified image or of the environment image built on site. The CANN software package version, GCC version, and Python version are subject to the Unified Build Image Creation Guide, and this repository does not maintain them separately.
 
-    ```sh
-    git clone https://gitcode.com/Ascend/mssanitizer.git
-    ```
+After the image is built, you must use the `ctr_in.py` command provided in Chapter 7 of the Unified Build Image Creation Guide to start and enter the container in an interactive terminal. Do not use a plain `docker run` to create a container, and do not use `docker exec <container_name> bash -c '<command>'` to replace the interactive environment. Otherwise, the initialization of the Python, GCC, and CANN environments may be skipped.
 
-- Run the one-click script to automatically download and build the dependency repository:
+After you enter the interactive container shell opened by `ctr_in.py`, run the following command to clone this repository:
 
-    ```shell
-    cd mssanitizer
-    python build.py
-    ```
+```bash
+cd ~
+git clone https://gitcode.com/Ascend/mssanitizer.git
+```
 
-#### 2.3.3 Installation
+#### 2.3.2 Compilation
 
-##### 2.3.3.1 Preparing the .run Package
+Stay in the same interactive container shell opened by `ctr_in.py`, and run the following command in the repository root directory to automatically download dependencies and build:
 
-The .run package is generated in the `output` directory. Run the following commands to ensure that the .run package has the execute permission:
+```bash
+cd ~/mssanitizer
+python3 build.py
+```
 
-```shell
-cd output
+After the build succeeds, the installation package is generated in the `artifacts/` directory.
+
+#### 2.3.3 Unit Tests (Optional)
+
+This step is not required for installation. If you need to verify the basic functions of the code, you can run the unit tests:
+
+```bash
+cd ~/mssanitizer
+python3 build.py test
+```
+
+If the return code of the command is 0 and no test case fails, the unit tests pass.
+
+#### 2.3.4 Installation
+
+##### 2.3.4.1 Preparing the .run Package
+
+Run the following command to ensure that the .run package has the execute permission:
+
+```bash
 chmod +x mindstudio-sanitizer_*.run
 ```
 
-##### 2.3.3.2 Installation
+##### 2.3.4.2 Installation
 
 Copy the .run package to the operating environment (not required for local installation) and perform the following operation:
 
@@ -90,7 +112,7 @@ You can uninstall by following these steps:
 1. Download the script.
 
    ```bash
-   curl -O https://inst.obs.cn-north-4.myhuaweicloud.com/26.1.0/ms_install.py
+   curl -O https://inst.obs.cn-north-4.myhuaweicloud.com/26.2.0/ms_install.py
    ```
 
    > [!NOTE]
@@ -119,7 +141,7 @@ Simply run the installation command. The tool automatically uninstalls the old v
 - Uninstall the old version first (see Section 4).
 - Then install the new version by following the methods in Section 2.
 
-You can run the `mssanitizer --version` command to view the version information about the current environment and then select the version to upgrade. When upgrading the version, pay attention to the version matching relationships. For details, see [Release Notes](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/master/release_notes_en.md).
+You can run the `mssanitizer --version` command to view the version information about the current environment and then select the version to upgrade. When upgrading the version, pay attention to the version matching relationships. For details, see [Release Notes](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/master/release_notes.md).
 
 ## 6. FAQ
 
