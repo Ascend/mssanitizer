@@ -215,7 +215,7 @@ ReturnType PipelineReplayer::ProcessBlockSoftSyncEvent(const SanEvent& event)
     uint32_t blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_);
     uint32_t curPipe = eventContainer_.GetQueIndex();
     auto& softSyncInfo = event.eventInfo.softSyncInfo;
-    VectorTime vt(curPipe + 1, 0); // SyncAll 内部会调用 UpdateLogicTime(vt, pipeIdx)，需保证 vt 足够大
+    VectorTime vt{}; // SyncAll 内部会调用 UpdateLogicTime(vt, pipeIdx)；稀疏表示无尺寸约束
 
     if (softSyncInfo.opType == SyncType::SYNC_ALL) {
         if (!crossCoreSyncInfoContainer_.SyncAll(blockIndex, softSyncInfo.usedCores, curPipe, vt)) {

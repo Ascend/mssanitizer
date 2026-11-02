@@ -23,9 +23,6 @@ CrossCoreRaceAlgImpl::CrossCoreRaceAlgImpl(KernelType kernelType, DeviceType dev
 {
     uint32_t totalBlockNum = NeedExpandBlockDim(kernelType, deviceType) ? blockDim * C220_MIX_SUB_BLOCKDIM : blockDim;
     vc_.resize(totalBlockNum * static_cast<uint8_t>(PipeType::SIZE));
-    for (auto &it : vc_) {
-        it.resize(totalBlockNum * static_cast<uint8_t>(PipeType::SIZE), 1);
-    }
     eventContainer_.Init(totalBlockNum);
     syncDB_.resize(totalBlockNum);
     crossCoreSyncInfoContainer_.Init(totalBlockNum, kernelType);
@@ -90,7 +87,7 @@ ReturnType CrossCoreRaceAlgImpl::ProcessEvent(const SanEvent &event)
         e.type = EventType::TIME_EVENT;
         e.pipe = event.pipe;
         e.loc.blockType = event.loc.blockType;
-        e.timeInfo = vc_[curPipe];
+        e.timeInfo = AllocTimeInfo(vc_[curPipe]);
         auto blockIdx = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::CROSS_BLOCK_CHECK);
         eventContainer_.Push(std::move(e), e.pipe, blockIdx);
         eventContainer_.Push(event, event.pipe, blockIdx);
@@ -262,7 +259,10 @@ ReturnType CrossCoreRaceAlgImpl::ProcessMstxCrossNpuBarrier(const SanEvent& even
 ReturnType CrossCoreRaceAlgImpl::ProcessTimeEvent(const SanEvent &event)
 {
     uint32_t curPipe = eventContainer_.GetQueIndex();
-    VectorClock::UpdateVectorTime(event.timeInfo, vc_[curPipe]);
+    if (event.timeInfo != nullptr) {
+        VectorClock::UpdateVectorTime(*event.timeInfo, vc_[curPipe]);
+        FreeTimeInfo(event.timeInfo);
+    }
     VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
     return ReturnType::PROCESS_OK;
 }

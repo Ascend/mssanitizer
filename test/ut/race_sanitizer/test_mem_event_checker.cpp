@@ -138,7 +138,7 @@ TEST(MemEventChecker, the_same_pipe_expect_no_race)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t;
+    DenseVectorTime t;
     t.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     e1.vt = t;
     e1.serialNo = 3;
@@ -174,7 +174,7 @@ TEST(MemEventChecker, different_memtype_expect_no_race)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t;
+    DenseVectorTime t;
     t.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     e1.vt = t;
     e1.memInfo.memType = MemType::UB;
@@ -197,13 +197,13 @@ TEST(MemEventChecker, read_after_read_expect_no_race)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t1;
+    DenseVectorTime t1;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1)]++;
     e1.vt = t1;
     e1.pipe = PipeType::PIPE_MTE1;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE2)]++;
     e2.vt = t2;
@@ -228,13 +228,13 @@ TEST(MemEventChecker, write_after_write_expect_core_inner_race)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t1;
+    DenseVectorTime t1;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1)]++;
     e1.vt = t1;
     e1.pipe = PipeType::PIPE_MTE1;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE2)]++;
     e2.vt = t2;
@@ -258,14 +258,14 @@ TEST(MemEventChecker, write_after_read_expect_core_inner_race)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t1;
+    DenseVectorTime t1;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1)]++;
     e1.vt = t1;
     e1.pipe = PipeType::PIPE_MTE1;
     e1.memInfo.opType = AccessType::READ;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE2)]++;
     e2.vt = t2;
@@ -290,14 +290,14 @@ TEST(MemEventChecker, read_after_write_expect_vec_core_inner_race)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t1;
+    DenseVectorTime t1;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1)]++;
     e1.vt = t1;
     e1.pipe = PipeType::PIPE_MTE1;
     e1.memInfo.opType = AccessType::WRITE;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE2)]++;
     e2.vt = t2;
@@ -393,7 +393,7 @@ TEST(MemEventChecker, write_after_read_expect_cross_core_race)
     MemEvent e2(event);
 
     uint8_t blockDim = 10;
-    VectorTime t1;
+    DenseVectorTime t1;
     e1.loc.coreId = 0;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1) + e1.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -401,7 +401,7 @@ TEST(MemEventChecker, write_after_read_expect_cross_core_race)
     e1.pipe = PipeType::PIPE_MTE1;
     e1.memInfo.opType = AccessType::READ;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     e2.loc.coreId = 1;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE2) + e2.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -428,14 +428,14 @@ TEST(MemEventChecker, write_after_write_expect_cross_core_race)
     MemEvent e2(event);
 
     uint8_t blockDim = 10;
-    VectorTime t1;
+    DenseVectorTime t1;
     e1.loc.coreId = 0;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1) + e1.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
     e1.vt = t1;
     e1.pipe = PipeType::PIPE_MTE1;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     e2.loc.coreId = 1;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE2) + e2.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -460,7 +460,7 @@ TEST(MemEventChecker, read_after_write_expect_cross_core_race)
     MemEvent e2(event);
 
     uint8_t blockDim = 10;
-    VectorTime t1;
+    DenseVectorTime t1;
     e1.loc.coreId = 0;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1) + e1.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -468,7 +468,7 @@ TEST(MemEventChecker, read_after_write_expect_cross_core_race)
     e1.pipe = PipeType::PIPE_MTE1;
     e1.memInfo.opType = AccessType::WRITE;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     e2.loc.coreId = 1;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE2) + e2.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -501,7 +501,7 @@ TEST(MemEventChecker, write_after_write_expect_no_race)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t1;
+    DenseVectorTime t1;
     e1.loc.coreId = 0;
     t1.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t1[static_cast<uint8_t>(PipeType::PIPE_MTE1) + e1.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -509,7 +509,7 @@ TEST(MemEventChecker, write_after_write_expect_no_race)
     e1.pipe = PipeType::PIPE_MTE1;
     e1.memInfo.addr = addr;
 
-    VectorTime t2;
+    DenseVectorTime t2;
     e2.loc.coreId = 0;
     t2.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
     t2[static_cast<uint8_t>(PipeType::PIPE_MTE1) + e2.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -543,8 +543,8 @@ TEST(MemEventChecker, write_after_write_expect_race)
     MemEvent e2(event);
 
     uint8_t blockDim = 2;
-    VectorTime t1;
-    VectorTime t2;
+    DenseVectorTime t1;
+    DenseVectorTime t2;
 
     t1.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1);
     e1.loc.coreId = 0;
@@ -588,7 +588,7 @@ TEST(MemEventChecker, write_after_write_expect_no_race_moe_mov_align_case)
     MemEvent e1(event);
     MemEvent e2(event);
 
-    VectorTime t;
+    DenseVectorTime t;
     t.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
 
     e1.vt = t;
@@ -628,7 +628,7 @@ TEST(MemEventChecker, scalar_read_with_multi_cross_core_write_missing_dcci_expec
     MemEvent eRead(event);
 
     uint8_t blockDim = 10U;
-    VectorTime tWrite1;
+    DenseVectorTime tWrite1;
     eWrite1.loc.coreId = 1U;
     tWrite1.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     tWrite1[static_cast<uint8_t>(PipeType::PIPE_S_CAL) + eWrite1.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -636,7 +636,7 @@ TEST(MemEventChecker, scalar_read_with_multi_cross_core_write_missing_dcci_expec
     eWrite1.pipe = PipeType::PIPE_S_CAL;
     eWrite1.memInfo.opType = AccessType::WRITE;
 
-    VectorTime tWrite2;
+    DenseVectorTime tWrite2;
     eWrite2.loc.coreId = 2U;
     tWrite2.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     tWrite2[static_cast<uint8_t>(PipeType::PIPE_S_CAL) + eWrite2.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -644,7 +644,7 @@ TEST(MemEventChecker, scalar_read_with_multi_cross_core_write_missing_dcci_expec
     eWrite2.pipe = PipeType::PIPE_S_CAL;
     eWrite2.memInfo.opType = AccessType::WRITE;
 
-    VectorTime tRead;
+    DenseVectorTime tRead;
     eRead.loc.coreId = 0U;
     tRead.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     tRead[static_cast<uint8_t>(PipeType::PIPE_S_CAL) + eRead.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
@@ -684,7 +684,7 @@ TEST(MemEventChecker, ub_events_should_not_trigger_missing_dcci)
     MemEvent eRead(event);
 
     uint8_t blockDim = 10U;
-    VectorTime tWrite;
+    DenseVectorTime tWrite;
     eWrite.loc.coreId = 1U;
     tWrite.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     tWrite[static_cast<uint8_t>(PipeType::PIPE_S_CAL) + eWrite.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)];
@@ -692,7 +692,7 @@ TEST(MemEventChecker, ub_events_should_not_trigger_missing_dcci)
     eWrite.pipe = PipeType::PIPE_S_CAL;
     eWrite.memInfo.opType = AccessType::WRITE;
 
-    VectorTime tRead;
+    DenseVectorTime tRead;
     eRead.loc.coreId = 0U;
     tRead.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     tRead[static_cast<uint8_t>(PipeType::PIPE_S_CAL) + eRead.loc.coreId * static_cast<uint8_t>(PipeType::SIZE)];
@@ -730,7 +730,7 @@ void AppendScalarAtomicSubEvents(std::vector<MemEvent> &events, uint32_t coreId,
     event.serialNo = serialNo;
 
     uint8_t blockDim = 10;
-    VectorTime t;
+    DenseVectorTime t;
     t.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     t[static_cast<uint8_t>(PipeType::PIPE_S) + coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
 
@@ -760,7 +760,7 @@ MemEvent MakeScalarAtomicSubEvent(uint32_t coreId, uint64_t serialNo, uint64_t a
     event.serialNo = serialNo;
 
     uint8_t blockDim = 10;
-    VectorTime t;
+    DenseVectorTime t;
     t.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     t[static_cast<uint8_t>(PipeType::PIPE_S) + coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
 
@@ -805,7 +805,7 @@ MemEvent MakeVectorAtomicWrite(uint32_t coreId, uint64_t serialNo, uint64_t addr
     event.isAtomicMode = true;
 
     uint8_t blockDim = 10;
-    VectorTime t;
+    DenseVectorTime t;
     t.resize(static_cast<uint8_t>(PipeType::SIZE) * blockDim, 1U);
     t[static_cast<uint8_t>(pipe) + coreId * static_cast<uint8_t>(PipeType::SIZE)]++;
 

@@ -246,10 +246,11 @@ TEST(PathwayFilter, filters_in_place_in_order_for_empty_full_alternating_and_spa
 }
 
 TEST(PathwayFilter, preserves_retained_event_fields_and_time_info) {
+    TimeInfoPool timeInfoPool;
     auto removed = MakeMemoryEvent(BlockType::AICUBE, PipeType::PIPE_S_CAL, MemType::UB, AccessType::WRITE, 1);
-    removed.timeInfo = {10, 11, 12};
+    removed.timeInfo = timeInfoPool.Alloc(VectorTime{10, 11, 12});
     auto retained = MakeMemoryEvent(BlockType::AIVEC, PipeType::PIPE_V, MemType::GM, AccessType::READ, 2);
-    retained.timeInfo = {20, 21, 22};
+    retained.timeInfo = timeInfoPool.Alloc(VectorTime{20, 21, 22});
     retained.loc.pc = 0x1234;
     retained.eventInfo.memInfo.addr = 0x5678;
     std::vector<SanEvent> events{removed, retained};
@@ -263,7 +264,8 @@ TEST(PathwayFilter, preserves_retained_event_fields_and_time_info) {
     EXPECT_EQ(events[0].eventInfo.memInfo.memType, retained.eventInfo.memInfo.memType);
     EXPECT_EQ(events[0].eventInfo.memInfo.opType, retained.eventInfo.memInfo.opType);
     EXPECT_EQ(events[0].eventInfo.memInfo.addr, retained.eventInfo.memInfo.addr);
-    EXPECT_EQ(events[0].timeInfo, retained.timeInfo);
+    ASSERT_NE(events[0].timeInfo, nullptr);
+    EXPECT_EQ(*events[0].timeInfo, *retained.timeInfo);
 }
 
 TEST(PathwayFilter, does_not_read_non_memory_event_union) {
@@ -309,16 +311,22 @@ TEST(PathwayFilter, in_place_filter_has_no_allocations_and_preserves_time_info) 
 
     std::vector<SanEvent> events;
     events.reserve(5);
-    const auto addEvent = [&events](SanEvent event, VectorTime timeInfo, uint64_t addr = 0) {
-        event.timeInfo = timeInfo;
+    TimeInfoPool timeInfoPool;
+    const auto addEvent = [&events, &timeInfoPool](SanEvent event, const VectorTime &timeInfo, uint64_t addr = 0) {
+        event.timeInfo = timeInfoPool.Alloc(timeInfo);
         event.eventInfo.memInfo.addr = addr;
         events.emplace_back(event);
     };
-    addEvent(MakeMemoryEvent(BlockType::AICUBE, PipeType::PIPE_S_CAL, MemType::UB, AccessType::WRITE, 1), {10, 11});
-    addEvent(MakeMemoryEvent(BlockType::AIVEC, PipeType::PIPE_V, MemType::GM, AccessType::READ, 2), {20, 21}, 0x20);
-    addEvent(MakeMemoryEvent(BlockType::AICUBE, PipeType::PIPE_S, MemType::UB, AccessType::WRITE, 3), {30, 31});
-    addEvent(MakeMemoryEvent(BlockType::AIVEC, PipeType::PIPE_V, MemType::GM, AccessType::READ, 4), {40, 41}, 0x40);
-    addEvent(MakeMemoryEvent(BlockType::AICUBE, PipeType::PIPE_S_CAL, MemType::UB, AccessType::WRITE, 5), {50, 51});
+    addEvent(MakeMemoryEvent(BlockType::AICUBE, PipeType::PIPE_S_CAL, MemType::UB, AccessType::WRITE, 1),
+        VectorTime{10, 11});
+    addEvent(MakeMemoryEvent(BlockType::AIVEC, PipeType::PIPE_V, MemType::GM, AccessType::READ, 2),
+        VectorTime{20, 21}, 0x20);
+    addEvent(MakeMemoryEvent(BlockType::AICUBE, PipeType::PIPE_S, MemType::UB, AccessType::WRITE, 3),
+        VectorTime{30, 31});
+    addEvent(MakeMemoryEvent(BlockType::AIVEC, PipeType::PIPE_V, MemType::GM, AccessType::READ, 4),
+        VectorTime{40, 41}, 0x40);
+    addEvent(MakeMemoryEvent(BlockType::AICUBE, PipeType::PIPE_S_CAL, MemType::UB, AccessType::WRITE, 5),
+        VectorTime{50, 51});
 
     allocation_probe::Begin();
     const std::size_t removed = PathwayFilter::FilterInPlace(RecordType::STORE, events);
@@ -328,10 +336,12 @@ TEST(PathwayFilter, in_place_filter_has_no_allocations_and_preserves_time_info) 
     EXPECT_EQ(removed, 3U);
     ASSERT_EQ(events.size(), 2U);
     EXPECT_EQ(events[0].serialNo, 2U);
-    EXPECT_EQ(events[0].timeInfo, (VectorTime{20, 21}));
+    ASSERT_NE(events[0].timeInfo, nullptr);
+    EXPECT_EQ(*events[0].timeInfo, (VectorTime{20, 21}));
     EXPECT_EQ(events[0].eventInfo.memInfo.addr, 0x20U);
     EXPECT_EQ(events[1].serialNo, 4U);
-    EXPECT_EQ(events[1].timeInfo, (VectorTime{40, 41}));
+    ASSERT_NE(events[1].timeInfo, nullptr);
+    EXPECT_EQ(*events[1].timeInfo, (VectorTime{40, 41}));
     EXPECT_EQ(events[1].eventInfo.memInfo.addr, 0x40U);
 }
 } // namespace

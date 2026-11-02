@@ -18,7 +18,6 @@
 #ifndef CORE_FRAMEWORK_VECTOR_CLOCK_H
 #define CORE_FRAMEWORK_VECTOR_CLOCK_H
 
-#include <array>
 #include "core/framework/event_def.h"
 
 namespace Sanitizer {
@@ -32,15 +31,23 @@ class VectorClock {
 public:
     // 更新逻辑时间
     static void UpdateLogicTime(VectorTime &t, uint32_t pipe);
-    // 更新向量时间
+    // 稀疏 -> 稀疏 合并
     static void UpdateVectorTime(const VectorTime &in, VectorTime &out);
-    // 比较t1和t2是否存在并发关系
-    static bool IsNotHappensBefore(const VectorTime &t1, const VectorTime &t2, uint32_t t1Pipe, uint32_t t2Pipe);
+    // 比较t1和t2是否存在并发关系（FastTrack 式）
+    static bool IsNotHappensBefore(const VectorTime &t1, const VectorTime &t2,
+        uint32_t t1Pipe, uint32_t t2Pipe);
+    // 分量级并发判定：a1/a2 为 t1Pipe 上的两个分量，b1/b2 为 t2Pipe 上的两个分量
+    /// 两个事件在两者各自的pipe上，其中一个pipe上的向量时间大于另外一个事件、另外一个pipe上的向量时间小于另外一个事件，
+    /// 说明两个事件存在并发关系
+    static bool IsNotHappensBefore(uint32_t a1, uint32_t a2, uint32_t b1, uint32_t b2) {
+        if (a1 == a2) { return false; }
+        return (a1 < a2) ? (b1 > b2) : (b1 < b2);
+    }
     // 判断 t1 是否发生在 t2 之前
-    static bool IsHappensBefore(const VectorTime &t1, const VectorTime &t2, uint32_t t1Pipe, uint32_t t2Pipe);
+    static bool IsHappensBefore(const VectorTime &t1, const VectorTime &t2,
+        uint32_t t1Pipe, uint32_t t2Pipe);
 
     // 测试接口
-    static uint32_t GetLogicTime(const VectorTime &t, uint32_t pipe);
     static bool IsEqual(const VectorTime &t1, const VectorTime &t2);
 };
 }

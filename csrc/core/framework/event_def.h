@@ -26,6 +26,7 @@
 #include <map>
 
 #include "arch_def.h"
+#include "vector_time.h"
 #include "record_defs.h"
 #include "sanitizer_report.h"
 #include "utility/log.h"
@@ -203,8 +204,6 @@ struct DynamicOpInfo {
     void *buffer{nullptr};       // 变长协议对应的协议内容
 };
 
-using VectorTime = std::vector<uint32_t>;
-
 inline MemType DsbToMemType(MemDsbType memDomain) {
     switch (memDomain) {
     case MemDsbType::DDR:
@@ -270,7 +269,11 @@ struct SanEvent {
         MstxCrossNpuBarrier mstxCrossNpuBarrier;
         DynamicOpInfo dynamicOpInfo;
     } eventInfo{};
-    VectorTime timeInfo;
+    // 仅 TIME_EVENT（PIPE_S 发射时携带的源 pipe 时钟快照）使用；
+    // 改为指向 racecheck 侧快照池的指针（池由 RaceAlgBase 持有，std::deque 保证地址稳定），
+    // 避免把 320B 的 VectorTime 内联进每个 SanEvent（原会使 SanEvent 176B→472B，
+    // 而 initcheck/memcheck 等不碰 timeInfo 的工具也一起付出该开销）。
+    VectorTime *timeInfo = nullptr;
     LocInfo loc{};
     bool isAtomicMode = false;
     RecordType recordType = INVALID_RECORD_TYPE;

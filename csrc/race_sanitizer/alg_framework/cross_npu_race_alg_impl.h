@@ -81,6 +81,8 @@ private:
     CrossNpuBarrierDatabase crossNpuBarrier_;
     // 按最大的 blockDim 数初始化 vc 和 syncDB 数组
     std::vector<VectorTime> vc_;
+    // TIME_EVENT 的源 pipe 时钟快照池（SanEvent 只存指针，见 SanEvent::timeInfo）
+    TimeInfoPool timeInfoPool_;
     std::vector<SyncEventDataBase> syncDB_;
     // 为每张卡上的每个 kernel 创建一份核间检测实例
     std::vector<std::vector<MstxSetCrossMap>> mstxSetCrossMap_;

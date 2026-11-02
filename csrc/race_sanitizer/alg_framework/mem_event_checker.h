@@ -59,6 +59,9 @@ struct CompareShadowMemoryRecord {
     uint64_t idx;                  // record对应的全局索引
 };
 
+// 扫描线算法端点结构（定义见 mem_event_checker.cpp）
+struct SortMetaData;
+
 // 该类集成了内存块之间做竞争比较的功能。
 // 需要记录算子运行过程已经发生的所有内存事件(携带时间戳)
 // 新发生的内存事件需要和已经记录的所有内存事件一一比较,并返回相互冲突的事件信息
@@ -96,6 +99,10 @@ private:
     bool IsMemSpaceOverlap(const MemEvent &op1, const MemEvent &op2,
         EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsAtomicAgainst(const MemEvent& event1, const MemEvent& event2) const;
+    // 单块竞争前置判定（并发/非原子），地址重叠由调用方继续检查；
+    // 调用方需保证两个事件属于不同 pipe；pipeIdx/ownTime(=vt.Get(pipeIdx)) 由调用方预计算
+    bool IsInnerCoreRaceCandidate(const MemEvent &event1, const MemEvent &event2,
+        uint32_t pipeIdx1, uint32_t ownTime1, uint32_t pipeIdx2, uint32_t ownTime2) const;
     bool IsInnerCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsCrossCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
@@ -108,6 +115,20 @@ private:
     void CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx, CheckTypeFunc checkTypeFunc,
         uint64_t curEventIdx, RaceMemEventsIdx &raceMemEventsIdx) const;
     std::unordered_map<RaceCheckType, CheckTypeFunc> checkTypeMap_;
+
+    // 扫描线执行上下文：按 checkType 选定的判定回调 + DCCI 开关，避免各分支重复读取
+    struct ScanlineContext {
+        CheckTypeFunc checkFunc;  // 竞争判定回调
+        bool checkDcci;           // 是否 DCCI 检测模式
+        RaceCheckType checkType;  // 当前竞争检测类型
+    };
+    void BuildScanlineMetaData(std::vector<SortMetaData> &eventsMetaData, bool &hasAnyDynamic) const;
+    void ScanGeneric(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+        RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const;
+    void ScanSinglePipeWindow(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+        RaceMemEventsIdx &raceMemEventsIdx) const;
+    void ScanSingleBlockFast(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+        RaceMemEventsIdx &raceMemEventsIdx) const;
 };
 
 }

@@ -20,6 +20,16 @@
 
 using namespace Sanitizer;
 
+// 稀疏向量时钟：构造"整条向量各分量均为 v"（宽度沿用原用例的 66）。
+// 注意：分量<=1 即缺省值（稀疏表示 = 空），与稠密下"全 1"等价；
+// 原用例用 fill(0) 只为复位，随后必然与存留的 set 做 max 合并，故与空向量等价。
+static VectorTime Uniform(uint32_t v) {
+    if (v <= 1U) {
+        return VectorTime{};
+    }
+    return VectorTime::FromFull(DenseVectorTime(66U, v));
+}
+
 namespace SanitizerTest {
 
 LocInfo BuildAivLoc() {
@@ -40,18 +50,18 @@ TEST(CrossCoreSyncInfoContainer, set_ffts_mode0_and_wait_flag_dev_expect_success
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 0, vt);
-    std::fill(vt.begin(), vt.end(), 2);
+    vt = Uniform(2);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 1, vt);
-    std::fill(vt.begin(), vt.end(), 4);
+    vt = Uniform(4);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 3, vt);
-    std::fill(vt.begin(), vt.end(), 3);
+    vt = Uniform(3);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 4, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool getflag = syncContainer.GetBlockSyncInfo(0, 1, vt);
     ASSERT_TRUE(getflag);
-    ASSERT_EQ(vt[0], 4U);
+    ASSERT_EQ(vt.Get(0), 4U);
 }
 
 TEST(CrossCoreSyncInfoContainer, set_ffts_mode1_and_wait_flag_dev_expect_success)
@@ -59,14 +69,14 @@ TEST(CrossCoreSyncInfoContainer, set_ffts_mode1_and_wait_flag_dev_expect_success
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE1, 0, vt);
-    std::fill(vt.begin(), vt.end(), 3);
+    vt = Uniform(3);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE1, 1, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool getflag = syncContainer.GetBlockSyncInfo(0, 1, vt);
     ASSERT_TRUE(getflag);
-    ASSERT_EQ(vt[0], 3U);
+    ASSERT_EQ(vt.Get(0), 3U);
 }
 
 TEST(CrossCoreSyncInfoContainer, aiv_set_ffts_mode2_and_wait_flag_dev_expect_success)
@@ -74,14 +84,14 @@ TEST(CrossCoreSyncInfoContainer, aiv_set_ffts_mode2_and_wait_flag_dev_expect_suc
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE2, 0, vt);
-    std::fill(vt.begin(), vt.end(), 3);
+    vt = Uniform(3);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE2, 1, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool getflag = syncContainer.GetBlockSyncInfo(0, 2, vt);
     ASSERT_TRUE(getflag);
-    ASSERT_EQ(vt[0], 3U);
+    ASSERT_EQ(vt.Get(0), 3U);
 }
 
 TEST(CrossCoreSyncInfoContainer, aic_set_ffts_mode2_and_wait_flag_dev_expect_success)
@@ -89,16 +99,16 @@ TEST(CrossCoreSyncInfoContainer, aic_set_ffts_mode2_and_wait_flag_dev_expect_suc
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE2, 2, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool getflag = syncContainer.GetBlockSyncInfo(0, 0, vt);
     ASSERT_TRUE(getflag);
-    ASSERT_EQ(vt[0], 1U);
-    std::fill(vt.begin(), vt.end(), 0);
+    ASSERT_EQ(vt.Get(0), 1U);
+    vt = Uniform(0);
     getflag = syncContainer.GetBlockSyncInfo(0, 1, vt);
     ASSERT_TRUE(getflag);
-    ASSERT_EQ(vt[0], 1U);
+    ASSERT_EQ(vt.Get(0), 1U);
 }
 
 TEST(CrossCoreSyncInfoContainer, aiv_ib_set_and_ib_wait_expect_success)
@@ -106,17 +116,17 @@ TEST(CrossCoreSyncInfoContainer, aiv_ib_set_and_ib_wait_expect_success)
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSoftSyncInfo(0, 0, vt);
     bool ret = syncContainer.GetBlockSoftSyncInfo(0, 0, vt);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(vt[0], 1U);
-    std::fill(vt.begin(), vt.end(), 3);
+    ASSERT_EQ(vt.Get(0), 1U);
+    vt = Uniform(3);
     syncContainer.SetBlockSoftSyncInfo(1, 1, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ret = syncContainer.GetBlockSoftSyncInfo(1, 1, vt);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(vt[0], 3U);
+    ASSERT_EQ(vt.Get(0), 3U);
 }
 
 // 场景：上报方声明"不限制对端核"（peerCoreId < 0），即 MSTX 跨核 set/wait 上报接口的 peerCoreId = -1。
@@ -124,29 +134,25 @@ TEST(CrossCoreSyncInfoContainer, aiv_ib_set_and_ib_wait_expect_success)
 TEST(CrossCoreSyncInfoContainer, ib_wait_with_unspecified_peer_core_expect_success) {
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
-    VectorTime vt;
-    vt.resize(66, 0);
     // 生产者核 4 上报 set
-    std::fill(vt.begin(), vt.end(), 7);
-    syncContainer.SetBlockSoftSyncInfo(0x1300002, 4, vt);
+    syncContainer.SetBlockSoftSyncInfo(0x1300002, 4, Uniform(7));
 
     // 消费者携带 peerCoreId = -1，仍应配对成功并取到 set 的向量时钟
-    std::fill(vt.begin(), vt.end(), 0);
+    VectorTime vt = Uniform(0);
     ASSERT_TRUE(syncContainer.GetBlockSoftSyncInfo(0x1300002, -1, vt));
-    ASSERT_EQ(vt[0], 7U);
+    ASSERT_EQ(vt.Get(0), 7U);
     // set 已被消费，重复 wait 不应再成功
     ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0x1300002, -1, vt));
     // 无对应 set 时也不能因 peerCoreId < 0 而放行
     ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0x1300003, -1, vt));
 
     // 指定核号越界（如旧实现中被截断后的 65535）：即便该 eventID 确有 set，也不得误配对
-    std::fill(vt.begin(), vt.end(), 9);
-    syncContainer.SetBlockSoftSyncInfo(0x1300004, 4, vt);
+    syncContainer.SetBlockSoftSyncInfo(0x1300004, 4, Uniform(9));
     ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0x1300004, 65535, vt));
     // 用正确的核号仍可配对，说明上一步只是被越界拦截、set 未被消费
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ASSERT_TRUE(syncContainer.GetBlockSoftSyncInfo(0x1300004, 4, vt));
-    ASSERT_EQ(vt[0], 9U);
+    ASSERT_EQ(vt.Get(0), 9U);
 }
 
 TEST(CrossCoreSyncInfoContainer, aiv_sync_all_expect_success)
@@ -154,17 +160,16 @@ TEST(CrossCoreSyncInfoContainer, aiv_sync_all_expect_success)
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt0, vt1;
-    vt0.resize(66, 1);
-    vt1.resize(66, 1);
+
     bool syncAllRet = syncContainer.SyncAll(0, 2, 0, vt0);
     ASSERT_FALSE(syncAllRet);
-    ASSERT_EQ(vt0[0], 2U);
+    ASSERT_EQ(vt0.Get(0), 2U);
     syncAllRet = syncContainer.SyncAll(1, 2, 1, vt1);
     ASSERT_FALSE(syncAllRet);
-    ASSERT_EQ(vt1[1], 2U);
+    ASSERT_EQ(vt1.Get(1), 2U);
     syncAllRet = syncContainer.SyncAll(0, 2, 0, vt0);
     ASSERT_FALSE(syncAllRet);
-    ASSERT_EQ(vt0[0], 2U);
+    ASSERT_EQ(vt0.Get(0), 2U);
     std::vector<VectorTime> vt = std::vector<VectorTime>{ vt0, vt1 };
     ASSERT_NO_THROW(syncContainer.UpdateSyncAllVectorTime(vt));
 }
@@ -182,13 +187,13 @@ TEST(CrossCoreSyncInfoContainer, mstx_cross_set_wait_expect_success)
     };
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetMstxCrossInfo(crossInfo, vt);
-    std::fill(vt.begin(), vt.end(), 10);
+    vt = Uniform(10);
     crossInfo.flagId = 1;
     bool ret = syncContainer.GetMstxCrossInfo(crossInfo, vt);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(vt[4], 10U);
+    ASSERT_EQ(vt.Get(4), 10U);
 }
 
 // AIV上syncID超过15时，硬件会截断高bit位，工具需同步截断以避免死锁误报
@@ -197,52 +202,52 @@ TEST(CrossCoreSyncInfoContainer, aiv0_set_intra_block_with_syncid_over_15_expect
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // AIV0使用syncID=20(>=16)，硬件截断为4，AIC用syncID=4应能匹配
     syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 0, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool ret = syncContainer.GetIntraBlockSyncInfo(4, 2, vt);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(vt[0], 1U);
+    ASSERT_EQ(vt.Get(0), 1U);
 }
 
 TEST(CrossCoreSyncInfoContainer, aiv0_wait_intra_block_with_syncid_over_15_expect_truncated_and_match_aic_set) {
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // AIC用syncID=4设置，AIV0用syncID=20(>=16)等待，硬件截断为4应能匹配
     syncContainer.SetBlockSyncInfo(4, FftsSyncMode::MODE4, 2, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool ret = syncContainer.GetIntraBlockSyncInfo(20, 0, vt);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(vt[0], 1U);
+    ASSERT_EQ(vt.Get(0), 1U);
 }
 
 TEST(CrossCoreSyncInfoContainer, aiv1_set_intra_block_with_syncid_over_15_expect_truncated_and_match_aic_wait) {
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // AIV1使用syncID=20(>=16)，硬件截断为4，AIV1映射到AIC的syncID=4+16=20，AIC用syncID=20应能匹配
     syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 1, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool ret = syncContainer.GetIntraBlockSyncInfo(20, 2, vt);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(vt[0], 1U);
+    ASSERT_EQ(vt.Get(0), 1U);
 }
 
 TEST(CrossCoreSyncInfoContainer, aiv1_wait_intra_block_with_syncid_over_15_expect_truncated_and_match_aic_set) {
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // AIC用syncID=20设置(映射到AIV1的syncID=4)，AIV1用syncID=20(>=16)等待，硬件截断为4应能匹配
     syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 2, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool ret = syncContainer.GetIntraBlockSyncInfo(20, 1, vt);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(vt[0], 1U);
+    ASSERT_EQ(vt.Get(0), 1U);
 }
 
 // AIV 核 mode4 场景使用非法 flag_id(>=16) 应触发告警，且不影响硬件截断逻辑
@@ -251,7 +256,7 @@ TEST(CrossCoreSyncInfoContainer, aiv_set_mode4_with_invalid_flag_id_expect_warn)
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 0, vt, 2, BuildAivLoc(), 100);
     const auto &warnInfos = syncContainer.GetFlagIdWarnInfo();
     ASSERT_EQ(warnInfos.size(), 1U);
@@ -262,7 +267,7 @@ TEST(CrossCoreSyncInfoContainer, aiv_set_mode4_with_invalid_flag_id_expect_warn)
     ASSERT_EQ(warnInfos[0].baseEvent.blockType, BlockType::AIVEC);
     ASSERT_EQ(warnInfos[0].baseEvent.pc, 0x1234U);
     // 告警收集不影响硬件截断逻辑
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     bool ret = syncContainer.GetIntraBlockSyncInfo(4, 2, vt);
     ASSERT_TRUE(ret);
 }
@@ -273,7 +278,7 @@ TEST(CrossCoreSyncInfoContainer, aiv_set_mode4_with_valid_flag_id_expect_no_warn
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSyncInfo(5, FftsSyncMode::MODE4, 0, vt, 2, BuildAivLoc(), 100);
     ASSERT_TRUE(syncContainer.GetFlagIdWarnInfo().empty());
 }
@@ -284,7 +289,7 @@ TEST(CrossCoreSyncInfoContainer, aic_set_mode4_with_valid_flag_id_expect_no_warn
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // blockIdx=2 为 AIC，使用 flagId=20(16-31) 合法
     syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 2, vt, 2, BuildAivLoc(), 100);
     ASSERT_TRUE(syncContainer.GetFlagIdWarnInfo().empty());
@@ -296,7 +301,7 @@ TEST(CrossCoreSyncInfoContainer, flag_id_warn_info_clear_expect_empty)
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(3, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     syncContainer.SetBlockSyncInfo(20, FftsSyncMode::MODE4, 0, vt, 2, BuildAivLoc(), 100);
     syncContainer.SetBlockSyncInfo(18, FftsSyncMode::MODE4, 1, vt, 2, BuildAivLoc(), 101);
     ASSERT_EQ(syncContainer.GetFlagIdWarnInfo().size(), 2U);
@@ -311,7 +316,7 @@ TEST(CrossCoreSyncInfoContainer, reinit_shall_clear_ffts_sync_info_across_kernel
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // kernel#1：4 个 AIV block（c220 默认 vecSubBlockDim=2 -> AIVCount=4）到齐，产生各 AIV block 的 wait
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 0, vt);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 1, vt);
@@ -320,7 +325,7 @@ TEST(CrossCoreSyncInfoContainer, reinit_shall_clear_ffts_sync_info_across_kernel
 
     // 同一对象进入 kernel#2：上一 kernel 残留的 wait 必须已被清空
     syncContainer.Init(6, KernelType::MIX);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ASSERT_FALSE(syncContainer.GetBlockSyncInfo(0, 0, vt));
 }
 
@@ -331,12 +336,12 @@ TEST(CrossCoreSyncInfoContainer, reinit_shall_clear_soft_sync_info_across_kernel
     CrossCoreSyncInfoContainer syncContainer;
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // kernel#1 留下一个未被消费的软同步 set
     syncContainer.SetBlockSoftSyncInfo(0, 0, vt);
 
     syncContainer.Init(6, KernelType::MIX);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ASSERT_FALSE(syncContainer.GetBlockSoftSyncInfo(0, 0, vt));
 }
 
@@ -355,12 +360,12 @@ TEST(CrossCoreSyncInfoContainer, reinit_shall_clear_mstx_cross_set_across_kernel
     };
     syncContainer.Init(6, KernelType::MIX);
     VectorTime vt;
-    vt.resize(66, 1);
+
     // kernel#1 留下一个未被消费的 mstx set
     syncContainer.SetMstxCrossInfo(crossInfo, vt);
 
     syncContainer.Init(6, KernelType::MIX);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ASSERT_FALSE(syncContainer.GetMstxCrossInfo(crossInfo, vt));
 }
 
@@ -375,12 +380,12 @@ TEST(CrossCoreSyncInfoContainer, mix_with_single_vec_sub_block_dim_need_one_aiv_
     ASSERT_EQ(syncContainer.GetVecSubBlockDim(), 1U);
 
     VectorTime vt;
-    vt.resize(66, 1);
+
     // 2 个 AIV 核（展开后 block 0 / block 1）各 set 一次即应到齐
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 0, vt);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 1, vt);
 
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ASSERT_TRUE(syncContainer.GetBlockSyncInfo(0, 0, vt));
 }
 
@@ -393,17 +398,17 @@ TEST(CrossCoreSyncInfoContainer, mix_with_two_vec_sub_block_dim_need_two_aiv_set
     syncContainer.SetVecSubBlockDim(C220_VEC_SUB_BLOCKDIM);
 
     VectorTime vt;
-    vt.resize(66, 1);
+
     // 只到齐 2/4 个 AIV 核，不能提前放行
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 0, vt);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 1, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ASSERT_FALSE(syncContainer.GetBlockSyncInfo(0, 0, vt));
 
     // 其余 2 个 AIV 核到齐后才放行
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 3, vt);
     syncContainer.SetBlockSyncInfo(0, FftsSyncMode::MODE0, 4, vt);
-    std::fill(vt.begin(), vt.end(), 0);
+    vt = Uniform(0);
     ASSERT_TRUE(syncContainer.GetBlockSyncInfo(0, 0, vt));
 }
 

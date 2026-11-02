@@ -17,6 +17,8 @@
 
 #include "mem_event_checker.h"
 
+#include <array>
+#include <set>
 #include "core/framework/arch_def.h"
 #include "core/framework/config_manager.h"
 #include "core/framework/constant.h"
@@ -30,7 +32,8 @@
 namespace {
 
 using namespace Sanitizer;
-    /// 双指针判断地址是否存在交叉
+
+/// 双指针判断地址是否存在交叉
 bool IsMemoryOverlap(const MemOpInfo &op1, const MemOpInfo &op2)
 {
     if (op1.memType != op2.memType) {
@@ -220,10 +223,11 @@ inline uint64_t GetMemMaxLength(MemEvent const &event)
 // 扫描线算法需要用到的结构体
 struct SortMetaData {
     uint64_t addr;
-    uint64_t eventIdx;
-    bool isStart;
+    uint32_t eventIdx;
+    uint32_t isStart;   // 0=end, 1=start；打包成 16B，降低排序内存带宽
 
-    SortMetaData(uint64_t addr, uint64_t eventIdx, bool isStart) : addr(addr), eventIdx(eventIdx), isStart(isStart) {}
+    SortMetaData(uint64_t addr, uint32_t eventIdx, bool isStart)
+        : addr(addr), eventIdx(eventIdx), isStart(isStart ? 1U : 0U) {}
 };
 
 /// 排序规则：按照事件地址从小到大排序，
@@ -235,10 +239,51 @@ inline bool CompareEvent(const SortMetaData &lhs, const SortMetaData &rhs)
             // 地址相同，并且事件属性相同，则按照事件index升序排列
             return lhs.eventIdx < rhs.eventIdx;
         }
-        return !lhs.isStart;
+        return lhs.isStart < rhs.isStart;   // 0=end 先于 1=start
     }
-    return lhs.addr < rhs.addr;   // 按地址升序排序
+    return lhs.addr < rhs.addr;   // 按地址升序
 }
+
+// 按 addr 做稳定 LSD radix sort（16 bit × 4 趟）。
+// 输入已按“end 在前、start 在后，组内 eventIdx 升序”排列，
+// 稳定排序后与 CompareEvent 的 (addr, isStart, eventIdx) 顺序完全一致。
+inline void RadixSortByAddr(std::vector<SortMetaData> &data)
+{
+    const size_t n = data.size();
+    if (n < 2U) {
+        return;
+    }
+    constexpr uint32_t kRadixBits = 16U;
+    constexpr uint32_t kRadixMask = (1U << kRadixBits) - 1U;
+    std::vector<SortMetaData> tmp(n, SortMetaData(0U, 0U, false));
+    std::vector<size_t> count((1U << kRadixBits) + 1U);
+    for (uint32_t shift = 0U; shift < 64U; shift += kRadixBits) {
+        std::fill(count.begin(), count.end(), 0U);
+        for (const auto &item : data) {
+            ++count[((item.addr >> shift) & kRadixMask) + 1U];
+        }
+        for (size_t i = 1U; i < count.size(); ++i) {
+            count[i] += count[i - 1U];
+        }
+        for (const auto &item : data) {
+            tmp[count[(item.addr >> shift) & kRadixMask]++] = item;
+        }
+        data.swap(tmp);
+    }
+}
+
+// 动态内存事件先统一转换为写事件，保证不漏检，后续细粒度判断会过滤掉读读竞争事件
+inline AccessType EffOpType(const MemEvent &e) {
+    return e.isDynamic ? AccessType::WRITE : e.memInfo.opType;
+}
+
+// 事件归属的地址空间(MemType)：动态事件取 dynamicMemInfo
+inline uint8_t EffMemType(const MemEvent &e) {
+    return static_cast<uint8_t>(e.isDynamic ? e.dynamicMemInfo.memType : e.memInfo.memType);
+}
+
+// 以 MemType 为下标的定长数组上界（L1=0 … INVALID=9，共 10 个）
+constexpr size_t kMemTypeCount = static_cast<size_t>(MemType::INVALID) + 1;
 
 bool MemEventChecker::NeedCrossCoreCheck(const MemEvent &event1, const MemEvent &event2) const {
     // 同一个block的无需比较
@@ -282,24 +327,39 @@ bool MemEventChecker::NeedCrossCoreCheck(const MemEvent &event1, const MemEvent 
 
 /// 扫描线算法已经保证了存在地址交叉，由于核内竞争是统一对GM和片上内存进行排序，故核内竞争判断条件需要判断
 /// 存在地址交叉的两个事件是否memType相同
+bool MemEventChecker::IsInnerCoreRaceCandidate(const MemEvent &event1, const MemEvent &event2,
+    uint32_t pipeIdx1, uint32_t ownTime1, uint32_t pipeIdx2, uint32_t ownTime2) const
+{
+    // 排序之后已经丢失了event1 event2的先后关系，故均需判断
+    const uint32_t a1 = ownTime1;
+    const uint32_t a2 = event2.vt.Get(pipeIdx1);
+    if (a1 == a2) {
+        return false;
+    }
+    const uint32_t b1 = event1.vt.Get(pipeIdx2);
+    const uint32_t b2 = ownTime2;
+    if (!VectorClock::IsNotHappensBefore(a1, a2, b1, b2)) {
+        return false;
+    }
+
+    return !IsAtomicAgainst(event1, event2);
+}
+
 bool MemEventChecker::IsInnerCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const
 {
-    auto &event1 = this->events_.at(idxInfo1.eventIdx);
-    auto &event2 = this->events_.at(idxInfo2.eventIdx);
-
+    const auto &event1 = this->events_.at(idxInfo1.eventIdx);
+    const auto &event2 = this->events_.at(idxInfo2.eventIdx);
     if (event1.pipe == event2.pipe) {
         // 同一个pipe的无需比较
         return false;
     }
+    const uint32_t pipeIdx1 =
+        GetPipeIdxByMemEvent<RaceCheckType::SINGLE_BLOCK_CHECK>(event1, this->kernelType_, this->deviceType_);
+    const uint32_t pipeIdx2 =
+        GetPipeIdxByMemEvent<RaceCheckType::SINGLE_BLOCK_CHECK>(event2, this->kernelType_, this->deviceType_);
 
-    // 排序之后已经丢失了event1 event2的先后关系，故均需判断
-    if (!VectorClock::IsNotHappensBefore(event1.vt, event2.vt,
-        GetPipeIdxByMemEvent<RaceCheckType::SINGLE_BLOCK_CHECK>(event1, this->kernelType_, this->deviceType_),
-        GetPipeIdxByMemEvent<RaceCheckType::SINGLE_BLOCK_CHECK>(event2, this->kernelType_, this->deviceType_))) {
-        return false;
-    }
-
-    if (IsAtomicAgainst(event1, event2)) {
+    if (!IsInnerCoreRaceCandidate(event1, event2, pipeIdx1, event1.vt.Get(pipeIdx1),
+        pipeIdx2, event2.vt.Get(pipeIdx2))) {
         return false;
     }
 
@@ -482,66 +542,93 @@ void MemEventChecker::CheckExistRaceEvents(const std::unordered_set<uint64_t> &h
     }
 }
 
-void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const {
-    std::vector<SortMetaData> eventsMetaData;
-    uint8_t multiSize = 2;
-    eventsMetaData.reserve(this->events_.size() * multiSize);
-    // 1. 将单个事件拆分为开始事件和结束事件
+void MemEventChecker::BuildScanlineMetaData(std::vector<SortMetaData> &eventsMetaData, bool &hasAnyDynamic) const {
+    eventsMetaData.reserve(this->events_.size() * 2U);
+    // 1. 先放所有 end 端点，再放所有 start 端点。
+    //    这样 stable radix sort 按 addr 排完后，同地址自然满足“end 先于 start、组内 eventIdx 升序”。
+    hasAnyDynamic = false;
+    for (size_t eventIdx = 0; eventIdx < this->events_.size(); ++eventIdx) {
+        auto& event = this->events_[eventIdx];
+        if (event.isDynamic) { hasAnyDynamic = true; }
+        auto maxLength = GetMemMaxLength(event);
+        if (maxLength == 0U) { // 地址最大长度为 0，不参与竞争分析
+            continue;
+        }
+        const uint64_t endAddr = event.isDynamic ? event.dynamicMemInfo.maxAddr : event.memInfo.addr + maxLength;
+        eventsMetaData.emplace_back(SortMetaData(endAddr, static_cast<uint32_t>(eventIdx), false));
+    }
     for (size_t eventIdx = 0; eventIdx < this->events_.size(); ++eventIdx) {
         auto& event = this->events_[eventIdx];
         auto maxLength = GetMemMaxLength(event);
-        if (maxLength == 0U) { // 如果当前事件的地址最大长度为0，则直接跳过，不需要进行竞争事件对的分析
+        if (maxLength == 0U) {
             continue;
         }
-        if (event.isDynamic) {
-            eventsMetaData.emplace_back(SortMetaData(event.dynamicMemInfo.minAddr, eventIdx, true));   // 开始事件
-            eventsMetaData.emplace_back(SortMetaData(event.dynamicMemInfo.maxAddr, eventIdx, false));  // 结束事件
-        } else {
-            eventsMetaData.emplace_back(SortMetaData(event.memInfo.addr, eventIdx, true));               // 开始事件
-            eventsMetaData.emplace_back(SortMetaData(event.memInfo.addr + maxLength, eventIdx, false));  // 结束事件
-        }
+        const uint64_t startAddr = event.isDynamic ? event.dynamicMemInfo.minAddr : event.memInfo.addr;
+        eventsMetaData.emplace_back(SortMetaData(startAddr, static_cast<uint32_t>(eventIdx), true));
     }
-    // 2. 按照事件地址升序排列
-    std::sort(eventsMetaData.begin(), eventsMetaData.end(), CompareEvent);
-    /// key：MemType为地址空间，value：历史读写事件，这里用eventIdx存储，以便节省内存
-    /// 目的是为了节省cube核检测的耗时，cube中的L1/L0A/L0B/L0C地址空间按照MemType拆分后，后续的历史事件比对
-    /// 只需要比对相同地址空间的地址是否存在交叉，提升程序性能；
-    std::unordered_map<MemType, std::unordered_set<uint64_t>> historyWriteEventsIdxMap;
-    std::unordered_map<MemType, std::unordered_set<uint64_t>> historyReadEventsIdxMap;
+    // 2. 按地址升序；稳定 radix 保持上面的同地址 tie-break 顺序
+    RadixSortByAddr(eventsMetaData);
+}
+
+void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const {
+    std::vector<SortMetaData> eventsMetaData;
+    bool hasAnyDynamic = false;
+    BuildScanlineMetaData(eventsMetaData, hasAnyDynamic);
 
     auto checkFuncIter = checkTypeMap_.find(this->checkType_);
     if (checkFuncIter == checkTypeMap_.end()) {
         SAN_WARN_LOG("RaceCheckType %u is NOT found in checkTypeMap", static_cast<uint8_t>(this->checkType_));
         return;
     }
+    const ScanlineContext ctx{checkFuncIter->second, ConfigManager::Instance().Get().checkDcci, this->checkType_};
+
     // 3.遍历事件，做地址重叠和读写判断
+    // ==== 分桶扫描 ====
+    // 各竞争判定函数的第一条过滤条件决定"哪些历史事件一定返回 false"，据此分桶跳过：
+    //   SINGLE_PIPE : 需 同 pipe + |ΔpipeSerialNo|<=16 → 桶键(memType,pipe)，桶内按 pipeSerialNo 取窗口
+    //   SINGLE_BLOCK: 需 异 pipe                       → 桶键(memType,pipe)，只比其它桶
+    //   CROSS_BLOCK : 需 异 (coreId,blockType)         → 走通用 all-pairs 逻辑
+    // DCCI 模式 / CROSS_NPU / CROSS_BLOCK / 含动态事件 保持原通用逻辑
+    if (ctx.checkDcci || ctx.checkType == RaceCheckType::CROSS_NPU_CHECK ||
+        ctx.checkType == RaceCheckType::CROSS_BLOCK_CHECK || hasAnyDynamic) {
+        ScanGeneric(eventsMetaData, ctx, raceMemEventsIdx, missDcciMemEventsIdx);
+    } else if (ctx.checkType == RaceCheckType::SINGLE_PIPE_CHECK) {
+        ScanSinglePipeWindow(eventsMetaData, ctx, raceMemEventsIdx);
+    } else if (ctx.checkType == RaceCheckType::SINGLE_BLOCK_CHECK) {
+        ScanSingleBlockFast(eventsMetaData, ctx, raceMemEventsIdx);
+    } else {
+        SAN_ERROR_LOG("Unexpected RaceCheckType %u in scanline dispatch", static_cast<uint8_t>(ctx.checkType));
+    }
+}
+
+// 通用路径：按地址空间(MemType)维护"活跃历史读/写事件"集合，逐端点与历史事件做完整判定。
+void MemEventChecker::ScanGeneric(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+    RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const {
+    /// key：MemType为地址空间，value：历史读写事件，这里用eventIdx存储，以便节省内存
+    /// 目的是为了节省cube核检测的耗时，cube中的L1/L0A/L0B/L0C地址空间按照MemType拆分后，后续的历史事件比对
+    /// 只需要比对相同地址空间的地址是否存在交叉，提升程序性能；
+    std::array<std::unordered_set<uint64_t>, kMemTypeCount> historyWriteEventsIdxMap;
+    std::array<std::unordered_set<uint64_t>, kMemTypeCount> historyReadEventsIdxMap;
     for (const auto &metaData : eventsMetaData) {
-        uint64_t curEventIdx = metaData.eventIdx;
-        auto &curEvent = this->events_.at(curEventIdx);
-        auto opType = curEvent.memInfo.opType;
-        auto memType = curEvent.memInfo.memType;
-        if (curEvent.isDynamic) {
-            // 动态内存事件先统一转换为写事件，保证不漏检，后续细粒度判断会过滤掉读读竞争事件
-            opType = AccessType::WRITE;
-            memType = curEvent.dynamicMemInfo.memType;
-        }
+        const uint64_t curEventIdx = metaData.eventIdx;
+        const auto &curEvent = this->events_[curEventIdx];
+        const auto opType = EffOpType(curEvent);
+        const uint8_t memType = EffMemType(curEvent);
         if (metaData.isStart) {
-            if (ConfigManager::Instance().Get().checkDcci) {
-                CheckExistRaceEvents(historyWriteEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent, curEventIdx,
-                    missDcciMemEventsIdx);
+            if (ctx.checkDcci) {
+                CheckExistRaceEvents(historyWriteEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent,
+                                     curEventIdx, missDcciMemEventsIdx);
             } else {
                 // 检查与历史写事件的冲突
-                CheckExistRaceEvents(
-                    historyWriteEventsIdxMap[memType], checkFuncIter->second, curEventIdx, raceMemEventsIdx);
+                CheckExistRaceEvents(historyWriteEventsIdxMap[memType], ctx.checkFunc, curEventIdx, raceMemEventsIdx);
             }
             if (opType == AccessType::WRITE) {
-                if (ConfigManager::Instance().Get().checkDcci) {
+                if (ctx.checkDcci) {
                     CheckExistRaceEvents(historyReadEventsIdxMap[memType], &MemEventChecker::IsMissDcciEvent,
-                        curEventIdx, missDcciMemEventsIdx);
+                                         curEventIdx, missDcciMemEventsIdx);
                 } else {
                     // 检查与历史读事件的冲突
-                    CheckExistRaceEvents(
-                        historyReadEventsIdxMap[memType], checkFuncIter->second, curEventIdx, raceMemEventsIdx);
+                    CheckExistRaceEvents(historyReadEventsIdxMap[memType], ctx.checkFunc, curEventIdx, raceMemEventsIdx);
                 }
                 historyWriteEventsIdxMap[memType].insert(curEventIdx);
             } else {
@@ -555,6 +642,122 @@ void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, Race
     }
 }
 
+// 单 pipe 竞争：只与"同 pipe 且 |pipeSerialNo 差| <= WINDOW"的历史事件比较。
+void MemEventChecker::ScanSinglePipeWindow(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+    RaceMemEventsIdx &raceMemEventsIdx) const {
+    using OrderedSet = std::set<std::pair<uint64_t, uint64_t>>;   // (pipeSerialNo, eventIdx)
+    // KV: 第一下标 = MemType(地址空间)；inner map 的 key = pipe；
+    //     value = set<(pipeSerialNo, eventIdx)>，按 pipeSerialNo 有序，便于按 serialNo 取 ±WINDOW 窗口
+    std::array<std::unordered_map<uint32_t, OrderedSet>, kMemTypeCount> wSet;
+    std::array<std::unordered_map<uint32_t, OrderedSet>, kMemTypeCount> rSet;
+    // 与 IsSinglePipeRaceEvent 的 MAX_SERIAL_NUMBER_DIFF 一致：只比较 pipeSerialNo 间隔 <= 16 的历史事件
+    // （一条流水内指令队列长度上限为 16 或 32，间隔 16 以上时判定为不构成流水内竞争，无需比较）
+    constexpr uint64_t WINDOW = 16;
+    for (const auto &metaData : eventsMetaData) {
+        const uint64_t curIdx = metaData.eventIdx;
+        const auto &ce = this->events_.at(curIdx);
+        const uint8_t mt = EffMemType(ce);
+        const uint32_t sub = static_cast<uint32_t>(ce.pipe);
+        const uint64_t s = ce.pipeSerialNo;
+        if (metaData.isStart) {
+            OrderedSet &ws = wSet[mt][sub];
+            OrderedSet &rs = rSet[mt][sub];
+            const uint64_t lo = s > WINDOW ? s - WINDOW : 0;
+            const uint64_t hi = s + WINDOW;
+            EventIdxInfo i1{};
+            i1.eventIdx = curIdx;
+            EventIdxInfo i2{};
+            // 读-读不构成竞争：仅当当前为写时才需要与历史读比较（与通用路径一致）
+            const bool curWrite = (EffOpType(ce) == AccessType::WRITE);
+            const int passes = curWrite ? 2 : 1;
+            for (int pass = 0; pass < passes; ++pass) {
+                OrderedSet &set = (pass == 0) ? ws : rs;
+                for (auto it = set.lower_bound({lo, 0}); it != set.end() && it->first <= hi; ++it) {
+                    i2.eventIdx = it->second;
+                    if ((this->*ctx.checkFunc)(i1, i2)) { raceMemEventsIdx.emplace_back(i1, i2); }
+                }
+            }
+            if (curWrite) { ws.insert({s, curIdx}); } else { rs.insert({s, curIdx}); }
+        } else {
+            wSet[mt][sub].erase({s, curIdx});
+            rSet[mt][sub].erase({s, curIdx});
+        }
+    }
+}
+
+void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+    RaceMemEventsIdx &raceMemEventsIdx) const {
+    (void)ctx;   // 判定已内联，不使用 ctx.checkFunc
+    // ==== SINGLE_BLOCK 快速路径 ====
+    // 把 IsInnerCoreRaceEvent 内联进扫描循环：
+    //  - 预计算每个事件的 VC pipe 索引 pipeIdx 与"自时钟分量" ownTime=vt.Get(ownPipe)，
+    //    使 IsNotHappensBefore 的 4 次 Get 降为 2 次（a1=ownTime[cur]、b2=ownTime[hist]）；
+    //  - (memType,pipe) 桶用连续 std::vector 存活跃事件索引 + O(1) swap-and-pop 删除，
+    //    取代 unordered_set 的逐节点遍历（消除 1.6 亿次指针追逐）；
+    //  - 用 events_.data() 裸指针 + operator[] 取代 std::vector::at 与成员函数指针间接调用。
+    // KV: wB/rB 下标 = [memType][pipe]；value = 该桶内"已开始未结束"的历史写/读事件 idx 的连续 vector
+    //     posInBucket[i] = 事件 i 在其当前所属桶 vector 中的下标（供 O(1) swap-and-pop 删除）
+    constexpr uint32_t NPIPE = static_cast<uint32_t>(PipeType::SIZE);
+    const size_t nEvents = this->events_.size();
+    std::vector<uint32_t> pipeIdx(nEvents);
+    std::vector<uint32_t> ownTime(nEvents);
+    for (size_t i = 0; i < nEvents; ++i) {
+        const uint32_t pIdx = GetPipeIdxByMemEvent<RaceCheckType::SINGLE_BLOCK_CHECK>(
+            this->events_[i], this->kernelType_, this->deviceType_);
+        pipeIdx[i] = pIdx;
+        ownTime[i] = this->events_[i].vt.Get(pIdx);
+    }
+    std::array<std::array<std::vector<uint64_t>, NPIPE>, kMemTypeCount> wB;
+    std::array<std::array<std::vector<uint64_t>, NPIPE>, kMemTypeCount> rB;
+    std::vector<uint32_t> posInBucket(nEvents);
+    const MemEvent *evData = this->events_.data();
+    for (const auto &metaData : eventsMetaData) {
+        const uint64_t curIdx = metaData.eventIdx;
+        const MemEvent &ce = evData[curIdx];
+        const uint8_t mt = EffMemType(ce);
+        const uint32_t sub = static_cast<uint32_t>(ce.pipe);
+        const bool curWrite = (EffOpType(ce) == AccessType::WRITE);
+        if (!metaData.isStart) {
+            // 结束端点：从所属桶 O(1) 删除（把桶尾元素搬到删除位，再 pop_back）
+            auto &bucket = (curWrite ? wB[mt][sub] : rB[mt][sub]);
+            const uint32_t pos = posInBucket[curIdx];
+            const uint64_t moved = bucket.back();
+            bucket[pos] = moved;
+            posInBucket[moved] = pos;
+            bucket.pop_back();
+            continue;
+        }
+        // 开始端点：只与"异 pipe"的历史事件比较（同 pipe 不可能构成核内竞争）
+        const uint32_t t1Pipe = pipeIdx[curIdx];
+        const uint32_t a1 = ownTime[curIdx];
+        const int passes = curWrite ? 2 : 1;
+        for (int pass = 0; pass < passes; ++pass) {
+            auto &slots = (pass == 0) ? wB[mt] : rB[mt];
+            for (uint32_t q = 0; q < NPIPE; ++q) {
+                if (q == sub) { continue; }
+                auto &bucket = slots[q];
+                if (bucket.empty()) { continue; }
+                for (uint64_t hIdx : bucket) {
+                    const MemEvent &he = evData[hIdx];
+                    if (!IsInnerCoreRaceCandidate(ce, he, t1Pipe, a1, pipeIdx[hIdx], ownTime[hIdx])) {
+                        continue;
+                    }
+                    EventIdxInfo i1{};
+                    i1.eventIdx = curIdx;
+                    EventIdxInfo i2{};
+                    i2.eventIdx = hIdx;
+                    if (IsMemSpaceOverlap(ce, he, i1, i2)) {
+                        raceMemEventsIdx.emplace_back(i1, i2);
+                    }
+                }
+            }
+        }
+        auto &bucket = (curWrite ? wB[mt][sub] : rB[mt][sub]);
+        posInBucket[curIdx] = static_cast<uint32_t>(bucket.size());
+        bucket.push_back(curIdx);
+    }
+}
+
 void MemEventChecker::RunAlgorithm()
 {
     MemEventChecker::RaceMemEventsIdx raceMemEventsIdx;
@@ -562,8 +765,9 @@ void MemEventChecker::RunAlgorithm()
     // 当前发生的GM内存事件和已经发生的GM内存事件做一一比较，返回存在竞争的事件列表
     ScanlineAlgorithm(raceMemEventsIdx, missDcciMemEventsIdx);
     for (const auto &idxInfos : raceMemEventsIdx) {
-        auto info = FillRaceDispInfo(false, events_.at(idxInfos.first.eventIdx), events_.at(idxInfos.second.eventIdx),
-            idxInfos.first.dynamicErrorIdx, idxInfos.second.dynamicErrorIdx);
+        auto info = FillRaceDispInfo(false, events_.at(idxInfos.first.eventIdx),
+            events_.at(idxInfos.second.eventIdx), idxInfos.first.dynamicErrorIdx,
+            idxInfos.second.dynamicErrorIdx);
         auto ret = raceSet_.emplace(info);
         if (ret.second) {
             raceCnt_++;
@@ -572,8 +776,9 @@ void MemEventChecker::RunAlgorithm()
     }
 
     for (const auto &idxInfos : missDcciMemEventsIdx) {
-        auto info = FillRaceDispInfo(true, events_.at(idxInfos.first.eventIdx), events_.at(idxInfos.second.eventIdx),
-            idxInfos.first.dynamicErrorIdx, idxInfos.second.dynamicErrorIdx);
+        auto info = FillRaceDispInfo(true, events_.at(idxInfos.first.eventIdx),
+            events_.at(idxInfos.second.eventIdx), idxInfos.first.dynamicErrorIdx,
+            idxInfos.second.dynamicErrorIdx);
         auto ret = raceSet_.emplace(info);
         if (ret.second) {
             raceCnt_++;

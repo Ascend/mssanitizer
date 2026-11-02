@@ -75,6 +75,10 @@ protected:
     std::map<GetBufKey, std::vector<VectorTime>> getRlsBufMap_;
     std::vector<VectorTime> vc_{};
     MemEventChecker memChecker_;
+    // TIME_EVENT 的源 pipe 时钟快照池（SanEvent 只存指针，见 SanEvent::timeInfo）
+    TimeInfoPool timeInfoPool_;
+    VectorTime *AllocTimeInfo(const VectorTime &v) { return timeInfoPool_.Alloc(v); }
+    void FreeTimeInfo(VectorTime *p) { timeInfoPool_.Free(p); }
     KernelType kernelType_ = KernelType::AICPU;
     DeviceType deviceType_ = DeviceType::INVALID;
     uint32_t blockDim_{};

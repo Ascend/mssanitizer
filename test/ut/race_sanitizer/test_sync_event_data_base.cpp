@@ -62,7 +62,7 @@ TEST(SyncEventDataBase, set_and_wait_expect_get_the_correct_vector_time)
 
     SyncEvent e1;
     VectorTime vt1;
-    vt1.resize(static_cast<uint8_t>(PipeType::SIZE), 2);
+    vt1 = VectorTime::FromFull(DenseVectorTime(static_cast<uint8_t>(PipeType::SIZE), 2));
     VectorClock::UpdateLogicTime(vt1, static_cast<uint8_t>(PipeType::PIPE_V));
     VectorClock::UpdateLogicTime(vt1, static_cast<uint8_t>(PipeType::PIPE_V));
 
@@ -88,7 +88,7 @@ TEST(SyncEventDataBase, set_many_times_then_wait_expect_get_the_correct_vector_t
     e1.info.memType = 4;
 
     VectorTime vt1;
-    vt1.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
+
     db.Set(e1, vt1);
 
     VectorClock::UpdateLogicTime(vt1, static_cast<uint8_t>(PipeType::PIPE_V));
@@ -98,7 +98,7 @@ TEST(SyncEventDataBase, set_many_times_then_wait_expect_get_the_correct_vector_t
     db.Set(e1, vt1);
 
     VectorTime vt2;
-    vt2.resize(static_cast<uint8_t>(PipeType::SIZE), 1);
+
     db.Get(e1, vt1);
     ASSERT_TRUE(VectorClock::IsEqual(vt1, vt2));
 

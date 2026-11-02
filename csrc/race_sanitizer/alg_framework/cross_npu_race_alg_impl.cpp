@@ -69,9 +69,6 @@ void CrossNpuRaceAlgImpl::Init()
     // 向量时钟、eventContainer、核内同步数据库都用最大的 blockdim 进行初始化
     totalBlockNum_ = maxBlockDim * C220_MIX_SUB_BLOCKDIM;
     vc_.resize(deviceNum * totalBlockNum_ * static_cast<uint8_t>(PipeType::SIZE));
-    for (auto &it : vc_) {
-        it.resize(deviceNum * totalBlockNum_ * static_cast<uint8_t>(PipeType::SIZE), 1);
-    }
     eventContainer_.Init(totalBlockNum_, deviceNum);
     syncDB_.resize(deviceNum * totalBlockNum_);
     memChecker_.Init(totalBlockNum_);
@@ -150,7 +147,7 @@ ReturnType CrossNpuRaceAlgImpl::ProcessEvent(const SanEvent& event)
         e.type = EventType::TIME_EVENT;
         e.pipe = event.pipe;
         e.loc.blockType = event.loc.blockType;
-        e.timeInfo = vc_[curPipe];
+        e.timeInfo = timeInfoPool_.Alloc(vc_[curPipe]);
         auto blockIdx = GetEventExpandBlockIndex(event);
         eventContainer_.Push(std::move(e), e.pipe, blockIdx, event.loc.deviceIdx);
         eventContainer_.Push(event, event.pipe, blockIdx, event.loc.deviceIdx);
@@ -264,7 +261,10 @@ ReturnType CrossNpuRaceAlgImpl::ProcessSyncEvent(const SanEvent& event)
 ReturnType CrossNpuRaceAlgImpl::ProcessTimeEvent(const SanEvent& event)
 {
     uint32_t curPipe = eventContainer_.GetQueIndex();
-    VectorClock::UpdateVectorTime(event.timeInfo, vc_[curPipe]);
+    if (event.timeInfo != nullptr) {
+        VectorClock::UpdateVectorTime(*event.timeInfo, vc_[curPipe]);
+        timeInfoPool_.Free(event.timeInfo);
+    }
     VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
     return ReturnType::PROCESS_OK;
 }

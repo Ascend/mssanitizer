@@ -560,7 +560,8 @@ TEST(Checker, memory_record_reaches_consumer_without_pathway_filter) {
     retainedEvent.pipe = PipeType::PIPE_S_CAL;
     retainedEvent.eventInfo.memInfo.memType = MemType::UB;
     retainedEvent.eventInfo.memInfo.opType = AccessType::WRITE;
-    retainedEvent.timeInfo = {1, 2, 3};
+    TimeInfoPool timeInfoPool;
+    retainedEvent.timeInfo = timeInfoPool.Alloc(VectorTime{1, 2, 3});
     std::vector<SanEvent> events{retainedEvent};
     constexpr uint64_t removedPathwayEventCount = 9;
     uint64_t removed = removedPathwayEventCount;
@@ -574,7 +575,8 @@ TEST(Checker, memory_record_reaches_consumer_without_pathway_filter) {
     EXPECT_EQ(events[0].pipe, retainedEvent.pipe);
     EXPECT_EQ(events[0].eventInfo.memInfo.memType, retainedEvent.eventInfo.memInfo.memType);
     EXPECT_EQ(events[0].eventInfo.memInfo.opType, retainedEvent.eventInfo.memInfo.opType);
-    EXPECT_EQ(events[0].timeInfo, retainedEvent.timeInfo);
+    ASSERT_NE(events[0].timeInfo, nullptr);
+    EXPECT_EQ(*events[0].timeInfo, *retainedEvent.timeInfo);
     ASSERT_EQ(memChecker->consumedEvents.size(), 1U);
     ASSERT_EQ(memChecker->consumedEvents[0].size(), 1U);
     EXPECT_EQ(memChecker->consumedEvents[0][0].serialNo, retainedEvent.serialNo);
