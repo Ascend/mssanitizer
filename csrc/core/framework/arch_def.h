@@ -43,7 +43,7 @@ enum class PipeType : uint32_t {
     SIZE,
 };
 
-/// 此枚举定义与编译器内置类型 mem_t 保持一致
+/// 此枚举定义与编译器内置类型 mem_t 保持一致（枚举值不可变更，改名不影响协议）
 enum class MemType : uint8_t {
     L1 = 0,
     L0A,
@@ -54,7 +54,7 @@ enum class MemType : uint8_t {
     GM,
     PRIVATE,
     FB,         // fixPipe buffer
-    INVALID,
+    UNKNOWN,    // 无法归类的内存类型：MPU 保留区落点/分类环境异常（原 INVALID 更名，值不变）
 };
 
 enum class DeviceType : uint32_t {

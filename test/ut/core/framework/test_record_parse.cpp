@@ -2566,7 +2566,7 @@ TEST_F(TestRecordParse, parse_set_flag_record_and_expect_success)
     ASSERT_EQ(events[0].eventInfo.syncInfo.srcPipe, PipeType::PIPE_MTE1);
     ASSERT_EQ(events[0].eventInfo.syncInfo.dstPipe, PipeType::PIPE_V);
     ASSERT_EQ(events[0].eventInfo.syncInfo.eventId, 1);
-    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::INVALID);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::UNKNOWN);
     ASSERT_EQ(events[0].eventInfo.syncInfo.isRetrogress, false);
 }
 
@@ -2594,7 +2594,7 @@ TEST_F(TestRecordParse, parse_wait_flag_record_and_expect_success)
     ASSERT_EQ(events[0].eventInfo.syncInfo.srcPipe, PipeType::PIPE_MTE1);
     ASSERT_EQ(events[0].eventInfo.syncInfo.dstPipe, PipeType::PIPE_V);
     ASSERT_EQ(events[0].eventInfo.syncInfo.eventId, 1);
-    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::INVALID);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::UNKNOWN);
     ASSERT_EQ(events[0].eventInfo.syncInfo.isRetrogress, false);
 }
 
@@ -2616,7 +2616,7 @@ TEST_F(TestRecordParse, parse_pipe_barrier_record_and_expect_success)
     ASSERT_EQ(events[27].type, EventType::SYNC_EVENT);
     ASSERT_EQ(events[27].pipe, PipeType::PIPE_FIX);
     ASSERT_EQ(events[27].eventInfo.syncInfo.opType, SyncType::PIPE_BARRIER);
-    ASSERT_EQ(events[27].eventInfo.syncInfo.memType, MemType::INVALID);
+    ASSERT_EQ(events[27].eventInfo.syncInfo.memType, MemType::UNKNOWN);
     ASSERT_EQ(events[27].eventInfo.syncInfo.isRetrogress, false);
 
     ASSERT_EQ(events[28].loc.coreId, 7);
@@ -2626,7 +2626,7 @@ TEST_F(TestRecordParse, parse_pipe_barrier_record_and_expect_success)
     ASSERT_EQ(events[28].eventInfo.syncInfo.srcPipe, PipeType::PIPE_FIX);
     ASSERT_EQ(events[28].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
     ASSERT_EQ(events[28].eventInfo.syncInfo.eventId, 11);
-    ASSERT_EQ(events[28].eventInfo.syncInfo.memType, MemType::INVALID);
+    ASSERT_EQ(events[28].eventInfo.syncInfo.memType, MemType::UNKNOWN);
     ASSERT_EQ(events[28].eventInfo.syncInfo.isRetrogress, false);
 
     ASSERT_EQ(events[29].loc.coreId, 7);
@@ -2636,7 +2636,7 @@ TEST_F(TestRecordParse, parse_pipe_barrier_record_and_expect_success)
     ASSERT_EQ(events[29].eventInfo.syncInfo.srcPipe, PipeType::PIPE_FIX);
     ASSERT_EQ(events[29].eventInfo.syncInfo.dstPipe, PipeType::PIPE_S);
     ASSERT_EQ(events[29].eventInfo.syncInfo.eventId, 11);
-    ASSERT_EQ(events[29].eventInfo.syncInfo.memType, MemType::INVALID);
+    ASSERT_EQ(events[29].eventInfo.syncInfo.memType, MemType::UNKNOWN);
     ASSERT_EQ(events[29].eventInfo.syncInfo.isRetrogress, false);
 }
 
@@ -5540,7 +5540,7 @@ TEST_F(TestRecordParse, parse_dsb_seq_record_generates_single_barrier_and_expect
     ASSERT_EQ(events[0].type, EventType::SYNC_EVENT);
     ASSERT_EQ(events[0].pipe, PipeType::PIPE_S);
     ASSERT_EQ(events[0].eventInfo.syncInfo.opType, SyncType::DSB);
-    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::INVALID);
+    ASSERT_EQ(events[0].eventInfo.syncInfo.memType, MemType::UNKNOWN);
     RecordParse::ResetSyncInPipeInfo();
 }
 

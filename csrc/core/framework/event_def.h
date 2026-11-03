@@ -226,7 +226,7 @@ inline MemType DsbToMemType(MemDsbType memDomain) {
     case MemDsbType::SEQ:
     default:
         // ALL/SEQ不限定单一内存域
-        return MemType::INVALID;
+        return MemType::UNKNOWN;
     }
 }
 
@@ -241,11 +241,11 @@ inline MemType AddrSpaceToMemType(AddressSpace addrSpace)
         { AddressSpace::GM, MemType::GM },
         { AddressSpace::BT, MemType::BT },
         { AddressSpace::FB, MemType::FB },
-        { AddressSpace::INVALID, MemType::INVALID },
+        { AddressSpace::UNKNOWN, MemType::UNKNOWN },
         { AddressSpace::PRIVATE, MemType::PRIVATE },
     };
     auto it = ADDR_SPACE_TO_MEM_TYPE_MAP.find(addrSpace);
-    return it == ADDR_SPACE_TO_MEM_TYPE_MAP.cend() ? MemType::INVALID : it->second;
+    return it == ADDR_SPACE_TO_MEM_TYPE_MAP.cend() ? MemType::UNKNOWN : it->second;
 }
 
 struct LocInfo {

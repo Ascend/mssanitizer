@@ -53,7 +53,7 @@ static bool IsValidHardSyncRecord(const KernelRecord &record)
         return false;
     }
     if (hardSyncRecord.memory == MemType::GM || hardSyncRecord.memory == MemType::UB ||
-        hardSyncRecord.memory == MemType::INVALID) {
+        hardSyncRecord.memory == MemType::UNKNOWN) {
         return false;
     }
     if (hardSyncRecord.v > 1) {
@@ -79,7 +79,7 @@ SanEvent CreateCrossPipeSyncEvent(const SyncType syncType, const PipeType pipeSr
     event.eventInfo.syncInfo.srcPipe = pipeSrc;
     event.eventInfo.syncInfo.dstPipe = pipeDst;
     event.eventInfo.syncInfo.eventId = eventID11;
-    event.eventInfo.syncInfo.memType = MemType::INVALID;
+    event.eventInfo.syncInfo.memType = MemType::UNKNOWN;
     event.eventInfo.syncInfo.isGenerated = true;
     return event;
 }
@@ -92,7 +92,7 @@ SanEvent CreateInnerPipeSyncEvent(const KernelRecord &record, const PipeType pip
     event.type = EventType::SYNC_EVENT;
     event.pipe = pipeType;
     event.eventInfo.syncInfo.opType = SyncType::PIPE_BARRIER;
-    event.eventInfo.syncInfo.memType = MemType::INVALID;
+    event.eventInfo.syncInfo.memType = MemType::UNKNOWN;
     event.eventInfo.syncInfo.isRetrogress = false;
     event.eventInfo.syncInfo.isGenerated = true;
     return event;
@@ -3108,7 +3108,7 @@ static void ParseRecordSetFlag(const KernelRecord &record, std::vector<SanEvent>
     // 解析时按硬件语义截断，保证后续 set/wait 配对与实际硬件行为一致
     event.eventInfo.syncInfo.eventId = static_cast<uint32_t>(record.payload.syncRecord.eventID) &
         (static_cast<uint32_t>(EventID::VALID_EVENT_ID_SIZE) - 1U);
-    event.eventInfo.syncInfo.memType = MemType::INVALID;
+    event.eventInfo.syncInfo.memType = MemType::UNKNOWN;
     event.eventInfo.syncInfo.isRetrogress = false;
     event.eventInfo.syncInfo.isGenerated = record.payload.syncRecord.isGenerated;
     events.emplace_back(event);
@@ -3127,7 +3127,7 @@ static void ParseRecordWaitFlag(const KernelRecord &record, std::vector<SanEvent
     // 解析时按硬件语义截断，保证后续 set/wait 配对与实际硬件行为一致
     event.eventInfo.syncInfo.eventId = static_cast<uint32_t>(record.payload.syncRecord.eventID) &
         (static_cast<uint32_t>(EventID::VALID_EVENT_ID_SIZE) - 1U);
-    event.eventInfo.syncInfo.memType = MemType::INVALID;
+    event.eventInfo.syncInfo.memType = MemType::UNKNOWN;
     event.eventInfo.syncInfo.isRetrogress = false;
     event.eventInfo.syncInfo.isGenerated = record.payload.syncRecord.isGenerated;
     events.emplace_back(event);
@@ -4449,7 +4449,7 @@ SanEvent HsetWaitCreateSyncEvent(const SyncType syncType, const PipeType pipeSrc
     dstEvent.eventInfo.syncInfo.srcPipe = pipeSrc;
     dstEvent.eventInfo.syncInfo.dstPipe = pipeDst;
     dstEvent.eventInfo.syncInfo.eventId = hsetStartEventID + eventId;
-    dstEvent.eventInfo.syncInfo.memType = MemType::INVALID;
+    dstEvent.eventInfo.syncInfo.memType = MemType::UNKNOWN;
     dstEvent.eventInfo.syncInfo.isRetrogress = true;
     dstEvent.eventInfo.syncInfo.isGenerated = true;
     return dstEvent;

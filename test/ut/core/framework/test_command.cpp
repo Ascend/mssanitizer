@@ -18,6 +18,8 @@
 #include <gtest/gtest.h>
 #include <fstream>
 #include <climits>
+#include <cstdlib>
+#include <stdexcept>
 #include <experimental/filesystem>
 #include <system_error>
 #include <unistd.h>

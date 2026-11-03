@@ -123,7 +123,7 @@ PM* ShadowMemory::GetMemMap(AddressSpace space) const
             return ub_.get();
         case AddressSpace::PRIVATE:
             return private_.get();
-        case AddressSpace::INVALID:
+        case AddressSpace::UNKNOWN:
         default:
             SAN_WARN_LOG("Cannot find corresponding map for %s", FormatAddressSpace(space).c_str());
             return nullptr;
@@ -387,7 +387,7 @@ void ShadowMemory::ValidateRange(AddressSpace space, uint64_t &addr, uint64_t &s
 
 bool ShadowMemory::SkipSpace(AddressSpace space)
 {
-    return space == AddressSpace::INVALID;
+    return space == AddressSpace::UNKNOWN;
 }
 
 ErrorMsg ShadowMemory::MakeBadBytesMsg(MemErrorType error, AddressSpace space,

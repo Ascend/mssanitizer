@@ -46,7 +46,7 @@ INSTANTIATE_TEST_CASE_P(FormatConverter, QueryPipeTypeTest, testing::Values(
     std::make_tuple(MemType::UB, MemType::UB, PipeType::PIPE_V),
     std::make_tuple(MemType::L0C, MemType::L1, PipeType::PIPE_FIX),
     std::make_tuple(MemType::L1, MemType::FB, PipeType::PIPE_FIX),
-    std::make_tuple(MemType::INVALID, MemType::INVALID, PipeType::SIZE)
+    std::make_tuple(MemType::UNKNOWN, MemType::UNKNOWN, PipeType::SIZE)
 ));
 
 class MemTypeToAddrSpaceTest : public testing::TestWithParam<std::tuple<MemType, AddressSpace>> {};
@@ -64,7 +64,7 @@ INSTANTIATE_TEST_CASE_P(FormatConverter, MemTypeToAddrSpaceTest, testing::Values
     std::make_tuple(MemType::BT, AddressSpace::BT),
     std::make_tuple(MemType::FB, AddressSpace::FB),
     std::make_tuple(MemType::GM, AddressSpace::GM),
-    std::make_tuple(MemType::INVALID, AddressSpace::INVALID),
+    std::make_tuple(MemType::UNKNOWN, AddressSpace::UNKNOWN),
     std::make_tuple(MemType::PRIVATE, AddressSpace::PRIVATE)
 ));
 
@@ -83,7 +83,7 @@ INSTANTIATE_TEST_CASE_P(FormatConverter, AddrSpaceToMemTypeTest, testing::Values
     std::make_tuple(AddressSpace::GM, MemType::GM),
     std::make_tuple(AddressSpace::BT, MemType::BT),
     std::make_tuple(AddressSpace::FB, MemType::FB),
-    std::make_tuple(AddressSpace::INVALID, MemType::INVALID),
+    std::make_tuple(AddressSpace::UNKNOWN, MemType::UNKNOWN),
     std::make_tuple(AddressSpace::PRIVATE, MemType::PRIVATE)
 ));
 
@@ -218,7 +218,7 @@ INSTANTIATE_TEST_CASE_P(FormatConverter, FormatAddressSpaceTest, testing::Values
     std::make_tuple(AddressSpace::UB, "UB"),
     std::make_tuple(AddressSpace::BT, "BT"),
     std::make_tuple(AddressSpace::FB, "FB"),
-    std::make_tuple(AddressSpace::INVALID, "INVALID")
+    std::make_tuple(AddressSpace::UNKNOWN, "UNKNOWN")
 ));
 
 TEST(FormatConverter, get_data_size_by_type_given_data_type_and_expect_correct_size)
@@ -263,5 +263,5 @@ INSTANTIATE_TEST_CASE_P(FormatConverter, GetAlignSizeTest, testing::Values(
     std::make_tuple(MemOpInfo{MemType::BT, AccessType::READ, {64, 0}, MaskMode::MASK_NORM, InstrName::NONE, 32, 0, 1, 1, 1, 1, 1, 0}, AddressSpace::BT, RecordType::LD, DeviceType::ASCEND_310P, 1U),
     std::make_tuple(MemOpInfo{MemType::FB, AccessType::READ, {64, 0}, MaskMode::MASK_NORM, InstrName::NONE, 32, 0, 1, 1, 1, 1, 1, 0}, AddressSpace::FB, RecordType::LD, DeviceType::ASCEND_310P, 1U),
     std::make_tuple(MemOpInfo{MemType::PRIVATE, AccessType::READ, {64, 0}, MaskMode::MASK_NORM, InstrName::NONE, 32, 0, 1, 1, 1, 1, 1, 0}, AddressSpace::PRIVATE, RecordType::LD, DeviceType::ASCEND_310P, 1U),
-    std::make_tuple(MemOpInfo{MemType::INVALID, AccessType::READ, {64, 0}, MaskMode::MASK_NORM, InstrName::NONE, 32, 0, 1, 1, 1, 1, 1, 0}, AddressSpace::INVALID, RecordType::LD, DeviceType::ASCEND_310P, 1U)
+    std::make_tuple(MemOpInfo{MemType::UNKNOWN, AccessType::READ, {64, 0}, MaskMode::MASK_NORM, InstrName::NONE, 32, 0, 1, 1, 1, 1, 1, 0}, AddressSpace::UNKNOWN, RecordType::LD, DeviceType::ASCEND_310P, 1U)
 ));

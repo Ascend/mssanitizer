@@ -60,7 +60,7 @@ enum class AddressSpace : int32_t {
     UB,
     BT,         // bias table
     FB,         // fixPipe buffer
-    INVALID = -1,
+    UNKNOWN = -1,  // 设备端无法归类的地址空间：空指针/野指针落点（如 sysva 窗口保留区）或地址分类环境异常
 };
 
 enum class MaskMode : uint8_t {

@@ -219,23 +219,39 @@ AICORE_FUNC_HEAD void OnlineCheck::ProcessParaBaseAddr()
 AICORE_FUNC_HEAD uint64_t OnlineCheck::CalIntersectionSize(uint64_t addr, uint64_t size, uint64_t thresholdAddr,
     uint64_t thresholdSize) const
 {
-    /// 不存在交集
-    if (addr + size <= thresholdAddr || addr >= thresholdAddr + thresholdSize || thresholdSize == 0U) {
+    // 求半开区间的交集长度：访问 [A, E)，分配 [B, R)。右端点不包含在区间内。
+    // A = addr，W = size，B = thresholdAddr，L = thresholdSize；E = A + W，R = B + L。
+    // E/R 仅用于逻辑说明，当前实现不计算尾地址，避免无符号加法回绕。
+    // 当前按起点相对位置分两支，先比较再做差值，只累计真正处于分配内的字节。
+    if (addr < thresholdAddr) {
+        // A < B：先扣除分配左侧的 prefix (B - A)；访问未跨过 B 时交集为 0。
+        //   axis:     A         B                   R
+        //   alloc:             [-------------------)
+        //   access1:  [----)E                                 size <= prefix，无交集
+        //   access2:  [---------|-------)E                    仅左侧越界
+        //   access3:  [---------|------------------------)E   覆盖整个分配区间
+        //             < prefix >                              prefix = B - A，remaining = size - prefix
+        //   后两种统一取 min(remaining, L)，不会把左侧前缀或超过 R 的尾部计入交集。
+        const uint64_t prefix = thresholdAddr - addr;
+        if (size <= prefix) {
+            return 0U;
+        }
+        const uint64_t remaining = size - prefix;
+        return remaining < thresholdSize ? remaining : thresholdSize;
+    }
+    // A >= B：offset 定位访问起点；起点到达或超过 R 时交集为 0。
+    //   axis:     B         A                   R
+    //   alloc:    [-----------------------------)
+    //   access4:            [-------)E                    完全在分配内
+    //   access5:            [------------------------)E   仅右侧越界
+    //             < offset ><---- remaining --->          offset = A - B，remaining = L - offset
+    //   起点在分配内时取 min(W, remaining)，分别得到完整访问长度或截至 R 的合法长度。
+    const uint64_t offset = addr - thresholdAddr;
+    if (offset >= thresholdSize) {
         return 0U;
     }
-    if (addr <= thresholdAddr && addr + size >= thresholdAddr + thresholdSize) {
-        /// 左右均越界
-        return thresholdSize;
-    } else if (addr + size > thresholdAddr + thresholdSize) {
-        /// 仅右边界越界
-        return thresholdAddr - addr + thresholdSize;
-    } else if (addr + size > thresholdAddr + thresholdSize) {
-        /// 仅左边界越界
-        return addr - thresholdAddr + size;
-    } else {
-        /// 子集
-        return size;
-    }
+    const uint64_t remaining = thresholdSize - offset;
+    return size < remaining ? size : remaining;
 }
 
 template<RecordType recordType, typename Record>
@@ -543,8 +559,8 @@ AICORE_FUNC_HEAD bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, ui
     constexpr uint32_t ubSize = 253952U; // 248KB
     if (addr >= ubSize) {
         illegalSize = size;
-    } else if (addr + size > ubSize) {
-        illegalSize = addr + size - ubSize;
+    } else if (size > ubSize - addr) {
+        illegalSize = size - (ubSize - addr);
     }
     return illegalSize > 0U;
 }

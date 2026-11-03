@@ -23,6 +23,72 @@
 
 using namespace Sanitizer;
 
+TEST(DbiLoadStore, stack_design_signed_scaled_and_post_indexed_addresses)
+{
+    struct Input { uint64_t base; int64_t offset; uint64_t post; uint64_t expected; };
+    const Input inputs[] = {{16, -2, 0, 0}, {16, -2, 1, 16}, {0, 2, 0, 16}, {0, 2, 1, 0}};
+    for (const auto &input : inputs) {
+        for (bool write : {false, true}) {
+            auto info = CreateMemInfo();
+            reinterpret_cast<RecordGlobalHead *>(info.data())->checkParms.memcheck = true;
+            if (write) {
+                __sanitizer_report_st_b64_reg(info.data(), 0, 0, input.base, input.offset, input.post);
+            } else {
+                __sanitizer_report_ld_b64_reg(info.data(), 0, 0, input.base, input.offset, input.post);
+            }
+            auto bytes = info.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+            const auto record = reinterpret_cast<const LoadStoreRecord *>(bytes + sizeof(RecordType));
+            EXPECT_EQ(record->addr, input.expected);
+            EXPECT_EQ(record->size, 8);
+            EXPECT_EQ(record->space, AddressSpace::UNKNOWN);
+        }
+    }
+}
+
+TEST(DbiLoadStore, private_load_store_records_follow_memcheck_and_initcheck)
+{
+    // Host SPR stubs return S=P=0. Supply GM-stack mapped addresses at the recorder boundary
+    // to test collection and window offsets without asserting correctness of UB-stack mapping.
+    for (bool memcheck : {false, true}) {
+        for (bool initcheck : {false, true}) {
+            for (uint64_t addr : {0x100000ULL, 0x101000ULL, 0x500000ULL}) {
+                for (uint8_t width : {1, 2, 4, 8}) {
+                    SCOPED_TRACE(::testing::Message() << memcheck << ":" << initcheck << ":" << addr << ":"
+                                                     << static_cast<unsigned>(width));
+                    auto memInfo = CreateMemInfo();
+                    auto head = reinterpret_cast<RecordGlobalHead *>(memInfo.data());
+                    head->checkParms.memcheck = memcheck;
+                    head->checkParms.initcheck = initcheck;
+                    RecordLoadStoreEvent<RecordType::LD_IO>(memInfo.data(), 0x1008, 0,
+                        AddressSpace::PRIVATE, addr, width, width);
+                    RecordLoadStoreEvent<RecordType::ST_IO>(memInfo.data(), 0x1008, 0,
+                        AddressSpace::PRIVATE, addr, width, width);
+
+                    auto block = reinterpret_cast<RecordBlockHead *>(memInfo.data() + sizeof(RecordGlobalHead));
+                    const uint64_t expectedCount = memcheck || initcheck ? 2 : 0;
+                    ASSERT_EQ(block->recordCount, expectedCount);
+                    ASSERT_EQ(block->recordWriteCount, expectedCount);
+                    if (expectedCount == 0) {
+                        continue;
+                    }
+                    auto bytes = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+                    for (RecordType type : {RecordType::LD_IO, RecordType::ST_IO}) {
+                        EXPECT_EQ(*reinterpret_cast<const RecordType *>(bytes), type);
+                        auto record = reinterpret_cast<const LoadStoreRecord *>(bytes + sizeof(RecordType));
+                        EXPECT_EQ(record->space, AddressSpace::PRIVATE);
+                        EXPECT_EQ(record->addr, addr - 0x100000);
+                        EXPECT_EQ(record->size, width);
+                        EXPECT_EQ(record->alignSize, width);
+                        EXPECT_EQ(record->location.pc, 0x1008);
+                        EXPECT_EQ(record->location.blockId, 0);
+                        bytes += sizeof(RecordType) + sizeof(LoadStoreRecord);
+                    }
+                }
+            }
+        }
+    }
+}
+
 TEST(DbiLoadStore, st_b64_imm_expect_correct_record)
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();

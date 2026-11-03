@@ -62,11 +62,11 @@ AddressSpace FormatConverter::MemTypeToAddrSpace(MemType memType)
         {MemType::BT,      AddressSpace::BT},
         {MemType::FB,      AddressSpace::FB},
         {MemType::GM,      AddressSpace::GM},
-        {MemType::INVALID, AddressSpace::INVALID},
+        {MemType::UNKNOWN, AddressSpace::UNKNOWN},
         {MemType::PRIVATE, AddressSpace::PRIVATE},
     };
     auto it = MEM_TYPE_TO_ADDR_SPACE_MAP.find(memType);
-    return it == MEM_TYPE_TO_ADDR_SPACE_MAP.cend() ? AddressSpace::INVALID : it->second;
+    return it == MEM_TYPE_TO_ADDR_SPACE_MAP.cend() ? AddressSpace::UNKNOWN : it->second;
 }
 
 MemOpType FormatConverter::AccessTypeToMemOpType(AccessType type)
@@ -152,7 +152,7 @@ void AlignRecordBySpace(uint16_t& alignSize, AddressSpace space)
         case AddressSpace::BT: // 为避免影响其他与之相关的指令对齐逻辑，先暂设为1，后续再适配，FB同理
         case AddressSpace::FB:
         case AddressSpace::PRIVATE:
-        case AddressSpace::INVALID:
+        case AddressSpace::UNKNOWN:
             alignSize = 1;
             break;
         default:

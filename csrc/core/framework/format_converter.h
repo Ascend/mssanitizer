@@ -61,7 +61,7 @@ inline std::string FormatAddressSpace(AddressSpace space)
         case AddressSpace::FB:
             return "FB";
         default:
-            return "INVALID";
+            return "UNKNOWN";
     }
 }
 

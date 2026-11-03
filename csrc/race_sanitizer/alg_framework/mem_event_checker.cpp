@@ -307,8 +307,8 @@ inline uint8_t EffMemType(const MemEvent &e) {
     return static_cast<uint8_t>(e.isDynamic ? e.dynamicMemInfo.memType : e.memInfo.memType);
 }
 
-// 以 MemType 为下标的定长数组上界（L1=0 … INVALID=9，共 10 个）
-constexpr size_t kMemTypeCount = static_cast<size_t>(MemType::INVALID) + 1;
+// 以 MemType 为下标的定长数组上界（L1=0 … UNKNOWN=9，共 10 个）
+constexpr size_t kMemTypeCount = static_cast<size_t>(MemType::UNKNOWN) + 1;
 
 bool MemEventChecker::NeedCrossCoreCheck(const MemEvent &event1, const MemEvent &event2) const {
     // 同一个block的无需比较
