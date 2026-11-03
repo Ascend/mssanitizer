@@ -104,6 +104,13 @@ struct SanitizerControlInfo {
     SanitizerControlType type;
 };
 
+// 指令大类，检测算法按类别制定策略
+enum class InstrClass : uint8_t {
+    UNKNOWN = 0U,
+    // cube 矩阵乘，对应 RecordType::MATRIX_MUL_OP 与 RecordType::MMAD_A5
+    CUBE_MATMUL,
+};
+
 struct MemOpInfo {
     MemType memType;
     AccessType opType;
@@ -131,6 +138,11 @@ struct MemOpInfo {
     // FIX_L0C_TO_UB/FIX_L0C_TO_L1 跨核写入时，标注目标核信息，跨核检测时替代 loc.coreId/blockType
     uint32_t dstCoreId = 0;
     BlockType dstBlockType = BlockType::AIVEC;
+    // 指令大类，仅矩阵乘记录会设置
+    InstrClass instrClass = InstrClass::UNKNOWN;
+    // 矩阵乘的原始 m/n，未做 16 对齐
+    uint16_t matrixM = 0U;
+    uint16_t matrixN = 0U;
 };
 
 struct SyncOpInfo {

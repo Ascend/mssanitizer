@@ -704,4 +704,122 @@ TEST(SinglePipeRaceAlgImpl, pairwise_round_trip_recognized_on_both_pipes) {
     ASSERT_EQ(ClosedRingStartSerialNoOf(events, 6U), 3U);
     RecordParse::ResetSyncInPipeInfo();
 }
+
+// 构造 PIPE_M 上一条写回 L0C 的矩阵乘访存事件
+SanEvent MakeMmadL0cEvent(uint64_t serialNo, uint64_t addr, uint16_t m, uint16_t n,
+                          InstrClass instrClass = InstrClass::CUBE_MATMUL,
+                          AccessType opType = AccessType::WRITE)
+{
+    SanEvent event;
+    event.loc.coreId = 0;
+    event.loc.blockType = BlockType::AICUBE;
+    event.type = EventType::MEM_EVENT;
+    event.pipe = PipeType::PIPE_M;
+    event.serialNo = serialNo;
+    event.eventInfo.memInfo.opType = opType;
+    event.eventInfo.memInfo.memType = MemType::L0C;
+    event.eventInfo.memInfo.instrClass = instrClass;
+    event.eventInfo.memInfo.matrixM = m;
+    event.eventInfo.memInfo.matrixN = n;
+    event.eventInfo.memInfo.addr = addr;
+    event.eventInfo.memInfo.blockNum = 1U;
+    event.eventInfo.memInfo.blockSize = 32U;
+    event.eventInfo.memInfo.blockStride = 1U;
+    event.eventInfo.memInfo.repeatTimes = 1U;
+    event.eventInfo.memInfo.repeatStride = 1U;
+    return event;
+}
+
+// 大规模 mmad 沿 K 轴累加同一 L0C，应豁免
+TEST(SinglePipeRaceAlgImpl, large_mmad_k_accum_expect_no_race)
+{
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 64U, 64U),
+        MakeMmadL0cEvent(2U, 0x100, 64U, 64U),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 0U);
+}
+
+// 阈值取 (m/16)*(n/16)>=10，160/16 恰好等于 10，应豁免
+TEST(SinglePipeRaceAlgImpl, mmad_threshold_boundary_expect_no_race)
+{
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 160U, 16U),
+        MakeMmadL0cEvent(2U, 0x100, 160U, 16U),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 0U);
+}
+
+// (m/16)*(n/16) 小于阈值的 mmad 之间仍按原逻辑检测
+TEST(SinglePipeRaceAlgImpl, small_mmad_k_accum_expect_race)
+{
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 32U, 32U),
+        MakeMmadL0cEvent(2U, 0x100, 32U, 32U),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 1U);
+}
+
+// 仅一侧达到规模阈值时不豁免
+TEST(SinglePipeRaceAlgImpl, one_side_large_mmad_expect_race)
+{
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 64U, 64U),
+        MakeMmadL0cEvent(2U, 0x100, 32U, 32U),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 1U);
+}
+
+// 非矩阵乘指令的 L0C 写不受豁免影响
+TEST(SinglePipeRaceAlgImpl, non_mmad_l0c_write_expect_race)
+{
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 64U, 64U, InstrClass::UNKNOWN),
+        MakeMmadL0cEvent(2U, 0x100, 64U, 64U, InstrClass::UNKNOWN),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 1U);
+}
+
+// 两条大规模 mmad 之间隔着其它 PIPE_M 指令（pipeSerialNo 差大于 1）时不豁免
+TEST(SinglePipeRaceAlgImpl, non_adjacent_large_mmad_expect_race)
+{
+    SanEvent middle = MakeMmadL0cEvent(2U, 0x200, 64U, 64U, InstrClass::UNKNOWN);
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 64U, 64U),
+        middle,
+        MakeMmadL0cEvent(3U, 0x100, 64U, 64U),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 1U);
+}
+
+// 小规模 mmad 之间存在 pipe_barrier 时，由原有 barrierNo 逻辑豁免
+TEST(SinglePipeRaceAlgImpl, small_mmad_with_pipe_barrier_expect_no_race)
+{
+    SanEvent barrier;
+    barrier.loc.coreId = 0;
+    barrier.loc.blockType = BlockType::AICUBE;
+    barrier.type = EventType::SYNC_EVENT;
+    barrier.pipe = PipeType::PIPE_M;
+    barrier.serialNo = 2U;
+    barrier.eventInfo.syncInfo.opType = SyncType::PIPE_BARRIER;
+
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 32U, 32U),
+        barrier,
+        MakeMmadL0cEvent(3U, 0x100, 32U, 32U),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 0U);
+}
+
+// L0C 的 MEMCPY_BLOCKS 被拆成 READ+WRITE 两条事件后仍应豁免
+TEST(SinglePipeRaceAlgImpl, mmad_memcpy_blocks_split_l0c_expect_no_race)
+{
+    std::vector<SanEvent> events = {
+        MakeMmadL0cEvent(1U, 0x100, 64U, 64U, InstrClass::CUBE_MATMUL, AccessType::READ),
+        MakeMmadL0cEvent(1U, 0x100, 64U, 64U, InstrClass::CUBE_MATMUL, AccessType::WRITE),
+        MakeMmadL0cEvent(2U, 0x100, 64U, 64U, InstrClass::CUBE_MATMUL, AccessType::READ),
+        MakeMmadL0cEvent(2U, 0x100, 64U, 64U, InstrClass::CUBE_MATMUL, AccessType::WRITE),
+    };
+    ASSERT_EQ(RunSinglePipeAlg(events), 0U);
+}
 }

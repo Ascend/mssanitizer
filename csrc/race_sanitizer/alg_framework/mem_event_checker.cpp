@@ -174,6 +174,31 @@ bool IsMemoryOverlap(const MemOpInfo &op1, const DynamicOpInfo &op2, MemEventChe
     return false;
 }
 
+// 业务侧规则：(m/16)*(n/16) < 10 时在相邻 mmad 间插 asc_sync_pipe(PIPE_M)，>= 10 时不插
+constexpr uint32_t MMAD_FRACTAL_SIZE = 16U;
+constexpr uint32_t MMAD_K_ACCUM_MIN_FRACTAL_NUM = 10U;
+
+bool IsLargeMatmulAccess(const MemEvent &event)
+{
+    const MemOpInfo &op = event.memInfo;
+    if (op.instrClass != InstrClass::CUBE_MATMUL) {
+        return false;
+    }
+    return (op.matrixM / MMAD_FRACTAL_SIZE) * (op.matrixN / MMAD_FRACTAL_SIZE) >= MMAD_K_ACCUM_MIN_FRACTAL_NUM;
+}
+
+// 大规模矩阵乘沿 K 轴累加时，相邻两次 mmad 对同一 L0C 的写-读顺序由硬件保证，业务侧不插同步，不算竞争
+bool IsMatmulAccumOrderedByHardware(const MemEvent &event1, const MemEvent &event2)
+{
+    uint64_t diff = (event1.pipeSerialNo > event2.pipeSerialNo) ?
+        (event1.pipeSerialNo - event2.pipeSerialNo) : (event2.pipeSerialNo - event1.pipeSerialNo);
+    // 相邻两条指令的 pipeSerialNo 相差 1
+    if (diff != 1U) {
+        return false;
+    }
+    return IsLargeMatmulAccess(event1) && IsLargeMatmulAccess(event2);
+}
+
 }
 
 namespace Sanitizer {
@@ -403,6 +428,11 @@ bool MemEventChecker::IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo
 
     // barrierNo记录pipe_barrier出现的次数，不相等说明两条指令之间有pipe_barrier，不会竞争
     if (event1.barrierNo != event2.barrierNo) {
+        return false;
+    }
+
+    // 大规模矩阵乘沿 K 轴累加，业务侧依赖硬件保证写-读顺序，不算竞争
+    if (IsMatmulAccumOrderedByHardware(event1, event2)) {
         return false;
     }
 

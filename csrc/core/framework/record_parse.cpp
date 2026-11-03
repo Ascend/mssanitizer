@@ -3002,6 +3002,9 @@ static void ParseMatrixMulOpRecord(const KernelRecord &record, std::vector<SanEv
     SetLocationInfo(event, matrixMulOpRecord, record.blockType, record.serialNo);
     event.type = EventType::MEM_EVENT;
     event.pipe = PipeType::PIPE_M;
+    memInfo.instrClass = InstrClass::CUBE_MATMUL;
+    memInfo.matrixM = matrixMulOpRecord.m;
+    memInfo.matrixN = matrixMulOpRecord.n;
     // matrixA,L0A
     memInfo.memType = MemType::L0A;
     memInfo.opType = AccessType::READ;
@@ -3056,6 +3059,9 @@ static void ParseMmadA5Record(const KernelRecord &record, std::vector<SanEvent> 
     memInfo.blockStride = 1U;
     memInfo.repeatTimes = 1U;
     memInfo.repeatStride = 0U;
+    memInfo.instrClass = InstrClass::CUBE_MATMUL;
+    memInfo.matrixM = mmadA5Record.m;
+    memInfo.matrixN = mmadA5Record.n;
     // matrixA,L0A
     constexpr uint16_t SRC_BLOCK_SIZE = 512; // L0A/B每个分形512B
     memInfo.memType = MemType::L0A;

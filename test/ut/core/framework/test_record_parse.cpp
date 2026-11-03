@@ -2332,6 +2332,8 @@ constexpr uint16_t MATRIX_RECORD_SRC1_BLOCKNUM = 8;
 constexpr uint16_t MATRIX_RECORD_SRC0_REPEATSTRIDE = 18;
 constexpr uint16_t MATRIX_RECORD_SRC0_REPEAT = 2;
 constexpr uint16_t MATRIX_RECORD_COREID = 7;
+constexpr uint16_t MATRIX_RECORD_M = 16;
+constexpr uint16_t MATRIX_RECORD_N = 16;
 
 static MarixMulOpRecord CreateMatrixMulOpRecord(void)
 {
@@ -2339,6 +2341,9 @@ static MarixMulOpRecord CreateMatrixMulOpRecord(void)
     matrixMulOpRecord.dst = 0xcc;
     matrixMulOpRecord.src0 = 0x55;
     matrixMulOpRecord.src1 = 0xaa;
+    matrixMulOpRecord.m = MATRIX_RECORD_M;
+    matrixMulOpRecord.k = 32;
+    matrixMulOpRecord.n = MATRIX_RECORD_N;
     matrixMulOpRecord.dstBlockSize = MATRIX_RECORD_DST_BLOCKSIZE;
     matrixMulOpRecord.src0BlockSize = MATRIX_RECORD_SRC0_BLOCKSIZE;
     matrixMulOpRecord.src1BlockSize = MATRIX_RECORD_SRC1_BLOCKSIZE;
@@ -2390,6 +2395,12 @@ TEST_F(TestRecordParse, parse_matrix_mul_l0c_op_record_and_expect_success)
     memOpInfo = {MemType::L0C, AccessType::MEMCPY_BLOCKS, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xcc, 2, 12, 1, 1, 0, 512};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
+    // 指令大类与原始 m/n 应透传到事件
+    for (const auto &event : events) {
+        ASSERT_EQ(event.eventInfo.memInfo.instrClass, InstrClass::CUBE_MATMUL);
+        ASSERT_EQ(event.eventInfo.memInfo.matrixM, MATRIX_RECORD_M);
+        ASSERT_EQ(event.eventInfo.memInfo.matrixN, MATRIX_RECORD_N);
+    }
 }
 
 TEST_F(TestRecordParse, parse_matrix_mul_btb_op_record_and_expect_success)
@@ -2426,6 +2437,12 @@ TEST_F(TestRecordParse, parse_matrix_mul_btb_op_record_and_expect_success)
     memOpInfo = {MemType::L0C, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM, InstrName::NONE,
         8, 0xcc, 2, 12, 1, 1, 0, 512};
     ASSERT_EQ(events[2].eventInfo.memInfo, memOpInfo);
+    // 指令大类与原始 m/n 应透传到事件
+    for (const auto &event : events) {
+        ASSERT_EQ(event.eventInfo.memInfo.instrClass, InstrClass::CUBE_MATMUL);
+        ASSERT_EQ(event.eventInfo.memInfo.matrixM, MATRIX_RECORD_M);
+        ASSERT_EQ(event.eventInfo.memInfo.matrixN, MATRIX_RECORD_N);
+    }
 }
 
 TEST_F(TestRecordParse, parse_vconcat_record)
@@ -4051,6 +4068,12 @@ TEST_F(TestRecordParse, parse_mmada5_expect_success)
     ASSERT_EQ(events[2].eventInfo.memInfo.repeatTimes, 1);
     ASSERT_EQ(events[2].eventInfo.memInfo.repeatStride, 0);
     ASSERT_EQ(events[2].eventInfo.memInfo.memType, MemType::L0C);
+    // 三个事件均透传指令大类与原始 m/n
+    for (const auto &event : events) {
+        ASSERT_EQ(event.eventInfo.memInfo.instrClass, InstrClass::CUBE_MATMUL);
+        ASSERT_EQ(event.eventInfo.memInfo.matrixM, 64);
+        ASSERT_EQ(event.eventInfo.memInfo.matrixN, 64);
+    }
 }
 
 TEST_F(TestRecordParse, parse_mov_cbuf_to_bt_with_illegal_params_expect_get_none)
