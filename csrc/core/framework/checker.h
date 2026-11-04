@@ -25,6 +25,7 @@
 #include <queue>
 #include <condition_variable>
 #include <mutex>
+#include <future>
 #include "sanitizer_base.h"
 #include "record_defs.h"
 #include "config.h"
@@ -46,6 +47,7 @@ enum class BroadcastEvent : uint8_t {
     SANITIZER_RECORD_ARRIVED,
     KERNEL_BLOCK_ARRIVED,
     STOP,
+    MEMCHECK_COMPLETION,
 };
 
 struct WorkArgs {
@@ -59,6 +61,8 @@ struct WorkArgs {
     // Record i owns events[eventOffsets[i], eventOffsets[i + 1]).
     std::vector<SanEvent> events;
     std::vector<size_t> eventOffsets;
+    // 消费线程处理到此标记时，通知此前的内存检查已完成。
+    std::shared_ptr<std::promise<void>> memcheckCompletion;
 };
 
 // Checker类主要用于将单条解析信息分发给合适的sanitier工具
@@ -80,6 +84,8 @@ public:
     // do check
     void Do(const SanitizerRecord& record);
     void Do(std::vector<SanitizerRecord> records);
+    // 在 memcheck 队列尾部放入完成标记，返回此前所有 memcheck 工作完成的等待点。
+    std::shared_future<void> CaptureMemcheckCompletion();
     bool SupportSimt() const;
     bool IsTargetBlock(uint64_t blockIdx) const;
 

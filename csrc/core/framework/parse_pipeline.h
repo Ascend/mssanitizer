@@ -24,6 +24,7 @@
 #include <exception>
 #include <functional>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -49,6 +50,8 @@ struct ParseContext {
 struct ParseTask {
     std::vector<SanitizerRecord> records;
     ParseContext ctx;
+    // 无记录的完成标记也按提交顺序交付，不能越过此前仍在解析的批次。
+    std::shared_ptr<std::promise<void>> memcheckCompletion;
 };
 
 struct ParseOut {
@@ -58,6 +61,8 @@ struct ParseOut {
     std::vector<size_t> eventOffsets;
     // 随解析结果带回 committer 线程：收尾(DisplaySanitizerEnd 等)需用同一份 device/kernel 上下文
     ParseContext ctx;
+    // 交付线程将此标记转入 memcheck FIFO，由消费线程确认完成。
+    std::shared_ptr<std::promise<void>> memcheckCompletion;
 };
 
 // 有界、保序的解析流水线：

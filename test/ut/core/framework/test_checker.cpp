@@ -17,6 +17,8 @@
 #include <gtest/gtest.h>
 #include <any>
 #include <array>
+#include <chrono>
+#include <future>
 #include <cstdio>
 #include <functional>
 #include <mutex>
@@ -225,6 +227,121 @@ SanitizerRecord MakeKernelFinishRecord() {
     record.version = RecordVersion::KERNEL_RECORD;
     record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
     return record;
+}
+
+// 非最后一批 kernel 记录仍在解析时，完成点不能提前宣告该批 memcheck 已结束。
+TEST(Checker, memcheck_completion_waits_for_pending_batch_parse) {
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto gate = release.get_future().share();
+    auto started = entered.get_future();
+    Config config{.defaultCheck = true, .memCheck = true};
+    Checker checker(config, false);
+    auto parse = checker.pipeline_.parse_;
+    checker.pipeline_.parse_ = [&](ParseTask &&task) {
+        if (!task.records.empty()) {
+            entered.set_value();
+            gate.wait();
+        }
+        return parse(std::move(task));
+    };
+    checker.Do(
+        std::vector<SanitizerRecord>{MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, 1)});
+    const auto parsing = started.wait_for(std::chrono::seconds(3));
+    auto completion = std::async(std::launch::async, [&] { checker.CaptureMemcheckCompletion().get(); });
+    const auto beforeRelease = completion.wait_for(std::chrono::milliseconds(100));
+    // 无论断言是否失败都先放开门闩，避免测试析构时等待解析线程而挂住。
+    release.set_value();
+    completion.get();
+    checker.Finish();
+    EXPECT_EQ(parsing, std::future_status::ready);
+    EXPECT_EQ(beforeRelease, std::future_status::timeout)
+        << "memcheck completion overtook a kernel batch that was still parsing";
+}
+
+// 已解析但尚未交付进消费队列，同样不应被完成点越过。
+TEST(Checker, memcheck_completion_waits_for_pending_batch_handoff) {
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto gate = release.get_future().share();
+    auto started = entered.get_future();
+    Config config{.defaultCheck = true, .memCheck = true};
+    Checker checker(config, false);
+    auto commit = checker.pipeline_.commit_;
+    checker.pipeline_.commit_ = [&](ParseOut &&out) {
+        if (!out.records.empty()) {
+            entered.set_value();
+            gate.wait();
+        }
+        commit(std::move(out));
+    };
+    checker.Do(
+        std::vector<SanitizerRecord>{MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, 1)});
+    const auto handingOff = started.wait_for(std::chrono::seconds(3));
+    auto completion = std::async(std::launch::async, [&] { checker.CaptureMemcheckCompletion().get(); });
+    const auto beforeRelease = completion.wait_for(std::chrono::milliseconds(100));
+    release.set_value();
+    completion.get();
+    checker.Finish();
+    EXPECT_EQ(handingOff, std::future_status::ready);
+    EXPECT_EQ(beforeRelease, std::future_status::timeout)
+        << "memcheck completion overtook a kernel batch awaiting handoff";
+}
+
+// 对照：已经交付的任务必须等消费完成，不能只等解析结束。
+TEST(Checker, memcheck_completion_waits_for_batch_consumption) {
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto gate = release.get_future().share();
+    auto started = entered.get_future();
+    Config config{.defaultCheck = true, .memCheck = true};
+    Checker checker(config, false);
+    auto consumer = std::make_shared<RecordingSanitizer>();
+    checker.sanitizerArr_[0] = consumer;
+    checker.initWithDeviceInfoDone_[0] = true;
+    consumer->beforeRecord = [&] {
+        entered.set_value();
+        gate.wait();
+    };
+    checker.Do(
+        std::vector<SanitizerRecord>{MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, 1)});
+    const auto consuming = started.wait_for(std::chrono::seconds(3));
+    auto completion = checker.CaptureMemcheckCompletion();
+    const auto beforeRelease = completion.wait_for(std::chrono::milliseconds(100));
+    release.set_value();
+    completion.get();
+    checker.Finish();
+    EXPECT_EQ(consuming, std::future_status::ready);
+    EXPECT_EQ(beforeRelease, std::future_status::timeout);
+    EXPECT_EQ(consumer->records.size(), 1U);
+}
+
+// 获取完成点只提交标记，不能同步等待此前批次解析结束而阻塞 PID 派发线程。
+TEST(Checker, capture_memcheck_completion_does_not_wait_for_batch_parse) {
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto gate = release.get_future().share();
+    auto started = entered.get_future();
+    Config config{.defaultCheck = true, .memCheck = true};
+    Checker checker(config, false);
+    auto parse = checker.pipeline_.parse_;
+    checker.pipeline_.parse_ = [&](ParseTask &&task) {
+        if (!task.records.empty()) {
+            entered.set_value();
+            gate.wait();
+        }
+        return parse(std::move(task));
+    };
+    checker.Do(
+        std::vector<SanitizerRecord>{MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, 1)});
+    const auto parsing = started.wait_for(std::chrono::seconds(3));
+    auto capture = std::async(std::launch::async, [&] { return checker.CaptureMemcheckCompletion(); });
+    const auto returned = capture.wait_for(std::chrono::seconds(1));
+    release.set_value();
+    capture.get().get();
+    checker.Finish();
+    EXPECT_EQ(parsing, std::future_status::ready);
+    EXPECT_EQ(returned, std::future_status::ready);
 }
 
 TEST(Checker, batch_parse_preserves_empty_and_multiple_event_boundaries) {

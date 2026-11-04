@@ -118,7 +118,10 @@ Checker::Checker(Config const &config, bool enableDebugLog)
       pipeline_(
           PARSE_THREADS, 16, [this](ParseTask &&task) { return ParseRecords(std::move(task)); },
           [this](ParseOut &&out) {
-              RestoreParseContext(out.ctx);
+              // 完成标记无设备和kernel上下文，跳过上下文恢复处理
+              if (!out.memcheckCompletion) {
+                  RestoreParseContext(out.ctx);
+              }
               DispatchParsed(out);
           }) {
     // 后续依据不同的工具选择使能不同的sanitizer功能
@@ -248,6 +251,10 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
             RuntimeContext::Instance().kernelNameDisplay = args.kernelNameDisplay;
             continue;
         }
+        case BroadcastEvent::MEMCHECK_COMPLETION:
+            // 标记前的内存检查已完成，通知等待该完成点的进程派发线程
+            args.memcheckCompletion->set_value();
+            continue;
         case BroadcastEvent::STOP:
             // clear queue
             std::queue<WorkArgs>().swap(que);
@@ -578,10 +585,15 @@ void Checker::Do(std::vector<SanitizerRecord> records) {
 }
 
 ParseOut Checker::ParseRecords(ParseTask &&task) {
+    ParseOut out;
+    out.memcheckCompletion = std::move(task.memcheckCompletion);
+    // 遇到完成标记直接透传，不按普通记录解析
+    if (out.memcheckCompletion) {
+        return out;
+    }
     // 池线程的 RuntimeContext 是 thread_local 的，需先恢复本任务的 device/kernel 上下文，解析输出才正确
     RestoreParseContext(task.ctx);
 
-    ParseOut out;
     out.ctx = std::move(task.ctx);
     out.records = std::move(task.records);
     out.events.reserve(out.records.size());
@@ -606,6 +618,18 @@ ParseOut Checker::ParseRecords(ParseTask &&task) {
 }
 
 void Checker::DispatchParsed(ParseOut &out) {
+    // 解析结果按提交顺序交付，到达此标记时，此前任务的解析结果已全部交付
+    // 将标记转为广播事件，接在此前的内存检查工作之后，由消费线程处理并通知完成
+    if (out.memcheckCompletion) {
+        const auto index = static_cast<uint8_t>(ToolType::MEMCHECK);
+        std::lock_guard<std::mutex> lock(mtx_[index]);
+        WorkArgs args{};
+        args.eventType = BroadcastEvent::MEMCHECK_COMPLETION;
+        args.memcheckCompletion = std::move(out.memcheckCompletion);
+        workerArgs_[index].push(std::move(args));
+        workerCv_.notify_all();
+        return;
+    }
     auto &records = out.records;
     const bool isKernelFinish = !records.empty() && records.back().version == RecordVersion::KERNEL_RECORD &&
         records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH;
@@ -690,6 +714,25 @@ void Checker::Finish()
             sanitizerArr_[i]->Exit();
         }
     }
+}
+
+std::shared_future<void> Checker::CaptureMemcheckCompletion() {
+    // 创建检查完成通知：promise 留给消费线程，shared_future 供派发线程等待
+    auto completion = std::make_shared<std::promise<void>>();
+    auto ready = completion->get_future().share();
+    const auto index = static_cast<uint8_t>(ToolType::MEMCHECK);
+    // memcheck 未使能时直接返回已完成的 future，无阻塞行为
+    if (sanitizerArr_[index] == nullptr) {
+        completion->set_value();
+        return ready;
+    }
+
+    // 将无需解析的完成标记提交到解析流水线，随此前任务按提交顺序进入内存检查消费队列
+    // 消费线程处理到标记后才通知完成；此处返回通知，不等待此前检查结束
+    ParseTask task{};
+    task.memcheckCompletion = std::move(completion);
+    pipeline_.Submit(std::move(task));
+    return ready;
 }
 
 } // namespace Sanitizer
