@@ -41,8 +41,10 @@ struct ShareeMemInfo {
     GMType size;
 };
 
-using SharedMemInfoMpType = std::map<MemNameType, std::pair<SharerMemInfo, std::map<std::thread::id, ShareeMemInfo>>>;
-using ShareeMemMpType = std::map<GMType, MemNameType>;
+// 按共享内存名称保存提供方范围及各使用方映射；保存实际 Checker，供销毁时向使用方投递 FREE
+using SharedMemInfoMpType = std::map<MemNameType, std::pair<SharerMemInfo, std::map<Checker *, ShareeMemInfo>>>;
+// 按原设备连接和映射地址查找共享内存名称，避免同一派发线程内不同设备的相同地址混淆
+using ShareeMemMpType = std::map<std::pair<std::thread::id, GMType>, MemNameType>;
 
 // Command类主要针对解析后的命令进行处理
 // 其本身是串接流程的主要类
@@ -52,6 +54,7 @@ public:
     using ParamList = std::vector<std::string>;
     ProgramStatus Exec(const ParamList &execParams);
     static SharedMemInfoMpType sharedMemInfoMp;
+    // 每个 Host PID 的派发线程持有一份索引，键中的原接收线程 ID 进一步区分设备连接
     thread_local static ShareeMemMpType shareeMemInfoMp;
 
 private:
@@ -62,7 +65,7 @@ private:
 };
 
 void HandleIpcMemRecord(Sanitizer::Checker &checker, Sanitizer::IPCMemRecord const &record,
-    Sanitizer::ThreadManager &threadManeger, Process::MsgRspFunc &msgRspFunc);
+    Sanitizer::ThreadManager &threadManager, Process::MsgRspFunc &msgRspFunc);
 
 bool DetectDumpProject(Command &cmd, const std::string &dumpPath);
 } // namespace Sanitizer

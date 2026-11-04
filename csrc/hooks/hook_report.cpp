@@ -87,15 +87,21 @@ HookReport::HookReport(void)
     deviceType_{DeviceType::INVALID} { }
 
 bool HookReport::WriteOrdered(std::string message) {
-    if (client_ == nullptr || message.size() < sizeof(PacketHead)) {
+    std::lock_guard<std::mutex> lock(sendMutex_);
+    if (client_ == nullptr || sendFailed_ || message.size() < sizeof(PacketHead)) {
         return false;
     }
-    std::lock_guard<std::mutex> lock(sendMutex_);
     PacketHead head{};
     std::memcpy(&head, message.data(), sizeof(head));
     head.orderId = nextOrderId_++;
     std::memcpy(&message[0], &head, sizeof(head));
-    return !client_->Write(message).Fail();
+    if (client_->Write(message).Fail()) {
+        // 可能已有部分字节写出，不能重用编号或继续发送并声称检测完整
+        sendFailed_ = true;
+        std::cerr << "[mssanitizer] ERROR: HookReport send failed; detection result is incomplete." << std::endl;
+        return false;
+    }
+    return true;
 }
 
 bool HookReport::InitClient(void)

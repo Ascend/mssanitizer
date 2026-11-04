@@ -14,6 +14,7 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
+
 #include <gtest/gtest.h>
 #include <algorithm>
 #include "ccec_defs.h"
@@ -21,6 +22,66 @@
 #include "plugin/online_check.h"
 
 using namespace Sanitizer;
+
+namespace {
+
+// 用真实 OnlineCheck::Process 入口验证远端范围是否产生在线非法 GM 告警。
+bool HasPeerGmError(const std::vector<PeerMemoryInfo> &peerMemories, uint64_t addr, uint64_t size, bool write,
+    const std::vector<HostMemoryInfo> &localMemories = {}) {
+    std::vector<uint8_t> memInfo(10 * MB_TO_BYTES, 0);
+    RecordGlobalHead head{};
+    head.checkParms.defaultcheck = true;
+    head.checkParms.memcheck = true;
+    head.offsetInfo.simtErrorInfo.size = 512;
+    RecordBlockHead blockHead{};
+    blockHead.hostMemoryNum = localMemories.size();
+    blockHead.hostMemoryInfoPtr = const_cast<HostMemoryInfo *>(localMemories.data());
+    blockHead.peerMemoryNum = peerMemories.size();
+    blockHead.peerMemoryInfoPtr = const_cast<PeerMemoryInfo *>(peerMemories.data());
+    std::copy_n(reinterpret_cast<const uint8_t *>(&head), sizeof(head), memInfo.begin());
+    std::copy_n(reinterpret_cast<const uint8_t *>(&blockHead), sizeof(blockHead), memInfo.begin() + sizeof(head));
+    uint8_t *simt = memInfo.data() + sizeof(head) + sizeof(blockHead);
+    OnlineCheck checker;
+    checker.Init(memInfo.data(), simt, memInfo.data() + sizeof(head), 0);
+    SimtLoadStoreRecord record{};
+    record.addr = addr;
+    record.size = size;
+    record.space = AddressSpace::GM;
+    if (write) {
+        checker.Process<RecordType::SIMT_STG>(record);
+    } else {
+        checker.Process<RecordType::SIMT_LDG>(record);
+    }
+    return *reinterpret_cast<RecordType *>(simt + sizeof(SimtRecordBlockHead)) == RecordType::ONLINE_ERROR;
+}
+
+} // namespace
+
+TEST(OnlineCheck, peer_access_requires_one_complete_authorized_device_range) {
+    constexpr uint32_t rw = MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT;
+    EXPECT_FALSE(HasPeerGmError({{0x1000, 128, rw, 2}}, 0x1000, 128, false));
+    EXPECT_FALSE(HasPeerGmError({{0x1000, 64, rw, 2}, {0x1040, 64, rw, 2}}, 0x1000, 128, true));
+    EXPECT_TRUE(HasPeerGmError({}, 0x1000, 8, false));
+    EXPECT_TRUE(HasPeerGmError({{0x1000, 64, rw, 2}, {0x1040, 64, rw, 3}}, 0x1000, 128, false));
+    EXPECT_TRUE(HasPeerGmError({{0x1000, 128, rw, 2}}, 0x107f, 2, true));
+}
+
+TEST(OnlineCheck, peer_access_respects_permission_and_address_overflow) {
+    constexpr uint32_t read = MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ;
+    EXPECT_FALSE(HasPeerGmError({{0x2000, 32, read, 3}}, 0x2000, 8, false));
+    EXPECT_TRUE(HasPeerGmError({{0x2000, 32, read, 3}}, 0x2000, 8, true));
+    EXPECT_TRUE(HasPeerGmError({{UINT64_MAX - 4, 8, read, 3}}, UINT64_MAX - 4, 8, false));
+}
+
+TEST(OnlineCheck, peer_access_keeps_local_ranges_and_target_devices_separate) {
+    constexpr uint32_t rw = MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT;
+    constexpr uint32_t read = MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ;
+    EXPECT_FALSE(HasPeerGmError({{0x3000, 64, rw, 2}}, 0x2000, 16, false, {{0x2000, 64, rw}}));
+    EXPECT_TRUE(HasPeerGmError({{0x3040, 64, rw, 2}}, 0x3000, 128, false, {{0x3000, 64, rw}}));
+    EXPECT_FALSE(HasPeerGmError({{0x4000, 32, rw, 2}, {0x4010, 32, rw, 2}}, 0x4000, 48, true));
+    EXPECT_TRUE(HasPeerGmError({{0x4000, 32, rw, 2}, {0x4010, 32, read, 2}}, 0x4000, 48, true));
+    EXPECT_FALSE(HasPeerGmError({{0x5000, 8, read, 2}, {0x5000, 16, rw, 3}}, 0x5000, 16, true));
+}
 
 TEST(OnlineCheck, check_illegal_simt_record_expect_one_error)
 {

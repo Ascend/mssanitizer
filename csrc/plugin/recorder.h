@@ -113,9 +113,10 @@ AICORE_FUNC_HEAD bool InvalidMemInfo(__gm__ uint8_t *memInfo)
     return false;
 }
 
-AICORE_FUNC_HEAD uint64_t GetRecordHeadSize(uint32_t hostMemoryNum)
-{
-    return CeilByAlignSize<CACHE_LINE_SIZE>(sizeof(RecordBlockHead) + hostMemoryNum * sizeof(HostMemoryInfo));
+AICORE_FUNC_HEAD uint64_t GetRecordHeadSize(uint32_t hostMemoryNum, uint32_t peerMemoryNum) {
+    const uint64_t size =
+        sizeof(RecordBlockHead) + hostMemoryNum * sizeof(HostMemoryInfo) + peerMemoryNum * sizeof(PeerMemoryInfo);
+    return (size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE * CACHE_LINE_SIZE;
 }
 
 /// 计算当前核信息写入memInfo时对应的索引和对应的blockType
@@ -165,12 +166,11 @@ AICORE_FUNC_HEAD uint64_t CalcDumpBlockIdx(BlockType &blockType, uint64_t blockI
     return dumpIdx;
 }
 
-AICORE_FUNC_HEAD uint64_t CalcMemInfoOffset(__gm__ RecordGlobalHead *head, uint64_t dumpIdx,
-    uint32_t hostMemoryNum, uint64_t &threadOffset)
-{
+AICORE_FUNC_HEAD uint64_t CalcMemInfoOffset(__gm__ RecordGlobalHead *head, uint64_t dumpIdx, uint32_t hostMemoryNum,
+    uint32_t peerMemoryNum, uint64_t &threadOffset) {
     int16_t checkBlockId = head->checkParms.checkBlockId;
     uint32_t cacheSize = head->checkParms.cacheSize;
-    uint64_t simdHeadSize = GetRecordHeadSize(hostMemoryNum);
+    uint64_t simdHeadSize = GetRecordHeadSize(hostMemoryNum, peerMemoryNum);
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
     uint64_t threadId = GetThreadId();
     threadOffset = head->offsetInfo.simtErrorInfo.offset +
@@ -242,7 +242,8 @@ public:
         /// 则memInfoSimdBlock_记录的核数就等于blockOffset，不需要加上blockIdx，此时单核的记录都会记录到mix 0核的位置；
         uint64_t threadOffset{};
         memInfoSimdBlock_ = memInfo + sizeof(RecordGlobalHead) +
-            CalcMemInfoOffset(globalHead, dumpIdx, simdBlockZeroHead->hostMemoryNum, threadOffset);
+            CalcMemInfoOffset(
+                globalHead, dumpIdx, simdBlockZeroHead->hostMemoryNum, simdBlockZeroHead->peerMemoryNum, threadOffset);
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
         memInfoSimtBlock_ = memInfoSimdBlock_ + threadOffset;
 #endif
@@ -373,8 +374,8 @@ AICORE_FUNC_HEAD void Recorder::DumpSimdRecord(Record const &record)
         globalHead->offsetInfo.simtErrorInfo.offset : globalHead->checkParms.cacheSize * MB_TO_BYTES;
     if (writeOffset + CACHE_LINE_SIZE + stepSizes < simdEndOffset &&
         simdBlockHead->recordCount == simdBlockHead->recordWriteCount) {
-        auto recordTypePtr = reinterpret_cast<__gm__ RecordType*>(memInfoSimdBlock_ +
-            GetRecordHeadSize(simdBlockHead->hostMemoryNum) + writeOffset);
+        auto recordTypePtr = reinterpret_cast<__gm__ RecordType *>(memInfoSimdBlock_ +
+            GetRecordHeadSize(simdBlockHead->hostMemoryNum, simdBlockHead->peerMemoryNum) + writeOffset);
         *recordTypePtr = recordType;
         __gm__ Record *recordPtr = reinterpret_cast<__gm__ Record*>(recordTypePtr + 1);
         CopyRecordToGm(recordPtr, &record);

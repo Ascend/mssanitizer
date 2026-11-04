@@ -94,6 +94,7 @@ protected:
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         setenv("MSOP_SOCKET_PATH", socketPath_.c_str(), 1);
         auto &hook = HookReport::Instance();
+        hook.sendFailed_ = false;
         hook.client_.reset();
         hook.determined_ = false;
         hook.memInfoSrc_ = MemInfoSrc::RT;
@@ -348,4 +349,18 @@ TEST_F(HookReportTest, ConcurrentNormalAndBinaryUseOneOrderedStream) {
     };
     check(0, firstHead);
     check(firstSize, secondHead);
+}
+
+TEST_F(HookReportTest, FailedWriteStopsSubsequentPackets) {
+    auto &hook = HookReport::Instance();
+    // 未连接的真实客户端稳定返回写失败，无需硬件或对端时序配合
+    hook.client_.reset(new CommunicationClient(socketPath_));
+    const auto nextOrderId = hook.nextOrderId_;
+    const auto message = Serialize(PacketHead{PacketType::LOG_STRING}, uint64_t{0});
+    testing::internal::CaptureStderr();
+    EXPECT_FALSE(hook.WriteOrdered(message));
+    EXPECT_FALSE(hook.WriteOrdered(message));
+    EXPECT_NE(testing::internal::GetCapturedStderr().find("detection result is incomplete"), std::string::npos);
+    EXPECT_TRUE(hook.sendFailed_);
+    EXPECT_EQ(hook.nextOrderId_, nextOrderId + 1);
 }

@@ -22,3 +22,7 @@ set(test_utility_header ./test_utility)
 target_include_directories(mssanitizer_test PUBLIC ${asan_test_header} ${gtest_header} ${test_utility_header}
   ${hooks_header} ${JSON_INC} ${SANITIZER_THIRDPARTY_INCLUDE} ${SANITIZER_INC_DIR})
 target_link_libraries(mssanitizer_test gtest_main c_sec stdc++fs dl)
+
+# 仅布局桥接 TU 使用 common 的 Host 协议；产品目标不引入这组头路径。
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/plugin/peer_host_layout_fixture.cpp" PROPERTIES
+  INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/msopscommon/csrc;${CMAKE_SOURCE_DIR}/msopscommon/csrc/include/thirdparty")

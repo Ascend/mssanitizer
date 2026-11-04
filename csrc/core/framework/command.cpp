@@ -48,6 +48,7 @@
 #include "peer_access_manager.h"
 #include "platform_config.h"
 #include "record_format.h"
+#include "ordered_packet_scheduler.h"
 
 namespace Sanitizer {
 SharedMemInfoMpType Command::sharedMemInfoMp{};
@@ -169,6 +170,12 @@ void HandleGMAddrOutOfBoundRecord(Checker &checker, GMAddrOutOfBoundRecord const
     checker.Do(sanitizerRecord);
 }
 
+// IPC 注册表在不同 PID 的派发线程间共享，记录处理和调度器查询受影响 Checker 时共用此锁
+std::mutex &GetIpcMutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
 std::string ProcessIPCSetEvent(IPCMemRecord const &record, std::mutex &mux)
 {
     std::string setInfoNameLog = Utility::FormatNameForLog(std::string(record.setInfo.name));
@@ -187,8 +194,8 @@ std::string ProcessIPCSetEvent(IPCMemRecord const &record, std::mutex &mux)
     return Serialize(PacketType::IPC_RESPONSE, resp);
 }
 
-std::string ProcessIPCDestroyEvent(IPCMemRecord const &record, ThreadManager &threadManeger, std::mutex &mux)
-{
+// 销毁时向所有映射使用方的 Checker 投递 FREE，实际更新的设备可能不同于发送销毁消息的设备
+std::string ProcessIPCDestroyEvent(IPCMemRecord const &record, std::mutex &mux) {
     std::lock_guard<std::mutex> lk(mux);
     IPCResponse resp{IPCOperationType::DESTROY_INFO, ResponseStatus::FAIL};
     auto it = Command::sharedMemInfoMp.find(record.destroyInfo.name);
@@ -199,10 +206,10 @@ std::string ProcessIPCDestroyEvent(IPCMemRecord const &record, ThreadManager &th
     } else {
         auto &shareeMemInfoList = it->second.second;
         for (auto &p : shareeMemInfoList) {
-            auto curTid = p.first;
+            Checker *shareeChecker = p.first;
             auto addr = p.second.addr;
             HostMemRecord mallocRecord{MemOpType::FREE, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY, 0, addr, 0};
-            HandleHostMemRecord(threadManeger.GetChecker(curTid), mallocRecord);
+            HandleHostMemRecord(*shareeChecker, mallocRecord);
             SAN_INFO_LOG("Freeing sharee GM: addr:0x%lx.", addr);
         }
         resp.status = ResponseStatus::SUCCESS;
@@ -211,10 +218,12 @@ std::string ProcessIPCDestroyEvent(IPCMemRecord const &record, ThreadManager &th
     return Serialize(PacketType::IPC_RESPONSE, resp);
 }
 
-std::string ProcessIPCMapEvent(IPCMemRecord const &record, ThreadManager &threadManeger, std::mutex &mux)
-{
+// 同一派发线程处理多个设备，显式使用原连接的 Checker，不能再按当前线程查找检测对象
+std::string ProcessIPCMapEvent(IPCMemRecord const &record, Checker &checker, std::mutex &mux) {
     IPCResponse resp{IPCOperationType::MAP_INFO, ResponseStatus::FAIL};
-    auto it1 = Command::shareeMemInfoMp.find(record.mapInfo.addr);
+    // thread_local 只隔离不同派发线程；rootTid_ 保存原接收线程 ID，用于区分同进程的设备连接
+    auto key = std::make_pair(RuntimeContext::Instance().rootTid_, record.mapInfo.addr);
+    auto it1 = Command::shareeMemInfoMp.find(key);
     if (it1 != Command::shareeMemInfoMp.end()) {
         SAN_WARN_LOG("Error occurs when opening shared memory , as its address (0x%lx) has already existed.",
             record.mapInfo.addr);
@@ -228,21 +237,22 @@ std::string ProcessIPCMapEvent(IPCMemRecord const &record, ThreadManager &thread
         } else {
             GMType size = it2->second.first.size;
             ShareeMemInfo shareeMemInfo{record.mapInfo.addr, size};
-            it2->second.second.insert({std::this_thread::get_id(), std::move(shareeMemInfo)});
-            Command::shareeMemInfoMp.insert({record.mapInfo.addr, record.mapInfo.name});
+            it2->second.second.insert({&checker, std::move(shareeMemInfo)});
+            Command::shareeMemInfoMp.insert({key, record.mapInfo.name});
             HostMemRecord mallocRecord{MemOpType::MALLOC, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY,
                 0, record.mapInfo.addr, size};
-            HandleHostMemRecord(threadManeger.GetChecker(), mallocRecord);
+            HandleHostMemRecord(checker, mallocRecord);
             resp.status = ResponseStatus::SUCCESS;
         }
     }
     return Serialize(PacketType::IPC_RESPONSE, resp);
 }
 
-std::string ProcessIPCUnmapEvent(IPCMemRecord const &record, ThreadManager &threadManeger, std::mutex &mux)
-{
+// 通过原连接和地址定位映射，并向该连接的 Checker 投递 FREE，撤销工具记录的合法范围
+std::string ProcessIPCUnmapEvent(IPCMemRecord const &record, Checker &checker, std::mutex &mux) {
     IPCResponse resp{IPCOperationType::UNMAP_INFO, ResponseStatus::FAIL};
-    auto it = Command::shareeMemInfoMp.find(record.unmapInfo.addr);
+    auto key = std::make_pair(RuntimeContext::Instance().rootTid_, record.unmapInfo.addr);
+    auto it = Command::shareeMemInfoMp.find(key);
     if (it == Command::shareeMemInfoMp.end()) {
         SAN_WARN_LOG("Error occurs when closing shared memory , as its addr (0x%lx) does not exist.",
             record.unmapInfo.addr);
@@ -253,11 +263,10 @@ std::string ProcessIPCUnmapEvent(IPCMemRecord const &record, ThreadManager &thre
             std::string sharedMemoryLog = Utility::FormatNameForLog(it->second);
             SAN_INFO_LOG("Shared memory (%s) has already been destroyed.", sharedMemoryLog.c_str());
         } else {
-            auto curTid = std::this_thread::get_id();
             HostMemRecord mallocRecord{MemOpType::FREE, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY,
                 0, record.unmapInfo.addr, 0};
-            HandleHostMemRecord(threadManeger.GetChecker(curTid), mallocRecord);
-            itShared->second.second.erase(std::this_thread::get_id());
+            HandleHostMemRecord(checker, mallocRecord);
+            itShared->second.second.erase(&checker);
         }
         Command::shareeMemInfoMp.erase(it);
         resp.status = ResponseStatus::SUCCESS;
@@ -409,27 +418,25 @@ inline void HandleMemRegionPermission(Checker &checker, MemRegionPermissionDesc 
 
 namespace Sanitizer {
 
-void HandleIpcMemRecord(Sanitizer::Checker &checker, Sanitizer::IPCMemRecord const &record,
-    Sanitizer::ThreadManager &threadManeger, Process::MsgRspFunc &msgRspFunc)
-{
+// IPC 由进程派发线程处理，checker 和回复通道均来自原连接的 Job
+void HandleIpcMemRecord(Sanitizer::Checker &checker, Sanitizer::IPCMemRecord const &record, Sanitizer::ThreadManager &,
+    Process::MsgRspFunc &msgRspFunc) {
     SAN_INFO_LOG("Processing IpcMemRecord type:%d.", static_cast<int>(record.type));
-    static std::mutex mux;
+    auto &mux = GetIpcMutex();
 
-    static SharedMemInfoMpType sharedMemInfoMp;
-    thread_local static ShareeMemMpType shareeMemInfoMp;
     std::string result{};
     switch (record.type) {
         case IPCOperationType::SET_INFO:
             result = ProcessIPCSetEvent(record, mux);
             break;
         case IPCOperationType::DESTROY_INFO:
-            result = ProcessIPCDestroyEvent(record, threadManeger, mux);
+            result = ProcessIPCDestroyEvent(record, mux);
             break;
         case IPCOperationType::MAP_INFO:
-            result = ProcessIPCMapEvent(record, threadManeger, mux);
+            result = ProcessIPCMapEvent(record, checker, mux);
             break;
         case IPCOperationType::UNMAP_INFO:
-            result = ProcessIPCUnmapEvent(record, threadManeger, mux);
+            result = ProcessIPCUnmapEvent(record, checker, mux);
             break;
         default:
             SAN_WARN_LOG("Unknown IPC memory record type.");
@@ -453,15 +460,16 @@ ProgramStatus Command::Exec(const ParamList &execParams) {
     ThreadManager threadManager(config_, enableDebugLog_, loglv_, logFile_);
     KernelManager::Instance().SetDemangleMode(config_.demangleMode);
 
-    auto msgSplitFunc = [&threadManager, this](pid_t pid, const std::string &manyMsg, Process::MsgRspFunc &msgRspFunc) {
-        RuntimeContext::Instance().pid_ = pid;
-        CallStack::Instance().SetIsPrintFullStack(config_.isPrintFullStack);
-        Checker& checker = threadManager.GetChecker();
-        CrossNpuChecker &crossNpuChecker = threadManager.GetCrossNpuChecker();
-        auto &protocol = threadManager.GetProtocol();
-        protocol.Feed(manyMsg);
-        while (true) {
-            auto packet = protocol.GetPacket();
+    // 原业务分发逻辑仍使用原连接的 Checker；仅改为由同 PID 的排序线程调用。
+    OrderedPacketScheduler scheduler(
+        [&threadManager, this](OrderedPacketScheduler::Job &job) {
+            // 取出 Job 的 Host PID、原连接 Checker、业务包和回复通道；完整上下文已由 Execute 恢复
+            RuntimeContext::Instance().pid_ = job.pid;
+            Checker &checker = *job.checker;
+            auto &packet = job.packet;
+            auto &msgRspFunc = job.reply;
+            CallStack::Instance().SetIsPrintFullStack(config_.isPrintFullStack);
+            CrossNpuChecker &crossNpuChecker = threadManager.GetCrossNpuChecker();
             switch (packet.GetType()) {
             case PacketType::DEVICE_SUMMARY:
                 HandleDeviceInfo(checker, packet.GetPayload().deviceSummary);
@@ -480,9 +488,8 @@ ProgramStatus Command::Exec(const ParamList &execParams) {
                 break;
             case PacketType::PEER_ACCESS_RECORD: {
                 const auto &record = packet.GetPayload().peerAccessRecord;
-                // 关系按连接所属进程隔离；当前只更新状态，不做跨设备有序回放。
                 if (record.deviceId == RuntimeContext::Instance().GetDeviceId() &&
-                    PeerAccessManager::Instance().Apply(pid, record)) {
+                    PeerAccessManager::Instance().Apply(job.pid, record)) {
                     SAN_INFO_LOG("Peer access: deviceId=%d peerDeviceId=%d operation=%u", record.deviceId,
                         record.peerDeviceId, static_cast<uint32_t>(record.operation));
                 } else {
@@ -505,16 +512,52 @@ ProgramStatus Command::Exec(const ParamList &execParams) {
             case PacketType::LOG_STRING:
                 HandleLogString(packet.GetPayload().binary);
                 break;
-            case PacketType::INVALID:
             default:
+                break;
+            }
+        },
+        [](const OrderedPacketScheduler::Job &job) {
+            // 完成标记经解析和交付进入检查队列，由消费线程确认此前工作已检查完成
+            return job.checker->CaptureMemcheckCompletion();
+        },
+        [](const OrderedPacketScheduler::Job &job) {
+            // IPC 销毁可能向其它设备投递 FREE，先查询实际受影响的 Checker
+            // 调度器据此等待此前访问这些设备的相关检查，并在分发后保存这些设备的更新完成通知
+            // 此处仅提供目标对象，同 PID 内的依赖等待和完成通知由 ProcessQueue 处理
+            std::vector<Checker *> targets;
+            std::lock_guard<std::mutex> lock(GetIpcMutex());
+            const auto &record = job.packet.GetPayload().ipcMemRecord;
+            auto shared = Command::sharedMemInfoMp.find(record.destroyInfo.name);
+            if (shared != Command::sharedMemInfoMp.end()) {
+                for (const auto &sharee : shared->second.second) {
+                    targets.push_back(sharee.first);
+                }
+            }
+            return targets;
+        });
+
+    // msgSplitFunc完成收包，并提交给scheduler进行排序、依赖识别和按序分发
+    auto msgSplitFunc = [&threadManager, &scheduler](
+                            pid_t pid, const std::string &manyMsg, Process::MsgRspFunc &msgRspFunc) {
+        RuntimeContext::Instance().pid_ = pid;
+        Checker &checker = threadManager.GetChecker();
+        auto &protocol = threadManager.GetProtocol();
+        protocol.Feed(manyMsg);
+        while (true) {
+            auto packet = protocol.GetPacket();
+            if (packet.GetType() == PacketType::INVALID) {
                 return;
             }
+            // 提交后接收线程可以继续读 socket 收包
+            scheduler.Submit({pid, std::this_thread::get_id(), &checker, std::move(packet), msgRspFunc});
         }
     };
 
     process.RegisterMsgTrap(msgSplitFunc, socketPath);
     ExecCmd cmd(execParams);
     process.Launch(cmd); // 子进程结束后，Launch函数返回
+    scheduler.Finish();
+    sharedMemInfoMp.clear();
     threadManager.ThreadFinish();
     PeerAccessManager::Instance().Clear();
     threadManager.PostLog();

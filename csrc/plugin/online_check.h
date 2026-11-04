@@ -108,6 +108,8 @@ private:
      * @brief 检测当前gm指令内存行为是否有非法读写行为，如果有则返回非法读写的长度，返回值表示是否有非法行为
     */
     AICORE_FUNC_HEAD bool GmReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const;
+    // 本地 GM 越界时，检查同一个获授权目标设备的快照能否完整覆盖访问。
+    AICORE_FUNC_HEAD bool PeerCovers(AddrInfo const &addrInfo) const;
 
     /* @param addrInfo      simt指令的信息
      * @param illegalSize   错误长度
@@ -526,22 +528,71 @@ AICORE_FUNC_HEAD bool OnlineCheck::GmReadWriteCheck(AddrInfo const &addrInfo, ui
         return false;
     }
 
+    bool overlapsLocal = false;
     uint64_t intersectionSize{};
     uint64_t addr = addrInfo.addr;
     uint64_t size = addrInfo.size;
     /// 计算当前addrInfo和所有malloc地址的交集
     for (size_t memIdx = 0; memIdx < simdBlockHead_->hostMemoryNum; ++memIdx) {
         __gm__ HostMemoryInfo const &mallocInfo = simdBlockHead_->hostMemoryInfoPtr[memIdx];
+        // 先判断本地相交，再判断权限，防止本地拒绝被远端授权抵消
+        const auto overlap = CalIntersectionSize(addr, size, mallocInfo.addr, mallocInfo.size);
+        overlapsLocal = overlapsLocal || overlap > 0;
         // 内存无对应权限则跳过
         if (!HasPermission(addrInfo.opType, mallocInfo.permission)) {
             continue;
         }
-        intersectionSize += CalIntersectionSize(addr, size, mallocInfo.addr, mallocInfo.size);
+        intersectionSize += overlap;
     }
 
     /// 当前指令的长度减去和所有malloc 地址的交集长度，即为越界长度；
     illegalSize += size - intersectionSize;
+    // 仅完全不与本地范围相交时，补查获授权目标的启动快照
+    if (illegalSize > 0 && !overlapsLocal && PeerCovers(addrInfo)) {
+        illegalSize = 0;
+    }
     return illegalSize > 0U;
+}
+
+AICORE_FUNC_HEAD bool OnlineCheck::PeerCovers(AddrInfo const &addrInfo) const {
+    if (addrInfo.size == 0 || addrInfo.size > UINT64_MAX - addrInfo.addr ||
+        simdBlockHead_->peerMemoryInfoPtr == nullptr) {
+        return false;
+    }
+
+    const uint64_t end = addrInfo.addr + addrInfo.size; // 访问区间结束位置
+
+    // 检查每个目标设备的地址是否能完全覆盖访问区间
+    for (uint32_t candidate = 0; candidate < simdBlockHead_->peerMemoryNum; ++candidate) {
+        const int32_t device = simdBlockHead_->peerMemoryInfoPtr[candidate].deviceId;
+        // 已覆盖的地址
+        uint64_t covered = addrInfo.addr;
+        while (covered < end) {
+            uint64_t furthest = covered; // 本轮扫描能把连续覆盖地址推进到的最远位置
+            for (uint32_t i = 0; i < simdBlockHead_->peerMemoryNum; ++i) {
+                __gm__ const PeerMemoryInfo &memory = simdBlockHead_->peerMemoryInfoPtr[i];
+                // 跳过非目标设备、结束地址溢出、以及无权限的内存
+                if (memory.deviceId != device || memory.size > UINT64_MAX - memory.addr ||
+                    !HasPermission(addrInfo.opType, memory.permission)) {
+                    continue;
+                }
+                // 判断是否覆盖当前地址，且能推进覆盖范围
+                if (memory.addr <= covered && covered < memory.addr + memory.size &&
+                    memory.addr + memory.size > furthest) {
+                    furthest = memory.addr + memory.size;
+                }
+            }
+            if (furthest == covered) {
+                break;
+            }
+            covered = furthest;
+        }
+        // 找到了能完全覆盖访存范围的授权设备
+        if (covered >= end) {
+            return true;
+        }
+    }
+    return false;
 }
 
 AICORE_FUNC_HEAD bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const

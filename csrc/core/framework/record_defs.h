@@ -796,6 +796,14 @@ struct HostMemoryInfo {
         return size < other.size;
     }
 };
+
+// 在线 SIMT 检查使用的远端分配快照；deviceId 是分配所属设备
+struct PeerMemoryInfo {
+    uint64_t addr;
+    uint64_t size;
+    uint32_t permission;
+    int32_t deviceId;
+};
 struct SimtInfo {
     uint32_t ubDynamicSize{};
 };
@@ -863,15 +871,22 @@ struct RecordBlockHeadImpl {
     uint64_t offset{};                      // 所有记录对应的offset
     uint64_t writeOffset{};                 // 已经写入的记录对应的offset
     BlockInfo blockInfo{};
-    uint32_t hostMemoryNum{};               // 算子host侧memory输入个数
+    uint32_t hostMemoryNum{}; // 算子host侧memory输入个数
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
-    __gm__ HostMemoryInfo *hostMemoryInfoPtr{nullptr};     // 算子host侧memory输入数据，kernel侧为gm地址
+    __gm__ HostMemoryInfo *hostMemoryInfoPtr{nullptr}; // 算子host侧memory输入数据，kernel侧为gm地址
 #else
-    HostMemoryInfo *hostMemoryInfoPtr{nullptr};            // 算子host侧memory输入数据，host侧为堆地址
+    HostMemoryInfo *hostMemoryInfoPtr{nullptr}; // 算子host侧memory输入数据，host侧为堆地址
 #endif
     uint32_t mstxFuseScopeDepth{};          // 融合语义深度
     bool extraWriteSuccess{false};          // extra地址信息是否写入成功
     ParaBaseRegister paraBase;
+    // 新字段追加在既有字段之后，保持本地内存和参数寄存器的原有偏移
+    uint32_t peerMemoryNum{}; // 本次 kernel 获授权的远端分配数
+#if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
+    __gm__ PeerMemoryInfo *peerMemoryInfoPtr{nullptr};
+#else
+    PeerMemoryInfo *peerMemoryInfoPtr{nullptr};
+#endif
 };
 
 using RecordBlockHead = StructAlignBy<RecordBlockHeadImpl, 64UL>;
