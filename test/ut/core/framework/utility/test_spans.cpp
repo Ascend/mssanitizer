@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "core/framework/utility/spans.h"
+#include "core/framework/utility/spans.hpp"
 
 using namespace Sanitizer;
 

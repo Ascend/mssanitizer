@@ -21,6 +21,17 @@
 
 namespace Sanitizer {
 
+// 与 RemapAddress 的区别是：只做地址分类，不修改地址（不截断）
+AICORE_FUNC_HEAD AddressSpace ClassifyScalarAddress(uint64_t addr, uint64_t sysVaBase) {
+    if (GetUintFromConf<48, 25>(addr) != GetUintFromConf<48, 25>(sysVaBase) || GetUintFromConf<24>(addr) == 1) {
+        return AddressSpace::GM;
+    }
+    if (GetUintFromConf<23, 20>(addr) != 0) {
+        return AddressSpace::PRIVATE;
+    }
+    return GetUintFromConf<19>(addr) == 1 ? AddressSpace::UB : AddressSpace::UNKNOWN;
+}
+
 // 参考SU FS资料
 AICORE_FUNC_HEAD AddressSpace RemapAddress(uint64_t &addr) {
     uint64_t sysVaBase = GetSysVaBase();
@@ -50,7 +61,7 @@ AICORE_FUNC_HEAD AddressSpace RemapAddress(uint64_t &addr) {
         return AddressSpace::PRIVATE;
     }
 
-    return AddressSpace::INVALID;
+    return AddressSpace::UNKNOWN;
 }
 
 /**
@@ -82,7 +93,7 @@ AICORE_FUNC_HEAD AddressSpace SimtRemapAddress(uint64_t &Rn, int64_t offset, uin
 
     // 检查是否属于异常访问
     if (addr >= sysVaBase && addr < (sysVaBase + SHARED_MEM_START)) {
-        return AddressSpace::INVALID;
+        return AddressSpace::UNKNOWN;
     }
 
     // 其余情况属于 Global Memory（LDG STG访问）

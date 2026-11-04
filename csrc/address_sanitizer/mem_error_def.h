@@ -94,7 +94,7 @@ struct ErrorMsg {
     bool isError;
     struct AuxData {
         AuxData()
-            : badAddr{}, nBadBytes{0UL}, baseAddr{}, baseSize{}, space{AddressSpace::INVALID}, moduleId(-1), fileName{},
+            : badAddr{}, nBadBytes{0UL}, baseAddr{}, baseSize{}, space{AddressSpace::UNKNOWN}, moduleId(-1), fileName{},
               lineNo{0UL}, coreId{0UL}, blockType{BlockType::AICUBE}, pc{0UL}, serialNo(0L), vectorMask{}, maskMode{},
               side{MemOpSide::HOST}, threadLoc{}, conflictedThreadLoc{}, instrName{}, isSimt{false},
               displayThread{false} {}

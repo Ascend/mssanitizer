@@ -31,11 +31,16 @@ namespace {
 
 using namespace Sanitizer;
 
-inline uint64_t OverlapSize(Bounds::Range const &a, Bounds::Range const &b)
-{
-    uint64_t l = std::max(a.addrL, b.addrL);
-    uint64_t r = std::min(a.addrR, b.addrR);
-    return r > l ? r - l : 0UL;
+inline uint64_t OverlapSize(Bounds::Range const &range, uint64_t addr, uint64_t size) {
+    // 避免计算 addr + size，防止异常访问或地址回绕被误判为较小的合法范围。
+    if (addr >= range.addrR || range.addrL >= range.addrR) {
+        return 0;
+    }
+    if (addr < range.addrL) {
+        const uint64_t prefix = range.addrL - addr;
+        return size > prefix ? std::min(size - prefix, range.addrR - range.addrL) : 0;
+    }
+    return std::min(size, range.addrR - addr);
 }
 
 inline bool HasPermission(uint32_t permission, AccessType accessType)
@@ -171,15 +176,14 @@ ErrorMsg DiscreteBounds::Check(uint64_t addr, uint64_t size, AccessType accessTy
     auto pred = [](uint64_t a, Range const &b) { return a < b.addrR; };
     auto it = std::upper_bound(ranges_.begin(), ranges_.end(), addr, pred);
     uint64_t badBytes = size;
-    Range target {addr, addr + size};
     for (; it < ranges_.cend(); ++it) {
-        if (it->addrL >= target.addrR) {
+        if (it->addrL >= addr && it->addrL - addr >= size) {
             break;
         }
         if (!HasPermission(it->permission, accessType)) {
             continue;
         }
-        badBytes -= OverlapSize(target, *it);
+        badBytes -= OverlapSize(*it, addr, size);
     }
 
     if (badBytes > 0) {
@@ -234,7 +238,7 @@ ErrorMsg UnionBounds::Check(uint64_t addr, uint64_t size, AccessType accessType)
         return CheckAddrOnly(addr);
     }
 
-    uint64_t overlap = OverlapSize(range_, Range{addr, addr + size});
+    uint64_t overlap = OverlapSize(range_, addr, size);
     if (!HasPermission(range_.permission, accessType)) {
         overlap = 0;
     }
@@ -320,6 +324,15 @@ ErrorMsg BoundsCheck::Check(AddressSpace space, uint64_t addr, uint64_t size, Ac
 {
     auto it = bounds_.find(space);
     if (it == bounds_.cend()) {
+        if (space == AddressSpace::UNKNOWN) {
+            ErrorMsg msg;
+            msg.SetType(
+                accessType == AccessType::READ ? MemErrorType::ILLEGAL_ADDR_READ : MemErrorType::ILLEGAL_ADDR_WRITE,
+                space, addr);
+            msg.auxData.nBadBytes = size;
+            return msg;
+        }
+        // BT/FB 等未建界空间保持原有放行行为
         SAN_INFO_LOG("Get bounds instance by space %s failed", FormatAddressSpace(space).c_str());
         return ErrorMsg();
     }

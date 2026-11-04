@@ -237,7 +237,7 @@ inline bool CompareEvent(const SortMetaData &lhs, const SortMetaData &rhs)
         }
         return !lhs.isStart;
     }
-    return lhs.addr < rhs.addr;   // 按地址升序排序
+    return lhs.addr < rhs.addr; // 按地址升序
 }
 
 bool MemEventChecker::NeedCrossCoreCheck(const MemEvent &event1, const MemEvent &event2) const {

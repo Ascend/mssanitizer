@@ -76,12 +76,24 @@ AICORE_FUNC_HEAD void RecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space,
         }
     }
     if (space == AddressSpace::PRIVATE) {
-        auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
-        /// 不开启初始化检测时，过滤掉栈上的LOAD/STORE记录
-        if (!head->checkParms.initcheck) {
-            return;
+#if !defined(BUILD_DYNAMIC_PROBE) && (defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__))
+        // PRIVATE 表示栈地址空间；静态时的分类可能与运行期实际地址不一致。需要对地址重新分类。
+        // DBI 已通过 RemapAddress 归一化地址，不应再次分类。
+        space = ClassifyScalarAddress(addr, GetSysVaBase());
+#endif
+        if (space == AddressSpace::PRIVATE) {
+            auto head = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo);
+            bool recordPrivate = head->checkParms.initcheck;
+#if defined(__DAV_C220__) || defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__) || \
+    (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510))
+            // A2/A3/A5 的静态、动态插桩 均在开启 memcheck 时保留 PRIVATE 记录。
+            recordPrivate = recordPrivate || head->checkParms.memcheck;
+#endif
+            if (!recordPrivate) {
+                return;
+            }
+            addr = StackAddrTransform(addr);
         }
-        addr = StackAddrTransform(addr);
     }
 
     auto record = LoadStoreRecord{};

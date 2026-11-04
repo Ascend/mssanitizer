@@ -30,6 +30,67 @@ using namespace Sanitizer;
 
 namespace SanitizerTest {
 
+namespace {
+std::vector<uint8_t> CreateStackDesignSimtInfo() {
+    auto info = CreateMemInfo();
+    auto head = reinterpret_cast<RecordGlobalHead *>(info.data());
+    head->checkParms.memcheck = true;
+    head->checkParms.initcheck = false;
+    head->checkParms.racecheck = false;
+    head->checkParms.outOfBoundCheck = false;
+    head->supportSimt = true;
+    head->offsetInfo.simtErrorInfo.offset = 1024;
+    head->offsetInfo.simtErrorInfo.size = 16 * 1024;
+    return info;
+}
+
+SimtRecordBlockHead *StackDesignSimtHead(std::vector<uint8_t> &info) {
+    return reinterpret_cast<SimtRecordBlockHead *>(info.data() + sizeof(RecordGlobalHead) + 1024);
+}
+
+const KernelErrorDesc *StackDesignFirstError(std::vector<uint8_t> &info) {
+    auto bytes = reinterpret_cast<uint8_t *>(StackDesignSimtHead(info) + 1);
+    return reinterpret_cast<const KernelErrorDesc *>(
+        bytes + sizeof(RecordType) + sizeof(KernelErrorRecord) + sizeof(SimtLoadStoreRecord));
+}
+} // namespace
+
+TEST(SimtLoadStoreInstructions, stack_design_online_gm_left_partial_overlap_is_not_silently_accepted) {
+    auto info = CreateStackDesignSimtInfo();
+    auto simd = reinterpret_cast<RecordBlockHead *>(info.data() + sizeof(RecordGlobalHead));
+    HostMemoryInfo allocation{0x2001004, 32, MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT};
+    simd->hostMemoryNum = 1;
+    simd->hostMemoryInfoPtr = &allocation;
+    OnlineCheck check;
+    check.Init(
+        info.data(), reinterpret_cast<uint8_t *>(StackDesignSimtHead(info)), reinterpret_cast<uint8_t *>(simd), 0);
+    SimtLoadStoreRecord record{};
+    record.addr = 0x2001000;
+    record.size = 8;
+    record.space = AddressSpace::GM;
+    record.detailedDataType = DetailedDataType::B64;
+    check.Process<RecordType::SIMT_LDG>(record);
+    ASSERT_EQ(StackDesignSimtHead(info)->recordWriteCount, 1);
+    const auto error = StackDesignFirstError(info);
+    EXPECT_EQ(error->errorType, KernelErrorType::ILLEGAL_ADDR_READ);
+    EXPECT_EQ(error->payload.illegalDesc.illegalSize, 4);
+}
+
+TEST(SimtLoadStoreInstructions, stack_design_ub_wrapping_width_cannot_pass_bounds_check) {
+    auto info = CreateStackDesignSimtInfo();
+    auto simd = info.data() + sizeof(RecordGlobalHead);
+    OnlineCheck check;
+    check.Init(info.data(), reinterpret_cast<uint8_t *>(StackDesignSimtHead(info)), simd, 0);
+    SimtLoadStoreRecord record{};
+    record.addr = 8;
+    record.size = UINT64_MAX;
+    record.space = AddressSpace::UB;
+    record.detailedDataType = DetailedDataType::B64;
+    check.Process<RecordType::SIMT_LDS>(record);
+    ASSERT_EQ(StackDesignSimtHead(info)->recordWriteCount, 1);
+    EXPECT_EQ(StackDesignFirstError(info)->payload.illegalDesc.illegalSize, UINT64_MAX - (253952 - 8));
+}
+
 TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_success)
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
@@ -64,7 +125,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     __sanitizer_report_simt_stg_b32(memInfo.data(), 0x800, 0, 0x8000, 1);
     __sanitizer_report_simt_stg_b64(memInfo.data(), 0x900, 0, 0x9000, 10);
     __sanitizer_report_simt_stg_b128(memInfo.data(), 0x1000, 0, 0x10000, 11);
-    // 注意ld st桩的addr需要合理设定否则会导致AddressSpace::INVALID无记录
+    // 注意ld st桩的addr需要合理设定否则会导致AddressSpace::UNKNOWN无记录
     __sanitizer_report_simt_ld_u8(memInfo.data(), 0x1000, 0, 0x1000000, 1);
     __sanitizer_report_simt_ld_s8(memInfo.data(), 0x1000, 0, 0x1000000, 2);
     __sanitizer_report_simt_ld_u16(memInfo.data(), 0x1000, 0, 0x1000000, 3);

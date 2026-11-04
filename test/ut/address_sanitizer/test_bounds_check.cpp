@@ -317,3 +317,31 @@ TEST(BoundsCheck, union_bounds_check_range_out_of_ranges_expect_return_illegal_a
     ASSERT_EQ(msg.auxData.badAddr.addr, 1000);
     ASSERT_EQ(msg.auxData.nBadBytes, 100);
 }
+
+TEST(BoundsCheck, bounds_check_unknown_space_expect_return_illegal_access) {
+    // UNKNOWN 空间（设备端无法归类的访问，如空指针/野指针落在 sysva 窗口保留区）
+    // 需 fail-closed 上报非法访问，而不是静默放行
+    BoundsCheck boundsCheck(false);
+    ErrorMsg msg = boundsCheck.Check(AddressSpace::UNKNOWN, 0, 4, AccessType::READ);
+    ASSERT_TRUE(msg.isError);
+    ASSERT_EQ(msg.type, MemErrorType::ILLEGAL_ADDR_READ);
+    ASSERT_EQ(msg.auxData.space, AddressSpace::UNKNOWN);
+    ASSERT_EQ(msg.auxData.badAddr.addr, 0);
+    ASSERT_EQ(msg.auxData.nBadBytes, 4);
+
+    msg = boundsCheck.Check(AddressSpace::UNKNOWN, 0x1234, 8, AccessType::WRITE);
+    ASSERT_TRUE(msg.isError);
+    ASSERT_EQ(msg.type, MemErrorType::ILLEGAL_ADDR_WRITE);
+    ASSERT_EQ(msg.auxData.space, AddressSpace::UNKNOWN);
+    ASSERT_EQ(msg.auxData.badAddr.addr, 0x1234);
+    ASSERT_EQ(msg.auxData.nBadBytes, 8);
+}
+
+TEST(BoundsCheck, bounds_check_unregistered_space_expect_return_success) {
+    // BT/FB 等未建界空间保持原有放行行为，仅 INVALID 空间 fail-closed
+    BoundsCheck boundsCheck(true);
+    ErrorMsg msg = boundsCheck.Check(AddressSpace::BT, 0, 4, AccessType::READ);
+    ASSERT_FALSE(msg.isError);
+    msg = boundsCheck.Check(AddressSpace::FB, 0, 4, AccessType::WRITE);
+    ASSERT_FALSE(msg.isError);
+}

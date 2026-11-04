@@ -210,7 +210,7 @@ TEST(CrossCoreRaceAlgImpl, cross_core_race_alg_can_detect_invalid_param_events_e
     event.loc.pc = 0x1fed43400ec000;
     event.type = EventType::MEM_EVENT;
     event.pipe = PipeType::PIPE_S;
-    event.eventInfo.memInfo.memType = MemType::INVALID;
+    event.eventInfo.memInfo.memType = MemType::UNKNOWN;
     event.eventInfo.memInfo.vectorMask = {static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
     event.eventInfo.memInfo.maskMode = MaskMode::MASK_NORM;
     event.eventInfo.memInfo.dataBits = 8;
