@@ -110,6 +110,51 @@ TEST_F(TestCommand, run_false_command_expect_exit_code_one) {
     ASSERT_EQ(status.exitCode, 1);
 }
 
+// 通过真实连接验证完整业务包从收包到检查队列的交付，不依赖设备硬件
+TEST_F(TestCommand, receive_ordered_device_memory_and_peer_records) {
+    const std::string payloadPath = dumpPath_ + "/ordered_packets.bin";
+    const DeviceInfoSummary device{DeviceType::ASCEND_910_PREMIUM_A, 1, 2, 0};
+    HostMemRecord memory{};
+    memory.type = MemOpType::MALLOC;
+    memory.dstAddr = 0x10000;
+    memory.memSize = 64;
+    std::string bytes = Serialize(PacketHead{PacketType::DEVICE_SUMMARY, 0, 1}, device);
+    bytes += Serialize(PacketHead{PacketType::MEMORY_RECORD, 0, 2}, memory);
+    bytes += Serialize(PacketHead{PacketType::PEER_ACCESS_RECORD, 0, 3}, PeerAccessRecord{0, 1, PeerAccessOp::ENABLE});
+    memory.type = MemOpType::FREE;
+    bytes += Serialize(PacketHead{PacketType::MEMORY_RECORD, 0, 4}, memory);
+    bytes += Serialize(PacketHead{PacketType::PEER_ACCESS_RECORD, 0, 5}, PeerAccessRecord{0, 1, PeerAccessOp::DISABLE});
+    memory.type = MemOpType::LOAD;
+    memory.srcAddr = 0x10000;
+    bytes += Serialize(PacketHead{PacketType::MEMORY_RECORD, 0, 6}, memory);
+    const std::string marker = "ordered-command-delivery-complete";
+    bytes += Serialize(PacketHead{PacketType::LOG_STRING, 0, 7}, static_cast<uint64_t>(marker.size())) + marker;
+    {
+        std::ofstream payload(payloadPath, std::ios::binary);
+        ASSERT_TRUE(payload.is_open());
+        payload.write(bytes.data(), bytes.size());
+        ASSERT_TRUE(payload.good());
+    }
+    // 子进程先接收配置，再发送业务包并关闭写端；工具负责排空接收和检查工作
+    const std::string client = R"(
+import os, socket, sys
+with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+    connection.connect(('\0' + os.environ['MSOP_SOCKET_PATH']).ljust(108, '\0'))
+    connection.recv(65536)
+    with open(sys.argv[1], 'rb') as payload:
+        connection.sendall(payload.read())
+    connection.shutdown(socket.SHUT_WR)
+)";
+    Config config{.defaultCheck = true, .memCheck = true};
+    Command command(config, false, LogLv::INFO, logPath_);
+    command.Exec({"/usr/bin/python3", "-c", client, payloadPath});
+    std::ifstream log(logPath_);
+    const std::string output((std::istreambuf_iterator<char>(log)), std::istreambuf_iterator<char>());
+    EXPECT_NE(output.find("ERROR: illegal read of size 64"), std::string::npos);
+    EXPECT_NE(output.find("on device 0"), std::string::npos);
+    EXPECT_NE(output.find("0x10000"), std::string::npos);
+}
+
 void ParseIPCResponse(const std::string &msg, IPCResponse &response)
 {
     PacketType type;

@@ -43,6 +43,7 @@ bool IsKnownPacketType(PacketType type) {
     case PacketType::MEM_REGION_PERMISSION:
     case PacketType::SANITIZER_RECORD:
     case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:
+    case PacketType::PEER_ACCESS_RECORD:
     case PacketType::IPC_RESPONSE:
     case PacketType::KERNEL_RECORD_RESPONSE:
         return true;
@@ -260,6 +261,8 @@ Packet MemCheckProtocol::GetPayLoad(PacketHead head) {
             return GetBinaryDataPacket<Packet::KernelRecord>();
         case PacketType::IPC_RECORD:
             return GetTriviallyCopyable<IPCMemRecord>();
+        case PacketType::PEER_ACCESS_RECORD:
+            return GetTriviallyCopyable<PeerAccessRecord>();
         case PacketType::SANITIZER_RECORD:
             return GetTriviallyCopyable<SanitizerRecord>();
         case PacketType::MEM_REGION_PERMISSION:
@@ -296,6 +299,7 @@ Packet MemCheckProtocol::GetPacket(void)
     Packet packet = GetPayLoad(head);
     // 如果 Packet 解析成功则重置 head，下一次接收到数据后解析包头
     if (packet.GetType() != PacketType::INVALID) {
+        packet.SetOrderId(head.orderId);
         head.type = PacketType::INVALID;
     }
 

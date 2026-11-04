@@ -19,6 +19,7 @@
 #define CORE_UTILITY_DOMAIN_SOCKET_H
 
 #include <sys/un.h>
+#include <sys/types.h>
 #include <mutex>
 #include <vector>
 #include "result.h"
@@ -62,6 +63,8 @@ public:
     /** 获取当前已连接的客户端数量
      */
     std::size_t GetClientNum() const;
+    // 获取指定连接建立时由 SO_PEERCRED 取得的 Host 客户端 PID。
+    pid_t GetClientPid(ClientId id);
 
     /** 从指定客户端读取数据
      * @description 此接口返回失败一般会有几种情况：
@@ -87,6 +90,7 @@ public:
 protected:
     std::size_t maxClientNum_;
     std::vector<int32_t> cfds_;
+    std::vector<pid_t> clientPids_;
     std::mutex cfdsMutex_;
 };
 

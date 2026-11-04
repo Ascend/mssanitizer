@@ -46,6 +46,7 @@ enum class PacketType : uint32_t {
     MEM_REGION_PERMISSION, // 内存权限分配
     SANITIZER_RECORD,    // 用于上报 SanitizerRecord 记录
     GM_ADDR_OUT_OF_BOUND_RECORD,  // GM地址越界写记录
+    PEER_ACCESS_RECORD, // ACL peerAccess 访存关系
 
     // 用于server向client发送的消息
     IPC_RESPONSE = 3000,
@@ -54,9 +55,10 @@ enum class PacketType : uint32_t {
     INVALID = ~0U,
 };
 
-// for transmission
 struct PacketHead {
     PacketType type;
+    uint32_t reserved;
+    uint64_t orderId; // 业务包编号，Host PID 内所有设备连接共用
 };
 
 class Packet {
@@ -81,20 +83,20 @@ public:
         IPCMemRecord ipcMemRecord;
         MemRegionPermissionDesc memPermission;
         GMAddrOutOfBoundRecord gmAddrOutOfBoundRecord;
+        PeerAccessRecord peerAccessRecord;
     };
 
 public:
     Packet(void) : type_{PacketType::INVALID}, payload_{} { }
     Packet(Packet const &rhs)
-        : type_{rhs.type_}, payload_{rhs.payload_}, binaryHolder_{rhs.binaryHolder_}, binaryBuffer_{rhs.binaryBuffer_}
-    {
+        : type_{rhs.type_}, orderId_{rhs.orderId_}, payload_{rhs.payload_}, binaryHolder_{rhs.binaryHolder_},
+          binaryBuffer_{rhs.binaryBuffer_} {
         /// 二进制载荷由 binaryHolder_ / binaryBuffer_ 持有，拷贝后重新绑定 buf 指针
         RebindBinary();
     }
     Packet(Packet &&rhs) noexcept
-        : type_{rhs.type_}, payload_{rhs.payload_}, binaryHolder_{std::move(rhs.binaryHolder_)},
-          binaryBuffer_{std::move(rhs.binaryBuffer_)}
-    {
+        : type_{rhs.type_}, orderId_{rhs.orderId_}, payload_{rhs.payload_}, binaryHolder_{std::move(rhs.binaryHolder_)},
+          binaryBuffer_{std::move(rhs.binaryBuffer_)} {
         /// 所有权随 binaryHolder_ / binaryBuffer_ 转移，重新绑定 buf 指针；并将被移出对象的 buf 置空，避免悬垂
         RebindBinary();
         rhs.RebindBinary();
@@ -114,6 +116,10 @@ public:
     explicit Packet(IPCMemRecord const &ipcMemRecord) : type_{PacketType::IPC_RECORD}
     {
         payload_.ipcMemRecord = ipcMemRecord;
+    }
+    // 将跨卡访问关系记录包装为协议数据包。
+    explicit Packet(PeerAccessRecord const &record) : type_{PacketType::PEER_ACCESS_RECORD} {
+        payload_.peerAccessRecord = record;
     }
     explicit Packet(SanitizerRecord const &record) : type_{PacketType::SANITIZER_RECORD}
     {
@@ -164,6 +170,7 @@ public:
     void Swap(Packet &rhs) noexcept
     {
         std::swap(type_, rhs.type_);
+        std::swap(orderId_, rhs.orderId_);
         std::swap(payload_, rhs.payload_);
         std::swap(binaryHolder_, rhs.binaryHolder_);
         std::swap(binaryBuffer_, rhs.binaryBuffer_);
@@ -174,6 +181,8 @@ public:
     {
         return type_;
     }
+    uint64_t GetOrderId() const { return orderId_; }
+    void SetOrderId(uint64_t orderId) { orderId_ = orderId; }
     Payload const &GetPayload(void) const
     {
         return payload_;
@@ -186,6 +195,8 @@ public:
 
 private:
     PacketType type_;
+    // 解析后的业务包号，随 Packet 拷贝或移动到按 PID 排序的队列中，供后续按顺序处理
+    uint64_t orderId_{};
     Payload payload_;
     /// 二进制载荷的实际存储；payload_.binary.buf 指向其内部数据，随对象生命周期自动释放
     std::string binaryHolder_;

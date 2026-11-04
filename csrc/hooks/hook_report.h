@@ -20,6 +20,7 @@
 
 #include <string>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "communication.h"
@@ -86,9 +87,13 @@ public:
 
 private:
     HookReport(void);
+    // 本进程的 HookReport 连接按发送顺序给每个完整业务包编号。
+    bool WriteOrdered(std::string message);
 
 private:
     std::unique_ptr<CommunicationClient> client_;
+    std::mutex sendMutex_;
+    uint64_t nextOrderId_{1};
     bool determined_;
     MemInfoSrc memInfoSrc_;
     DeviceType deviceType_ = DeviceType::INVALID;

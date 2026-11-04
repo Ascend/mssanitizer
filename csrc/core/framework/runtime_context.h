@@ -45,6 +45,8 @@ public:
     uint32_t kernelIdx_{};
     uint32_t currentBlockIdx_ {};
     uint64_t serialNo_ {};
+    // 当前连接所属的被测 Host 进程 PID；-1 表示身份未知
+    int32_t pid_{-1};
     bool determined_ {};
     MemInfoSrc memInfoSrc_ {};
     std::thread::id rootTid_{std::this_thread::get_id()};  // current thread get resource from which thread id

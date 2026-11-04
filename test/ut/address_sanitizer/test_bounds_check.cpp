@@ -23,6 +23,16 @@
 
 using namespace Sanitizer;
 
+TEST(BoundsCheck, remote_fallback_requires_no_local_overlap) {
+    DiscreteBounds bounds;
+    ASSERT_FALSE(bounds.Add(0x1000, 16, MSTX_MEM_PERMISSIONS_REGION_FLAGS_NONE).isError);
+    EXPECT_TRUE(bounds.HasOverlap(0x1000, 8));
+    EXPECT_TRUE(bounds.HasOverlap(0x1008, 16));
+    EXPECT_FALSE(bounds.HasOverlap(0x1010, 8));
+    EXPECT_FALSE(bounds.HasOverlap(UINT64_MAX, 8));
+    EXPECT_TRUE(bounds.Check(0x1000, 8, AccessType::READ).isError);
+}
+
 TEST(BoundsCheck, discrete_bounds_add_range_overflow_uint64_max_expect_return_illegal_write)
 {
     uint64_t addr = static_cast<uint64_t>(-1);

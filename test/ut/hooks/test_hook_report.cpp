@@ -15,10 +15,11 @@
  * ------------------------------------------------------------------------- */
 
 #include <gtest/gtest.h>
-#include <cstring>
 #include <string>
 #include <thread>
 #include <chrono>
+#include <cstring>
+#include <cstring>
 
 #include "communication.h"
 #include "config.h"
@@ -44,11 +45,12 @@ public:
 
     void Start()
     {
-        server_.RegisterMsgHandler([this](std::string msg, CommunicationServer::MsgResponseFunc &rsp) {
-            std::lock_guard<std::mutex> lock(mtx_);
-            receivedMsgs_.push_back(msg);
-            cv_.notify_all();
-        });
+        server_.RegisterMsgHandler(
+            [this](CommunicationServer::ClientId, std::string msg, CommunicationServer::MsgResponseFunc &rsp) {
+                std::lock_guard<std::mutex> lock(mtx_);
+                receivedMsgs_.push_back(msg);
+                cv_.notify_all();
+            });
         server_.SetClientConnectHook([this](CommunicationServer::ClientId id) {
             Config config{};
             config.cacheSize = 100;
@@ -183,10 +185,37 @@ TEST_F(HookReportTest, ReportDeviceTypeKernelInfoMemOp_expect_success)
     EXPECT_EQ(hook.GetKernelInfo().kernelType, KernelType::AIVEC);
     EXPECT_TRUE(hook.ReportMemOp(record));
 
-    for (int i = 0; i < 3; ++i) {
+    std::string received;
+    uint64_t previousOrderId = 0;
+    int packetCount = 0;
+    while (packetCount < 3) {
         std::string msg;
         ASSERT_TRUE(server_->WaitForMessage(msg));
-        EXPECT_FALSE(msg.empty());
+        received += msg;
+        while (received.size() >= sizeof(PacketHead) && packetCount < 3) {
+            PacketHead head{};
+            std::memcpy(&head, received.data(), sizeof(head));
+            size_t payloadSize = 0;
+            if (head.type == PacketType::DEVICE_SUMMARY) {
+                payloadSize = sizeof(DeviceInfoSummary);
+            } else if (head.type == PacketType::KERNEL_SUMMARY) {
+                payloadSize = sizeof(KernelSummary);
+            } else {
+                ASSERT_EQ(head.type, PacketType::SANITIZER_RECORD);
+                payloadSize = sizeof(SanitizerRecord);
+            }
+            const size_t packetSize = sizeof(PacketHead) + payloadSize;
+            if (received.size() < packetSize) {
+                break;
+            }
+            EXPECT_GT(head.orderId, previousOrderId);
+            if (previousOrderId != 0) {
+                EXPECT_EQ(head.orderId, previousOrderId + 1);
+            }
+            previousOrderId = head.orderId;
+            received.erase(0, packetSize);
+            ++packetCount;
+        }
     }
 }
 
@@ -270,4 +299,53 @@ TEST_F(HookReportTest, ReportOps_determine_src_expect_correct)
     std::string msg;
     ASSERT_TRUE(server_->WaitForMessage(msg));
     EXPECT_TRUE(hook.ReportMalloc(0x1000, 0x100, MemInfoSrc::BYPASS));
+}
+
+// 独立HookReport入口由自己的发送锁和计数器管理；普通包与binary包必须连续完整。
+TEST_F(HookReportTest, ConcurrentNormalAndBinaryUseOneOrderedStream) {
+    auto &hook = HookReport::Instance();
+    const std::string bytes = "hook-peer-binary";
+    const std::string normal =
+        Serialize(PacketHead{PacketType::PEER_ACCESS_RECORD, 0, 0}, PeerAccessRecord{0, 1, PeerAccessOp::ENABLE});
+    const std::string binary =
+        Serialize(PacketHead{PacketType::KERNEL_BINARY, 0, 0}, static_cast<uint64_t>(bytes.size())) + bytes;
+    std::promise<void> start;
+    auto ready = start.get_future().share();
+    std::thread first([&] {
+        ready.wait();
+        EXPECT_TRUE(hook.WriteOrdered(normal));
+    });
+    std::thread second([&] {
+        ready.wait();
+        EXPECT_TRUE(hook.WriteOrdered(binary));
+    });
+    start.set_value();
+    first.join();
+    second.join();
+    std::string received;
+    const size_t total = normal.size() + binary.size();
+    while (received.size() < total) {
+        std::string part;
+        ASSERT_TRUE(server_->WaitForMessage(part));
+        received += part;
+    }
+    ASSERT_EQ(received.size(), total);
+    PacketHead firstHead{}, secondHead{};
+    std::memcpy(&firstHead, received.data(), sizeof(firstHead));
+    const size_t firstSize = firstHead.type == PacketType::KERNEL_BINARY ? binary.size() : normal.size();
+    std::memcpy(&secondHead, received.data() + firstSize, sizeof(secondHead));
+    EXPECT_EQ(secondHead.orderId, firstHead.orderId + 1);
+    EXPECT_NE(firstHead.type, secondHead.type);
+    const auto check = [&](size_t offset, const PacketHead &head) {
+        if (head.type == PacketType::KERNEL_BINARY) {
+            EXPECT_EQ(
+                received.substr(offset + sizeof(head), binary.size() - sizeof(head)), binary.substr(sizeof(head)));
+        } else {
+            EXPECT_EQ(head.type, PacketType::PEER_ACCESS_RECORD);
+            EXPECT_EQ(
+                received.substr(offset + sizeof(head), normal.size() - sizeof(head)), normal.substr(sizeof(head)));
+        }
+    };
+    check(0, firstHead);
+    check(firstSize, secondHead);
 }

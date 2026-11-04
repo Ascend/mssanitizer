@@ -15,6 +15,7 @@
  * ------------------------------------------------------------------------- */
 
 #include "address_sanitizer.h"
+#include "core/framework/peer_access_manager.h"
 
 #include <vector>
 #include <map>
@@ -285,9 +286,25 @@ AddressSanitizer::AddressSanitizer()
       msgFunc_{&AddressSanitizer::DefaultMsgFunc},
       config_{}, boundsCheckScope_{BoundsCheckScope::RUNTIME}, historyBoundsCheckScope_{BoundsCheckScope::RUNTIME} { }
 
+AddressSanitizer::~AddressSanitizer() {
+    // manager 不拥有本对象，销毁前先撤销登记。
+    if (pid_ >= 0) {
+        PeerAccessManager::Instance().UnregisterDevice(this);
+    }
+}
+
 // AddressSanitizer的具体实现
 bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config)
 {
+    if (pid_ < 0) {
+        pid_ = RuntimeContext::Instance().pid_;
+    }
+    // 初始化会更新内存范围表，需与其他设备的远端范围查询互斥
+    std::unique_lock<std::recursive_mutex> peerLock;
+    if (pid_ >= 0) {
+        peerLock = std::unique_lock<std::recursive_mutex>(PeerAccessManager::Instance().Mutex());
+        PeerAccessManager::Instance().UnregisterDevice(this);
+    }
     config_ = config;
     // init shadow memory by chipType
     auto it = CHIP_INFO_MAP.find(deviceInfo.device);
@@ -301,7 +318,17 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
     ChipInfo chipInfo = it->second;
     boundsCheckRuntime_.Init(chipInfo);
     boundsCheckDfx_.Init(chipInfo);
-    return shadowMemory_->Init(deviceInfo.device, chipInfo);
+    bool ready = shadowMemory_->Init(deviceInfo.device, chipInfo);
+    if (ready && pid_ >= 0 && deviceInfo.deviceId >= 0) {
+        PeerAccessManager::Instance().RegisterDevice(
+            pid_, deviceInfo.deviceId, this, &boundsCheckRuntime_, &boundsCheckDfx_);
+    }
+    return ready;
+}
+
+bool AddressSanitizer::CheckExistingGmRange(uint64_t addr, uint64_t size, AccessType accessType) const {
+    const BoundsCheck &bounds = boundsCheckScope_ == BoundsCheckScope::DFX ? boundsCheckDfx_ : boundsCheckRuntime_;
+    return !bounds.Check(AddressSpace::GM, addr, size, accessType).isError;
 }
 
 bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
@@ -339,14 +366,18 @@ void AddressSanitizer::AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord)
     });
 }
 
-bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
-{
+bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record) {
     if (shadowMemory_ == nullptr || !shadowMemory_->IsReady()) {
         SAN_WARN_LOG("Shadow memory has NOT been initialized. Device type is missing or unsupported");
         return false;
     }
 
     if (record.version == RecordVersion::MEMORY_RECORD) {
+        // Host 记录可能修改 GM 范围或切换查询表，需与远端查询互斥
+        std::unique_lock<std::recursive_mutex> peerLock;
+        if (pid_ >= 0) {
+            peerLock = std::unique_lock<std::recursive_mutex>(PeerAccessManager::Instance().Mutex());
+        }
         if (record.payload.memoryRecord.type == MemOpType::GM_ADDR_OUT_OF_BOUND) {
             AlertGMAddrOutOfBoundError(record.payload.memoryRecord);
             return false;
@@ -538,6 +569,11 @@ size_t AddressSanitizer::GetRecordsNum(EventRange events) const
 
 void AddressSanitizer::SetPermission(MemRegionPermissionDesc const &desc)
 {
+    // 仅权限更新需要与远端查询互斥，普通 kernel 访问检查不持有进程级锁
+    std::unique_lock<std::recursive_mutex> peerLock;
+    if (pid_ >= 0) {
+        peerLock = std::unique_lock<std::recursive_mutex>(PeerAccessManager::Instance().Mutex());
+    }
     if (boundsCheckScope_ == BoundsCheckScope::RUNTIME || boundsCheckScope_ == BoundsCheckScope::BYPASS) {
         boundsCheckRuntime_.SetPermission(AddressSpace::GM, desc.addr, desc.size, desc.flags);
     }

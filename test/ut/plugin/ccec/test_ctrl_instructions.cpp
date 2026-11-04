@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <functional>
 
 #include "../ccec_defs.h"
 #include "data_process.h"

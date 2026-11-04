@@ -34,9 +34,9 @@ class CommunicationServer {
 public:
     using ClientId = std::size_t;
     using MsgResponseFunc = std::function<void(const std::string&)>;
-    using MsgHandleFunc = std::function<void(std::string, MsgResponseFunc&)>;
+    using MsgHandleFunc = std::function<void(pid_t, std::string, MsgResponseFunc &)>;
     using ClientConnectHook = std::function<void(ClientId)>;
-    
+
     explicit CommunicationServer(const std::string& socketPath);
     ~CommunicationServer();
 

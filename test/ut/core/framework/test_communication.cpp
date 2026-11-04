@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #include <atomic>
 #include <chrono>
 #include <future>
@@ -61,8 +60,8 @@ TEST(CommunicationServerTest, RegisterMsgHandler_expect_callable) {
     std::string socketPath = "/tmp/msop_connect_register_msg.202511121043.12345.sock";
     CommunicationServer server(socketPath);
     std::atomic<bool> handlerCalled{false};
-    server.RegisterMsgHandler(
-        [&handlerCalled](std::string msg, CommunicationServer::MsgResponseFunc &rsp) { handlerCalled.store(true); });
+    server.RegisterMsgHandler([&handlerCalled](CommunicationServer::ClientId, std::string msg,
+                                  CommunicationServer::MsgResponseFunc &rsp) { handlerCalled.store(true); });
     server.StartListen();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     EXPECT_FALSE(handlerCalled.load());
@@ -114,10 +113,11 @@ TEST(CommunicationServerTest, Listen_ReceiveAndResponse_expect_success)
     CommunicationServer server(socketPath);
     std::promise<std::string> msgPromise;
     auto msgFuture = msgPromise.get_future();
-    server.RegisterMsgHandler([&](std::string msg, CommunicationServer::MsgResponseFunc &rsp) {
-        msgPromise.set_value(msg);
-        rsp("server_response");
-    });
+    server.RegisterMsgHandler(
+        [&](CommunicationServer::ClientId, std::string msg, CommunicationServer::MsgResponseFunc &rsp) {
+            msgPromise.set_value(msg);
+            rsp("server_response");
+        });
     server.SetClientConnectHook([](CommunicationServer::ClientId) {});
     server.StartListen();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

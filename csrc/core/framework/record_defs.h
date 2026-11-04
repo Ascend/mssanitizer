@@ -2311,6 +2311,20 @@ struct IPCMemRecord {
     };
 };
 
+// 跨设备访问授权的变更操作
+enum class PeerAccessOp : uint32_t {
+    ENABLE = 0,
+    DISABLE,
+    RESET
+};
+
+// 跨设备访问授权记录，供工具更新访问方到目标设备的有向关系
+struct PeerAccessRecord {
+    int32_t deviceId; // ENABLE/DISABLE 的访问方；RESET 时为重置的设备
+    int32_t peerDeviceId; // ENABLE/DISABLE 的目标设备；RESET 时为 -1
+    PeerAccessOp operation;
+};
+
 // 目前检测需要用到的记录需要兼容三个版本，memoryRecord 对应原始的内存检测记录结构体，
 // kernelRecord 对应新增的算子 kernel 函数内部的检测信息记录
 // IpcRecord 对应共享内存接口的行为

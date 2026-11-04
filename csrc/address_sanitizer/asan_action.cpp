@@ -16,6 +16,7 @@
 
 
 #include "asan_action.h"
+#include "core/framework/peer_access_manager.h"
 #include "core/framework/record_defs.h"
 #include "core/framework/runtime_context.h"
 #include "mem_error_def.h"
@@ -43,6 +44,17 @@ inline void FillErrorLocInfo(MemOpRecord const &record, ErrorMsg &msg)
     msg.auxData.serialNo = record.serialNo;
     msg.auxData.side = record.side;
     msg.auxData.recordType = record.recordType;
+}
+
+// 本地 GM 完全没有范围覆盖时，检查是否为获授权的合法远端地址。
+bool CheckPeerAccessAddr(const MemOpRecord &record, const BoundsCheck &boundsCheck, AccessType accessType) {
+    if (record.dstSpace != AddressSpace::GM) {
+        return false;
+    }
+    if (boundsCheck.HasOverlap(record.dstSpace, record.dstAddr, record.memSize)) {
+        return false;
+    }
+    return PeerAccessManager::Instance().CheckRemote(boundsCheck, record.dstAddr, record.memSize, accessType);
 }
 
 } // namespace [Dummy]
@@ -155,7 +167,7 @@ ErrorMsgList AsanLoad::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
     ErrorMsgList errorMsgs;
     if (config.memCheck && !record_.ignoreIllegalCheck) {
         ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize, AccessType::READ);
-        if (msg.isError) {
+        if (msg.isError && !CheckPeerAccessAddr(record_, boundsCheck, AccessType::READ)) {
             msg.SetType(MemErrorType::ILLEGAL_ADDR_READ, record_.dstSpace, msg.auxData.badAddr.addr);
             FillErrorLocInfo(record_, msg);
             errorMsgs.emplace_back(msg);
@@ -179,7 +191,7 @@ ErrorMsgList AsanStore::doAction(ShadowMemory& shadowMemory, BoundsCheck &bounds
     ErrorMsgList errorMsgs;
     if (config.memCheck && !record_.ignoreIllegalCheck) {
         ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize, AccessType::WRITE);
-        if (msg.isError) {
+        if (msg.isError && !CheckPeerAccessAddr(record_, boundsCheck, AccessType::WRITE)) {
             msg.SetType(MemErrorType::ILLEGAL_ADDR_WRITE, record_.dstSpace, msg.auxData.badAddr.addr);
             FillErrorLocInfo(record_, msg);
             errorMsgs.emplace_back(msg);

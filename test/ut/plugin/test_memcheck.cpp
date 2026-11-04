@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #include <gtest/gtest.h>
 #include <algorithm>
 #include "ccec_defs.h"

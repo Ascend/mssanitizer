@@ -16,6 +16,7 @@
 
 
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "fd_test_util.h"
 #include "protocol.h"
@@ -54,6 +55,51 @@ inline bool operator==(HostMemRecord const &lhs, HostMemRecord const &rhs)
 }  // namespace Sanitizer
 
 using namespace Sanitizer;
+
+TEST(Protocol, peer_access_record_round_trip) {
+    PacketHead head{};
+    head.type = PacketType::PEER_ACCESS_RECORD;
+    PeerAccessRecord record{2, 3, PeerAccessOp::ENABLE};
+    MemCheckProtocol protocol;
+    protocol.Feed(Serialize(head));
+    EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+    protocol.Feed(Serialize(record));
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::PEER_ACCESS_RECORD);
+    EXPECT_EQ(packet.GetPayload().peerAccessRecord.deviceId, 2);
+    EXPECT_EQ(packet.GetPayload().peerAccessRecord.peerDeviceId, 3);
+    EXPECT_EQ(packet.GetPayload().peerAccessRecord.operation, PeerAccessOp::ENABLE);
+}
+
+TEST(Protocol, ordered_packet_survives_partial_header_and_copy) {
+    PacketHead head{PacketType::PEER_ACCESS_RECORD, 0, 42};
+    PeerAccessRecord record{2, 3, PeerAccessOp::ENABLE};
+    std::string bytes = Serialize(head, record);
+    MemCheckProtocol protocol;
+    for (size_t i = 0; i + 1 < bytes.size(); ++i) {
+        protocol.Feed(bytes.substr(i, 1));
+        EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+    }
+    protocol.Feed(bytes.substr(bytes.size() - 1));
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::PEER_ACCESS_RECORD);
+    EXPECT_EQ(packet.GetOrderId(), 42);
+    Packet copied = packet;
+    EXPECT_EQ(copied.GetOrderId(), 42);
+    EXPECT_EQ(copied.GetPayload().peerAccessRecord.peerDeviceId, 3);
+}
+
+TEST(Protocol, kernel_record_binary_keeps_order_after_move) {
+    MemCheckProtocol protocol;
+    const std::string records("abc", 3);
+    protocol.Feed(
+        Serialize(PacketHead{PacketType::KERNEL_RECORD, 0, 71}, static_cast<uint64_t>(records.size())) + records);
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::KERNEL_RECORD);
+    Packet moved = std::move(packet);
+    EXPECT_EQ(moved.GetOrderId(), 71);
+    EXPECT_EQ(std::string(moved.GetPayload().binary.buf, moved.GetPayload().binary.len), records);
+}
 
 TEST(Protocol, get_summary_from_protocol_expect_success_and_equal_to_packet)
 {
@@ -271,3 +317,41 @@ TEST(Protocol, get_kernel_binary_with_oversized_length_expect_invalid_packet)
     Packet packet = protocol.GetPacket();
     ASSERT_EQ(packet.GetType(), PacketType::INVALID);
 }
+
+namespace Sanitizer {
+// 在每个字节边界暂停，确认半包绝不会提交；随后粘连的普通包也应保持原编号。
+TEST(Protocol, ordered_binary_and_normal_packets_at_every_byte_boundary) {
+    // 与实际接收模型一致：一条连接在独立接收线程解析，避免其它异常包测试的线程状态。
+    std::thread([] {
+        const std::string data = "peer-binary";
+        const std::string binary =
+            Serialize(PacketHead{PacketType::KERNEL_BINARY, 0, 17}, static_cast<uint64_t>(data.size())) + data;
+        const PeerAccessRecord relation{0, 1, PeerAccessOp::ENABLE};
+        const std::string normal = Serialize(PacketHead{PacketType::PEER_ACCESS_RECORD, 0, 18}, relation);
+        for (size_t split = 1; split < binary.size(); ++split) {
+            SCOPED_TRACE(split);
+            MemCheckProtocol protocol;
+            protocol.Feed(binary.substr(0, split));
+            EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+            protocol.Feed(binary.substr(split) + normal);
+            auto packet = protocol.GetPacket();
+            ASSERT_EQ(packet.GetType(), PacketType::KERNEL_BINARY);
+            EXPECT_EQ(packet.GetOrderId(), 17);
+            EXPECT_EQ(std::string(packet.GetPayload().binary.buf, packet.GetPayload().binary.len), data);
+            packet = protocol.GetPacket();
+            EXPECT_EQ(packet.GetType(), PacketType::PEER_ACCESS_RECORD);
+            EXPECT_EQ(packet.GetOrderId(), 18);
+            EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+        }
+        MemCheckProtocol protocol;
+        for (size_t i = 0; i < normal.size(); ++i) {
+            protocol.Feed(normal.substr(i, 1));
+            auto packet = protocol.GetPacket();
+            EXPECT_EQ(packet.GetType(), i + 1 == normal.size() ? PacketType::PEER_ACCESS_RECORD : PacketType::INVALID);
+            if (i + 1 == normal.size()) {
+                EXPECT_EQ(packet.GetOrderId(), 18);
+            }
+        }
+    }).join();
+}
+} // namespace Sanitizer

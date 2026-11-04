@@ -45,6 +45,7 @@
 #include "record_defs.h"
 #include "kernel_block.h"
 #include "runtime_context.h"
+#include "peer_access_manager.h"
 #include "platform_config.h"
 #include "record_format.h"
 
@@ -452,8 +453,8 @@ ProgramStatus Command::Exec(const ParamList &execParams) {
     ThreadManager threadManager(config_, enableDebugLog_, loglv_, logFile_);
     KernelManager::Instance().SetDemangleMode(config_.demangleMode);
 
-    auto msgSplitFunc = [&threadManager, this](
-                            const std::string &manyMsg, Process::MsgRspFunc &msgRspFunc) {
+    auto msgSplitFunc = [&threadManager, this](pid_t pid, const std::string &manyMsg, Process::MsgRspFunc &msgRspFunc) {
+        RuntimeContext::Instance().pid_ = pid;
         CallStack::Instance().SetIsPrintFullStack(config_.isPrintFullStack);
         Checker& checker = threadManager.GetChecker();
         CrossNpuChecker &crossNpuChecker = threadManager.GetCrossNpuChecker();
@@ -462,39 +463,51 @@ ProgramStatus Command::Exec(const ParamList &execParams) {
         while (true) {
             auto packet = protocol.GetPacket();
             switch (packet.GetType()) {
-                case PacketType::DEVICE_SUMMARY:
-                    HandleDeviceInfo(checker, packet.GetPayload().deviceSummary);
-                    break;
-                case PacketType::KERNEL_SUMMARY:
-                    HandleKernelInfo(checker, crossNpuChecker, packet.GetPayload().kernelSummary, config_);
-                    break;
-                case PacketType::MEMORY_RECORD:
-                    HandleHostMemRecord(checker, packet.GetPayload().hostMemRecord);
-                    break;
-                case PacketType::KERNEL_RECORD:
-                    HandleKernelBlock(checker, crossNpuChecker, packet.GetPayload().binary, msgRspFunc);
-                    break;
-                case PacketType::IPC_RECORD:
-                    HandleIpcMemRecord(checker, packet.GetPayload().ipcMemRecord, threadManager, msgRspFunc);
-                    break;
-                case PacketType::MEM_REGION_PERMISSION:
-                    HandleMemRegionPermission(checker, packet.GetPayload().memPermission);
-                    break;
-                case PacketType::SANITIZER_RECORD:
-                    checker.Do(packet.GetPayload().sanitizerRecord);
-                    break;
-                case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:
-                    HandleGMAddrOutOfBoundRecord(checker, packet.GetPayload().gmAddrOutOfBoundRecord);
-                    break;
-                case PacketType::KERNEL_BINARY:
-                    HandleKernelBinary(packet.GetPayload().binary, packet.GetBinaryBuffer());
-                    break;
-                case PacketType::LOG_STRING:
-                    HandleLogString(packet.GetPayload().binary);
-                    break;
-                case PacketType::INVALID:
-                default:
-                    return;
+            case PacketType::DEVICE_SUMMARY:
+                HandleDeviceInfo(checker, packet.GetPayload().deviceSummary);
+                break;
+            case PacketType::KERNEL_SUMMARY:
+                HandleKernelInfo(checker, crossNpuChecker, packet.GetPayload().kernelSummary, config_);
+                break;
+            case PacketType::MEMORY_RECORD:
+                HandleHostMemRecord(checker, packet.GetPayload().hostMemRecord);
+                break;
+            case PacketType::KERNEL_RECORD:
+                HandleKernelBlock(checker, crossNpuChecker, packet.GetPayload().binary, msgRspFunc);
+                break;
+            case PacketType::IPC_RECORD:
+                HandleIpcMemRecord(checker, packet.GetPayload().ipcMemRecord, threadManager, msgRspFunc);
+                break;
+            case PacketType::PEER_ACCESS_RECORD: {
+                const auto &record = packet.GetPayload().peerAccessRecord;
+                // 关系按连接所属进程隔离；当前只更新状态，不做跨设备有序回放。
+                if (record.deviceId == RuntimeContext::Instance().GetDeviceId() &&
+                    PeerAccessManager::Instance().Apply(pid, record)) {
+                    SAN_INFO_LOG("Peer access: deviceId=%d peerDeviceId=%d operation=%u", record.deviceId,
+                        record.peerDeviceId, static_cast<uint32_t>(record.operation));
+                } else {
+                    SAN_WARN_LOG("Invalid peer access record received");
+                }
+                break;
+            }
+            case PacketType::MEM_REGION_PERMISSION:
+                HandleMemRegionPermission(checker, packet.GetPayload().memPermission);
+                break;
+            case PacketType::SANITIZER_RECORD:
+                checker.Do(packet.GetPayload().sanitizerRecord);
+                break;
+            case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:
+                HandleGMAddrOutOfBoundRecord(checker, packet.GetPayload().gmAddrOutOfBoundRecord);
+                break;
+            case PacketType::KERNEL_BINARY:
+                HandleKernelBinary(packet.GetPayload().binary, packet.GetBinaryBuffer());
+                break;
+            case PacketType::LOG_STRING:
+                HandleLogString(packet.GetPayload().binary);
+                break;
+            case PacketType::INVALID:
+            default:
+                return;
             }
         }
     };
@@ -503,6 +516,7 @@ ProgramStatus Command::Exec(const ParamList &execParams) {
     ExecCmd cmd(execParams);
     process.Launch(cmd); // 子进程结束后，Launch函数返回
     threadManager.ThreadFinish();
+    PeerAccessManager::Instance().Clear();
     threadManager.PostLog();
     return process.GetProgramStatus();
 }
