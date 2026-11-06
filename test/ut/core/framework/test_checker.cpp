@@ -34,11 +34,25 @@
 #undef private
 #include "race_sanitizer.h"
 #include "config.h"
+#include "core/framework/initcheck_address_space.h"
+#include "core/framework/config_manager.h"
 #include "platform_config.h"
 #include "securec.h"
 #include "utility/log.h"
 
 using namespace Sanitizer;
+
+class ScopedInitcheckAddressSpace {
+public:
+    explicit ScopedInitcheckAddressSpace(uint32_t mask)
+        : savedMask_(ConfigManager::Instance().GetInitcheckAddressSpaceMask())
+    {
+        ConfigManager::Instance().SetInitcheckAddressSpaceMask(mask);
+    }
+    ~ScopedInitcheckAddressSpace() { ConfigManager::Instance().SetInitcheckAddressSpaceMask(savedMask_); }
+private:
+    uint32_t savedMask_;
+};
 
 TEST(Checker, set_invalid_device_type_expect_run_checker_success)
 {
@@ -367,6 +381,197 @@ TEST(Checker, batch_parse_preserves_empty_and_multiple_event_boundaries) {
     EXPECT_EQ(parsed.eventOffsets.back(), parsed.events.size());
     EXPECT_EQ(parsed.events[0].serialNo, 17U);
     EXPECT_EQ(parsed.events.back().type, EventType::SANITIZER_CONTROL_EVENT);
+}
+
+TEST(Checker, initcheck_selection_filters_flat_events_and_preserves_record_offsets_and_finish) {
+    for (uint32_t mask : {InitcheckAddressSpaceBit(AddressSpace::PRIVATE),
+            InitcheckAddressSpaceBit(AddressSpace::GM) | InitcheckAddressSpaceBit(AddressSpace::UB),
+            INITCHECK_ALL_ADDRESS_SPACES}) {
+        Config config{};
+        config.initCheck = true;
+        ScopedInitcheckAddressSpace selection(mask);
+        Checker checker(config, false);
+        ParseTask task{};
+        task.ctx.deviceInfo.device = DeviceType::ASCEND_910B1;
+        task.ctx.kernelSummary.kernelType = KernelType::AIVEC;
+        task.ctx.rootTid = RuntimeContext::Instance().rootTid_;
+        const std::vector<AddressSpace> spaces{AddressSpace::PRIVATE, AddressSpace::GM, AddressSpace::UB,
+            AddressSpace::L0A, AddressSpace::L0B, AddressSpace::L0C, AddressSpace::L1};
+        for (auto space : spaces) {
+            task.records.push_back(MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, space, 1, 64));
+        }
+        task.records.push_back(MakeKernelFinishRecord());
+        const auto parsed = checker.ParseRecords(std::move(task));
+        ASSERT_EQ(parsed.records.size(), spaces.size() + 1);
+        ASSERT_EQ(parsed.eventOffsets.size(), parsed.records.size() + 1);
+        for (size_t i = 0; i < spaces.size(); ++i) {
+            EXPECT_EQ(parsed.eventOffsets[i + 1] - parsed.eventOffsets[i],
+                IsInitcheckAddressSpaceEnabled(mask, spaces[i]) ? 1U : 0U);
+        }
+        EXPECT_EQ(parsed.eventOffsets.back(), parsed.events.size());
+        ASSERT_FALSE(parsed.events.empty());
+        EXPECT_EQ(parsed.events.back().type, EventType::SANITIZER_CONTROL_EVENT);
+    }
+}
+
+TEST(Checker, initcheck_selection_does_not_filter_shared_parse_input_for_other_tools) {
+    for (ToolType tool : {ToolType::MEMCHECK, ToolType::RACECHECK, ToolType::SYNCCHECK, ToolType::REGISTERCHECK}) {
+        Config config{};
+        config.initCheck = true;
+        config.memCheck = tool == ToolType::MEMCHECK;
+        config.raceCheck = tool == ToolType::RACECHECK;
+        config.syncCheck = tool == ToolType::SYNCCHECK;
+        config.registerCheck = tool == ToolType::REGISTERCHECK;
+        Checker checker(config, false);
+        ParseTask task{};
+        task.ctx.deviceInfo.device = DeviceType::ASCEND_910B1;
+        task.ctx.kernelSummary.kernelType = KernelType::AIVEC;
+        task.ctx.rootTid = RuntimeContext::Instance().rootTid_;
+        task.records = {MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::UB, 1),
+            MakeKernelFinishRecord()};
+        const auto parsed = checker.ParseRecords(std::move(task));
+        ASSERT_EQ(parsed.events.size(), 2U);
+        EXPECT_EQ(parsed.events[0].eventInfo.memInfo.memType, MemType::UB);
+    }
+}
+
+TEST(InitcheckAddressSpace, effective_mask_matches_tool_and_scope_truth_table)
+{
+    std::array<Config, 6> configs{};
+    for (size_t i = 0; i < configs.size() - 1; ++i) {
+        configs[i].initCheck = true;
+    }
+    configs[1].memCheck = true;
+    configs[2].raceCheck = true;
+    configs[3].syncCheck = true;
+    configs[4].registerCheck = true;
+    configs[5].memCheck = true;
+    const std::array<InitcheckFilterScope, 3> scopes{{InitcheckFilterScope::SHARED_EVENTS,
+        InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS, InitcheckFilterScope::INITIALIZATION_CHECK}};
+    for (uint32_t mask : {0U, InitcheckAddressSpaceBit(AddressSpace::PRIVATE),
+            InitcheckAddressSpaceBit(AddressSpace::GM) | InitcheckAddressSpaceBit(AddressSpace::UB),
+            INITCHECK_ALL_ADDRESS_SPACES}) {
+        const uint32_t all = INITCHECK_ALL_ADDRESS_SPACES;
+        const uint32_t expected[6][3] = {
+            {mask, mask, mask}, // initcheck-only
+            {all, all, mask},   // initcheck + memcheck
+            {all, mask, mask},  // initcheck + racecheck
+            {all, mask, mask},  // initcheck + synccheck
+            {all, mask, mask},  // initcheck + registercheck
+            {all, all, 0U},     // memcheck-only
+        };
+        for (size_t i = 0; i < configs.size(); ++i) {
+            for (size_t j = 0; j < scopes.size(); ++j) {
+                EXPECT_EQ(GetEffectiveInitcheckAddressSpaceMask(configs[i], mask, scopes[j]), expected[i][j])
+                    << "config=" << i << " scope=" << j << " mask=" << mask;
+            }
+        }
+    }
+}
+
+TEST(InitcheckAddressSpace, selection_handles_dynamic_memory_and_preserves_sync_events) {
+    uint32_t mask = InitcheckAddressSpaceBit(AddressSpace::PRIVATE);
+    SanEvent event{};
+    event.type = EventType::DYNAMIC_MEM_EVENT;
+    event.eventInfo.dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
+    event.eventInfo.dynamicOpInfo.memType = MemType::GM;
+    EXPECT_FALSE(ShouldCollectInitcheckEvent(mask, event));
+    mask = InitcheckAddressSpaceBit(AddressSpace::GM);
+    EXPECT_TRUE(ShouldCollectInitcheckEvent(mask, event));
+    event.eventInfo.dynamicOpInfo.memType = MemType::UB;
+    EXPECT_FALSE(ShouldCollectInitcheckEvent(mask, event));
+    event.type = EventType::SYNC_EVENT;
+    EXPECT_TRUE(ShouldCollectInitcheckEvent(mask, event));
+    event.type = EventType::SANITIZER_CONTROL_EVENT;
+    EXPECT_TRUE(ShouldCollectInitcheckEvent(mask, event));
+    event.type = EventType::MEM_EVENT;
+    event.eventInfo.memInfo.memType = MemType::UB;
+    EXPECT_TRUE(ShouldCollectInitcheckEvent(INITCHECK_ALL_ADDRESS_SPACES, event));
+    EXPECT_FALSE(IsInitcheckAddressSpaceEnabled(mask, AddressSpace::UNKNOWN));
+}
+
+TEST(Checker, initcheck_reports_only_selected_spaces_in_single_and_batch_input) {
+    const std::vector<AddressSpace> spaces{AddressSpace::PRIVATE, AddressSpace::GM, AddressSpace::UB,
+        AddressSpace::L0A, AddressSpace::L0B, AddressSpace::L0C, AddressSpace::L1};
+    for (uint32_t mask : {InitcheckAddressSpaceBit(AddressSpace::PRIVATE),
+            InitcheckAddressSpaceBit(AddressSpace::GM) | InitcheckAddressSpaceBit(AddressSpace::UB),
+            INITCHECK_ALL_ADDRESS_SPACES}) {
+        for (bool batch : {false, true}) {
+            Config config{};
+            config.defaultCheck = true;
+            config.initCheck = true;
+            ScopedInitcheckAddressSpace selection(mask);
+            std::stringstream output;
+            auto checker = MakeRealChecker(config, output, KernelType::AIVEC);
+            checker->Do(MakeMemoryRecord());
+            std::vector<SanitizerRecord> records;
+            for (size_t i = 0; i < spaces.size(); ++i) {
+                records.push_back(MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, spaces[i], i + 1, 0x1000));
+            }
+            records.push_back(MakeKernelFinishRecord());
+            if (batch) {
+                checker->Do(std::move(records));
+            } else {
+                for (const auto &record : records) {
+                    checker->Do(record);
+                }
+            }
+            for (auto space : spaces) {
+                const auto found = output.str().find("on " + FormatAddressSpace(space)) != std::string::npos;
+                EXPECT_EQ(found, IsInitcheckAddressSpaceEnabled(mask, space)) << output.str();
+            }
+        }
+    }
+}
+
+TEST(Checker, host_selection_applies_when_initcheck_shares_events_with_other_tools) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::L1));
+    for (ToolType tool : {ToolType::MEMCHECK, ToolType::RACECHECK, ToolType::SYNCCHECK, ToolType::REGISTERCHECK}) {
+        Config config{};
+        config.defaultCheck = true;
+        config.initCheck = true;
+        config.memCheck = tool == ToolType::MEMCHECK;
+        config.raceCheck = tool == ToolType::RACECHECK;
+        config.syncCheck = tool == ToolType::SYNCCHECK;
+        config.registerCheck = tool == ToolType::REGISTERCHECK;
+        std::stringstream output;
+        auto checker = MakeRealChecker(config, output, KernelType::AIVEC);
+        checker->Do(std::vector<SanitizerRecord>{
+            MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::L1, 1, 64),
+            MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64),
+            MakeKernelFinishRecord()});
+        EXPECT_NE(output.str().find("uninitialized read"), std::string::npos) << output.str();
+        EXPECT_NE(output.str().find("on L1"), std::string::npos) << output.str();
+        EXPECT_EQ(output.str().find("on PRIVATE"), std::string::npos) << output.str();
+    }
+}
+
+TEST(Checker, stack_selection_keeps_writes_needed_to_initialize_later_reads) {
+    Config config{};
+    config.defaultCheck = true;
+    config.initCheck = true;
+    std::stringstream output;
+    auto checker = MakeRealChecker(config, output, KernelType::AIVEC);
+    checker->Do(std::vector<SanitizerRecord>{
+        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64),
+        MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64),
+        MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::UB, 3, 64), MakeKernelFinishRecord()});
+    EXPECT_EQ(output.str().find("uninitialized read"), std::string::npos) << output.str();
+}
+
+TEST(Checker, stack_selection_preserves_memcheck_errors_on_unselected_spaces) {
+    Config config{};
+    config.defaultCheck = true;
+    config.initCheck = true;
+    config.memCheck = true;
+    std::stringstream output;
+    auto checker = MakeRealChecker(config, output, KernelType::AIVEC);
+    checker->Do(std::vector<SanitizerRecord>{
+        MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::UB, 1, 0x10000000),
+        MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64), MakeKernelFinishRecord()});
+    EXPECT_NE(output.str().find("illegal read"), std::string::npos) << output.str();
+    EXPECT_NE(output.str().find("uninitialized read"), std::string::npos) << output.str();
+    EXPECT_NE(output.str().find("on PRIVATE"), std::string::npos) << output.str();
 }
 
 TEST(Checker, batch_handoff_keeps_records_without_events_for_every_consumer) {

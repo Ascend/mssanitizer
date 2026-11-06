@@ -36,6 +36,7 @@
 #include "core/framework/utility/ustring.h"
 #include "core/framework/utility/path.h"
 #undef private
+#include "core/framework/config_manager.h"
 
 namespace Sanitizer {
 void MergeRecords(std::vector<MemOpRecord> &records);
@@ -496,6 +497,58 @@ TEST(AddressSanitizer, malloc_use_and_forget_free_expect_no_mem_not_use)
     asan->Exit();
     ASSERT_TRUE(msg.find("memory leaks") != std::string::npos);
     ASSERT_TRUE(msg.find("Unused memory") == std::string::npos);
+}
+
+class InitcheckUnusedMemoryTest : public testing::Test {
+protected:
+    void SetUp() override
+    {
+        savedMask_ = ConfigManager::Instance().GetInitcheckAddressSpaceMask();
+        ConfigManager::Instance().SetInitcheckAddressSpaceMask(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    }
+    void TearDown() override { ConfigManager::Instance().SetInitcheckAddressSpaceMask(savedMask_); }
+    uint32_t savedMask_{};
+};
+
+TEST_F(InitcheckUnusedMemoryTest, unused_check_requires_memcheck_at_free_and_exit)
+{
+    for (bool memCheck : {false, true}) {
+        for (bool writeMemory : {false, true}) {
+            for (bool freeBeforeExit : {false, true}) {
+                SCOPED_TRACE(testing::Message() << "memCheck=" << memCheck << " write=" << writeMemory
+                    << " free=" << freeBeforeExit);
+                Config config{};
+                config.initCheck = true;
+                config.memCheck = memCheck;
+                config.checkUnusedMemory = true;
+                DeviceInfoSummary device{};
+                device.device = DeviceType::ASCEND_910B1;
+                auto asan = SanitizerFactory::GetInstance().Create(ToolType::MEMCHECK);
+                ASSERT_TRUE(asan->SetDeviceInfo(device, config));
+                std::string output;
+                asan->RegisterNotifyFunc([&output](LogLv const &, SanitizerBase::MSG_GEN &&gen) {
+                    output += gen().message;
+                });
+                SanitizerRecord record{};
+                record.version = RecordVersion::MEMORY_RECORD;
+                record.payload.memoryRecord = CreateMemOpRecord(MemOpType::MALLOC);
+                EXPECT_FALSE(asan->CheckRecordBeforeProcess(record));
+                if (writeMemory) {
+                    record.payload.memoryRecord = CreateMemOpRecord(MemOpType::STORE);
+                    EXPECT_FALSE(asan->CheckRecordBeforeProcess(record));
+                }
+                const bool unused = memCheck && !writeMemory;
+                if (freeBeforeExit) {
+                    record.payload.memoryRecord = CreateMemOpRecord(MemOpType::FREE);
+                    EXPECT_FALSE(asan->CheckRecordBeforeProcess(record));
+                    EXPECT_EQ(output.find("Unused memory") != std::string::npos, unused) << output;
+                    output.clear();
+                }
+                asan->Exit();
+                EXPECT_EQ(output.find("unused memory") != std::string::npos, unused) << output;
+            }
+        }
+    }
 }
 
 TEST(AddressSanitizer, same_record_on_different_blocks_expect_get_reduced_errors)
@@ -3952,7 +4005,7 @@ TEST(AsanActionFactory, value_action_owns_record_and_dispatches_load_store)
     Config config{};
     config.initCheck = true;
     auto record = CreateMemOpRecord(MemOpType::LOAD);
-    record.dstSpace = AddressSpace::L1;
+    record.dstSpace = AddressSpace::PRIVATE;
     record.dstAddr = 32;
     record.memSize = 8;
     auto load = AsanActionFactory::CreateAsanAction(record);

@@ -53,20 +53,19 @@ PipeType FormatConverter::QueryPipeType(MemType src, MemType dst)
 
 AddressSpace FormatConverter::MemTypeToAddrSpace(MemType memType)
 {
-    static const std::map<MemType, AddressSpace> MEM_TYPE_TO_ADDR_SPACE_MAP = {
-        {MemType::L1,      AddressSpace::L1},
-        {MemType::L0A,     AddressSpace::L0A},
-        {MemType::L0B,     AddressSpace::L0B},
-        {MemType::L0C,     AddressSpace::L0C},
-        {MemType::UB,      AddressSpace::UB},
-        {MemType::BT,      AddressSpace::BT},
-        {MemType::FB,      AddressSpace::FB},
-        {MemType::GM,      AddressSpace::GM},
-        {MemType::UNKNOWN, AddressSpace::UNKNOWN},
-        {MemType::PRIVATE, AddressSpace::PRIVATE},
-    };
-    auto it = MEM_TYPE_TO_ADDR_SPACE_MAP.find(memType);
-    return it == MEM_TYPE_TO_ADDR_SPACE_MAP.cend() ? AddressSpace::UNKNOWN : it->second;
+    // 显式映射避免依赖枚举顺序，解析/回放热点路径无需树查找。
+    switch (memType) {
+        case MemType::L1: return AddressSpace::L1;
+        case MemType::L0A: return AddressSpace::L0A;
+        case MemType::L0B: return AddressSpace::L0B;
+        case MemType::L0C: return AddressSpace::L0C;
+        case MemType::UB: return AddressSpace::UB;
+        case MemType::BT: return AddressSpace::BT;
+        case MemType::GM: return AddressSpace::GM;
+        case MemType::PRIVATE: return AddressSpace::PRIVATE;
+        case MemType::FB: return AddressSpace::FB;
+        default: return AddressSpace::UNKNOWN;
+    }
 }
 
 MemOpType FormatConverter::AccessTypeToMemOpType(AccessType type)

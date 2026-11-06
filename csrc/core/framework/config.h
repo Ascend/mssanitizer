@@ -50,6 +50,15 @@ struct DetectionInfo {
 
 constexpr uint16_t PLUGIN_PATH_MAX = 256;
 
+constexpr uint32_t InitcheckAddressSpaceBit(AddressSpace space)
+{
+    return space >= AddressSpace::PRIVATE && space <= AddressSpace::FB ?
+        (1U << static_cast<uint32_t>(space)) : 0U;
+}
+
+constexpr uint32_t INITCHECK_ALL_ADDRESS_SPACES =
+    (1U << (static_cast<uint32_t>(AddressSpace::FB) + 1U)) - 1U;
+
 /// 检测算法相关配置
 /// 检测工具开始运行时，工具端会将此配置发送给桩函数用于使能相关的桩接口
 /// 因此需要保证此结构体为 trivial 类型
@@ -86,8 +95,11 @@ struct UserCommand {
     bool printVersionInfo{false};
     bool enableDebugLog{false};
     bool logFileAvailable{true};
+    bool initcheckAddressSpaceSpecified{false};
     LogLv logLv{LogLv::WARN};
     Config config{};
+    // 仅在主机使用，stack 对应 PRIVATE，不参与 Config 通信。
+    uint32_t initcheckAddressSpaceMask = InitcheckAddressSpaceBit(AddressSpace::PRIVATE);
     std::string logFile;
     std::vector<std::string> cmd;
     int32_t errorExitCode{0}; // --error-exitcode，0 表示不改变工具退出码

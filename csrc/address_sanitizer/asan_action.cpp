@@ -18,6 +18,8 @@
 #include "asan_action.h"
 #include "core/framework/peer_access_manager.h"
 #include "core/framework/record_defs.h"
+#include "core/framework/config_manager.h"
+#include "core/framework/initcheck_address_space.h"
 #include "core/framework/runtime_context.h"
 #include "mem_error_def.h"
 
@@ -127,7 +129,7 @@ ErrorMsgList AsanFree::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
     if (msg.isError) {
         errorMsgs.emplace_back(msg);
     }
-    if (config.checkUnusedMemory && !ignoreShadowMemory && record_.infoSrc != MemInfoSrc::BYPASS) {
+    if (config.memCheck && config.checkUnusedMemory && !ignoreShadowMemory && record_.infoSrc != MemInfoSrc::BYPASS) {
         msg = shadowMemory.CheckUnusedMem(record_.dstAddr, size);
         if (msg.isError) {
             msg.auxData.side = record_.side;
@@ -174,7 +176,10 @@ ErrorMsgList AsanLoad::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
         }
     }
 
-    if (config.initCheck && !ignoreShadowMemory) {
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+        config, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
+        InitcheckFilterScope::INITIALIZATION_CHECK);
+    if (IsInitcheckAddressSpaceEnabled(mask, record_.dstSpace) && !ignoreShadowMemory) {
         MemOpRecordForShadow memOpRecordForShadow(record_);
         ErrorMsgList loadErrors = shadowMemory.LoadNBytes(memOpRecordForShadow, config.initCheck);
         for (auto &msg : loadErrors) {
@@ -200,7 +205,11 @@ ErrorMsgList AsanStore::doAction(ShadowMemory& shadowMemory, BoundsCheck &bounds
 
     // 写事件有两个条件需要进入 shadowmemory，一个是初始化检测，一个是多核踩踏
     // outOfBoundCheck 关闭时仍需进入以维护内存已使用状态，仅跳过踩踏检测，防止未使用内存告警误报
-    if ((config.initCheck || (config.memCheck && record_.dstSpace == AddressSpace::GM)) && !ignoreShadowMemory) {
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+        config, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
+        InitcheckFilterScope::INITIALIZATION_CHECK);
+    if ((IsInitcheckAddressSpaceEnabled(mask, record_.dstSpace) ||
+        (config.memCheck && record_.dstSpace == AddressSpace::GM)) && !ignoreShadowMemory) {
         MemOpRecordForShadow memOpRecordForShadow(record_);
         ErrorMsgList storeErrors = shadowMemory.StoreNBytes(memOpRecordForShadow, config.memCheck,
             config.outOfBoundCheck);

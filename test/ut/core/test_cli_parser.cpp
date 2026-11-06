@@ -29,6 +29,7 @@
 #define private public
 #include "core/cli_parser.h"
 #undef private
+#include "core/framework/config_manager.h"
 
 using namespace Sanitizer;
 
@@ -225,6 +226,54 @@ TEST(cliParser, pass_tool_initcheck_parameter_expect_init_check_mode_enabled)
     ASSERT_TRUE(cmd.config.initCheck);
     ASSERT_TRUE(cmd.config.defaultCheck);
     ASSERT_FALSE(cmd.config.memCheck);
+    EXPECT_EQ(cmd.initcheckAddressSpaceMask, InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+}
+
+TEST(CliParser, initcheck_address_space_accepts_each_space_and_comma_separated_lists)
+{
+    const std::vector<std::pair<std::string, uint32_t>> cases = {
+        {"stack", InitcheckAddressSpaceBit(AddressSpace::PRIVATE)},
+        {"gm", InitcheckAddressSpaceBit(AddressSpace::GM)},
+        {"ub", InitcheckAddressSpaceBit(AddressSpace::UB)},
+        {"l0a", InitcheckAddressSpaceBit(AddressSpace::L0A)},
+        {"l0b", InitcheckAddressSpaceBit(AddressSpace::L0B)},
+        {"l0c", InitcheckAddressSpaceBit(AddressSpace::L0C)},
+        {"l1", InitcheckAddressSpaceBit(AddressSpace::L1)},
+        {"stack,gm,ub", InitcheckAddressSpaceBit(AddressSpace::PRIVATE) |
+            InitcheckAddressSpaceBit(AddressSpace::GM) | InitcheckAddressSpaceBit(AddressSpace::UB)},
+        {"gm,gm", InitcheckAddressSpaceBit(AddressSpace::GM)},
+        {"all", INITCHECK_ALL_ADDRESS_SPACES},
+        {"stack,all,gm", INITCHECK_ALL_ADDRESS_SPACES},
+    };
+    for (const auto &item : cases) {
+        SCOPED_TRACE(item.first);
+        std::vector<const char *> argv{"asan", "--initcheck-address-space", item.first.c_str(), "--tool=initcheck"};
+        const auto cmd = CliParser().Parse(argv.size(), const_cast<char **>(argv.data()));
+        EXPECT_FALSE(cmd.printHelpInfo);
+        EXPECT_TRUE(cmd.config.initCheck);
+        EXPECT_EQ(cmd.initcheckAddressSpaceMask, item.second);
+    }
+}
+
+TEST(CliParser, initcheck_address_space_rejects_empty_unknown_and_malformed_values)
+{
+    for (const auto *value : {"", ",stack", "stack,", "gm,,ub", "private", "GM", "bt", "unknown",
+            "all,unknown", "stack;gm", "stack gm"}) {
+        SCOPED_TRACE(value);
+        const std::string option = std::string("--initcheck-address-space=") + value;
+        std::vector<const char *> argv{"asan", "--tool=initcheck", option.c_str()};
+        const auto cmd = CliParser().Parse(argv.size(), const_cast<char **>(argv.data()));
+        EXPECT_TRUE(cmd.printHelpInfo);
+    }
+}
+
+TEST(CliParser, initcheck_address_space_does_not_enable_initcheck_for_other_tools)
+{
+    std::vector<const char *> argv{"asan", "--tool=racecheck", "--initcheck-address-space=gm,l1"};
+    const auto cmd = CliParser().Parse(argv.size(), const_cast<char **>(argv.data()));
+    EXPECT_FALSE(cmd.printHelpInfo);
+    EXPECT_TRUE(cmd.config.raceCheck);
+    EXPECT_FALSE(cmd.config.initCheck);
 }
 
 TEST(CliParser, enable_race_check_expect_get_race_check_mode_and_no_leak_check)
@@ -1302,7 +1351,7 @@ TEST(CliParser, help_info_expect_contains_error_exitcode) {
 }
 
 namespace {
-int32_t RunInterpretorForExitCode(const std::vector<std::string> &args) {
+int32_t RunInterpretorForExitCode(const std::vector<std::string> &args, std::string *output = nullptr) {
     std::vector<const char *> argv = {"mssanitizer"};
     for (const auto &arg : args) {
         argv.push_back(arg.c_str());
@@ -1312,9 +1361,85 @@ int32_t RunInterpretorForExitCode(const std::vector<std::string> &args) {
     CliParser cliParser;
     testing::internal::CaptureStdout();
     int32_t exitCode = cliParser.Interpretor(argv.size(), const_cast<char **>(argv.data()));
-    (void)testing::internal::GetCapturedStdout();
+    const auto captured = testing::internal::GetCapturedStdout();
+    if (output != nullptr) {
+        *output = captured;
+    }
     return exitCode;
 }
+}
+
+class InitcheckCliTest : public testing::Test {
+protected:
+    void SetUp() override { savedMask_ = ConfigManager::Instance().GetInitcheckAddressSpaceMask(); }
+    void TearDown() override { ConfigManager::Instance().SetInitcheckAddressSpaceMask(savedMask_); }
+    uint32_t savedMask_{};
+};
+
+TEST_F(InitcheckCliTest, interpretor_applies_explicit_space_and_restores_default_with_one_notice)
+{
+    ConfigManager::Instance().SetInitcheckAddressSpaceMask(INITCHECK_ALL_ADDRESS_SPACES);
+    std::string output;
+    EXPECT_EQ(RunInterpretorForExitCode(
+        {"--tool=initcheck", "--initcheck-address-space=gm", "/bin/true"}, &output), 0);
+    EXPECT_EQ(ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckAddressSpaceBit(AddressSpace::GM));
+    EXPECT_EQ(output.find("initcheck now defaults to stack"), std::string::npos);
+
+    EXPECT_EQ(RunInterpretorForExitCode({"--tool=initcheck", "/bin/true"}, &output), 0);
+    EXPECT_EQ(ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    const std::string notice = "initcheck now defaults to stack";
+    const auto first = output.find(notice);
+    ASSERT_NE(first, std::string::npos) << output;
+    EXPECT_EQ(output.find(notice, first + notice.size()), std::string::npos);
+    EXPECT_NE(output.find("--initcheck-address-space=all for previous behavior"), std::string::npos);
+}
+
+TEST_F(InitcheckCliTest, default_notice_is_suppressed_for_explicit_selection_other_tools_and_early_returns)
+{
+    const std::vector<std::pair<std::vector<std::string>, int32_t>> cases = {
+        {{"--tool=initcheck", "--initcheck-address-space=stack", "/bin/true"}, 0},
+        {{"--tool=memcheck", "/bin/true"}, 0},
+        {{"--tool=initcheck", "--help"}, 0},
+        {{"--tool=initcheck", "--initcheck-address-space=invalid", "/bin/true"}, 255},
+        {{"--tool=initcheck", "./not_exist_sanitizer_program"}, 1},
+    };
+    for (const auto &item : cases) {
+        std::string output;
+        EXPECT_EQ(RunInterpretorForExitCode(item.first, &output), item.second);
+        EXPECT_EQ(output.find("initcheck now defaults to stack"), std::string::npos) << output;
+    }
+}
+
+TEST(CliParser, memcheck_suboptions_are_disabled_without_memcheck_and_preserved_with_memcheck)
+{
+    const std::vector<std::pair<const char *, bool Config::*>> options = {
+        {"--leak-check=yes", &Config::leakCheck},
+        {"--check-device-heap=yes", &Config::checkDeviceHeap},
+        {"--check-cann-heap=yes", &Config::checkCannHeap},
+        {"--check-unused-memory=yes", &Config::checkUnusedMemory},
+        {"--trace-non-default-spr-reg=vector", &Config::traceNonDefaultSprReg},
+    };
+    for (const std::string tool : {"initcheck", "racecheck", "synccheck", "memcheck"}) {
+        for (const auto &option : options) {
+            SCOPED_TRACE(tool + " " + option.first);
+            const auto toolArg = "--tool=" + tool;
+            std::vector<const char *> argv{"mssanitizer", toolArg.c_str(), option.first};
+            optind = 1;
+            testing::internal::CaptureStdout();
+            const auto cmd = CliParser().Parse(argv.size(), const_cast<char **>(argv.data()));
+            const auto output = testing::internal::GetCapturedStdout();
+            EXPECT_FALSE(cmd.printHelpInfo);
+            EXPECT_EQ(cmd.config.*(option.second), tool == "memcheck");
+            if (tool != "memcheck") {
+                EXPECT_FALSE(cmd.config.leakCheck);
+                EXPECT_FALSE(cmd.config.checkDeviceHeap);
+                EXPECT_FALSE(cmd.config.checkCannHeap);
+                EXPECT_FALSE(cmd.config.checkUnusedMemory);
+                EXPECT_FALSE(cmd.config.traceNonDefaultSprReg);
+                EXPECT_NE(output.find("otherwise"), std::string::npos);
+            }
+        }
+    }
 }
 
 TEST(CliParser, invalid_tool_argument_expect_invalid_argument_exit_code) {

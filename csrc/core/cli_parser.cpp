@@ -38,6 +38,7 @@
 #include "core/framework/utility/ustring.h"
 #include "framework/command.h"
 #include "framework/config.h"
+#include "framework/config_manager.h"
 #include "securec.h"
 
 namespace {
@@ -62,6 +63,7 @@ enum class OptVal : int32_t {
     GM_BUFFER_GUARD_SIZE,
     CHECK_DCCI,
     TRACE_NON_DEFAULT_SPR_REG,
+    INITCHECK_ADDRESS_SPACE,
     ERROR_EXIT_CODE,
 };
 
@@ -94,6 +96,7 @@ std::vector<option> GetLongOptArray()
         {"check-dcci", required_argument, nullptr, static_cast<int32_t>(OptVal::CHECK_DCCI)},
         {"trace-non-default-spr-reg", required_argument, nullptr,
             static_cast<int32_t>(OptVal::TRACE_NON_DEFAULT_SPR_REG)},
+        {"initcheck-address-space", required_argument, nullptr, static_cast<int32_t>(OptVal::INITCHECK_ADDRESS_SPACE)},
         {"error-exitcode", required_argument, nullptr, static_cast<int32_t>(OptVal::ERROR_EXIT_CODE)},
         {nullptr, 0, nullptr, 0},
     };
@@ -490,6 +493,40 @@ void ParseTraceNonDefaultSprReg(const std::string &param, UserCommand &userComma
     }
 }
 
+void ParseInitcheckAddressSpace(const std::string &param, UserCommand &userCommand)
+{
+    static const std::map<std::string, uint32_t> spaces = {
+        {"stack", InitcheckAddressSpaceBit(AddressSpace::PRIVATE)},
+        {"gm", InitcheckAddressSpaceBit(AddressSpace::GM)},
+        {"ub", InitcheckAddressSpaceBit(AddressSpace::UB)},
+        {"l0a", InitcheckAddressSpaceBit(AddressSpace::L0A)},
+        {"l0b", InitcheckAddressSpaceBit(AddressSpace::L0B)},
+        {"l0c", InitcheckAddressSpaceBit(AddressSpace::L0C)},
+        {"l1", InitcheckAddressSpaceBit(AddressSpace::L1)},
+        {"all", INITCHECK_ALL_ADDRESS_SPACES},
+    };
+    uint32_t mask = 0;
+    size_t begin = 0;
+    do {
+        const size_t end = param.find(',', begin);
+        const auto it = spaces.find(param.substr(begin, end == std::string::npos ? end : end - begin));
+        if (it == spaces.end()) {
+            std::cout << "[mssanitizer] ERROR: --initcheck-address-space param is invalid. "
+                      << "Use one or more of: stack, gm, ub, l0a, l0b, l0c, l1, all. "
+                      << "Examples: \"stack,gm\"; \"all\"." << std::endl;
+            userCommand.printHelpInfo = true;
+            return;
+        }
+        mask |= it->second;
+        if (end == std::string::npos) {
+            break;
+        }
+        begin = end + 1;
+    } while (true);
+    userCommand.initcheckAddressSpaceMask = mask;
+    userCommand.initcheckAddressSpaceSpecified = true;
+}
+
 void ParseErrorExitCode(const std::string &param, UserCommand &userCommand) {
     // 退出状态仅低 8 bit 可观测，按低 8 位截断
     constexpr long long maxExitCode = 255LL;
@@ -544,6 +581,7 @@ std::unordered_map<int32_t, ParseHandler>& GetCommandHandlers()
         {static_cast<int32_t>(OptVal::GM_BUFFER_GUARD_SIZE), ParseGMBufferGuardSize},
         {static_cast<int32_t>(OptVal::CHECK_DCCI), ParseCheckDcci},
         {static_cast<int32_t>(OptVal::TRACE_NON_DEFAULT_SPR_REG), ParseTraceNonDefaultSprReg},
+        {static_cast<int32_t>(OptVal::INITCHECK_ADDRESS_SPACE), ParseInitcheckAddressSpace},
         {static_cast<int32_t>(OptVal::ERROR_EXIT_CODE), ParseErrorExitCode},
     };
 
@@ -578,6 +616,10 @@ void CommandPostProcess(UserCommand &userCommand) {
     }
 
     // 如果只开启子选项，没开启主功能，子选项也不会生效，需要打屏提示用户
+    if (userCommand.initcheckAddressSpaceSpecified && !userCommand.config.initCheck) {
+        std::cout << "[mssanitizer] --initcheck-address-space only takes effect with --tool=initcheck."
+                  << std::endl;
+    }
     if (!userCommand.config.memCheck) {
         // --check-device-heap 和 --check-cann-heap 开启时会打开 --leak-check，所以合并显示，以简化逻辑
         if (userCommand.config.leakCheck) {
@@ -593,6 +635,11 @@ void CommandPostProcess(UserCommand &userCommand) {
             std::cout << "[mssanitizer] --trace-non-default-spr-reg is a sub-option for memcheck, you must enable"
                       << " both memcheck and this, otherwise this option will not work." << std::endl;
         }
+        userCommand.config.leakCheck = false;
+        userCommand.config.checkDeviceHeap = false;
+        userCommand.config.checkCannHeap = false;
+        userCommand.config.checkUnusedMemory = false;
+        userCommand.config.traceNonDefaultSprReg = false;
     }
     if (!userCommand.config.raceCheck) {
         if (userCommand.config.checkCrossNpuRaces) {
@@ -629,6 +676,7 @@ void ShowHelpInfo()
         << "  -h, --help                                           Show this help message.\n"
         << "  -V, --version                                        Show version information.\n"
         << "  -t, --tool {memcheck,racecheck,initcheck,synccheck}  Select the sanitizer tool [default: memcheck]\n"
+        << "      --initcheck-address-space <SPACES>               Initcheck spaces: stack,gm,ub,l0a,l0b,l0c,l1,all; comma-separated [default: stack]\n"
         << "      --log-file <FILE>                                Write log messages to a file.\n"
         << "      --log-level {info,warn,error}                    Set the log level [default: warn]\n"
         << "      --max-debuglog-size <N>                          Maximum debug log file size in MB (1-10240) "
@@ -858,7 +906,11 @@ int32_t DoUserCommand(const UserCommand &userCommand) {
         std::cout << "[mssanitizer] Use --help for more information" << std::endl;
         return checkCode;
     }
-
+    ConfigManager::Instance().SetInitcheckAddressSpaceMask(resolvedCommand.initcheckAddressSpaceMask);
+    if (resolvedCommand.config.initCheck && !resolvedCommand.initcheckAddressSpaceSpecified) {
+        std::cout << "[mssanitizer] NOTE: initcheck now defaults to stack; use "
+                  << "--initcheck-address-space=all for previous behavior." << std::endl;
+    }
     Command cmd(resolvedCommand.config, resolvedCommand.enableDebugLog, resolvedCommand.logLv, resolvedCommand.logFile);
     ProgramStatus status = cmd.Exec(resolvedCommand.cmd);
     DetectDumpProject(cmd, resolvedCommand.config.dumpPath);
@@ -973,6 +1025,10 @@ bool IsInWhiteList(std::string& param, int32_t opt)
     // 入参help/version不带值，param为空，不会进入这个判断；其他参数帯值，分3种要求过滤：
     // 1.log-file只允许数字、字母和[- . / _]，2.max-debuglog-size只允许数字，3.其他只允许小写字母
     for (char ch : param) {
+        if (opt == static_cast<int32_t>(OptVal::INITCHECK_ADDRESS_SPACE) &&
+            (IsDigital(ch) || ch == ',')) {
+            continue;
+        }
         // 小写字母除了max-debuglog-size，其他所有入参都允许通过
         if (opt != static_cast<int32_t>(OptVal::MAX_DEBUGLOG_SIZE) &&
             IsLowerAlphabet(ch)) {

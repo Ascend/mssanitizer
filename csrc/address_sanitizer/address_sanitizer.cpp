@@ -15,6 +15,8 @@
  * ------------------------------------------------------------------------- */
 
 #include "address_sanitizer.h"
+#include "core/framework/initcheck_address_space.h"
+#include "core/framework/config_manager.h"
 #include "core/framework/peer_access_manager.h"
 
 #include <vector>
@@ -661,8 +663,15 @@ void AddressSanitizer::DoEvents(const SanitizerRecord &record, EventRange events
     // 未初始化检测需要感知同步事件，通过流水线回放还原真实执行顺序，避免跨核/跨block初始化误报，故初始化检测场景需要pipeline回放
     // 纯内存检测（越界/对齐/踩踏）不依赖执行顺序，不走回放以降低开销
     if (config_.initCheck) {
+        const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+            config_, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
+            InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS);
         // Reserve output before replay, then convert and merge in replay order.
         for (const auto &event : events) {
+            // 多工具共享解析结果时，仅在当前 initcheck 消费者中选择地址空间。
+            if (!ShouldCollectInitcheckEvent(mask, event)) {
+                continue;
+            }
             if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
                 event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
                 replayedRecords_.reserve(pipelineReplayer_.GetMemEventCount());
@@ -850,7 +859,7 @@ void AddressSanitizer::Exit()
         return;
     }
 
-    if (config_.checkUnusedMemory) {
+    if (config_.memCheck && config_.checkUnusedMemory) {
         SummaryUnusedHeapCheck();
     }
 

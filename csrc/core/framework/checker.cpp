@@ -42,6 +42,8 @@
 #include "utility/log.h"
 #include "utility/cpp_future.h"
 #include "pathway_filter.h"
+#include "initcheck_address_space.h"
+#include "config_manager.h"
 
 namespace {
 
@@ -596,7 +598,11 @@ ParseOut Checker::ParseRecords(ParseTask &&task) {
 
     out.ctx = std::move(task.ctx);
     out.records = std::move(task.records);
-    out.events.reserve(out.records.size());
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+        config_, ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckFilterScope::SHARED_EVENTS);
+    if (mask == INITCHECK_ALL_ADDRESS_SPACES) {
+        out.events.reserve(out.records.size());
+    }
     out.eventOffsets.reserve(out.records.size() + 1);
     out.eventOffsets.push_back(0);
     std::vector<SanEvent> recordEvents;
@@ -605,6 +611,12 @@ ParseOut Checker::ParseRecords(ParseTask &&task) {
         // 解析当前记录，复用临时缓冲区的容量。
         recordEvents.clear();
         RecordPreProcess::GetInstance().Process(record, recordEvents);
+        if (mask != INITCHECK_ALL_ADDRESS_SPACES) {
+            // 单工具时在写入扁平缓冲区前过滤，避免缓存、复制和回放未选中的内存事件。
+            recordEvents.erase(std::remove_if(recordEvents.begin(), recordEvents.end(),
+                [mask](const SanEvent &event) { return !ShouldCollectInitcheckEvent(mask, event); }),
+                recordEvents.end());
+        }
 
         // 将当前记录的事件按原顺序移动追加到一维事件数组。
         const auto moveBegin = std::make_move_iterator(recordEvents.begin());
