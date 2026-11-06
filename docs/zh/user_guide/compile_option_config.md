@@ -15,30 +15,24 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
 
 ## 2. 内核调用符场景
 
-1. 样例工程代码请参考[LAddKernelInvocation代码示例](https://gitee.com/ascend/samples/tree/8.0.RC2/operator/AddCustomSample/KernelLaunch/AddKernelInvocation)，执行以下命令，下载分支版本的样例代码。
+1. 样例工程代码请参考[basic_api_tque_add代码示例](https://gitcode.com/cann/asc-devkit/tree/9.0.0/examples/01_simd_cpp_api/00_introduction/01_add/basic_api_tque_add)，执行以下命令，下载分支版本的样例代码。
 
     ```sh
-    git clone https://gitee.com/ascend/samples.git -b 8.0.RC2
-    cd operator/AddCustomSample/KernelLaunch/AddKernelInvocation
+    git clone https://gitcode.com/cann/asc-devkit.git -b 9.0.0
+    cd asc-devkit/examples/01_simd_cpp_api/00_introduction/01_add/basic_api_tque_add
     ```
-
-    > [!NOTE]
-    > 
-    > 此样例工程不支持Atlas A3系列产品和Ascend 950PR&950DT系列产品。
 
 2. 进行算子代码编译，需添加以下编译选项：
 
     - -g
     - --cce-enable-sanitizer或--sanitizer
 
-    编辑样例工程目录下的“cmake/npu/CMakeLists.txt”文件，参考核函数开发和运行验证的完整样例。
+    编辑样例工程目录下的“CMakeLists.txt”文件，参考核函数开发和运行验证的完整样例。根据实际部署的 NPU 硬件架构选择对应的 `npu-arch` 参数，例如Atlas 950PR&950DT系列产品需改为`dav-3510`。本样例参数值`dav-2201`适用于昇腾A2/A3系列产品。
 
     ```cmake
-    target_compile_options(${smoke_testcase}_npu PRIVATE
-        -O2
-        -std=c++17
-        --cce-enable-sanitizer
-        -g
+    target_compile_options(add PRIVATE
+        $<$<COMPILE_LANGUAGE:ASC>:--npu-arch=dav-2201 --cce-enable-sanitizer -g>
+        # $<$<COMPILE_LANGUAGE:ASC>:--npu-arch=dav-3510>
     )
     ```
 
@@ -47,54 +41,35 @@ set(BISHENG_COMPILER_OPTIONS -g --cce-enable-sanitizer)
     增加-g选项使编译器生成定位信息，将会在异常报告输出时打印异常发生的具体位置（文件名、行号以及调用栈等信息）。
 
     > [!NOTE]
-    > 
+    >
     > - --cce-enable-sanitizer和-O0同时开启的情况下，需要增加编译选项 --cce-ignore-always-inline=false。
     > - 添加-g编译选项会在生成的二进制文件中附带调试信息，建议限制带有调试信息的用户程序的访问权限，确保只有授权人员可以访问该二进制文件。
     > - 增加--cce-enable-sanitizer编译选项生成的算子二进制，需与msSanitizer工具配套使用。不建议单独使用该二进制，单独使用可能会导致不可预见的问题。
     > - 因**llvm-symbolizer**开源软件限制，调用栈的异常信息可能会获取失败。此时，用户可再次执行检测命令，就可以获取调用栈的异常信息。
 
-3. 链接阶段需增加target_link_options选项。
-
-    - 编辑样例工程目录下的“cmake/npu/CMakeLists.txt”文件。
-
-        ```cmake
-        target_link_options(${smoke_testcase}_npu PRIVATE
-            --cce-fatobj-link
-            --cce-enable-sanitizer
-        )
-        ```
-
-    - 编辑样例工程目录下的“cmake/Modules/CMakeCCEInformation.cmake”文件，增加${_CMAKE_COMPILE_AS_CCE_FLAG}链接选项。
-
-        ```cmake
-        if(NOT CMAKE_CCE_LINK_EXECUTABLE)
-        set(CMAKE_CCE_LINK_EXECUTABLE
-            "<CMAKE_CCE_COMPILER> ${CMAKE_LIBRARY_CREATE_CCE_FLAGS} ${_CMAKE_COMPILE_AS_CCE_FLAG} <FLAGS> <CMAKE_CCE_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>${__IMPLICIT_LINKS}")
-        endif()
-        ```
-
-4. 启用msSanitizer检测工具时，需要加载NPU侧可执行文件_<kernel\_name>__npu，该文件的获取可参考《Ascend C算子开发指南》中的“Kernel直调算子开发 >[Kernel直调](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/latest/programug/Ascendcopdevg/docs/zh/guide/programming_guide/advanced_programming/aclnn_operator_development/design_and_implementation/kernel_operator_implementation.md)”章节。
+3. 启用msSanitizer检测工具时，需要加载NPU侧可执行文件_<kernel\_name>__npu，该文件的获取可参考《Ascend C算子开发指南》中的“Kernel直调算子开发 >[Kernel直调](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/opdevg/Ascendcopdevg/atlas_ascendc_10_0056.html)”章节。
 
 ## 3. msOpGen算子工程编译场景
 
-1. 单击[AddCustom代码示例](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AddCustom)，在${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch目录下运行install.sh脚本，生成自定义算子工程。
+1. 参考[链接](https://gitcode.com/cann/cann-learning-hub/tree/8.5.0/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04)，在`${git_clone_path}/cann-learning-hub/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04`路径下准备算子工程。
 
     > [!NOTE]
-    > 
+    >
+    > 此样例工程默认按 Atlas A2 系列产品配置。若使用其他系列产品，需修改以下两处默认配置：
+    >
+    > 1. 根目录 `CMakeLists.txt` 中 `ASCEND_COMPUTE_UNIT` 默认为 `ascend910b`，请根据实际芯片型号（通过 `npu-smi info` 查询 Chip Name）修改。例如 Atlas 950PR&950DT 系列产品需改为 `ascend950`。
+    > 2. `op_host` 目录下 `add_custom_template.cpp` 中 `.AddConfig("ascend910b")` 的值需要同样修改。
+    >
     > 下载代码样例时，需执行以下命令指定分支版本。
     >
     > ```sh
-    > git clone https://gitee.com/ascend/samples.git -b master
+    > git clone https://gitcode.com/cann/cann-learning-hub.git -b 8.5.0
     > ```
-
-    ```bash
-    bash install.sh -v Ascendxxxyy    # xxxyy为用户实际使用的具体芯片类型
-    ```
 
 2. 切换至自定义算子工程目录。
 
     ```sh
-    cd CustomOp
+    cd custom_op_04
     ```
 
 3. 编辑样例工程目录下的“op_kernel/CMakeLists.txt”文件，在编译选项中添加-sanitizer选项，具体请参考《MindStudio Ops Generator工具用户指南》中的“算子编译部署>支持自定义编译选项”章节。
