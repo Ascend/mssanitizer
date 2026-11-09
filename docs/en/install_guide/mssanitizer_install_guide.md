@@ -28,8 +28,8 @@ To use the functions of the latest code or modify the source code to enhance fun
 
 All source code compilation uses the standard MindStudio build environment.
 
-- For daily development or when you use a released image, refer to the [MindStudio Tool Development Environment Installation Guide](https://atomgit.com/Ascend/msot/blob/26.2.0/docs/en/common/dev_env_setup.md).
-- If you need to reproduce the environment from a base operating system, or to perform source code build verification or unit test verification, you must refer to the [MindStudio Unified Build Image Creation Guide](https://atomgit.com/Ascend/msot/blob/26.2.0/docs/en/common/docker_image_build_guide.md) to build the environment image on site from the openEuler base image.
+- For daily development or when you use a released image, refer to the [MindStudio Tool Development Environment Installation Guide](https://gitcode.com/Ascend/msot/blob/26.2.0/docs/en/common/dev_env_setup.md).
+- If you need to reproduce the environment from a base operating system, or to perform source code build verification or unit test verification, you must refer to the [MindStudio Unified Build Image Creation Guide](https://gitcode.com/Ascend/msot/blob/26.2.0/docs/en/common/docker_image_build_guide.md) to build the environment image on site from the openEuler base image.
 
 The source code compilation and unit test commands later in this document are all run in the container of the specified image or of the environment image built on site. The CANN software package version, GCC version, and Python version are subject to the Unified Build Image Creation Guide, and this repository does not maintain them separately.
 
@@ -39,7 +39,7 @@ After you enter the interactive container shell opened by `ctr_in.py`, run the f
 
 ```bash
 cd ~
-git clone https://atomgit.com/Ascend/mssanitizer.git -b 26.2.0
+git clone https://gitcode.com/Ascend/mssanitizer.git -b 26.2.0
 ```
 
 #### 2.3.2 Compilation
@@ -141,7 +141,7 @@ Simply run the installation command. The tool automatically uninstalls the old v
 - Uninstall the old version first (see Section 4).
 - Then install the new version by following the methods in Section 2.
 
-You can run the `mssanitizer --version` command to view the version information about the current environment and then select the version to upgrade. When upgrading the version, pay attention to the version matching relationships. For details, see [Release Notes](https://atomgit.com/Ascend/release-management/blob/master/MindStudio/26.2.0/release_notes.md).
+You can run the `mssanitizer --version` command to view the version information about the current environment and then select the version to upgrade. When upgrading the version, pay attention to the version matching relationships. For details, see [Release Notes](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/26.2.0/release_notes_en.md).
 
 ## 6. FAQ
 

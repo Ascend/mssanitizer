@@ -503,7 +503,7 @@ mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程
 
 ### mstx接口列表
 
-msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/zh/api_reference/README.md)》。
+msSanitizer工具调用的mstx接口列表如[表13](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/zh/api_reference/README.md)》。
 
 **表 13**  msSanitizer工具调用的mstx接口列表<a name="table111"></a>
 

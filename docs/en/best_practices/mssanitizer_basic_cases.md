@@ -81,7 +81,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
     bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user
     ```
 
-2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://atomgit.com/Ascend/msopgen/blob/26.2.0/docs/en/user_guide/msopgen_user_guide.md).
+2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/26.2.0/docs/en/user_guide/msopgen_user_guide.md).
 
     > [!NOTE]
     >
@@ -138,7 +138,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 > git clone https://gitee.com/ascend/samples.git -b master
 > ```
 
-- You have installed the PyTorch framework and TorchNPU plugin by referring to [TorchNPU Software Installation](https://atomgit.com/Ascend/pytorch/blob/v2.7.1-26.1.0/docs/en/installation_guide/installation_description.md).
+- You have installed the PyTorch framework and TorchNPU plugin by referring to [TorchNPU Software Installation](https://gitcode.com/Ascend/pytorch/blob/v2.7.1-26.1.0/docs/en/installation_guide/installation_description.md).
 
 ### 3.2 Procedure
 
@@ -148,7 +148,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
       bash install.sh -v Ascendxxxyy    # xxxyy indicates the type of the chip used by the user
     ```
 
-2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://atomgit.com/Ascend/msopgen/blob/26.2.0/docs/en/user_guide/msopgen_user_guide.md).
+2. Compile and deploy the operator by referring to "Operator Compilation and Deployment" in the [msOpGen User Guide](https://gitcode.com/Ascend/msopgen/blob/26.2.0/docs/en/user_guide/msopgen_user_guide.md).
 
     > [!NOTE]
     >
@@ -206,7 +206,7 @@ Click [AclNNInvocation Sample Code](https://gitee.com/ascend/samples/tree/master
 
 ### 4.1 Prerequisites
 
-- The Triton and Triton-Ascend plugin have been installed and configured by referring to [triton-ascend repository](https://atomgit.com/Ascend/triton-ascend).
+- The Triton and Triton-Ascend plugin have been installed and configured by referring to [triton-ascend repository](https://gitcode.com/Ascend/triton-ascend).
 - Enable the following environment variables to turn on the exception check function for Triton operators.
 
     ```sh

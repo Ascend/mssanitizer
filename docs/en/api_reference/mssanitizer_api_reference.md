@@ -495,7 +495,7 @@ None
 
 ### msTX API Overview
 
-The msTX APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the msTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://atomgit.com/Ascend/mstx/blob/26.2.0/docs/en/api_reference/README.md) to implement more accurate memory check.
+The msTX APIs are a set of extension APIs provided by MindStudio to allow you to insert specific tags in your application so that the memory issues of operators can be more accurately identified. For example, for level-2 pointer operators, the address space obtained without the msTX API call may be inaccurate. The accurate address space can be transferred to the exception check tool through the `mstxMemRegionsRegister` and `mstxMemRegionsUnregister` APIs in [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/en/api_reference/README.md) to implement more accurate memory check.
 
 > [!NOTE]
 >
@@ -503,7 +503,7 @@ The msTX APIs are a set of extension APIs provided by MindStudio to allow you to
 
 ### msTX APIs
 
-[Table 13](#table111) describes the msTX APIs called by msSanitizer. For details, see [MindStudio Tools Extension Library APIs](https://atomgit.com/Ascend/mstx/blob/26.2.0/docs/en/api_reference/README.md).
+[Table 13](#table111) describes the msTX APIs called by msSanitizer. For details, see [MindStudio Tools Extension Library APIs](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/en/api_reference/README.md).
 
 **Table 13** msTX APIs called by msSanitizer<a name="table111"></a>
 

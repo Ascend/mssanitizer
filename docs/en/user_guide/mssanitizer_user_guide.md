@@ -106,7 +106,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 #### Prerequisites
 
-- The Triton and Triton-Ascend plugins have been installed and configured. For details, see [Triton-Ascend project repository](https://atomgit.com/Ascend/triton-ascend).
+- The Triton and Triton-Ascend plugins have been installed and configured. For details, see [Triton-Ascend project repository](https://gitcode.com/Ascend/triton-ascend).
 - **Atlas inference products are not supported.**
 
 #### Configuring Environment Variables
