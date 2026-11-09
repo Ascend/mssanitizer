@@ -1439,27 +1439,33 @@ AICORE_FUNC_HEAD void RecordMovBtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t 
                                              srcGap, dstGap);
 }
 
-AICORE_FUNC_HEAD bool IsMovFpQuantToB16(uint64_t quantPRE)
-{
+// 当前编译目标是否为 Ascend950 Fixpipe 架构
 #if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
-    // 950: 1,10,11,16,31,32,33,34
-    return (quantPRE == 1 || quantPRE == 10 || quantPRE == 11 || quantPRE == 16 || (quantPRE >= 31 && quantPRE <= 34));
+#define IS_ASCEND950_FIXPIPE_ARCH true
 #else
+#define IS_ASCEND950_FIXPIPE_ARCH false
+#endif
+
+AICORE_FUNC_HEAD bool IsMovFpQuantToB16(uint64_t quantPRE, bool isAscend950)
+{
+    if (isAscend950) {
+        // 950: 1,10,11,16,31~36
+        return (quantPRE == 1 || quantPRE == 10 || quantPRE == 11 || quantPRE == 16 ||
+            (quantPRE >= 31 && quantPRE <= 36));
+    }
     // 910b: 1,6,10,11,12,13,16
     return (quantPRE == 1 || quantPRE == 6 || (quantPRE >= 10 && quantPRE <= 13) || quantPRE == 16);
-#endif
 }
 
-AICORE_FUNC_HEAD bool IsMovFpQuantToB8(uint64_t quantPRE)
+AICORE_FUNC_HEAD bool IsMovFpQuantToB8(uint64_t quantPRE, bool isAscend950)
 {
-#if defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3101 || __NPU_ARCH__ == 3510)
-    // 950: 2,3,4,5,8,9,12,13,23,24
-    return ((quantPRE >= 2 && quantPRE <= 5) || quantPRE == 8 || quantPRE == 9 ||
-        quantPRE == 12 || quantPRE == 13 || quantPRE == 23 || quantPRE == 24);
-#else
+    if (isAscend950) {
+        // 950: 2,3,4,5,8,9,12,13,23,24
+        return ((quantPRE >= 2 && quantPRE <= 5) || quantPRE == 8 || quantPRE == 9 ||
+            quantPRE == 12 || quantPRE == 13 || quantPRE == 23 || quantPRE == 24);
+    }
     // 910b: 8,9,23,24
     return (quantPRE == 8 || quantPRE == 9 || quantPRE == 23 || quantPRE == 24);
-#endif
 }
 
 AICORE_FUNC_HEAD bool IsMovFpQuantToB4(uint64_t quantPRE)
@@ -1468,11 +1474,11 @@ AICORE_FUNC_HEAD bool IsMovFpQuantToB4(uint64_t quantPRE)
     return (quantPRE == 21 || quantPRE == 22 || quantPRE == 25 || quantPRE == 26);
 }
 
-AICORE_FUNC_HEAD void ParseMovFpQuantBits(uint64_t quantPRE, bool enNDorDN, MovFpRecord& record)
+AICORE_FUNC_HEAD void ParseMovFpQuantBits(uint64_t quantPRE, bool enNDorDN, bool isAscend950, MovFpRecord& record)
 {
-    if (IsMovFpQuantToB16(quantPRE)) {
+    if (IsMovFpQuantToB16(quantPRE, isAscend950)) {
         record.quantPreBits = 16;  // f16/s16/bf16
-    } else if (IsMovFpQuantToB8(quantPRE)) {
+    } else if (IsMovFpQuantToB8(quantPRE, isAscend950)) {
         record.int8ChannelMerge = enNDorDN ? false : true;
         record.quantPreBits = 8;  // s8/u8/HiF8
     } else if (IsMovFpQuantToB4(quantPRE)) {
@@ -1503,7 +1509,7 @@ AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t 
     record.enUnitFlag = (unitFlag > 1);  // Mode2/Mode3表示使能unit-flag机制
 
     // 判断属于哪种模式
-    ParseMovFpQuantBits(quantPRE, enNZ2ND, record);
+    ParseMovFpQuantBits(quantPRE, enNZ2ND, IS_ASCEND950_FIXPIPE_ARCH, record);
     if (isDstF32 && channelSplit && !enNZ2ND) {
         record.channelSplit = true;
     } else {
@@ -1571,7 +1577,7 @@ AICORE_FUNC_HEAD void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_
     record.enNZ2ND = (xt >> 43) & 0x1;
     record.enNZ2DN = (xt >> 62) & 0x1;
     bool enNDorDN = record.enNZ2ND || record.enNZ2DN;
-    ParseMovFpQuantBits(quantPRE, enNDorDN, record);
+    ParseMovFpQuantBits(quantPRE, enNDorDN, IS_ASCEND950_FIXPIPE_ARCH, record);
     bool channelSplit = (xt >> 42) & 0x1;
     if (isDstF32 && channelSplit && !enNDorDN) {
         record.channelSplit = true;
