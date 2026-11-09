@@ -131,7 +131,7 @@ void HandleKernelInfo(Checker &checker, CrossNpuChecker &crossNpuChecker,
 
     RuntimeContext::Instance().kernelIdx_++;
     RuntimeContext::Instance().currentBlockIdx_ = 0;
-    // 解码状态（含跨 block 的 totalBlockDim_/vecSubBlockDim_/dynamicMemorys_）在收包线程上复位，
+    // 当前连接的跨block解码状态在收包线程上复位，不影响同线程处理的其他设备，
     // 解析已移出该线程，故 ResetAll 不能依赖解析分发路径调用。
     KernelBlock::ResetAll();
     RuntimeContext::Instance().kernelSummary_ = kernelSummary;
@@ -338,6 +338,9 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
     // wait for next block
     ++runtimeContext.currentBlockIdx_;
 
+    SAN_INFO_LOG("Kernel block progress: device=%d block=%u total=%lu records=%lu",
+                 runtimeContext.GetDeviceId(), runtimeContext.currentBlockIdx_,
+                 kernelBlock->GetTotalBlockDim(), kernelBlock->GetRecordNum());
     // report finish if this is the last block
     if (runtimeContext.currentBlockIdx_ == kernelBlock->GetTotalBlockDim()) {
         KernelRecordResponse resp{runtimeContext.currentBlockIdx_, ResponseStatus::SUCCESS};

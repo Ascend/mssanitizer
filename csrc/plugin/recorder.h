@@ -370,12 +370,13 @@ AICORE_FUNC_HEAD void Recorder::DumpSimdRecord(Record const &record)
     uint64_t writeOffset = simdBlockHead->writeOffset;
     __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo_);
     uint64_t stepSizes = sizeof(RecordType) + sizeof(Record);
-    uint64_t simdEndOffset = globalHead->supportSimt ?
-        globalHead->offsetInfo.simtErrorInfo.offset : globalHead->checkParms.cacheSize * MB_TO_BYTES;
-    if (writeOffset + CACHE_LINE_SIZE + stepSizes < simdEndOffset &&
+    uint64_t recordHeadSize = GetRecordHeadSize(simdBlockHead->hostMemoryNum, simdBlockHead->peerMemoryNum);
+    // SIMT起点相对于block头，writeOffset相对于记录区；统一基准，避免写穿SIMT头
+    uint64_t simdEndOffset = globalHead->supportSimt ? globalHead->offsetInfo.simtErrorInfo.offset :
+        recordHeadSize + globalHead->checkParms.cacheSize * MB_TO_BYTES;
+    if (recordHeadSize + writeOffset + CACHE_LINE_SIZE + stepSizes < simdEndOffset &&
         simdBlockHead->recordCount == simdBlockHead->recordWriteCount) {
-        auto recordTypePtr = reinterpret_cast<__gm__ RecordType *>(memInfoSimdBlock_ +
-            GetRecordHeadSize(simdBlockHead->hostMemoryNum, simdBlockHead->peerMemoryNum) + writeOffset);
+        auto recordTypePtr = reinterpret_cast<__gm__ RecordType *>(memInfoSimdBlock_ + recordHeadSize + writeOffset);
         *recordTypePtr = recordType;
         __gm__ Record *recordPtr = reinterpret_cast<__gm__ Record*>(recordTypePtr + 1);
         CopyRecordToGm(recordPtr, &record);

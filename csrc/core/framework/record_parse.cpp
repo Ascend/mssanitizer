@@ -878,6 +878,13 @@ static void ParseRecordMovAlignV2(const KernelRecord &inRecord, std::vector<SanE
     auto &memInfoRead = eventRead.eventInfo.memInfo;
     auto &memInfoWrite = eventWrite.eventInfo.memInfo;
     auto &movAlignRecord = record.payload.movAlignRecordV2;
+    // 尾部空核仍会发射UB→GM指令；长度为0且没有填充时不产生访存
+    // 保留其他方向及填充模式的校验，不能将所有零长度记录都当作空操作
+    if (movAlignRecord.srcMemType == MemType::UB && movAlignRecord.dstMemType == MemType::GM &&
+        movAlignRecord.lenBurst == 0 && movAlignRecord.leftPaddingNum == 0 &&
+        movAlignRecord.rightPaddingNum == 0) {
+        return;
+    }
     bool isCompactModeAble{};
     if (!CheckMovAlignV2Event(movAlignRecord, isCompactModeAble)) {
         return;
@@ -3679,7 +3686,7 @@ static void ParseRecordMstxDataCopyPad(const KernelRecord &record, std::vector<S
     auto &mstxRecord = record.payload.mstxRecord;
     auto &mstxDataCopyPad = mstxRecord.interface.mstxDataCopyPadDesc;
 
-    KernelRecord equivalence;
+    KernelRecord equivalence{};
     equivalence.recordType = RecordType::MOV_ALIGN;
     equivalence.blockType = record.blockType;
     equivalence.serialNo = record.serialNo;
@@ -3696,6 +3703,7 @@ static void ParseRecordMstxDataCopyPad(const KernelRecord &record, std::vector<S
     if (!FormatConverter::GetDataTypeByDataBits(mstxDataCopyPad.dst.dataBits, movAlignRecord.dataType)) {
         SAN_ERROR_LOG("Get data type by data bits failed. dataBits: %d\n",
                       static_cast<int>(mstxDataCopyPad.dst.dataBits));
+        return;
     }
     movAlignRecord.leftPaddingNum = mstxDataCopyPad.leftPad;
     movAlignRecord.rightPaddingNum = mstxDataCopyPad.rightPad;
@@ -3706,7 +3714,7 @@ static void ParseRecordMstxDataCopyPadV2(const KernelRecord &record, std::vector
     auto &mstxRecord = record.payload.mstxRecord;
     auto &mstxDataCopyPadV2 = mstxRecord.interface.mstxDataCopyPadV2Desc;
 
-    KernelRecord equivalence;
+    KernelRecord equivalence{};
     equivalence.recordType = RecordType::MOV_ALIGN;
     equivalence.blockType = record.blockType;
     equivalence.serialNo = record.serialNo;
@@ -3723,6 +3731,7 @@ static void ParseRecordMstxDataCopyPadV2(const KernelRecord &record, std::vector
     if (!FormatConverter::GetDataTypeByDataBits(mstxDataCopyPadV2.dst.dataBits, movAlignRecord.dataType)) {
         SAN_ERROR_LOG(
             "Get data type by data bits failed. dataBits: %d\n", static_cast<int>(mstxDataCopyPadV2.dst.dataBits));
+        return;
     }
     movAlignRecord.leftPaddingNum = mstxDataCopyPadV2.leftPad;
     movAlignRecord.rightPaddingNum = mstxDataCopyPadV2.rightPad;

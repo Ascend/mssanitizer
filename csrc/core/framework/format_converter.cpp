@@ -85,6 +85,7 @@ uint64_t FormatConverter::GetDataSizeByType(DataType dataType)
         {DataType::DATA_B8,  1U},
         {DataType::DATA_B16, 2U},
         {DataType::DATA_B32, 4U},
+        {DataType::DATA_B64, 8U},
     };
     auto it = DATA_TYPE_SIZE_MAP.find(dataType);
     return it == DATA_TYPE_SIZE_MAP.cend() ? 1U : it->second;
@@ -97,6 +98,7 @@ bool FormatConverter::GetDataBitSizeByType(DataType dataType, uint16_t &dataBitS
         {DataType::DATA_B8,  8U},
         {DataType::DATA_B16, 16U},
         {DataType::DATA_B32, 32U},
+        {DataType::DATA_B64, 64U},
     };
     auto it = DATA_TYPE_BIT_SIZE_MAP.find(dataType);
     if (it != DATA_TYPE_BIT_SIZE_MAP.cend()) {
@@ -113,6 +115,7 @@ bool FormatConverter::GetDataTypeByDataBits(uint8_t dataBits, DataType &dataType
         {8U,  DataType::DATA_B8},
         {16U, DataType::DATA_B16},
         {32U, DataType::DATA_B32},
+        {64U, DataType::DATA_B64},
     };
     auto it = BIT_SIZE_DATA_TYPE_MAP.find(dataBits);
     if (it != BIT_SIZE_DATA_TYPE_MAP.cend()) {

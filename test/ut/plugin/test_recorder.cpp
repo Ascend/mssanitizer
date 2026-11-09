@@ -357,3 +357,32 @@ TEST(Recorder, dump_ffts_sync_records_with_single_check_expect_get_success)
     ASSERT_EQ(recordBlockHead.recordWriteCount, 2);
     ASSERT_EQ(recordBlockHead.recordCount, 2);
 }
+
+// 测试场景：带额外内存描述的SIMD缓存写到SIMT区边界，再测试恰好可容纳的记录
+// 测试预期：拒绝越界写入并保留SIMT头；区内合法记录仍可写入
+TEST(Recorder, simd_capacity_excludes_block_head_before_simt_region)
+{
+    constexpr uint64_t capacity = 512;
+    constexpr uint32_t memories = 2;
+    const auto headSize = GetRecordHeadSize(memories, 0);
+    std::vector<uint8_t> memory(sizeof(RecordGlobalHead) + headSize + capacity + 256, 0);
+    auto *global = reinterpret_cast<RecordGlobalHead *>(memory.data());
+    global->supportSimt = true;
+    global->offsetInfo.simtErrorInfo.offset = headSize + capacity;
+    Recorder recorder(memory.data(), 0);
+    auto *block = reinterpret_cast<RecordBlockHead *>(recorder.memInfoSimdBlock_);
+    block->hostMemoryNum = memories;
+    block->writeOffset = capacity - 1;
+    auto *simt = recorder.memInfoSimdBlock_ + headSize + capacity;
+    std::fill_n(simt, 256, 0x5a);
+    UnaryOpRecord record{};
+    recorder.DumpRecord<RecordType::UNARY_OP>(record);
+    EXPECT_EQ(block->recordWriteCount, 0U);
+    EXPECT_EQ(block->recordCount, 1U);
+    EXPECT_TRUE(std::all_of(simt, simt + 256, [](uint8_t b) { return b == 0x5a; }));
+    block->recordCount = 0;
+    block->writeOffset = capacity - CACHE_LINE_SIZE - sizeof(RecordType) - sizeof(record) - 1;
+    recorder.DumpRecord<RecordType::UNARY_OP>(record);
+    EXPECT_EQ(block->recordWriteCount, 1U);
+    EXPECT_TRUE(std::all_of(simt, simt + 256, [](uint8_t b) { return b == 0x5a; }));
+}

@@ -414,6 +414,7 @@ enum class DataType : uint8_t {
     DATA_B8,
     DATA_B16,
     DATA_B32,
+    DATA_B64, // MSTX DataCopyPad 的64位元素，用于按字节计算填充范围
 };
 
 // 由于编译器只支持一个桩函数绑定一个api_id，而检测对于bit位数相同的数据处理逻辑常常一致

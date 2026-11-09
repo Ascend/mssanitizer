@@ -5613,3 +5613,64 @@ TEST_F(TestRecordParse, parse_two_records_with_separate_events_expect_each_tagge
     }
 }
 }
+
+// 测试场景：64位MSTX填充分别按普通与紧凑模式解析，非法位宽终止解析
+// 测试预期：读取48字节，普通模式每块96字节，紧凑模式合并192字节
+TEST_F(TestRecordParse, parse_mstx_pad_64_bit_and_invalid_width)
+{
+    SanitizerRecord record{};
+    record.version = RecordVersion::KERNEL_RECORD;
+    auto &kernel = record.payload.kernelRecord;
+    kernel.recordType = RecordType::MSTX_STUB;
+    auto &mstx = kernel.payload.mstxRecord;
+    mstx.interfaceType = InterfaceType::MSTX_DATA_COPY_PAD_V2;
+    mstx.bufferLens = sizeof(MstxDataCopyPadV2Desc);
+    auto &copy = mstx.interface.mstxDataCopyPadV2Desc;
+    copy.src.space = AddressSpace::GM;
+    copy.dst.space = AddressSpace::UB;
+    copy.src.dataBits = copy.dst.dataBits = 64;
+    copy.lenBurst = 48;
+    copy.nBurst = 3;
+    copy.leftPad = 1;
+    copy.rightPad = 4;
+    copy.padMode = PaddingMode::NORMAL;
+    std::vector<SanEvent> events;
+    RecordParse::Parse(record, events);
+    ASSERT_EQ(events.size(), 2U);
+    EXPECT_EQ(events[0].eventInfo.memInfo.blockNum, 48U);
+    EXPECT_EQ(events[1].eventInfo.memInfo.blockNum, 96U);
+    EXPECT_EQ(events[1].eventInfo.memInfo.repeatTimes, 3U);
+    events.clear();
+    copy.padMode = PaddingMode::COMPACT;
+    RecordParse::Parse(record, events);
+    ASSERT_EQ(events.size(), 2U);
+    EXPECT_EQ(events[1].eventInfo.memInfo.blockNum, 192U);
+    EXPECT_EQ(events[1].eventInfo.memInfo.repeatTimes, 1U);
+    events.clear();
+    copy.dst.dataBits = 7;
+    RecordParse::Parse(record, events);
+    EXPECT_TRUE(events.empty());
+}
+
+// 测试场景：尾部空核发出0字节UB到GM搬运，随后非空核发出4字节搬运
+// 测试预期：空搬运不生成事件，非空搬运的读写范围仍完整保留
+TEST_F(TestRecordParse, zero_length_ub_to_gm_then_nonempty_copy)
+{
+    SanitizerRecord record{};
+    record.version = RecordVersion::KERNEL_RECORD;
+    record.payload.kernelRecord.recordType = RecordType::MOV_ALIGN_V2;
+    auto &copy = record.payload.kernelRecord.payload.movAlignRecordV2;
+    copy.srcMemType = MemType::UB;
+    copy.dstMemType = MemType::GM;
+    copy.dataType = DataType::DATA_B32;
+    copy.nBurst = 1;
+    std::vector<SanEvent> events;
+    RecordParse::Parse(record, events);
+    EXPECT_TRUE(events.empty());
+    copy.lenBurst = copy.dstStride = 4;
+    copy.srcStride = 32;
+    RecordParse::Parse(record, events);
+    ASSERT_EQ(events.size(), 2U);
+    EXPECT_EQ(events[0].eventInfo.memInfo.blockNum, 4U);
+    EXPECT_EQ(events[1].eventInfo.memInfo.blockNum, 4U);
+}
