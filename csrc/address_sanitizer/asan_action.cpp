@@ -139,6 +139,12 @@ ErrorMsgList AsanFree::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
     }
 
     if (ignoreShadowMemory) { return errorMsgs; }
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+        config, ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckFilterScope::INITIALIZATION_CHECK);
+    // 仅跳过未启用的 GM 影子状态更新；上面的堆和边界记账仍需执行，memcheck 也不能跳过。
+    if (!config.memCheck && !IsInitcheckAddressSpaceEnabled(mask, AddressSpace::GM)) {
+        return errorMsgs;
+    }
     if (record_.infoSrc == MemInfoSrc::EXTRA) {
         shadowMemory.ClearBlockId(record_.dstAddr, size);
     } else {

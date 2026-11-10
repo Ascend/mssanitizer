@@ -195,6 +195,17 @@ void RecordPreProcess::Process(const SanitizerRecord &record, std::vector<SanEve
         isFirstSyncAllStub_ = false;
     }
 
+    // 未进入 MSTX 重复 wait 合并区间时直接解析，避免普通记录先缓存再复制。
+    if (!waitMergeInfo_.throughFirstWait && recordBuffer_.empty() && !IsMstxWaitRecord(kernelRecord)) {
+        waitMergeInfo_.endTag = true;
+        if (kernelRecord.recordType == RecordType::BLOCK_FINISH ||
+            kernelRecord.recordType == RecordType::KERNEL_FINISH) {
+            ResetWaitMergeInfo();
+        }
+        Parse(record, events);
+        return;
+    }
+
     ProcessMstxCrossWaitRecord(record);
     if (!waitMergeInfo_.endTag) {
         return;

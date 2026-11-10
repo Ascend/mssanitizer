@@ -50,6 +50,12 @@ enum class BroadcastEvent : uint8_t {
     MEMCHECK_COMPLETION,
 };
 
+struct RawBatch {
+    std::vector<SanitizerRecord> records;
+    std::vector<size_t> eventOffsets;
+    std::vector<SanEvent> events;
+};
+
 struct WorkArgs {
     BroadcastEvent eventType;
     SanitizerRecord record;
@@ -57,10 +63,7 @@ struct WorkArgs {
     DeviceInfoSummary deviceInfo;
     KernelSummary kernelSummary;
     std::string kernelNameDisplay;
-    std::vector<SanitizerRecord> records;
-    // Record i owns events[eventOffsets[i], eventOffsets[i + 1]).
-    std::vector<SanEvent> events;
-    std::vector<size_t> eventOffsets;
+    std::shared_ptr<const RawBatch> rawBatch;
     // 消费线程处理到此标记时，通知此前的内存检查已完成。
     std::shared_ptr<std::promise<void>> memcheckCompletion;
 };
@@ -76,6 +79,7 @@ public:
     explicit Checker(Config const &config, bool enableDebugLog);
     ~Checker();
 
+    // External producers must stop submitting work before Finish() is called.
     void Finish();
     void SetDeviceInfo(const DeviceInfoSummary &deviceInfo);
     void SetKernelInfo(const KernelSummary &kernelInfo);
@@ -90,12 +94,13 @@ public:
     bool IsTargetBlock(uint64_t blockIdx) const;
 
 private:
+    static constexpr size_t MAX_QUEUED_BATCHES = 16;
+    void EnqueueWork(uint8_t consumeId, WorkArgs &&args);
     void ConsumeRecordThread(uint8_t consumeId, const std::thread::id &rootTid);
     void ConsumeRecord(uint8_t consumeId, const SanitizerRecord &record, std::vector<SanEvent> &events,
         uint64_t &removedPathwayEventCount);
-    void ConsumeEventRange(uint8_t consumeId, const SanitizerRecord &record, SanEvent *events, size_t count,
-        uint64_t &removedPathwayEventCount);
-    void ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount);
+    void ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount,
+        std::vector<SanEvent> &filteredEvents);
     void ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPathwayEventCount) const;
     // ---- 解析并行：有界、保序的解析流水线（见 parse_pipeline.h）----
     ParseOut ParseRecords(ParseTask &&task);
@@ -113,12 +118,12 @@ private:
     std::ostream *detectionOstream_{};
 
     std::array<std::mutex, TOOL_NUM> mtx_{};
-    std::condition_variable workerCv_{};
-    std::condition_variable producerCv_{};
+    // 等待线程使用不同消费者的锁，因此共享通知使用 condition_variable_any。
+    std::condition_variable_any workerCv_{};
+    std::condition_variable_any producerCv_{};
 
     std::array<bool, TOOL_NUM> done_{};
     std::array<uint32_t, TOOL_NUM> errorCounts_{};
-    std::atomic_bool finishProduce_{};
     std::atomic_bool printMissDebugLine_{};
     std::array<std::queue<WorkArgs>, TOOL_NUM> workerArgs_{};
     std::vector<std::thread> workers_{};

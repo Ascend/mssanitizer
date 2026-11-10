@@ -344,4 +344,119 @@ TEST(PathwayFilter, in_place_filter_has_no_allocations_and_preserves_time_info) 
     EXPECT_EQ(*events[1].timeInfo, (VectorTime{40, 41}));
     EXPECT_EQ(events[1].eventInfo.memInfo.addr, 0x40U);
 }
+TEST(PathwayFilter, on_demand_filter_matches_in_place_and_preserves_input) {
+    TimeInfoPool timeInfoPool;
+    auto removed = MakeMemoryEvent();
+    auto retained = MakeMemoryEvent(BlockType::AIVEC, PipeType::PIPE_V, MemType::GM, AccessType::READ);
+    retained.loc.pc = 0x1234;
+    retained.eventInfo.memInfo.addr = 0x5678;
+    retained.timeInfo = timeInfoPool.Alloc(VectorTime{20, 21});
+    const std::vector<std::vector<SanEvent>> inputs{
+        {removed, removed, retained, retained},
+        {retained, removed, removed, retained},
+        {retained, retained, removed},
+        {removed, removed},
+        {removed, retained, removed, retained, removed, MakeSyncEvent()},
+    };
+    std::vector<SanEvent> scratch;
+    for (auto events : inputs) {
+        for (size_t i = 0; i < events.size(); ++i) {
+            events[i].serialNo = i;
+        }
+        const auto *bytes = reinterpret_cast<const unsigned char *>(events.data());
+        const std::vector<unsigned char> original(bytes, bytes + events.size() * sizeof(SanEvent));
+        auto expected = events;
+        const auto removedCount = PathwayFilter::FilterInPlace(RecordType::STORE, expected);
+
+        const auto result = PathwayFilter::Filter(RecordType::STORE, EventRange(events), scratch);
+
+        EXPECT_GT(removedCount, 0U);
+        EXPECT_EQ(result.begin(), scratch.data());
+        ASSERT_EQ(result.size(), expected.size());
+        EXPECT_TRUE(std::equal(original.cbegin(), original.cend(), bytes));
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto &actual = result.begin()[i];
+            EXPECT_EQ(actual.serialNo, expected[i].serialNo);
+            EXPECT_EQ(actual.type, expected[i].type);
+            EXPECT_EQ(actual.pipe, expected[i].pipe);
+            EXPECT_EQ(actual.loc.blockType, expected[i].loc.blockType);
+            EXPECT_EQ(actual.loc.pc, expected[i].loc.pc);
+            EXPECT_EQ(actual.timeInfo, expected[i].timeInfo);
+            if (actual.type == EventType::MEM_EVENT) {
+                EXPECT_EQ(actual.eventInfo.memInfo.memType, expected[i].eventInfo.memInfo.memType);
+                EXPECT_EQ(actual.eventInfo.memInfo.opType, expected[i].eventInfo.memInfo.opType);
+                EXPECT_EQ(actual.eventInfo.memInfo.addr, expected[i].eventInfo.memInfo.addr);
+                ASSERT_NE(actual.timeInfo, nullptr);
+                EXPECT_EQ(*actual.timeInfo, (VectorTime{20, 21}));
+            } else {
+                EXPECT_EQ(actual.eventInfo.syncInfo.opType, expected[i].eventInfo.syncInfo.opType);
+            }
+        }
+    }
+}
+
+TEST(PathwayFilter, on_demand_filter_returns_original_range_without_touching_scratch_when_not_matched) {
+    (void)PathwayFilter::GetRules();
+    const std::vector<SanEvent> events{MakeMemoryEvent(), MakeSyncEvent()};
+    const std::vector<SanEvent> noMatch{MakeMemoryEvent(BlockType::AIVEC), MakeSyncEvent()};
+    std::vector<SanEvent> scratch{MakeMemoryEvent(BlockType::AIVEC)};
+    const auto *scratchData = scratch.data();
+    const auto capacity = scratch.capacity();
+    const EventRange ranges[]{EventRange(events.data() + 1, 1), EventRange(nullptr, 0), EventRange(events.data(), 0),
+        EventRange(events), EventRange(events), EventRange(noMatch)};
+    const RecordType recordTypes[]{RecordType::STORE, RecordType::STORE, RecordType::STORE, RecordType::LOAD,
+        RecordType::ST_DEV, RecordType::STORE};
+    for (size_t i = 0; i < sizeof(ranges) / sizeof(ranges[0]); ++i) {
+        std::vector<SanEvent> expected;
+        if (!ranges[i].empty()) {
+            expected.assign(ranges[i].begin(), ranges[i].end());
+        }
+        EXPECT_EQ(PathwayFilter::FilterInPlace(recordTypes[i], expected), 0U);
+        allocation_probe::Begin();
+        const auto result = PathwayFilter::Filter(recordTypes[i], ranges[i], scratch);
+        const auto allocationCount = allocation_probe::End();
+
+        EXPECT_EQ(allocationCount, 0U);
+        EXPECT_EQ(result.begin(), ranges[i].begin());
+        EXPECT_EQ(result.end(), ranges[i].end());
+        EXPECT_EQ(result.size(), ranges[i].size());
+        ASSERT_EQ(result.size(), expected.size());
+        for (size_t j = 0; j < result.size(); ++j) {
+            EXPECT_EQ(result.begin()[j].type, expected[j].type);
+            EXPECT_EQ(result.begin()[j].loc.blockType, expected[j].loc.blockType);
+        }
+        EXPECT_EQ(scratch.data(), scratchData);
+        EXPECT_EQ(scratch.capacity(), capacity);
+        ASSERT_EQ(scratch.size(), 1U);
+        EXPECT_EQ(scratch.front().loc.blockType, BlockType::AIVEC);
+    }
+    EXPECT_EQ(events.front().loc.blockType, BlockType::AICUBE);
+    EXPECT_EQ(events.back().type, EventType::SYNC_EVENT);
+}
+
+TEST(PathwayFilter, on_demand_filter_reuses_scratch_capacity_across_calls) {
+    (void)PathwayFilter::GetRules();
+    const auto removed = MakeMemoryEvent();
+    const auto retained = MakeMemoryEvent(BlockType::AIVEC);
+    const std::vector<std::vector<SanEvent>> inputs{
+        {retained, removed, retained, retained}, {removed, retained}, {removed}, {retained, removed, retained}};
+    std::vector<SanEvent> scratch;
+    scratch.reserve(4);
+    const auto *data = scratch.data();
+    const auto capacity = scratch.capacity();
+    for (const auto &events : inputs) {
+        allocation_probe::Begin();
+        const auto result = PathwayFilter::Filter(RecordType::STORE, EventRange(events), scratch);
+        const auto allocationCount = allocation_probe::End();
+
+        EXPECT_EQ(allocationCount, 0U);
+        EXPECT_EQ(result.begin(), data);
+        EXPECT_EQ(result.size(), events.size() - 1);
+        EXPECT_EQ(scratch.data(), data);
+        EXPECT_EQ(scratch.capacity(), capacity);
+        for (const auto &event : result) {
+            EXPECT_EQ(event.loc.blockType, BlockType::AIVEC);
+        }
+    }
+}
 } // namespace

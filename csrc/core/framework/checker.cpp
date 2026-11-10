@@ -100,6 +100,8 @@ bool IsSanitizerToolSupportDBI(DeviceType deviceType, SanitizerTool tool)
 
 namespace Sanitizer {
 
+constexpr size_t Checker::MAX_QUEUED_BATCHES;
+
 namespace {
 constexpr uint32_t PARSE_THREADS = 8;
 
@@ -129,13 +131,14 @@ Checker::Checker(Config const &config, bool enableDebugLog)
     // 后续依据不同的工具选择使能不同的sanitizer功能
     rootTid_ = RuntimeContext::Instance().rootTid_;
     auto rootTid = rootTid_;
+    // Idle consumers, including disabled tools without workers, have no pending work.
+    done_.fill(true);
 
     auto createCheckerAndThread = [this, rootTid](ToolType toolType, int index, bool enabled) {
         if (enabled) {
             sanitizerArr_[index] = SanitizerFactory::GetInstance().Create(toolType);
             if (sanitizerArr_[index]) {
                 workers_.push_back(std::thread(&Checker::ConsumeRecordThread, this, index, rootTid));
-                done_[index] = true;
             }
         }
     };
@@ -154,15 +157,27 @@ Checker::~Checker()
     }
 }
 
+void Checker::EnqueueWork(uint8_t consumeId, WorkArgs &&args) {
+    {
+        std::unique_lock<std::mutex> lock(mtx_[consumeId]);
+        // 按消费者限制排队批次数，避免解析快于检测时积压大批次；等待期间释放队列锁。
+        producerCv_.wait(lock, [this, consumeId] { return workerArgs_[consumeId].size() < MAX_QUEUED_BATCHES; });
+        done_[consumeId] = false;
+        workerArgs_[consumeId].push(std::move(args));
+    }
+    workerCv_.notify_all();
+}
+
 inline void Checker::WaitAfterConsumed(uint8_t consumeId)
 {
     {
         std::lock_guard<std::mutex> lock(mtx_[consumeId]);
+        // 当前批次已处理完且队列为空才算完成，不能在出队时提前通知 kernel 检测结束。
         if (workerArgs_[consumeId].empty()) {
             done_[consumeId] = true;
         }
     }
-    producerCv_.notify_one();
+    producerCv_.notify_all();
 }
 
 inline bool Checker::IsNeedFilterDbi(uint8_t toolIdx) const {
@@ -222,53 +237,49 @@ void Checker::ConsumeRecordThread(uint8_t consumeId, const std::thread::id &root
     RuntimeContext().Instance().rootTid_ = rootTid;
     auto &que = workerArgs_[consumeId];
     uint64_t removedPathwayEventCount = 0;
+    // Each consumer retains its own filtering capacity across raw batches.
+    std::vector<SanEvent> filteredEvents;
     while (true) {
         WorkArgs args;
-        if (finishProduce_ && !que.empty()) {
-            args = std::move(que.front());
-            que.pop();
-        } else {
+        {
             std::unique_lock<std::mutex> lock(mtx_[consumeId]);
             workerCv_.wait(lock, [&que] () { return !que.empty(); });
             args = std::move(que.front());
             que.pop();
         }
+        producerCv_.notify_all();
         switch (args.eventType) {
         case BroadcastEvent::SANITIZER_RECORD_ARRIVED:
+            ConsumeRecord(consumeId, args.record, args.event, removedPathwayEventCount);
             break;
         case BroadcastEvent::KERNEL_BLOCK_ARRIVED: {
-            ConsumeKernelBlock(consumeId, args, removedPathwayEventCount);
-            continue;
+            ConsumeKernelBlock(consumeId, args, removedPathwayEventCount, filteredEvents);
+            break;
         }
         case BroadcastEvent::DEVICE_INFO_UPDATED: {
             RuntimeContext::Instance().deviceSummary_ = args.deviceInfo;
-            continue;
+            break;
         }
         case BroadcastEvent::KERNEL_SUMMARY_UPDATED: {
             RuntimeContext::Instance().kernelSummary_ = args.kernelSummary;
             removedPathwayEventCount = 0;
-            continue;
+            break;
         }
         case BroadcastEvent::KERNEL_NAME_UPDATED: {
             RuntimeContext::Instance().kernelNameDisplay = args.kernelNameDisplay;
-            continue;
+            break;
         }
         case BroadcastEvent::MEMCHECK_COMPLETION:
             // 标记前的内存检查已完成，通知等待该完成点的进程派发线程
             args.memcheckCompletion->set_value();
-            continue;
+            break;
         case BroadcastEvent::STOP:
-            // clear queue
-            std::queue<WorkArgs>().swap(que);
             return;
         default:
             continue;
         };
 
-        ConsumeRecord(consumeId, args.record, args.event, removedPathwayEventCount);
-        if (finishProduce_) {
-            WaitAfterConsumed(consumeId);
-        }
+        WaitAfterConsumed(consumeId);
     };
 }
 
@@ -294,37 +305,34 @@ void Checker::ConsumeRecord(uint8_t consumeId, const SanitizerRecord &record, st
     }
 }
 
-void Checker::ConsumeEventRange(uint8_t consumeId, const SanitizerRecord &record, SanEvent *events, size_t count,
-    uint64_t &removedPathwayEventCount) {
+void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount,
+    std::vector<SanEvent> &filteredEvents) {
+    // 当前任务持有共享批次，所有消费者只读借用原始事件。
+    const auto &rawBatch = *args.rawBatch;
+    const auto &events = rawBatch.events;
     const bool initialized = initWithDeviceInfoDone_[consumeId] || initWithKernelInfoDone_[consumeId];
-    if (initialized && sanitizerArr_[consumeId]->CheckRecordBeforeProcess(record)) {
-        const bool shouldFilter = consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) ||
-            consumeId == static_cast<uint8_t>(ToolType::RACECHECK);
-        if (shouldFilter && record.version == RecordVersion::KERNEL_RECORD) {
-            removedPathwayEventCount += PathwayFilter::FilterInPlace(
-                record.payload.kernelRecord.recordType, events, count, PathwayFilter::GetRules());
+    const bool shouldFilter =
+        consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) || consumeId == static_cast<uint8_t>(ToolType::RACECHECK);
+    for (std::size_t i = 0; i < rawBatch.records.size(); ++i) {
+        const auto &record = rawBatch.records[i];
+        // 始终按原始偏移取切片，局部过滤不改变后续记录的位置。
+        const size_t begin = rawBatch.eventOffsets[i];
+        const size_t count = rawBatch.eventOffsets[i + 1] - begin;
+        const auto *first = events.empty() ? nullptr : events.data() + begin;
+        if (initialized && sanitizerArr_[consumeId]->CheckRecordBeforeProcess(record)) {
+            EventRange range(first, count);
+            if (shouldFilter && record.version == RecordVersion::KERNEL_RECORD) {
+                // 未命中时直接借用原切片；命中时只复制保留事件，不修改共享输入。
+                range = PathwayFilter::Filter(record.payload.kernelRecord.recordType, range, filteredEvents);
+                removedPathwayEventCount += count - range.size();
+            }
+            sanitizerArr_[consumeId]->DoEvents(record, range);
         }
-        sanitizerArr_[consumeId]->DoEvents(record, EventRange(events, count));
-    }
-    if (record.version == RecordVersion::KERNEL_RECORD &&
-        record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH &&
-        (consumeId == static_cast<uint8_t>(ToolType::MEMCHECK) ||
-         consumeId == static_cast<uint8_t>(ToolType::RACECHECK))) {
-        ReportPathwayFilterSummary(consumeId, removedPathwayEventCount);
-        removedPathwayEventCount = 0;
-    }
-}
-
-void Checker::ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount) {
-    // Each record borrows its event slice directly from the work buffer.
-    for (std::size_t i = 0; i < args.records.size(); ++i) {
-        const size_t begin = args.eventOffsets[i];
-        const size_t count = args.eventOffsets[i + 1] - begin;
-        auto *first = args.events.empty() ? nullptr : args.events.data() + begin;
-        ConsumeEventRange(consumeId, args.records[i], first, count, removedPathwayEventCount);
-    }
-    if (finishProduce_) {
-        WaitAfterConsumed(consumeId);
+        if (record.version == RecordVersion::KERNEL_RECORD &&
+            record.payload.kernelRecord.recordType == RecordType::KERNEL_FINISH && shouldFilter) {
+            ReportPathwayFilterSummary(consumeId, removedPathwayEventCount);
+            removedPathwayEventCount = 0;
+        }
     }
 }
 
@@ -344,11 +352,10 @@ void Checker::SetDeviceInfo(const DeviceInfoSummary &deviceInfo) {
         if (sanitizerArr_[i] != nullptr) {
             bool initDone = sanitizerArr_[i]->SetDeviceInfo(deviceInfo, config_);
             initWithDeviceInfoDone_[i] = initDone;
-            std::lock_guard<std::mutex> lock(mtx_[i]);
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::DEVICE_INFO_UPDATED;
             workargs.deviceInfo = deviceInfo;
-            workerArgs_[i].push(std::move(workargs));
+            EnqueueWork(i, std::move(workargs));
         }
     }
     workerCv_.notify_all();
@@ -360,6 +367,16 @@ void Checker::SetKernelInfo(const KernelSummary &kernelInfo)
     // 不会在新 kernel 的 DisplaySanitizerBegin/KERNEL_SUMMARY_UPDATED 之后才被分发，导致上下文/输出错位。
     // 正常路径下上一 kernel 的 KERNEL_FINISH 已触发 Drain，这里是幂等的安全屏障。
     pipeline_.Drain();
+    // Drain only completes dispatch. Old consumers must finish before any shared
+    // kernel state is changed, even when the old kernel had no KERNEL_FINISH.
+    if (!workers_.empty()) {
+        for (uint8_t i = 0; i < TOOL_NUM; ++i) {
+            if (sanitizerArr_[i] != nullptr) {
+                std::unique_lock<std::mutex> lock(mtx_[i]);
+                producerCv_.wait(lock, [this, i] { return done_[i]; });
+            }
+        }
+    }
     DisplaySanitizerBegin(config_);
 
     isKernelWithDBI_ = kernelInfo.isKernelWithDBI;
@@ -368,14 +385,14 @@ void Checker::SetKernelInfo(const KernelSummary &kernelInfo)
         if (sanitizerArr_[i] != nullptr) {
             bool initDone = sanitizerArr_[i]->SetKernelInfo(kernelInfo);
             initWithKernelInfoDone_[i] = initDone;
-            std::lock_guard<std::mutex> lock(mtx_[i]);
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::KERNEL_SUMMARY_UPDATED;
             workargs.kernelSummary = kernelInfo;
-            workerArgs_[i].push(std::move(workargs));
+            EnqueueWork(i, std::move(workargs));
+            workargs = WorkArgs{};
             workargs.eventType = BroadcastEvent::KERNEL_NAME_UPDATED;
             workargs.kernelNameDisplay = RuntimeContext::Instance().kernelNameDisplay;
-            workerArgs_[i].push(std::move(workargs));
+            EnqueueWork(i, std::move(workargs));
         }
     }
     workerCv_.notify_all();
@@ -511,7 +528,6 @@ void Checker::Do(const SanitizerRecord &record)
     }
     std::vector<SanEvent> events;
     RecordPreProcess::GetInstance().Process(record, events);
-    finishProduce_ = false;
     uint8_t activeToolNum = 0;
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
         if (!IsNeedFilterDbi(record, i) && sanitizerArr_[i] != nullptr) {
@@ -524,20 +540,17 @@ void Checker::Do(const SanitizerRecord &record)
             continue;
         }
         if (sanitizerArr_[i] != nullptr) {
-            std::lock_guard<std::mutex> lock(mtx_[i]);
-            done_[i] = false;
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::SANITIZER_RECORD_ARRIVED;
             workargs.record = record;
             workargs.event = canMoveEvent ? std::move(events) : events;
-            workerArgs_[i].push(std::move(workargs));
+            EnqueueWork(i, std::move(workargs));
         }
     }
     if (record.version != RecordVersion::KERNEL_RECORD ||
         record.payload.kernelRecord.recordType != RecordType::KERNEL_FINISH) {
         workerCv_.notify_all();
     } else {
-        finishProduce_ = true;
         workerCv_.notify_all();
         for (uint8_t i = 0; i < TOOL_NUM; ++i) {
             if (sanitizerArr_[i] == nullptr) {
@@ -634,44 +647,31 @@ void Checker::DispatchParsed(ParseOut &out) {
     // 将标记转为广播事件，接在此前的内存检查工作之后，由消费线程处理并通知完成
     if (out.memcheckCompletion) {
         const auto index = static_cast<uint8_t>(ToolType::MEMCHECK);
-        std::lock_guard<std::mutex> lock(mtx_[index]);
         WorkArgs args{};
         args.eventType = BroadcastEvent::MEMCHECK_COMPLETION;
         args.memcheckCompletion = std::move(out.memcheckCompletion);
-        workerArgs_[index].push(std::move(args));
-        workerCv_.notify_all();
+        EnqueueWork(index, std::move(args));
         return;
     }
     auto &records = out.records;
     const bool isKernelFinish = !records.empty() && records.back().version == RecordVersion::KERNEL_RECORD &&
         records.back().payload.kernelRecord.recordType == RecordType::KERNEL_FINISH;
-    finishProduce_ = false;
-    // 仅一个工具使能时，可把 events 直接 move 进队列，避免整块拷贝（多工具时仍需各自一份）
-    uint8_t activeToolNum = 0;
-    for (uint8_t i = 0; i < TOOL_NUM; ++i) {
-        if (!IsNeedFilterDbi(i) && sanitizerArr_[i] != nullptr) {
-            ++activeToolNum;
-        }
-    }
-    const bool canMoveEvents = (activeToolNum <= 1);
+    // 整批事件只读共享；消费者仅在实际过滤事件时生成局部副本。
+    const auto rawBatch = std::make_shared<const RawBatch>(
+        RawBatch{std::move(out.records), std::move(out.eventOffsets), std::move(out.events)});
     for (uint8_t i = 0; i < TOOL_NUM; ++i) {
         if (IsNeedFilterDbi(i)) {
             continue;
         }
         if (sanitizerArr_[i] != nullptr) {
-            std::lock_guard<std::mutex> lock(mtx_[i]);
-            done_[i] = false;
             WorkArgs workargs{};
             workargs.eventType = BroadcastEvent::KERNEL_BLOCK_ARRIVED;
-            workargs.records = records;
-            workargs.events = canMoveEvents ? std::move(out.events) : out.events;
-            workargs.eventOffsets = canMoveEvents ? std::move(out.eventOffsets) : out.eventOffsets;
-            workerArgs_[i].push(std::move(workargs));
+            workargs.rawBatch = rawBatch;
+            EnqueueWork(i, std::move(workargs));
         }
     }
 
     if (isKernelFinish) {
-        finishProduce_ = true;
         workerCv_.notify_all();
         for (uint8_t i = 0; i < TOOL_NUM; ++i) {
             if (sanitizerArr_[i] == nullptr) {
@@ -692,7 +692,7 @@ void Checker::DispatchParsed(ParseOut &out) {
     }
 
     if (enableDebugLog_) {
-        for (const auto &record : records) {
+        for (const auto &record : rawBatch->records) {
             std::stringstream ss;
             ss << record << ", deviceId:" << RuntimeContext::Instance().GetDeviceId();
             SAN_LOG("%s", ss.str().c_str());
@@ -702,16 +702,16 @@ void Checker::DispatchParsed(ParseOut &out) {
 
 void Checker::Finish()
 {
+    // The caller must stop external producers first; this is not a closing protocol.
     // 先等所有已提交的 block 解析并分发完成，再停解析流水线
     pipeline_.Drain();
     pipeline_.Shutdown();
     if (!workers_.empty()) {
         for (uint8_t i = 0; i < TOOL_NUM; ++i) {
             if (sanitizerArr_[i] != nullptr) {
-                std::lock_guard<std::mutex> lock(mtx_[i]);
                 WorkArgs workargs{};
                 workargs.eventType = BroadcastEvent::STOP;
-                workerArgs_[i].push(std::move(workargs));
+                EnqueueWork(i, std::move(workargs));
             }
         }
         workerCv_.notify_all();

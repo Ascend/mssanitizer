@@ -15,8 +15,10 @@
  * ------------------------------------------------------------------------- */
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <any>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <future>
 #include <cstdio>
@@ -143,6 +145,16 @@ std::shared_ptr<Checker> MakeRealChecker(Config config, std::stringstream &ss, K
     return checker;
 }
 
+void SubmitRecords(Checker &checker, const std::vector<SanitizerRecord> &records, bool batch) {
+    if (batch) {
+        checker.Do(records);
+    } else {
+        for (const auto &record : records) {
+            checker.Do(record);
+        }
+    }
+}
+
 std::shared_ptr<Checker> GetNewChecker(std::stringstream &ss)
 {
     Config config{};
@@ -167,6 +179,7 @@ std::shared_ptr<Checker> GetNewChecker(std::stringstream &ss)
 class RecordingSanitizer final : public SanitizerBase {
 public:
     void DoEvents(const SanitizerRecord &record, EventRange events) override {
+        recordPointers.push_back(&record);
         rangePointers.push_back(events.begin());
         std::vector<SanEvent> copy;
         if (!events.empty()) {
@@ -198,6 +211,7 @@ public:
     size_t checkRecordCount = 0;
     bool allowProcess = true;
     std::vector<const SanEvent *> rangePointers;
+    std::vector<const SanitizerRecord *> recordPointers;
     std::function<void()> beforeRecord;
 };
 
@@ -559,7 +573,60 @@ TEST(Checker, stack_selection_keeps_writes_needed_to_initialize_later_reads) {
     EXPECT_EQ(output.str().find("uninitialized read"), std::string::npos) << output.str();
 }
 
+TEST(Checker, stack_streaming_filters_conversion_without_changing_other_consumers) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    const std::vector<AddressSpace> spaces{AddressSpace::PRIVATE, AddressSpace::GM, AddressSpace::UB, AddressSpace::L0A,
+        AddressSpace::L0B, AddressSpace::L0C, AddressSpace::L1};
+    for (ToolType tool : {ToolType::MEMCHECK, ToolType::RACECHECK, ToolType::SYNCCHECK, ToolType::REGISTERCHECK}) {
+        for (bool batch : {false, true}) {
+            SCOPED_TRACE(::testing::Message() << "tool=" << static_cast<int>(tool) << " batch=" << batch);
+            Config config{};
+            config.defaultCheck = true;
+            config.initCheck = true;
+            config.memCheck = tool == ToolType::MEMCHECK;
+            config.raceCheck = tool == ToolType::RACECHECK;
+            config.syncCheck = tool == ToolType::SYNCCHECK;
+            config.registerCheck = tool == ToolType::REGISTERCHECK;
+            std::stringstream output;
+            auto checker = std::make_shared<Checker>(config, false);
+            checker->SetDetectionInfo(LogLv::WARN, output);
+            auto asan = std::dynamic_pointer_cast<AddressSanitizer>(
+                checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
+            ASSERT_NE(asan, nullptr);
+            ASSERT_FALSE(asan->NeedsInitcheckReplay());
+            auto other = std::make_shared<RecordingSanitizer>();
+            if (tool != ToolType::MEMCHECK) {
+                checker->sanitizerArr_[static_cast<size_t>(tool)] = other;
+            }
+            SetCheckerContext(*checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
+            for (size_t i = 0; i < spaces.size(); ++i) {
+                const auto record = MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, spaces[i], i + 1, 64);
+                SubmitRecords(*checker, {record}, batch);
+                checker->CaptureMemcheckCompletion().get();
+                const bool selected = config.memCheck || spaces[i] == AddressSpace::PRIVATE;
+                ASSERT_EQ(asan->replayedRecords_.size(), selected ? 1U : 0U);
+                if (selected) {
+                    EXPECT_EQ(asan->replayedRecords_[0].dstSpace, spaces[i]);
+                }
+            }
+            checker->Do(MakeKernelFinishRecord());
+            if (tool != ToolType::MEMCHECK) {
+                ASSERT_EQ(other->consumedEvents.size(), spaces.size() + 1);
+                for (size_t i = 0; i < spaces.size(); ++i) {
+                    ASSERT_EQ(other->consumedEvents[i].size(), 1U);
+                    EXPECT_EQ(
+                        FormatConverter::MemTypeToAddrSpace(other->consumedEvents[i][0].eventInfo.memInfo.memType),
+                        spaces[i]);
+                }
+                ASSERT_EQ(other->consumedEvents.back().size(), 1U);
+                EXPECT_EQ(other->consumedEvents.back()[0].type, EventType::SANITIZER_CONTROL_EVENT);
+            }
+        }
+    }
+}
+
 TEST(Checker, stack_selection_preserves_memcheck_errors_on_unselected_spaces) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
     Config config{};
     config.defaultCheck = true;
     config.initCheck = true;
@@ -569,8 +636,9 @@ TEST(Checker, stack_selection_preserves_memcheck_errors_on_unselected_spaces) {
     checker->Do(std::vector<SanitizerRecord>{
         MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::UB, 1, 0x10000000),
         MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64), MakeKernelFinishRecord()});
-    EXPECT_NE(output.str().find("illegal read"), std::string::npos) << output.str();
-    EXPECT_NE(output.str().find("uninitialized read"), std::string::npos) << output.str();
+    EXPECT_EQ(GetDetectInfoNum(output.str(), "illegal read"), 1) << output.str();
+    EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), 1) << output.str();
+    EXPECT_NE(output.str().find("on UB"), std::string::npos) << output.str();
     EXPECT_NE(output.str().find("on PRIVATE"), std::string::npos) << output.str();
 }
 
@@ -598,11 +666,361 @@ TEST(Checker, batch_handoff_keeps_records_without_events_for_every_consumer) {
     }
 }
 
+TEST(Checker, single_effective_consumer_takes_raw_batch_storage_including_empty_metadata_and_finish) {
+    for (bool filterOtherConsumer : {false, true}) {
+        Config config{.defaultCheck = true, .memCheck = true};
+        config.raceCheck = filterOtherConsumer;
+        Checker checker(config, false);
+        auto consumer = std::make_shared<RecordingSanitizer>();
+        checker.sanitizerArr_[0] = consumer;
+        checker.initWithDeviceInfoDone_[0] = true;
+        checker.deviceType_ = DeviceType::ASCEND_910B1;
+        checker.isKernelWithDBI_ = filterOtherConsumer;
+        ParseOut out{};
+        out.records = {MakeMemoryRecord(), MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, 23),
+            MakeKernelFinishRecord()};
+        out.events.resize(2);
+        out.events[0].type = EventType::MEM_EVENT;
+        out.events[0].eventInfo.memInfo.memType = MemType::GM;
+        out.events[1].type = EventType::SANITIZER_CONTROL_EVENT;
+        out.eventOffsets = {0, 0, 1, 2};
+        const auto *records = out.records.data();
+        const auto *events = out.events.data();
+
+        checker.DispatchParsed(out);
+
+        // Dispatching finish must wait for all raw records, not just nonempty event slices.
+        ASSERT_EQ(consumer->records.size(), 3U);
+        ASSERT_EQ(consumer->recordPointers.size(), 3U);
+        EXPECT_EQ(consumer->recordPointers[0], records);
+        EXPECT_EQ(consumer->recordPointers[1], records + 1);
+        EXPECT_EQ(consumer->recordPointers[2], records + 2);
+        EXPECT_EQ(consumer->rangePointers[1], events);
+        EXPECT_EQ(consumer->rangePointers[2], events + 1);
+        EXPECT_EQ(consumer->records[0].version, RecordVersion::MEMORY_RECORD);
+        EXPECT_TRUE(consumer->consumedEvents[0].empty());
+        EXPECT_EQ(consumer->records[1].payload.kernelRecord.serialNo, 23U);
+        EXPECT_EQ(consumer->records[2].payload.kernelRecord.recordType, RecordType::KERNEL_FINISH);
+    }
+}
+
+TEST(Checker, slow_consumer_bounds_handoff_and_releases_completion_and_finish_in_order) {
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto started = entered.get_future();
+    auto gate = release.get_future().share();
+    Config config{.defaultCheck = true, .memCheck = true};
+    Checker checker(config, false);
+    auto consumer = std::make_shared<RecordingSanitizer>();
+    checker.sanitizerArr_[0] = consumer;
+    checker.initWithDeviceInfoDone_[0] = true;
+    consumer->beforeRecord = [&] {
+        if (consumer->checkRecordCount == 0) {
+            entered.set_value();
+            gate.wait();
+        }
+    };
+    auto dispatch = [&] {
+        ParseOut out{};
+        out.records = {MakeMemoryRecord()};
+        out.eventOffsets = {0, 0};
+        checker.DispatchParsed(out);
+    };
+    dispatch();
+    const auto consuming = started.wait_for(std::chrono::seconds(3));
+    for (size_t i = 0; i < Checker::MAX_QUEUED_BATCHES; ++i) {
+        dispatch();
+    }
+    std::promise<void> attempting;
+    auto attempted = attempting.get_future();
+    auto completion = std::make_shared<std::promise<void>>();
+    auto completed = completion->get_future();
+    auto producer = std::async(std::launch::async, [&] {
+        attempting.set_value();
+        dispatch();
+        ParseOut marker{};
+        marker.memcheckCompletion = completion;
+        checker.DispatchParsed(marker);
+        ParseOut finish{};
+        finish.records = {MakeKernelFinishRecord()};
+        finish.eventOffsets = {0, 0};
+        checker.DispatchParsed(finish);
+    });
+    attempted.wait();
+    const auto blocked = producer.wait_for(std::chrono::milliseconds(100));
+    size_t queued = 0;
+    {
+        std::lock_guard<std::mutex> lock(checker.mtx_[0]);
+        queued = checker.workerArgs_[0].size();
+    }
+    const auto completionBlocked = completed.wait_for(std::chrono::milliseconds(0));
+    release.set_value();
+    producer.get();
+    completed.get();
+    checker.Finish();
+
+    EXPECT_EQ(consuming, std::future_status::ready);
+    EXPECT_EQ(blocked, std::future_status::timeout);
+    EXPECT_EQ(queued, Checker::MAX_QUEUED_BATCHES);
+    EXPECT_EQ(completionBlocked, std::future_status::timeout);
+    ASSERT_EQ(consumer->records.size(), Checker::MAX_QUEUED_BATCHES + 3);
+    EXPECT_EQ(consumer->records.back().payload.kernelRecord.recordType, RecordType::KERNEL_FINISH);
+}
+
+TEST(Checker, single_consumer_empty_batch_moves_all_three_buffers) {
+    // No worker: inspect the ownership handoff before anything can consume it.
+    Config config{};
+    Checker checker(config, false);
+    checker.sanitizerArr_[0] = std::make_shared<RecordingSanitizer>();
+    ParseOut out{};
+    out.records = {MakeMemoryRecord(), MakeMemoryRecord()};
+    out.eventOffsets = {0, 0, 0};
+    out.events.reserve(1);
+    const auto *records = out.records.data();
+    const auto *events = out.events.data();
+    const auto *offsets = out.eventOffsets.data();
+
+    checker.DispatchParsed(out);
+
+    std::lock_guard<std::mutex> lock(checker.mtx_[0]);
+    ASSERT_EQ(checker.workerArgs_[0].size(), 1U);
+    const auto &queued = checker.workerArgs_[0].front();
+    ASSERT_NE(queued.rawBatch, nullptr);
+    EXPECT_EQ(queued.rawBatch->records.data(), records);
+    EXPECT_EQ(queued.rawBatch->events.data(), events);
+    EXPECT_EQ(queued.rawBatch->eventOffsets.data(), offsets);
+    EXPECT_EQ(queued.rawBatch->records.size(), 2U);
+    EXPECT_EQ(queued.rawBatch->eventOffsets, (std::vector<size_t>{0, 0, 0}));
+}
+
+TEST(Checker, two_saturated_consumers_resume_in_stages_with_shared_producer_cv) {
+    std::array<std::promise<void>, 2> entered;
+    std::array<std::promise<void>, 2> release;
+    std::array<std::future<void>, 2> started{entered[0].get_future(), entered[1].get_future()};
+    std::array<std::shared_future<void>, 2> gates{release[0].get_future().share(), release[1].get_future().share()};
+    std::promise<void> firstAdvanced;
+    auto advanced = firstAdvanced.get_future();
+    std::promise<void> releaseFirstOverflow;
+    auto overflowGate = releaseFirstOverflow.get_future().share();
+    std::promise<void> secondFinished;
+    auto finished = secondFinished.get_future();
+    Config config{.defaultCheck = true, .memCheck = true, .raceCheck = true};
+    Checker checker(config, false);
+    const std::array<std::shared_ptr<RecordingSanitizer>, 2> consumers{
+        std::make_shared<RecordingSanitizer>(), std::make_shared<RecordingSanitizer>()};
+    const size_t overflowSerial = Checker::MAX_QUEUED_BATCHES + 1;
+    for (size_t i = 0; i < consumers.size(); ++i) {
+        checker.sanitizerArr_[i] = consumers[i];
+        checker.initWithDeviceInfoDone_[i] = true;
+        consumers[i]->beforeRecord = [&, i] {
+            const auto count = consumers[i]->checkRecordCount;
+            if (count == 0) {
+                entered[i].set_value();
+                gates[i].wait();
+            }
+            if (i == 0 && count == overflowSerial) {
+                firstAdvanced.set_value();
+                overflowGate.wait();
+            }
+            if (i == 1 && count == overflowSerial + 1) {
+                secondFinished.set_value();
+            }
+        };
+    }
+    auto dispatch = [&](size_t serial) {
+        ParseOut out{};
+        out.records = {MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, serial)};
+        out.eventOffsets = {0, 0};
+        checker.DispatchParsed(out);
+    };
+    dispatch(0);
+    for (auto &ready : started) {
+        EXPECT_EQ(ready.wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    }
+    for (size_t serial = 1; serial <= Checker::MAX_QUEUED_BATCHES; ++serial) {
+        dispatch(serial);
+    }
+    auto queueSize = [&](size_t i) {
+        std::lock_guard<std::mutex> lock(checker.mtx_[i]);
+        return checker.workerArgs_[i].size();
+    };
+    const auto overflow = std::make_shared<const RawBatch>(
+        RawBatch{{MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, overflowSerial)}, {0, 0}});
+    std::array<std::promise<void>, 2> attempting;
+    std::array<std::future<void>, 2> attempted{attempting[0].get_future(), attempting[1].get_future()};
+    std::array<std::future<void>, 2> producers;
+    for (size_t i = 0; i < consumers.size(); ++i) {
+        producers[i] = std::async(std::launch::async, [&, i] {
+            WorkArgs args{};
+            args.eventType = BroadcastEvent::KERNEL_BLOCK_ARRIVED;
+            args.rawBatch = overflow;
+            attempting[i].set_value();
+            checker.EnqueueWork(i, std::move(args));
+        });
+    }
+    for (size_t i = 0; i < producers.size(); ++i) {
+        attempted[i].wait();
+        EXPECT_EQ(producers[i].wait_for(std::chrono::milliseconds(100)), std::future_status::timeout);
+    }
+    EXPECT_EQ(queueSize(0), Checker::MAX_QUEUED_BATCHES);
+    EXPECT_EQ(queueSize(1), Checker::MAX_QUEUED_BATCHES);
+
+    // Both producers wait on the shared CV with different queue mutexes.
+    release[0].set_value();
+    EXPECT_EQ(advanced.wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    EXPECT_EQ(producers[0].wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    EXPECT_EQ(queueSize(0), 0U);
+    EXPECT_EQ(queueSize(1), Checker::MAX_QUEUED_BATCHES);
+    EXPECT_EQ(producers[1].wait_for(std::chrono::milliseconds(100)), std::future_status::timeout);
+    release[1].set_value();
+    EXPECT_EQ(producers[1].wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    for (auto &producer : producers) {
+        producer.get();
+    }
+    auto finish = std::async(std::launch::async, [&] {
+        ParseOut out{};
+        out.records = {MakeKernelFinishRecord()};
+        out.eventOffsets = {0, 0};
+        checker.DispatchParsed(out);
+    });
+    EXPECT_EQ(finished.wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    // Finish still waits for the first consumer, although the second has drained.
+    EXPECT_EQ(finish.wait_for(std::chrono::milliseconds(0)), std::future_status::timeout);
+    EXPECT_EQ(queueSize(0), 1U);
+    EXPECT_EQ(queueSize(1), 0U);
+    releaseFirstOverflow.set_value();
+    EXPECT_EQ(finish.wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    finish.get();
+    checker.Finish();
+
+    for (const auto &consumer : consumers) {
+        ASSERT_EQ(consumer->records.size(), overflowSerial + 2);
+        EXPECT_EQ(consumer->checkRecordCount, consumer->records.size());
+        for (size_t serial = 0; serial <= overflowSerial; ++serial) {
+            EXPECT_EQ(consumer->records[serial].payload.kernelRecord.recordType, RecordType::STORE);
+            EXPECT_EQ(consumer->records[serial].payload.kernelRecord.serialNo, serial);
+        }
+        EXPECT_EQ(consumer->records.back().payload.kernelRecord.recordType, RecordType::KERNEL_FINISH);
+    }
+}
+
+TEST(Checker, multiple_consumers_share_read_only_events_until_last_release_and_isolate_filters) {
+    // No workers: inspect all fanout buffers while they are simultaneously alive.
+    Config config{};
+    Checker checker(config, false);
+    for (size_t i = 0; i < 4; ++i) {
+        checker.sanitizerArr_[i] = std::make_shared<RecordingSanitizer>();
+    }
+    ParseOut out{};
+    out.records = {MakeMemoryRecord(), MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, 23)};
+    out.eventOffsets = {0, 0, 1};
+    out.events.resize(1);
+    out.events[0].serialNo = 23;
+    const auto *records = out.records.data();
+    const auto *offsets = out.eventOffsets.data();
+    const auto *events = out.events.data();
+
+    checker.DispatchParsed(out);
+
+    for (size_t i = 0; i < 4; ++i) {
+        ASSERT_EQ(checker.workerArgs_[i].size(), 1U);
+        const auto &queued = checker.workerArgs_[i].front();
+        ASSERT_NE(queued.rawBatch, nullptr);
+        EXPECT_EQ(queued.rawBatch, checker.workerArgs_[0].front().rawBatch);
+        EXPECT_EQ(queued.rawBatch->records.data(), records);
+        EXPECT_EQ(queued.rawBatch->eventOffsets.data(), offsets);
+        EXPECT_EQ(queued.rawBatch->eventOffsets, (std::vector<size_t>{0, 0, 1}));
+        ASSERT_EQ(queued.rawBatch->events.size(), 1U);
+        EXPECT_EQ(queued.rawBatch->events.data(), events);
+    }
+    EXPECT_EQ(records[1].payload.kernelRecord.serialNo, 23U);
+
+    const std::weak_ptr<const RawBatch> lifetime = checker.workerArgs_[0].front().rawBatch;
+    out = ParseOut{};
+    auto pending = std::move(checker.workerArgs_[3].front());
+    checker.workerArgs_[3].pop();
+    uint64_t removed = 0;
+    std::vector<SanEvent> filteredEvents;
+    for (size_t i = 0; i < 3; ++i) {
+        checker.initWithDeviceInfoDone_[i] = true;
+        checker.ConsumeKernelBlock(i, checker.workerArgs_[i].front(), removed, filteredEvents);
+        checker.workerArgs_[i].pop();
+    }
+    // 最后一个消费者仍持有数据；释放后原始批次才能销毁。
+    EXPECT_FALSE(lifetime.expired());
+    EXPECT_EQ(pending.rawBatch->events.data(), events);
+    EXPECT_EQ(pending.rawBatch->events[0].serialNo, 23U);
+    EXPECT_EQ(pending.rawBatch->records.data(), records);
+    EXPECT_EQ(pending.rawBatch->eventOffsets.data(), offsets);
+    EXPECT_EQ(pending.rawBatch->records[1].payload.kernelRecord.serialNo, 23U);
+    checker.initWithDeviceInfoDone_[3] = true;
+    const auto last = std::static_pointer_cast<RecordingSanitizer>(checker.sanitizerArr_[3]);
+    last->beforeRecord = [&] { EXPECT_FALSE(lifetime.expired()); };
+    checker.ConsumeKernelBlock(3, pending, removed, filteredEvents);
+    for (size_t i = 0; i < 4; ++i) {
+        const auto consumer = std::static_pointer_cast<RecordingSanitizer>(checker.sanitizerArr_[i]);
+        ASSERT_EQ(consumer->recordPointers.size(), 2U);
+        EXPECT_EQ(consumer->recordPointers[0], records);
+        EXPECT_EQ(consumer->recordPointers[1], records + 1);
+    }
+    pending = WorkArgs{};
+    EXPECT_TRUE(lifetime.expired());
+}
+
+TEST(Checker, every_consumer_combination_reuses_original_event_buffer) {
+    for (unsigned mask = 1; mask < (1U << TOOL_NUM); ++mask) {
+        Config config{};
+        Checker checker(config, false);
+        size_t lastConsumer = 0;
+        for (size_t i = 0; i < TOOL_NUM; ++i) {
+            if ((mask & (1U << i)) != 0) {
+                checker.sanitizerArr_[i] = std::make_shared<RecordingSanitizer>();
+                lastConsumer = i;
+            }
+        }
+        ParseOut out{};
+        out.records = {MakeMemoryRecord()};
+        out.events.resize(1);
+        out.events[0].serialNo = 23;
+        out.eventOffsets = {0, 1};
+        const auto *events = out.events.data();
+        checker.DispatchParsed(out);
+        const auto &last = checker.workerArgs_[lastConsumer].front();
+        const auto &buffer = last.rawBatch->events;
+        EXPECT_EQ(buffer.data(), events) << mask;
+        EXPECT_EQ(buffer[0].serialNo, 23U) << mask;
+    }
+}
+
+TEST(Checker, single_record_production_progresses_past_capacity_before_kernel_finish) {
+    std::promise<void> consumed;
+    auto ready = consumed.get_future();
+    Config config{.defaultCheck = true, .memCheck = true};
+    Checker checker(config, false);
+    auto consumer = std::make_shared<RecordingSanitizer>();
+    checker.sanitizerArr_[0] = consumer;
+    checker.initWithDeviceInfoDone_[0] = true;
+    consumer->beforeRecord = [&] {
+        if (consumer->checkRecordCount == 0) {
+            consumed.set_value();
+        }
+    };
+    for (size_t i = 0; i < Checker::MAX_QUEUED_BATCHES + 2; ++i) {
+        checker.Do(MakeMemoryRecord());
+    }
+    EXPECT_EQ(ready.wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    checker.Do(MakeKernelFinishRecord());
+    EXPECT_EQ(consumer->records.size(), Checker::MAX_QUEUED_BATCHES + 3);
+}
+
 TEST(Checker, batch_with_only_empty_events_reaches_all_consumers) {
     auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
+    auto registerChecker = std::make_shared<RecordingSanitizer>();
     Config config{.defaultCheck = true, .memCheck = true, .raceCheck = true, .syncCheck = true};
+    config.registerCheck = true;
     Checker checker(config, false);
-    const std::array<std::shared_ptr<RecordingSanitizer>, 3> consumers{memChecker, raceChecker, syncChecker};
+    const std::array<std::shared_ptr<RecordingSanitizer>, 4> consumers{
+        memChecker, raceChecker, syncChecker, registerChecker};
     for (size_t i = 0; i < consumers.size(); ++i) {
         checker.sanitizerArr_[i] = consumers[i];
     }
@@ -666,17 +1084,6 @@ SanitizerRecord MakeUnaryRaceRecord(uint64_t serialNo, uint64_t addr) {
     return record;
 }
 
-std::function<void()> MakeFinishProduceBarrier(const std::weak_ptr<Checker> &checker) {
-    return [checker]() {
-        while (auto current = checker.lock()) {
-            if (current->finishProduce_) {
-                return;
-            }
-            std::this_thread::yield();
-        }
-    };
-}
-
 std::shared_ptr<Checker> MakeRecordingChecker(const std::shared_ptr<RecordingSanitizer> &memChecker,
     const std::shared_ptr<RecordingSanitizer> &raceChecker, const std::shared_ptr<RecordingSanitizer> &syncChecker,
     const std::shared_ptr<RecordingSanitizer> &registerChecker = nullptr) {
@@ -690,13 +1097,6 @@ std::shared_ptr<Checker> MakeRecordingChecker(const std::shared_ptr<RecordingSan
         checker->sanitizerArr_[static_cast<size_t>(ToolType::REGISTERCHECK)] = registerChecker;
     }
 
-    const auto beforeRecord = MakeFinishProduceBarrier(checker);
-    for (const auto &consumer : {memChecker, raceChecker, syncChecker}) {
-        consumer->beforeRecord = beforeRecord;
-    }
-    if (registerChecker != nullptr) {
-        registerChecker->beforeRecord = beforeRecord;
-    }
     SetCheckerContext(*checker, DeviceType::ASCEND_910B1, KernelType::AICUBE, 3);
     return checker;
 }
@@ -751,34 +1151,123 @@ TEST(Checker, filters_private_events_in_batch_and_preserves_order_for_other_cons
     }
 }
 
+TEST(Checker, filtering_compacts_only_private_slice_and_preserves_shared_events_and_next_offset) {
+    auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
+    auto registerChecker = std::make_shared<RecordingSanitizer>();
+    auto checker = MakeRecordingChecker(memChecker, raceChecker, syncChecker, registerChecker);
+    ParseTask task{};
+    task.ctx.deviceInfo.device = DeviceType::ASCEND_910B1;
+    task.records = {MakeScalarRecord(RecordType::STORE, BlockType::AICUBE, AddressSpace::UB, 1),
+        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 2), MakeKernelFinishRecord()};
+    auto out = checker->ParseRecords(std::move(task));
+    ASSERT_EQ(out.events.size(), 3U);
+    const auto retained = out.events[1];
+    out.events.insert(out.events.begin() + 1, retained);
+    out.eventOffsets = {0, 2, 3, 4};
+
+    checker->DispatchParsed(out);
+
+    for (const auto &consumer : {memChecker, raceChecker, syncChecker, registerChecker}) {
+        ASSERT_EQ(consumer->consumedEvents.size(), 3U);
+        ASSERT_EQ(consumer->consumedEvents[1].size(), 1U);
+        EXPECT_EQ(consumer->consumedEvents[1][0].serialNo, 2U);
+        ASSERT_EQ(consumer->consumedEvents[2].size(), 1U);
+        EXPECT_EQ(consumer->consumedEvents[2][0].type, EventType::SANITIZER_CONTROL_EVENT);
+    }
+    for (const auto &consumer : {memChecker, raceChecker}) {
+        ASSERT_EQ(consumer->consumedEvents[0].size(), 1U);
+        EXPECT_EQ(consumer->consumedEvents[0][0].serialNo, 2U);
+    }
+    for (const auto &consumer : {syncChecker, registerChecker}) {
+        ASSERT_EQ(consumer->consumedEvents[0].size(), 2U);
+        EXPECT_EQ(consumer->consumedEvents[0][0].serialNo, 1U);
+        EXPECT_EQ(consumer->consumedEvents[0][1].serialNo, 2U);
+    }
+}
+
+TEST(Checker, consumer_thread_reuses_filter_storage_across_raw_batches_without_mutating_shared_input) {
+    Config config{.defaultCheck = true, .memCheck = true, .syncCheck = true};
+    Checker checker(config, false);
+    auto memChecker = std::make_shared<RecordingSanitizer>();
+    auto syncChecker = std::make_shared<RecordingSanitizer>();
+    checker.sanitizerArr_[0] = memChecker;
+    checker.sanitizerArr_[2] = syncChecker;
+    SetCheckerContext(checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
+    std::array<std::shared_ptr<const RawBatch>, 2> batches;
+    for (size_t i = 0; i < batches.size(); ++i) {
+        std::vector<SanEvent> events(i == 0 ? 129 : 2);
+        for (size_t j = 0; j < events.size(); ++j) {
+            auto &event = events[j];
+            event.type = EventType::MEM_EVENT;
+            event.loc.blockType = j == 0 ? BlockType::AICUBE : BlockType::AIVEC;
+            event.pipe = PipeType::PIPE_S_CAL;
+            event.eventInfo.memInfo.memType = MemType::UB;
+            event.eventInfo.memInfo.opType = AccessType::WRITE;
+            event.serialNo = j;
+        }
+        const auto count = events.size();
+        batches[i] = std::make_shared<const RawBatch>(RawBatch{
+            {MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, i + 1)},
+            {0, count}, std::move(events)});
+        for (uint8_t consumer : {uint8_t{0}, uint8_t{2}}) {
+            WorkArgs args{};
+            args.eventType = BroadcastEvent::KERNEL_BLOCK_ARRIVED;
+            args.rawBatch = batches[i];
+            checker.EnqueueWork(consumer, std::move(args));
+        }
+        checker.CaptureMemcheckCompletion().get();
+    }
+    checker.Finish();
+    ASSERT_EQ(memChecker->rangePointers.size(), 2U);
+    EXPECT_EQ(memChecker->rangePointers[0], memChecker->rangePointers[1]);
+    ASSERT_EQ(memChecker->consumedEvents.size(), 2U);
+    EXPECT_EQ(memChecker->consumedEvents[0].size(), 128U);
+    EXPECT_EQ(memChecker->consumedEvents[1].size(), 1U);
+    ASSERT_EQ(syncChecker->consumedEvents.size(), 2U);
+    for (size_t i = 0; i < batches.size(); ++i) {
+        const auto &raw = *batches[i];
+        EXPECT_EQ(raw.events.size(), i == 0 ? 129U : 2U);
+        EXPECT_EQ(raw.eventOffsets, (std::vector<size_t>{0, raw.events.size()}));
+        EXPECT_EQ(syncChecker->rangePointers[i], raw.events.data());
+        ASSERT_EQ(syncChecker->consumedEvents[i].size(), raw.events.size());
+        for (size_t j = 0; j < raw.events.size(); ++j) {
+            EXPECT_EQ(raw.events[j].serialNo, j);
+            EXPECT_EQ(raw.events[j].loc.blockType, j == 0 ? BlockType::AICUBE : BlockType::AIVEC);
+            EXPECT_EQ(syncChecker->consumedEvents[i][j].serialNo, j);
+        }
+        ASSERT_FALSE(memChecker->consumedEvents[i].empty());
+        EXPECT_EQ(memChecker->consumedEvents[i].front().serialNo, 1U);
+        EXPECT_NE(memChecker->rangePointers[i], raw.events.data());
+    }
+}
+
 TEST(Checker, event_range_borrows_work_buffer_and_preserves_empty_records_and_boundaries) {
     auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
     auto checker = MakeRecordingChecker(memChecker, raceChecker, syncChecker);
-    memChecker->beforeRecord = {};
     WorkArgs args{};
-    args.records = {MakeMemoryRecord(),
-        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 17),
-        MakeKernelFinishRecord()};
-    args.events.resize(3);
-    args.eventOffsets = {0, 0, 2, 3};
-    auto &first = args.events[0];
+    std::vector<SanEvent> events(3);
+    auto &first = events[0];
     first.type = EventType::MEM_EVENT;
     first.loc.blockType = BlockType::AIVEC;
     first.pipe = PipeType::PIPE_S_CAL;
     first.eventInfo.memInfo.memType = MemType::UB;
     first.eventInfo.memInfo.opType = AccessType::WRITE;
     first.serialNo = 17;
-    args.events[1] = first;
-    args.events[1].serialNo = 18;
-    args.events[2].type = EventType::SANITIZER_CONTROL_EVENT;
+    events[1] = first;
+    events[1].serialNo = 18;
+    events[2].type = EventType::SANITIZER_CONTROL_EVENT;
+    const auto *source = events.data();
+    args.rawBatch = std::make_shared<const RawBatch>(
+        RawBatch{{MakeMemoryRecord(), MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::UB, 17),
+                     MakeKernelFinishRecord()},
+            {0, 0, 2, 3}, std::move(events)});
     uint64_t removed = 0;
 
     for (const auto &[tool, consumer] :
-        std::array<std::pair<ToolType, std::shared_ptr<RecordingSanitizer>>, 3>{{
-            {ToolType::MEMCHECK, memChecker}, {ToolType::RACECHECK, raceChecker},
-            {ToolType::SYNCCHECK, syncChecker}}}) {
-        consumer->beforeRecord = {};
-        checker->ConsumeKernelBlock(static_cast<uint8_t>(tool), args, removed);
+        std::array<std::pair<ToolType, std::shared_ptr<RecordingSanitizer>>, 3>{{{ToolType::MEMCHECK, memChecker},
+            {ToolType::RACECHECK, raceChecker}, {ToolType::SYNCCHECK, syncChecker}}}) {
+        std::vector<SanEvent> filteredEvents;
+        checker->ConsumeKernelBlock(static_cast<uint8_t>(tool), args, removed, filteredEvents);
 
         ASSERT_EQ(consumer->consumedEvents.size(), 3U);
         EXPECT_TRUE(consumer->consumedEvents[0].empty());
@@ -786,14 +1275,15 @@ TEST(Checker, event_range_borrows_work_buffer_and_preserves_empty_records_and_bo
         EXPECT_EQ(consumer->consumedEvents[1][0].serialNo, 17U);
         EXPECT_EQ(consumer->consumedEvents[1][1].serialNo, 18U);
         ASSERT_EQ(consumer->rangePointers.size(), 3U);
-        EXPECT_EQ(consumer->rangePointers[0], args.events.data());
-        EXPECT_EQ(consumer->rangePointers[1], args.events.data());
-        EXPECT_EQ(consumer->rangePointers[2], args.events.data() + 2);
+        EXPECT_EQ(consumer->rangePointers[0], source);
+        EXPECT_EQ(consumer->rangePointers[1], source);
+        EXPECT_EQ(consumer->rangePointers[2], source + 2);
         EXPECT_EQ(consumer->checkRecordCount, 3U);
     }
 }
 
 TEST(Checker, address_consumer_filters_before_init_pipeline_replay) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::UB));
     Config config{.defaultCheck = true, .memCheck = true, .raceCheck = false, .initCheck = true};
     Checker checker(config, false);
 
@@ -812,6 +1302,7 @@ TEST(Checker, address_consumer_filters_before_init_pipeline_replay) {
 }
 
 TEST(Checker, init_replay_merges_in_callback_order_and_clears_between_kernels) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::UB));
     Config config{.defaultCheck = true, .memCheck = true, .raceCheck = false, .initCheck = true};
     Checker checker(config, false);
     SetCheckerContext(checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
@@ -860,7 +1351,6 @@ TEST(Checker, clears_pathway_count_when_finish_precheck_rejects_record) {
     auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
     auto checker = MakeRecordingChecker(memChecker, raceChecker, syncChecker);
     memChecker->allowProcess = false;
-    memChecker->beforeRecord = {};
 
     std::vector<SanEvent> events;
     uint64_t removedPathwayEventCount = 3;
@@ -874,7 +1364,6 @@ TEST(Checker, clears_pathway_count_when_finish_precheck_rejects_record) {
 TEST(Checker, memory_record_reaches_consumer_without_pathway_filter) {
     auto [memChecker, raceChecker, syncChecker] = MakeRecordingSanitizers();
     auto checker = MakeRecordingChecker(memChecker, raceChecker, syncChecker);
-    memChecker->beforeRecord = {};
 
     SanEvent retainedEvent{};
     retainedEvent.serialNo = 17;
@@ -1357,4 +1846,471 @@ TEST(Checker, kernel_finish_record_still_resets_error_counts) {
     ASSERT_NE(ss.str().find("Sanitizer finished"), std::string::npos);
 
     checker->Finish();
+}
+
+TEST(Checker, private_stream_checks_access_order_and_partial_initialization) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    struct Scenario {
+        RecordType first;
+        RecordType second;
+        uint64_t readSize;
+        size_t badBytes;
+    };
+    const Scenario scenarios[] = {{RecordType::LOAD, RecordType::STORE, 1, 1},
+        {RecordType::STORE, RecordType::LOAD, 1, 0}, {RecordType::STORE, RecordType::LOAD, 4, 3}};
+    for (bool batch : {false, true}) {
+        for (const auto &scenario : scenarios) {
+            SCOPED_TRACE(::testing::Message() << "batch=" << batch << " badBytes=" << scenario.badBytes);
+            std::stringstream output;
+            auto checker = MakeRealChecker(Config{.defaultCheck = true, .initCheck = true}, output, KernelType::AIVEC);
+            std::vector<SanitizerRecord> records{
+                MakeScalarRecord(scenario.first, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64),
+                MakeScalarRecord(scenario.second, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64)};
+            for (auto &record : records) {
+                if (record.payload.kernelRecord.recordType == RecordType::LOAD) {
+                    record.payload.kernelRecord.payload.loadStoreRecord.size = scenario.readSize;
+                }
+            }
+            SubmitRecords(*checker, records, batch);
+            checker->CaptureMemcheckCompletion().get();
+            auto asan = std::dynamic_pointer_cast<AddressSanitizer>(
+                checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
+            ASSERT_NE(asan, nullptr);
+            const auto &errors = asan->errorBuffer_.GetBuffer();
+            ASSERT_EQ(errors.size(), scenario.badBytes == 0 ? 0U : 1U);
+            if (!errors.empty()) {
+                EXPECT_EQ(errors[0].errorMsg.type, MemErrorType::UNINITIALIZED_READ);
+                EXPECT_EQ(errors[0].errorMsg.auxData.nBadBytes, scenario.badBytes);
+                EXPECT_EQ(errors[0].errorMsg.auxData.space, AddressSpace::PRIVATE);
+            }
+            checker->Do(MakeKernelFinishRecord());
+            EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), scenario.badBytes == 0 ? 0 : 1);
+        }
+    }
+}
+
+TEST(Checker, private_stream_empty_event_block_finish_still_retires_stack) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    std::stringstream output;
+    auto checker = MakeRealChecker(Config{.defaultCheck = true, .initCheck = true}, output, KernelType::AIVEC);
+    checker->Do(MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64));
+    checker->CaptureMemcheckCompletion().get();
+    auto asan =
+        std::dynamic_pointer_cast<AddressSanitizer>(checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
+    ASSERT_NE(asan, nullptr);
+    auto blockFinish = MakeKernelFinishRecord();
+    blockFinish.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
+    blockFinish.payload.kernelRecord.blockType = BlockType::AIVEC;
+    ASSERT_TRUE(asan->CheckRecordBeforeProcess(blockFinish));
+    const std::vector<SanEvent> empty;
+    asan->DoEvents(blockFinish, EventRange(empty));
+    checker->Do(std::vector<SanitizerRecord>{
+        MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64), MakeKernelFinishRecord()});
+
+    EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), 1) << output.str();
+}
+
+TEST(Checker, private_stream_kernel_start_resets_stack_without_block_finish) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    std::stringstream output;
+    auto checker = MakeRealChecker(Config{.defaultCheck = true, .initCheck = true}, output, KernelType::AIVEC);
+    checker->Do(std::vector<SanitizerRecord>{
+        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64), MakeKernelFinishRecord()});
+    EXPECT_EQ(GetDetectInfoNum(output.str()), 0) << output.str();
+
+    KernelSummary next{};
+    next.kernelType = KernelType::AIVEC;
+    next.blockDim = 1;
+    checker->SetKernelInfo(next);
+    checker->Do(std::vector<SanitizerRecord>{
+        MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64), MakeKernelFinishRecord()});
+    EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), 1) << output.str();
+    EXPECT_NE(output.str().find("on PRIVATE"), std::string::npos) << output.str();
+}
+
+TEST(Checker, kernel_switch_handles_initial_idle_consumers_and_no_workers) {
+    for (bool enabled : {false, true}) {
+        Config config{};
+        config.defaultCheck = enabled;
+        config.initCheck = enabled;
+        Checker checker(config, false);
+        EXPECT_TRUE(std::all_of(checker.done_.begin(), checker.done_.end(), [](bool done) { return done; }));
+        // Also exercise the inspection-only test setup: a sanitizer without a worker.
+        checker.sanitizerArr_[0] = std::make_shared<RecordingSanitizer>();
+        KernelSummary kernel{};
+        kernel.kernelType = KernelType::AIVEC;
+        kernel.blockDim = 1;
+        checker.SetKernelInfo(kernel);
+        checker.SetKernelInfo(kernel);
+        checker.Finish();
+    }
+}
+
+TEST(Checker, kernel_switch_waits_for_every_old_consumer_even_if_next_kernel_filters_it) {
+    std::array<std::promise<void>, 2> entered;
+    std::array<std::promise<void>, 2> release;
+    std::array<std::future<void>, 2> started{entered[0].get_future(), entered[1].get_future()};
+    std::array<std::shared_future<void>, 2> gates{release[0].get_future().share(), release[1].get_future().share()};
+    Config config{.defaultCheck = true, .memCheck = true, .raceCheck = true};
+    Checker checker(config, false);
+    std::array<std::shared_ptr<RecordingSanitizer>, 2> consumers{
+        std::make_shared<RecordingSanitizer>(), std::make_shared<RecordingSanitizer>()};
+    for (size_t i = 0; i < consumers.size(); ++i) {
+        checker.sanitizerArr_[i] = consumers[i];
+        consumers[i]->beforeRecord = [&, i] {
+            entered[i].set_value();
+            gates[i].wait();
+        };
+    }
+    SetCheckerContext(checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
+    checker.Do(std::vector<SanitizerRecord>{
+        MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, 1)});
+    for (auto &ready : started) {
+        EXPECT_EQ(ready.wait_for(std::chrono::seconds(3)), std::future_status::ready);
+    }
+    KernelSummary next{};
+    next.kernelType = KernelType::AIVEC;
+    next.blockDim = 1;
+    next.isKernelWithDBI = true;
+    auto switching = std::async(std::launch::async, [&] { checker.SetKernelInfo(next); });
+    const auto bothBlocked = switching.wait_for(std::chrono::milliseconds(100));
+    release[0].set_value();
+    checker.CaptureMemcheckCompletion().get();
+    const auto raceStillBlocked = switching.wait_for(std::chrono::milliseconds(100));
+    release[1].set_value();
+    switching.get();
+    checker.Finish();
+    EXPECT_EQ(bothBlocked, std::future_status::timeout);
+    EXPECT_EQ(raceStillBlocked, std::future_status::timeout);
+    for (const auto &consumer : consumers) {
+        ASSERT_EQ(consumer->records.size(), 1U);
+        EXPECT_EQ(consumer->records[0].payload.kernelRecord.recordType, RecordType::STORE);
+    }
+}
+
+class GatedAddressSanitizer final : public AddressSanitizer {
+public:
+    bool SetKernelInfo(const KernelSummary &kernel) override {
+        const bool result = AddressSanitizer::SetKernelInfo(kernel);
+        ++kernelUpdates;
+        return result;
+    }
+    void DoEvents(const SanitizerRecord &record, EventRange events) override {
+        if (beforeEvents) {
+            beforeEvents(record);
+        }
+        observedKernels.push_back(kernelUpdates.load());
+        AddressSanitizer::DoEvents(record, events);
+    }
+    std::atomic<unsigned> kernelUpdates{0};
+    std::vector<unsigned> observedKernels;
+    std::function<void(const SanitizerRecord &)> beforeEvents;
+};
+
+TEST(Checker, kernel_switch_waits_for_old_store_and_load_without_kernel_finish) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    for (bool batch : {false, true}) {
+        SCOPED_TRACE(batch);
+        std::promise<void> entered;
+        std::promise<void> release;
+        auto started = entered.get_future();
+        auto gate = release.get_future().share();
+        std::stringstream output;
+        Checker checker(Config{.defaultCheck = true, .initCheck = true}, false);
+        auto asan = std::make_shared<GatedAddressSanitizer>();
+        checker.sanitizerArr_[0] = asan;
+        checker.SetDetectionInfo(LogLv::WARN, output);
+        SetCheckerContext(checker, DeviceType::ASCEND_910B1, KernelType::AIVEC);
+        asan->beforeEvents = [&](const SanitizerRecord &record) {
+            if (record.payload.kernelRecord.serialNo == 1) {
+                entered.set_value();
+                gate.wait();
+            }
+        };
+        SubmitRecords(checker, {
+            MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64),
+            MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 128)}, batch);
+        const auto consuming = started.wait_for(std::chrono::seconds(3));
+        KernelSummary next{};
+        next.kernelType = KernelType::AIVEC;
+        next.blockDim = 1;
+        const auto context = RuntimeContext::Instance().rootTid_;
+        auto switching = std::async(std::launch::async, [&] {
+            RuntimeContext::Instance().rootTid_ = context;
+            checker.SetKernelInfo(next);
+        });
+        const auto blocked = switching.wait_for(std::chrono::milliseconds(100));
+        const auto updatesBeforeRelease = asan->kernelUpdates.load();
+        release.set_value();
+        switching.get();
+        EXPECT_EQ(consuming, std::future_status::ready);
+        EXPECT_EQ(blocked, std::future_status::timeout);
+        EXPECT_EQ(updatesBeforeRelease, 1U);
+        ASSERT_EQ(asan->observedKernels, (std::vector<unsigned>{1, 1}));
+        // The old LOAD must be diagnosed before switching, and the old STORE must
+        // not initialize the new kernel's stack. No finish record separates them.
+        ASSERT_EQ(asan->errorBuffer_.GetBuffer().size(), 1U);
+        EXPECT_EQ(asan->errorBuffer_.GetBuffer()[0].errorMsg.auxData.serialNo, 2U);
+        SubmitRecords(checker, {
+            MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 3, 64),
+            MakeKernelFinishRecord()}, batch);
+        EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), 2) << output.str();
+        EXPECT_EQ(asan->observedKernels, (std::vector<unsigned>{1, 1, 2, 2}));
+        checker.Finish();
+    }
+}
+
+TEST(Checker, private_stream_mstx_buffered_load_is_checked_before_block_reset) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    for (bool initialized : {false, true}) {
+        SCOPED_TRACE(initialized);
+        std::stringstream output;
+        auto checker = MakeRealChecker(Config{.defaultCheck = true, .initCheck = true}, output, KernelType::AIVEC);
+        auto wait = MakeMstxTensorRecord();
+        auto &mstx = wait.payload.kernelRecord.payload.mstxRecord;
+        mstx = {};
+        mstx.interfaceType = InterfaceType::MSTX_WAIT_CROSS_SYNC;
+        mstx.bufferLens = sizeof(MstxCrossRecord);
+        mstx.interface.mstxCrossRecord.addr = 0x300;
+        mstx.interface.mstxCrossRecord.pipe = PipeType::PIPE_V;
+        mstx.interface.mstxCrossRecord.flagId = 2;
+        mstx.interface.mstxCrossRecord.isMore = true;
+        auto blockFinish = MakeKernelFinishRecord();
+        blockFinish.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
+        blockFinish.payload.kernelRecord.blockType = BlockType::AIVEC;
+        std::vector<SanitizerRecord> records;
+        if (initialized) {
+            records.push_back(MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64));
+        }
+        // One parse task keeps thread-local repeated-wait buffering on one worker.
+        records.insert(records.end(),
+            {wait, MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64), wait,
+                blockFinish});
+        checker->Do(std::move(records));
+        checker->CaptureMemcheckCompletion().get();
+        auto asan = std::dynamic_pointer_cast<AddressSanitizer>(
+            checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
+        ASSERT_NE(asan, nullptr);
+        const auto &errors = asan->errorBuffer_.GetBuffer();
+        ASSERT_EQ(errors.size(), initialized ? 0U : 1U);
+        if (!initialized) {
+            EXPECT_EQ(errors[0].errorMsg.type, MemErrorType::UNINITIALIZED_READ);
+            EXPECT_EQ(errors[0].errorMsg.auxData.space, AddressSpace::PRIVATE);
+        } else {
+            checker->Do(MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 3, 64));
+            checker->CaptureMemcheckCompletion().get();
+            ASSERT_EQ(asan->errorBuffer_.GetBuffer().size(), 1U);
+            EXPECT_EQ(asan->errorBuffer_.GetBuffer()[0].errorMsg.auxData.serialNo, 3U);
+        }
+        checker->Do(MakeKernelFinishRecord());
+        EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), 1) << output.str();
+    }
+}
+
+TEST(Checker, private_stream_atomic_gm_transitions_preserve_pure_memcheck_overlap_diagnostics) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    auto store = [](uint64_t serial, uint64_t addr, uint16_t core) {
+        auto record = MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::GM, serial, addr);
+        auto &access = record.payload.kernelRecord.payload.loadStoreRecord;
+        access.location.blockId = core;
+        access.location.lineNo = serial;
+        return record;
+    };
+    auto atomic = [](uint64_t serial, AtomicMode mode) {
+        SanitizerRecord record{};
+        record.version = RecordVersion::KERNEL_RECORD;
+        record.payload.kernelRecord.recordType = RecordType::SET_ATOMIC;
+        record.payload.kernelRecord.blockType = BlockType::AIVEC;
+        record.payload.kernelRecord.serialNo = serial;
+        record.payload.kernelRecord.payload.atomicModeRecord.mode = mode;
+        return record;
+    };
+    auto allocation = MakeMemoryRecord();
+    allocation.payload.memoryRecord.side = MemOpSide::HOST;
+    // Each disabled store conflicts with the owner established before enabling atomic mode.
+    const std::array<std::vector<SanitizerRecord>, 4> phases{{
+        {allocation, MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, 1, 64),
+            MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 2, 64), store(3, 0x1000, 0),
+            atomic(4, AtomicMode::F32), store(5, 0x1000, 1)},
+        {atomic(6, AtomicMode::NONE), store(7, 0x1000, 1)},
+        {store(8, 0x1008, 0), atomic(9, AtomicMode::F16), store(10, 0x1008, 1)},
+        {atomic(11, AtomicMode::NONE), store(12, 0x1008, 1)},
+    }};
+    const std::array<size_t, 4> expectedCounts{0, 1, 1, 2};
+    std::array<std::vector<std::string>, 4> baseline;
+    for (bool batch : {false, true}) {
+        for (bool initcheck : {false, true}) {
+            SCOPED_TRACE(batch);
+            SCOPED_TRACE(initcheck);
+            Config config{.defaultCheck = true, .memCheck = true};
+            config.initCheck = initcheck;
+            config.outOfBoundCheck = true;
+            std::stringstream output;
+            auto checker = MakeRealChecker(config, output, KernelType::AIVEC);
+            auto asan = std::dynamic_pointer_cast<AddressSanitizer>(
+                checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
+            ASSERT_NE(asan, nullptr);
+            for (size_t phase = 0; phase < phases.size(); ++phase) {
+                SCOPED_TRACE(phase);
+                SubmitRecords(*checker, phases[phase], batch);
+                checker->CaptureMemcheckCompletion().get();
+                EXPECT_TRUE(asan->CheckExistingGmRange(0x1000, 64, AccessType::WRITE));
+                const auto errors = asan->errorBuffer_.GetBuffer();
+                ASSERT_EQ(errors.size(), expectedCounts[phase]);
+                std::vector<std::string> diagnostics;
+                for (size_t i = 0; i < errors.size(); ++i) {
+                    const auto &error = errors[i].errorMsg;
+                    EXPECT_EQ(error.type, MemErrorType::OUT_OF_BOUNDS);
+                    EXPECT_EQ(error.auxData.space, AddressSpace::GM);
+                    EXPECT_EQ(error.auxData.badAddr.addr, i == 0 ? 0x1000U : 0x1008U);
+                    EXPECT_EQ(error.auxData.nBadBytes, 1U);
+                    EXPECT_EQ(error.auxData.serialNo, i == 0 ? 7U : 12U);
+                    EXPECT_EQ(error.auxData.lineNo, error.auxData.serialNo);
+                    EXPECT_EQ(error.auxData.coreId, 1U);
+                    EXPECT_EQ(error.auxData.blockType, BlockType::AIVEC);
+                    EXPECT_EQ(error.auxData.recordType, RecordType::STORE);
+                    EXPECT_EQ(error.auxData.side, MemOpSide::KERNEL);
+                    std::stringstream diagnostic;
+                    diagnostic << errors[i];
+                    diagnostics.push_back(diagnostic.str());
+                }
+                if (!batch && !initcheck) {
+                    baseline[phase] = diagnostics;
+                } else {
+                    EXPECT_EQ(diagnostics, baseline[phase]);
+                }
+            }
+            checker->Do(MakeKernelFinishRecord());
+            EXPECT_EQ(GetDetectInfoNum(output.str(), "out of bounds of size 1"), 2) << output.str();
+            EXPECT_EQ(output.str().find("illegal write"), std::string::npos) << output.str();
+            EXPECT_EQ(output.str().find("uninitialized read"), std::string::npos) << output.str();
+        }
+    }
+}
+
+TEST(Checker, private_stream_dynamic_simt_preserves_pure_memcheck_diagnostics) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    std::array<ShadowMemoryRecord, 3> memory{};
+    for (size_t i = 0; i < memory.size(); ++i) {
+        memory[i].addr = i == 2 ? 64 : 0x1000;
+        memory[i].size = 4;
+        memory[i].space = i == 2 ? AddressSpace::UB : AddressSpace::GM;
+        memory[i].accessType = i == 2 ? AccessType::READ : AccessType::WRITE;
+        memory[i].location.blockId = i == 1 ? 1 : 0;
+        memory[i].location.lineNo = 20 + i;
+        memory[i].location.pc = 0x200 + i;
+        memory[i].threadLoc.mainScalarPc = 0x300 + i;
+    }
+    std::vector<SanitizerRecord> dynamicRecords;
+    for (size_t i = 0; i < memory.size(); ++i) {
+        SanitizerRecord record{};
+        record.version = RecordVersion::KERNEL_RECORD;
+        auto &kernel = record.payload.kernelRecord;
+        kernel.recordType = RecordType::DYNAMIC_OP;
+        kernel.blockType = BlockType::AIVEC;
+        kernel.serialNo = 10 + i;
+        kernel.payload.dynamicRecord.count = 1;
+        kernel.payload.dynamicRecord.dynamicType = RecordType::SIMT_ENTRY;
+        kernel.payload.dynamicRecord.buffer = &memory[i];
+        dynamicRecords.push_back(record);
+    }
+    std::string baseline;
+    for (bool batch : {false, true}) {
+        for (bool initcheck : {false, true}) {
+            SCOPED_TRACE(::testing::Message() << "batch=" << batch << " initcheck=" << initcheck);
+            Config config{.defaultCheck = true, .memCheck = true};
+            config.initCheck = initcheck;
+            config.outOfBoundCheck = true;
+            std::stringstream output;
+            auto checker = MakeRealChecker(config, output, KernelType::AIVEC);
+            auto allocation = MakeMemoryRecord();
+            allocation.payload.memoryRecord.side = MemOpSide::HOST;
+            checker->Do(allocation);
+            SubmitRecords(*checker, dynamicRecords, batch);
+            checker->CaptureMemcheckCompletion().get();
+            auto asan = std::dynamic_pointer_cast<AddressSanitizer>(checker->sanitizerArr_[0]);
+            ASSERT_NE(asan, nullptr);
+            const auto errors = asan->errorBuffer_.GetBuffer();
+            ASSERT_EQ(errors.size(), 1U);
+            const auto &error = errors[0].errorMsg;
+            EXPECT_EQ(error.type, MemErrorType::OUT_OF_BOUNDS);
+            EXPECT_EQ(error.auxData.space, AddressSpace::GM);
+            EXPECT_EQ(error.auxData.badAddr.addr, 0x1000U);
+            EXPECT_EQ(error.auxData.nBadBytes, 4U);
+            EXPECT_EQ(error.auxData.serialNo, 11U);
+            EXPECT_EQ(error.auxData.lineNo, 21U);
+            EXPECT_EQ(error.auxData.coreId, 1U);
+            EXPECT_EQ(error.auxData.pc, 0x201U);
+            EXPECT_EQ(error.auxData.blockType, BlockType::AIVEC);
+            EXPECT_EQ(error.auxData.side, MemOpSide::KERNEL);
+            EXPECT_TRUE(error.auxData.isSimt);
+            std::stringstream diagnostic;
+            diagnostic << errors[0];
+            if (!batch && !initcheck) {
+                baseline = diagnostic.str();
+            } else {
+                EXPECT_EQ(diagnostic.str(), baseline);
+            }
+            SubmitRecords(*checker, {
+                MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, 30, 64),
+                MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 31, 64),
+                MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 32, 128),
+                MakeKernelFinishRecord()}, batch);
+            EXPECT_EQ(GetDetectInfoNum(output.str(), "out of bounds of size 4"), 1) << output.str();
+            EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), initcheck ? 1 : 0) << output.str();
+            EXPECT_EQ(output.str().find("on UB"), std::string::npos) << output.str();
+            checker->Finish();
+        }
+    }
+}
+
+TEST(Checker, private_stream_does_not_queue_whole_kernel_before_finish) {
+    ScopedInitcheckAddressSpace selection(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    for (bool memcheck : {false, true}) {
+        SCOPED_TRACE(memcheck);
+        Config config{.defaultCheck = true, .initCheck = true};
+        config.memCheck = memcheck;
+        std::stringstream output;
+        auto checker = MakeRealChecker(config, output, KernelType::AIVEC);
+        auto asan = std::dynamic_pointer_cast<AddressSanitizer>(
+            checker->sanitizerArr_[static_cast<size_t>(ToolType::MEMCHECK)]);
+        ASSERT_NE(asan, nullptr);
+        for (size_t batch = 0; batch < 3; ++batch) {
+            const uint64_t serial = 4 * batch + 1;
+            checker->Do(std::vector<SanitizerRecord>{
+                MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, serial, 64),
+                MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, serial + 1, 64),
+                MakeScalarRecord(RecordType::STORE, BlockType::AIVEC, AddressSpace::PRIVATE, serial + 2, 128),
+                MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, serial + 3, 128)});
+            checker->CaptureMemcheckCompletion().get();
+            EXPECT_EQ(asan->pipelineReplayer_.GetMemEventCount(), 0U);
+            EXPECT_EQ(asan->pipelineReplayer_.eventContainer_.GetAllQueSize(), 0U);
+            EXPECT_EQ(asan->replayedEventCount_, 0U);
+            EXPECT_LE(asan->replayedRecords_.size(), 1U);
+            EXPECT_TRUE(asan->errorBuffer_.GetBuffer().empty());
+        }
+        // A fresh offset must already be diagnosed, not merely discarded with the stream.
+        checker->Do(MakeScalarRecord(RecordType::LOAD, BlockType::AIVEC, AddressSpace::PRIVATE, 7000, 192));
+        checker->CaptureMemcheckCompletion().get();
+        ASSERT_EQ(asan->errorBuffer_.GetBuffer().size(), 1U);
+        EXPECT_EQ(asan->errorBuffer_.GetBuffer()[0].errorMsg.type, MemErrorType::UNINITIALIZED_READ);
+        checker->Do(MakeKernelFinishRecord());
+        EXPECT_EQ(GetDetectInfoNum(output.str(), "uninitialized read"), 1) << output.str();
+    }
+}
+
+TEST(Checker, initcheck_replay_requires_a_selected_nonprivate_space) {
+    const uint32_t stack = InitcheckAddressSpaceBit(AddressSpace::PRIVATE);
+    const uint32_t ub = InitcheckAddressSpaceBit(AddressSpace::UB);
+    for (uint32_t mask : {0U, stack, ub, stack | ub, INITCHECK_ALL_ADDRESS_SPACES}) {
+        ScopedInitcheckAddressSpace selection(mask);
+        for (bool memcheck : {false, true}) {
+            SCOPED_TRACE(mask);
+            SCOPED_TRACE(memcheck);
+            AddressSanitizer asan;
+            asan.config_.initCheck = true;
+            asan.config_.memCheck = memcheck;
+            EXPECT_EQ(asan.NeedsInitcheckReplay(), (mask & ~stack) != 0U);
+        }
+    }
 }

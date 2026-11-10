@@ -337,6 +337,10 @@ bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
 {
     replayedRecords_.clear();
     replayedEventCount_ = 0;
+    // PRIVATE 在块内流式检测（即使同时回放其它空间），首个 block 到来前清除上次 kernel 的状态。
+    if (StreamsPrivateMemory() && shadowMemory_->IsReady()) {
+        shadowMemory_->ResetPrivateMemory();
+    }
     pipelineReplayer_.Init(kernelInfo.kernelType, deviceType_, kernelInfo.blockDim);
     pipelineReplayer_.RegisterCallback([this](ReplayerCallbackType type, const SanEvent &event) {
         if (type == ReplayerCallbackType::MEMORY_EVENT) {
@@ -393,8 +397,14 @@ bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record) {
 
     if (record.version == RecordVersion::KERNEL_RECORD) {
         if (record.payload.kernelRecord.recordType == RecordType::BLOCK_FINISH) {
-            shadowMemory_->ResetChipMemory();
-            shadowMemory_->ResetPrivateMemory();
+            // 回放共享空间时 chip 状态在每个 block 结束即失效；PRIVATE 若走块内流式，
+            // 必须先处理 BLOCK_FINISH 刷出的尾部事件，重置延后到 DoEvents。
+            if (!config_.initCheck || NeedsInitcheckReplay()) {
+                shadowMemory_->ResetChipMemory();
+            }
+            if (!config_.initCheck || !StreamsPrivateMemory()) {
+                shadowMemory_->ResetPrivateMemory();
+            }
             return true;
         }
         bool atomicEnabled;
@@ -632,12 +642,39 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
     DoEvents(record, EventRange(events));
 }
 
+bool AddressSanitizer::NeedsInitcheckReplay() const {
+    // scalar PRIVATE 访问已有块内程序序；选中其他地址空间时仍需同步回放。
+    const uint32_t mask = ConfigManager::Instance().GetInitcheckAddressSpaceMask();
+    return config_.initCheck && (mask & ~InitcheckAddressSpaceBit(AddressSpace::PRIVATE)) != 0U;
+}
+
+bool AddressSanitizer::StreamsPrivateMemory() const {
+    // PRIVATE 为核内私有数据，块内即有程序序，不需要跟随共享空间同步回放。
+    if (!config_.initCheck) {
+        return false;
+    }
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(config_,
+        ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS);
+    return IsInitcheckAddressSpaceEnabled(mask, AddressSpace::PRIVATE);
+}
+
 void AddressSanitizer::DoEvents(const SanitizerRecord &record, EventRange events) {
     if (record.version == RecordVersion::REGION_PERMISSION) {
         return SetPermission(record.payload.permissionDesc);
     }
 
+    const bool replay = NeedsInitcheckReplay();
+    const bool streamPrivate = StreamsPrivateMemory();
+    // PRIVATE 即使在回放模式下也按块流式处理，尾部事件处理完后再清理块内状态。
+    const bool streamingBlockFinish = streamPrivate &&
+        record.version == RecordVersion::KERNEL_RECORD &&
+        record.payload.kernelRecord.recordType == RecordType::BLOCK_FINISH;
     if (events.empty()) {
+        if (streamingBlockFinish) {
+            // 即使当前 block 无事件，也不能让初始化状态泄漏到下一 block。
+            shadowMemory_->ResetChipMemory();
+            shadowMemory_->ResetPrivateMemory();
+        }
         return;
     }
 
@@ -660,16 +697,26 @@ void AddressSanitizer::DoEvents(const SanitizerRecord &record, EventRange events
         preSerialNo_ = event.serialNo;
     }
 
-    // 未初始化检测需要感知同步事件，通过流水线回放还原真实执行顺序，避免跨核/跨block初始化误报，故初始化检测场景需要pipeline回放
-    // 纯内存检测（越界/对齐/踩踏）不依赖执行顺序，不走回放以降低开销
-    if (config_.initCheck) {
+    // 共享空间初始化检测需按同步关系回放；PRIVATE 为核内私有数据，块内即有程序序，始终流式处理。
+    if (replay) {
         const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
             config_, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
             InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS);
-        // Reserve output before replay, then convert and merge in replay order.
+        if (streamPrivate) {
+            // 按记录块隔离 PRIVATE 记录，避免与跨指令的相邻记录合并后报告错误的源码位置。
+            streamedPrivateRecords_.clear();
+        }
+        // 复用当前记录块的合并缓冲；PRIVATE 记录不进入回放。
+        MemRecordSink privateSink(streamedPrivateRecords_);
+        // 回放结束前预留转换结果容量，避免逐条追加导致大缓冲区反复扩容。
         for (const auto &event : events) {
             // 多工具共享解析结果时，仅在当前 initcheck 消费者中选择地址空间。
             if (!ShouldCollectInitcheckEvent(mask, event)) {
+                continue;
+            }
+            if (streamPrivate && event.type == EventType::MEM_EVENT &&
+                FormatConverter::MemTypeToAddrSpace(event.eventInfo.memInfo.memType) == AddressSpace::PRIVATE) {
+                ConvertEventRecords(event, privateSink);
                 continue;
             }
             if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
@@ -678,20 +725,47 @@ void AddressSanitizer::DoEvents(const SanitizerRecord &record, EventRange events
             }
             pipelineReplayer_.Do(event);
         }
+        // 原地检测 PRIVATE，不等待整 kernel 回放。
+        for (MemOpRecord const &r : streamedPrivateRecords_) {
+            this->DoMemOpRecord(r, true);
+        }
+        streamedPrivateRecords_.clear();
         if (pipelineReplayer_.IsFinished()) {
             for (MemOpRecord const &r : replayedRecords_) {
                 this->DoMemOpRecord(r, true);
             }
             ReportAfterKernelFinish();
         }
+        if (streamingBlockFinish) {
+            shadowMemory_->ResetChipMemory();
+            shadowMemory_->ResetPrivateMemory();
+        }
         return;
     }
 
-    // 纯内存检测不依赖同步事件感知执行顺序，按block到达顺序增量处理
-    std::vector<MemOpRecord> records;
-    ConvertEventsToRecords(events, records);
-    for (MemOpRecord const &r : records) {
+    // 仅复用当前批次的转换缓冲区，不累计整 kernel 的内存访问记录。
+    replayedRecords_.clear();
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(config_,
+        ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS);
+    if (mask == INITCHECK_ALL_ADDRESS_SPACES) {
+        ConvertEventsToRecords(events, replayedRecords_);
+    } else {
+        // 仅过滤当前消费者的输入，不修改其他工具所需的事件；未选中事件也不参与容量预估。
+        MemRecordSink sink(replayedRecords_);
+        for (const auto &event : events) {
+            if (ShouldCollectInitcheckEvent(mask, event)) {
+                ConvertEventRecords(event, sink);
+            }
+        }
+    }
+    for (MemOpRecord const &r : replayedRecords_) {
         this->DoMemOpRecord(r, true);
+    }
+
+    if (streamingBlockFinish) {
+        // 尾部事件检测完成后再清理状态，避免将同一 block 的先前写入误判为未初始化。
+        shadowMemory_->ResetChipMemory();
+        shadowMemory_->ResetPrivateMemory();
     }
 
     if (record.version == RecordVersion::KERNEL_RECORD &&

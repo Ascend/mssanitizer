@@ -84,6 +84,8 @@ private:
     void AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord);
     void SetPermission(MemRegionPermissionDesc const &desc);
     void ConvertEventsToRecords(EventRange events, std::vector<MemOpRecord> &records);
+    bool NeedsInitcheckReplay() const;
+    bool StreamsPrivateMemory() const;
 
     std::unique_ptr<ShadowMemory> shadowMemory_;
     MSG_FUNC msgFunc_;
@@ -96,6 +98,8 @@ private:
     std::map<uint64_t, uint64_t> mstxHeapCacheMap_;
     PipelineReplayer pipelineReplayer_;
     std::vector<MemOpRecord> replayedRecords_;
+    // 共享空间回放时 PRIVATE 事件按记录块内流式检测，复用该缓冲区。
+    std::vector<MemOpRecord> streamedPrivateRecords_;
     size_t replayedEventCount_{};
     DeviceType deviceType_ = DeviceType::INVALID;
     uint64_t preSerialNo_{0};

@@ -287,7 +287,10 @@ void HandleKernelBlock(Checker &checker, CrossNpuChecker &crossNpuChecker,
 
     SanitizerRecord sanitizerRecord;
     std::vector<SanitizerRecord> records;
-    records.reserve(kernelBlock->GetRecordNum());
+    const size_t recordNum = kernelBlock->GetRecordNum();
+    constexpr size_t FINISH_RECORD_RESERVE = 2U;
+    // 为 BLOCK_FINISH 和 KERNEL_FINISH 预留位置，避免追加结束标记时触发大批次扩容复制。
+    records.reserve(recordNum + FINISH_RECORD_RESERVE);
     sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
     auto *recordArray = crossNpuChecker.GetRecordArrayForCollection(runtimeContext.GetDeviceId());
     while (kernelBlock->NextSimd(sanitizerRecord.payload.kernelRecord)) {

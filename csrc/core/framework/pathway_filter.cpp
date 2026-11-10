@@ -16,6 +16,8 @@
 
 #include "pathway_filter.h"
 
+#include <iterator>
+
 namespace Sanitizer {
 
 const PathwayFilter::RuleTable &PathwayFilter::GetRules() {
@@ -41,6 +43,30 @@ bool PathwayFilter::Matches(const PathwayFilterRule &rule, RecordType recordType
     return rule.blockType.Matches(event.loc.blockType) && rule.pipeType.Matches(event.pipe) &&
         rule.memType.Matches(memInfo.memType) && rule.accessType.Matches(memInfo.opType) &&
         rule.recordType.Matches(recordType);
+}
+
+EventRange PathwayFilter::Filter(RecordType recordType, EventRange events, std::vector<SanEvent> &scratch) {
+    if (events.empty()) {
+        return events;
+    }
+    const auto &rules = GetRules();
+    if (std::none_of(rules.cbegin(), rules.cend(),
+            [recordType](const PathwayFilterRule &rule) { return rule.recordType.Matches(recordType); })) {
+        return events;
+    }
+    const auto matches = [recordType, &rules](const SanEvent &event) {
+        return std::any_of(rules.cbegin(), rules.cend(), [recordType, &event](const PathwayFilterRule &rule) {
+            return PathwayFilter::Matches(rule, recordType, event);
+        });
+    };
+    const auto firstMatch = std::find_if(events.begin(), events.end(), matches);
+    if (firstMatch == events.end()) {
+        return events;
+    }
+    scratch.assign(events.begin(), firstMatch);
+    std::copy_if(firstMatch + 1, events.end(), std::back_inserter(scratch),
+        [&matches](const SanEvent &event) { return !matches(event); });
+    return EventRange(scratch);
 }
 
 size_t PathwayFilter::FilterInPlace(RecordType recordType, std::vector<SanEvent> &events) {

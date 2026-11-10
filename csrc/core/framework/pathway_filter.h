@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "event_def.h"
+#include "utility/event_range.h"
 
 namespace Sanitizer {
 
@@ -66,6 +67,9 @@ public:
     static const RuleTable &GetRules();
 
     static bool Matches(const PathwayFilterRule &rule, RecordType recordType, const SanEvent &event);
+
+    // 仅命中时复制保留事件；返回的 scratch 视图有效至下次修改 scratch，输入不可与其重叠。
+    static EventRange Filter(RecordType recordType, EventRange events, std::vector<SanEvent> &scratch);
 
     // 在调用方独占的事件副本上原地移除匹配事件并返回移除数量。
     static size_t FilterInPlace(RecordType recordType, std::vector<SanEvent> &events);
