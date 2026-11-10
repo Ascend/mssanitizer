@@ -3775,6 +3775,32 @@ TEST_F(TestRecordParse, parse_report_set_l1_2d_success)
     ASSERT_TRUE(events.size() != 0);
 }
 
+TEST_F(TestRecordParse, parse_report_set_l1_2d_repeat_gap_stride)
+{
+    std::vector<SanEvent> events;
+    SanitizerRecord sanitizerRecord{};
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    KernelRecord& record = sanitizerRecord.payload.kernelRecord;
+    record.recordType = RecordType::SET_L1_2D;
+    auto &setL12DRecord = record.payload.setL12DRecord;
+    CreateSetL12DRecord(setL12DRecord);
+    setL12DRecord.dst = 0x1000;
+    setL12DRecord.repeat = 2;
+    setL12DRecord.dstBlockNum = 2;
+    setL12DRecord.repeatGap = 4;
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 1);
+    const auto& memInfo = events[0].eventInfo.memInfo;
+    EXPECT_EQ(memInfo.memType, MemType::L1);
+    EXPECT_EQ(memInfo.opType, AccessType::WRITE);
+    EXPECT_EQ(memInfo.addr, 0x1000U);
+    EXPECT_EQ(memInfo.blockNum, 2U);
+    EXPECT_EQ(memInfo.blockSize, 32U);
+    EXPECT_EQ(memInfo.blockStride, 1U);
+    EXPECT_EQ(memInfo.repeatTimes, 2U);
+    EXPECT_EQ(memInfo.repeatStride, 6U);
+}
+
 TEST_F(TestRecordParse, parse_report_load_l1_2d_test)
 {
     std::vector<SanEvent> events;

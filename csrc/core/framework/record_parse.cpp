@@ -3856,7 +3856,7 @@ static void ParseRecordSetL12D(const KernelRecord &record, std::vector<SanEvent>
     memInfo.blockSize = 32U;
     memInfo.blockNum = setL12DRecord.dstBlockNum;
     memInfo.blockStride = 1;
-    memInfo.repeatStride = setL12DRecord.repeatGap;
+    memInfo.repeatStride = setL12DRecord.dstBlockNum + setL12DRecord.repeatGap;
     memInfo.repeatTimes = setL12DRecord.repeat;
     events.emplace_back(event);
 }
