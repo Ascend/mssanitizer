@@ -305,13 +305,20 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
     std::unique_lock<std::recursive_mutex> peerLock;
     if (pid_ >= 0) {
         peerLock = std::unique_lock<std::recursive_mutex>(PeerAccessManager::Instance().Mutex());
-        PeerAccessManager::Instance().UnregisterDevice(this);
+        // 同一设备重复上报摘要时保留映射；切换设备时撤销原设备登记
+        if (mappingDeviceId_ != deviceInfo.deviceId) {
+            PeerAccessManager::Instance().UnregisterDevice(this);
+        }
     }
+    mappingDeviceId_ = deviceInfo.deviceId;
     config_ = config;
     // init shadow memory by chipType
     auto it = CHIP_INFO_MAP.find(deviceInfo.device);
     if (it == CHIP_INFO_MAP.end()) {
         SAN_WARN_LOG("The soc type %u is invalid ", static_cast<uint32_t>(deviceInfo.device));
+        if (pid_ >= 0) {
+            PeerAccessManager::Instance().UnregisterDevice(this);
+        }
         return false;
     }
 
@@ -324,6 +331,8 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
     if (ready && pid_ >= 0 && deviceInfo.deviceId >= 0) {
         PeerAccessManager::Instance().RegisterDevice(
             pid_, deviceInfo.deviceId, this, &boundsCheckRuntime_, &boundsCheckDfx_);
+    } else if (pid_ >= 0) {
+        PeerAccessManager::Instance().UnregisterDevice(this);
     }
     return ready;
 }
@@ -331,6 +340,10 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
 bool AddressSanitizer::CheckExistingGmRange(uint64_t addr, uint64_t size, AccessType accessType) const {
     const BoundsCheck &bounds = boundsCheckScope_ == BoundsCheckScope::DFX ? boundsCheckDfx_ : boundsCheckRuntime_;
     return !bounds.Check(AddressSpace::GM, addr, size, accessType).isError;
+}
+
+bool AddressSanitizer::ContainsGmRange(uint64_t addr, uint64_t size) const {
+    return boundsCheckRuntime_.Contains(AddressSpace::GM, addr, size);
 }
 
 bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
@@ -389,6 +402,11 @@ bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record) {
             return false;
         }
 
+        const auto &memory = record.payload.memoryRecord;
+        if (pid_ >= 0 && (memory.infoSrc == MemInfoSrc::ACL || memory.infoSrc == MemInfoSrc::RT) &&
+            (memory.type == MemOpType::MALLOC || memory.type == MemOpType::FREE)) {
+            PeerAccessManager::Instance().RevokeMappingsOfAllocation(pid_, mappingDeviceId_, memory.dstAddr);
+        }
         this->BeforeScopeSwitch(record.payload.memoryRecord);
         this->DoMemOpRecord(record.payload.memoryRecord, false);
         this->AfterScopeSwitch(record.payload.memoryRecord);

@@ -197,6 +197,32 @@ ErrorMsg DiscreteBounds::Check(uint64_t addr, uint64_t size, AccessType accessTy
     return ErrorMsg();
 }
 
+bool DiscreteBounds::Contains(uint64_t addr, uint64_t size) const {
+    if (size == 0 || addr > UINT64_MAX - size) {
+        return false;
+    }
+    const uint64_t end = addr + size;
+    const auto pred = [](uint64_t a, const Range &b) { return a < b.addrR; };
+    auto it = std::upper_bound(ranges_.begin(), ranges_.end(), addr, pred);
+    uint64_t covered = addr;
+    for (; it != ranges_.end() && it->addrL <= covered; ++it) {
+        covered = std::max(covered, it->addrR);
+        if (covered >= end) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool UnionBounds::Contains(uint64_t addr, uint64_t size) const {
+    return size != 0 && addr <= UINT64_MAX - size && range_.addrL <= addr && addr + size <= range_.addrR;
+}
+
+bool BoundsCheck::Contains(AddressSpace space, uint64_t addr, uint64_t size) const {
+    auto it = bounds_.find(space);
+    return it != bounds_.end() && it->second->Contains(addr, size);
+}
+
 bool DiscreteBounds::HasOverlap(uint64_t addr, uint64_t size) const {
     if (size == 0 || addr > UINT64_MAX - size) {
         return false;

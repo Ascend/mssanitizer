@@ -284,3 +284,73 @@ TEST(OrderedPacketScheduler, BrokenCompletionAtShutdownReportsIncomplete) {
     scheduler.Finish();
     EXPECT_NE(testing::internal::GetCapturedStderr().find("Detection incomplete"), std::string::npos);
 }
+
+// 测试场景：所有方分配未消费时到达P2PMap，访存未完成时到达所有方FREE
+// 测试预期：Map等待分配完成，FREE等待使用方访存完成，而非只等入队返回
+TEST(OrderedPacketScheduler, P2PMappingWaitsForAllocationAndProtectsReaders) {
+    Config config{};
+    Checker owner(config, false);
+    Checker access(config, false);
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::vector<uint64_t> dispatched;
+    std::promise<void> allocationDone;
+    std::promise<void> accessDone;
+    auto allocationFuture = allocationDone.get_future().share();
+    auto accessFuture = accessDone.get_future().share();
+    OrderedPacketScheduler scheduler([&](OrderedPacketScheduler::Job &job) {
+        if (job.packet.GetType() == PacketType::DEVICE_SUMMARY) {
+            RuntimeContext::Instance().deviceSummary_ = job.packet.GetPayload().deviceSummary;
+        }
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            dispatched.push_back(job.packet.GetOrderId());
+        }
+        cv.notify_all();
+    }, [&](const OrderedPacketScheduler::Job &job) {
+        if (job.packet.GetOrderId() == 2) {
+            return allocationFuture;
+        }
+        if (job.packet.GetOrderId() == 5) {
+            return accessFuture;
+        }
+        std::promise<void> ready;
+        ready.set_value();
+        return ready.get_future().share();
+    });
+    DeviceInfoSummary summaryOwner{};
+    summaryOwner.deviceId = 2;
+    DeviceInfoSummary summaryAccess{};
+    summaryAccess.deviceId = 1;
+    HostMemRecord malloc{};
+    malloc.type = MemOpType::MALLOC;
+    HostMemRecord load{};
+    load.type = MemOpType::LOAD;
+    HostMemRecord free{};
+    free.type = MemOpType::FREE;
+    auto submit = [&](uint64_t id, bool toOwner, Packet packet) {
+        packet.SetOrderId(id);
+        scheduler.Submit({712, toOwner ? std::thread::id{} : std::this_thread::get_id(),
+            toOwner ? &owner : &access, std::move(packet), {}});
+    };
+    submit(1, true, Packet(summaryOwner));
+    submit(2, true, Packet(malloc));
+    submit(3, false, Packet(summaryAccess));
+    submit(4, false, Packet(P2PMappingRecord{1, 2, 0x1000, 8, 0x1000}));
+    submit(5, false, Packet(load));
+    submit(6, true, Packet(free));
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        EXPECT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return dispatched.size() >= 3; }));
+        EXPECT_EQ(dispatched, (std::vector<uint64_t>{1, 2, 3}));
+    }
+    allocationDone.set_value();
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        EXPECT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return dispatched.size() >= 5; }));
+        EXPECT_EQ(dispatched, (std::vector<uint64_t>{1, 2, 3, 4, 5}));
+    }
+    accessDone.set_value();
+    scheduler.Finish();
+    EXPECT_EQ(dispatched, (std::vector<uint64_t>{1, 2, 3, 4, 5, 6}));
+}

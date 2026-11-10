@@ -205,3 +205,35 @@ TEST(PeerOnlineParameters, SortingLocalParametersDoesNotRewritePeerTable) {
     checker.Process<RecordType::SIMT_STG>(record);
     EXPECT_GT(reinterpret_cast<SimtRecordBlockHead *>(simt)->writeOffset, 0);
 }
+
+// 测试场景：同设备两条相邻的P2P映射窗口
+// 测试预期：窗口内可访问，跨两个窗口的访存按连续范围合并后同样可访问，窗口外仍报非法
+TEST_F(PeerOnlineDevice, AdjacentMappingsCombineIntoSingleCoverage) {
+    peers = {{0x1000, 4, RW, 1}, {0x1004, 4, RW, 1}};
+    Access<RecordType::SIMT_LDG>(0x1000, 4);
+    EXPECT_TRUE(errors.empty());
+    Access<RecordType::SIMT_LDG>(0x1002, 4);
+    EXPECT_TRUE(errors.empty());
+    Access<RecordType::SIMT_LDG>(0x1006, 4);
+    ExpectIllegal(0x1006, 4, KernelErrorType::ILLEGAL_ADDR_READ);
+}
+
+// 测试场景：同设备两条相邻窗口的权限不同
+// 测试预期：合并只使用两条窗口都具备的权限；读可跨窗口合并，写仍被只读窗口拒绝
+TEST_F(PeerOnlineDevice, CombinedMappingsStillRequireEachWindowPermission) {
+    peers = {{0x1000, 4, R, 1}, {0x1004, 4, RW, 1}};
+    Access<RecordType::SIMT_LDG>(0x1002, 4);
+    EXPECT_TRUE(errors.empty());
+    Access<RecordType::SIMT_STG>(0x1000, 4);
+    ExpectIllegal(0x1000, 4, KernelErrorType::ILLEGAL_ADDR_WRITE);
+    Access<RecordType::SIMT_STG>(0x1002, 4);
+    ExpectIllegal(0x1002, 4, KernelErrorType::ILLEGAL_ADDR_WRITE);
+}
+
+// 测试场景：属于不同所有设备的相邻窗口
+// 测试预期：合并只在同一目标设备内进行，跨设备相邻窗口不拼接
+TEST_F(PeerOnlineDevice, MappingsDoNotCombineAcrossDevices) {
+    peers = {{0x1000, 4, RW, 1}, {0x1004, 4, RW, 2}};
+    Access<RecordType::SIMT_LDG>(0x1002, 4);
+    ExpectIllegal(0x1002, 4, KernelErrorType::ILLEGAL_ADDR_READ);
+}

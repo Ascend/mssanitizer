@@ -21,6 +21,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <vector>
 
 #include "record_defs.h"
 
@@ -36,6 +37,10 @@ public:
     std::recursive_mutex &Mutex() { return mutex_; }
     // 更新 pid 对应 Host 进程的授权关系：deviceId 为访问方，peerDeviceId 为目标方
     bool Apply(int32_t pid, const PeerAccessRecord &record);
+    // 精确映射与设备级Peer授权分别维护；仅允许记录覆盖的区间
+    bool ApplyMapping(int32_t pid, const P2PMappingRecord &record);
+    // 按所有方设备与原分配起点撤销该分配的全部关联映射，不区分使用方，避免同地址的新对象继承权限
+    void RevokeMappingsOfAllocation(int32_t pid, int32_t ownerDeviceId, uint64_t ownerAddr);
     // 登记同一 Host 进程内的设备检测对象及其两套内存范围表（运行库记录、用户标注）
     void RegisterDevice(int32_t pid, int32_t deviceId, AddressSanitizer *sanitizer, const BoundsCheck *runtimeBounds,
         const BoundsCheck *dfxBounds);
@@ -51,6 +56,8 @@ private:
     struct ProcessState {
         // 有向关系：访问方设备号 -> 允许访问的目标设备号
         std::map<int32_t, std::set<int32_t>> relations;
+        // 同PID精确映射及原分配身份，按(deviceId, ownerDeviceId, addr)排序，撤销保留各窗口独立身份
+        std::vector<P2PMappingRecord> mappings;
         // 设备号 -> 本设备的内存检测对象，供远端访问查询目标设备的有效 GM 范围和权限
         // 仅保存指针，不负责对象的创建和销毁；对象销毁前必须撤销登记
         std::map<int32_t, AddressSanitizer *> devices;

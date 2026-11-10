@@ -43,6 +43,7 @@ bool IsKnownPacketType(PacketType type) {
     case PacketType::MEM_REGION_PERMISSION:
     case PacketType::SANITIZER_RECORD:
     case PacketType::GM_ADDR_OUT_OF_BOUND_RECORD:
+    case PacketType::P2P_MAPPING_RECORD:
     case PacketType::PEER_ACCESS_RECORD:
     case PacketType::IPC_RESPONSE:
     case PacketType::KERNEL_RECORD_RESPONSE:
@@ -261,6 +262,8 @@ Packet MemCheckProtocol::GetPayLoad(PacketHead head) {
             return GetBinaryDataPacket<Packet::KernelRecord>();
         case PacketType::IPC_RECORD:
             return GetTriviallyCopyable<IPCMemRecord>();
+        case PacketType::P2P_MAPPING_RECORD:
+            return GetTriviallyCopyable<P2PMappingRecord>();
         case PacketType::PEER_ACCESS_RECORD:
             return GetTriviallyCopyable<PeerAccessRecord>();
         case PacketType::SANITIZER_RECORD:

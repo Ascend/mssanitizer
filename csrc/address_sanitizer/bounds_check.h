@@ -42,6 +42,8 @@ public:
     virtual ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const = 0;
     // 判断指定区间是否与当前记录的任一内存范围相交。
     virtual bool HasOverlap(uint64_t addr, uint64_t size) const = 0;
+    // 查询完整范围是否存在，独立于当前读写权限
+    virtual bool Contains(uint64_t addr, uint64_t size) const = 0;
     virtual ~Bounds() = default;
 };
 
@@ -53,6 +55,7 @@ public:
     ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const override;
     // 检查离散分配范围是否覆盖指定区间的任意部分。
     bool HasOverlap(uint64_t addr, uint64_t size) const override;
+    bool Contains(uint64_t addr, uint64_t size) const override;
 
 #if defined(__BUILD_TESTS__)
     // interface for ut
@@ -76,6 +79,7 @@ public:
     ErrorMsg Check(uint64_t addr, uint64_t size, AccessType accessType) const override;
     // 检查连续内存范围是否覆盖指定区间的任意部分。
     bool HasOverlap(uint64_t addr, uint64_t size) const override;
+    bool Contains(uint64_t addr, uint64_t size) const override;
 
 private:
     ErrorMsg CheckAddrOnly(uint64_t addr) const;
@@ -94,6 +98,8 @@ public:
     ErrorMsg Check(AddressSpace space, uint64_t addr, uint64_t size, AccessType accessType) const;
     // 查询指定地址空间内是否存在与访问区间相交的范围。
     bool HasOverlap(AddressSpace space, uint64_t addr, uint64_t size) const;
+    // 查询已登记范围的完整覆盖，用于建立映射时验证范围存在性
+    bool Contains(AddressSpace space, uint64_t addr, uint64_t size) const;
 
 private:
     bool localMemoryNeedAlloc_;

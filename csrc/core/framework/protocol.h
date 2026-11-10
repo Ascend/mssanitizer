@@ -47,6 +47,7 @@ enum class PacketType : uint32_t {
     SANITIZER_RECORD,    // 用于上报 SanitizerRecord 记录
     GM_ADDR_OUT_OF_BOUND_RECORD,  // GM地址越界写记录
     PEER_ACCESS_RECORD, // ACL peerAccess 访存关系
+    P2P_MAPPING_RECORD, // 成功P2PMap产生的精确地址映射
 
     // 用于server向client发送的消息
     IPC_RESPONSE = 3000,
@@ -84,6 +85,7 @@ public:
         MemRegionPermissionDesc memPermission;
         GMAddrOutOfBoundRecord gmAddrOutOfBoundRecord;
         PeerAccessRecord peerAccessRecord;
+        P2PMappingRecord p2pMappingRecord;
     };
 
 public:
@@ -120,6 +122,9 @@ public:
     // 将跨卡访问关系记录包装为协议数据包。
     explicit Packet(PeerAccessRecord const &record) : type_{PacketType::PEER_ACCESS_RECORD} {
         payload_.peerAccessRecord = record;
+    }
+    explicit Packet(P2PMappingRecord const &record) : type_{PacketType::P2P_MAPPING_RECORD} {
+        payload_.p2pMappingRecord = record;
     }
     explicit Packet(SanitizerRecord const &record) : type_{PacketType::SANITIZER_RECORD}
     {
@@ -280,6 +285,8 @@ enum class ResponseStatus : uint32_t { SUCCESS = 0, FAIL = 1000 };
 struct IPCResponse {
     IPCOperationType type;
     ResponseStatus status;
+    // MAP成功时返回导出方的逻辑窗口长度，供注入侧在线检测使用
+    uint64_t size;
 };
 
 struct KernelRecordResponse {

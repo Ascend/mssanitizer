@@ -242,6 +242,7 @@ std::string ProcessIPCMapEvent(IPCMemRecord const &record, Checker &checker, std
             HostMemRecord mallocRecord{MemOpType::MALLOC, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY,
                 0, record.mapInfo.addr, size};
             HandleHostMemRecord(checker, mallocRecord);
+            resp.size = size;
             resp.status = ResponseStatus::SUCCESS;
         }
     }
@@ -492,6 +493,15 @@ ProgramStatus Command::Exec(const ParamList &execParams) {
             case PacketType::IPC_RECORD:
                 HandleIpcMemRecord(checker, packet.GetPayload().ipcMemRecord, threadManager, msgRspFunc);
                 break;
+            case PacketType::P2P_MAPPING_RECORD: {
+                const auto &record = packet.GetPayload().p2pMappingRecord;
+                // 记录的设备归属已由 OrderedPacketScheduler 按连接校验，不匹配的报文不会派发到这里
+                if (!PeerAccessManager::Instance().ApplyMapping(job.pid, record)) {
+                    SAN_ERROR_LOG("Cannot apply P2P mapping: pid=%d device=%d owner=%d addr=0x%lx size=%lu",
+                        job.pid, record.deviceId, record.ownerDeviceId, record.addr, record.size);
+                }
+                break;
+            }
             case PacketType::PEER_ACCESS_RECORD: {
                 const auto &record = packet.GetPayload().peerAccessRecord;
                 if (record.deviceId == RuntimeContext::Instance().GetDeviceId() &&

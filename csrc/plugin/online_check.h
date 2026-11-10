@@ -562,7 +562,7 @@ AICORE_FUNC_HEAD bool OnlineCheck::PeerCovers(AddrInfo const &addrInfo) const {
 
     const uint64_t end = addrInfo.addr + addrInfo.size; // 访问区间结束位置
 
-    // 检查每个目标设备的地址是否能完全覆盖访问区间
+    // 逐个目标设备检查其快照范围能否合并覆盖访问区间
     for (uint32_t candidate = 0; candidate < simdBlockHead_->peerMemoryNum; ++candidate) {
         const int32_t device = simdBlockHead_->peerMemoryInfoPtr[candidate].deviceId;
         // 已覆盖的地址

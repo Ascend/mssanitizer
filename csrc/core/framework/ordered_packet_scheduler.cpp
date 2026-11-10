@@ -176,8 +176,20 @@ private:
             }
         }
 
-        // 处理peeraccess报文，并更新本设备的访问关系；其余报文按访问和更新类型等待相关检查完成
-        if (type == PacketType::PEER_ACCESS_RECORD) {
+        // 精确映射会改变访问方的判定，并查询所有方分配；等待真正消费完成再修改
+        if (type == PacketType::P2P_MAPPING_RECORD) {
+            const auto &record = packet.GetPayload().p2pMappingRecord;
+            if (record.deviceId != device || record.ownerDeviceId < 0 || record.ownerDeviceId == device ||
+                record.addr == 0 || record.size == 0 || record.addr > UINT64_MAX - record.size ||
+                record.ownerAddr > record.addr) {
+                Fail("invalid P2P mapping record");
+                return;
+            }
+            Wait(ownCheckPoints.lastWork);
+            Wait(devices_[record.ownerDeviceId].lastUpdate);
+            // ApplyMapping 在 dispatch_ 中同步完成；后续所有方更新派发时登记已结束
+        } else if (type == PacketType::PEER_ACCESS_RECORD) {
+            // 处理peeraccess报文，并更新本设备的访问关系
             const auto &record = packet.GetPayload().peerAccessRecord;
             const PeerAccessOp edgeOp = record.operation;
             // 合法性检查，记录设备id须匹配当前连接所属的设备；ENABLE/DISABLE 指向另一有效设备，RESET 的目标须为 -1
@@ -191,7 +203,7 @@ private:
             }
             if (edgeOp == PeerAccessOp::RESET) {
                 // RESET 撤销双向授权前，等待本设备此前的远端访问和其它获授权设备此前对本设备的访问检查完成
-                if (!relations_[device].empty()) {
+                if (!relations_[device].empty() || !mappedPeers_[device].empty()) {
                     Wait(ownCheckPoints.lastAccess);
                 }
                 WaitForReaders(device);
@@ -199,14 +211,17 @@ private:
                 const bool enabled = relations_[device].count(record.peerDeviceId) != 0;
                 // 授权实际变化时，等待本设备此前的访问检查完成，避免新授权影响旧访问；重复授权或撤权不等待
                 if ((edgeOp == PeerAccessOp::ENABLE && !enabled) ||
-                    (edgeOp == PeerAccessOp::DISABLE && enabled)) {
+                    (edgeOp == PeerAccessOp::DISABLE && (enabled || mappedPeers_[device].count(record.peerDeviceId)))) {
                     Wait(ownCheckPoints.lastAccess);
                 }
             }
         } else {
-            // 访问等目标设备此前的状态更新；状态更新等获准访问本设备的来源此前的访问检查
+            // 其余报文按访问和更新类型等待相关检查完成
             if (access) {
                 for (int32_t target : relations_[device]) {
+                    Wait(devices_[target].lastUpdate);
+                }
+                for (int32_t target : mappedPeers_[device]) {
                     Wait(devices_[target].lastUpdate);
                 }
             }
@@ -225,13 +240,20 @@ private:
         context = RuntimeContext::Instance();
 
         // 更新调度器的授权关系，供后续包识别依赖；真正的地址查询使用 PeerAccessManager
-        if (type == PacketType::PEER_ACCESS_RECORD) {
+        if (type == PacketType::P2P_MAPPING_RECORD) {
+            mappedPeers_[device].insert(packet.GetPayload().p2pMappingRecord.ownerDeviceId);
+        } else if (type == PacketType::PEER_ACCESS_RECORD) {
             const auto &record = packet.GetPayload().peerAccessRecord;
             if (record.operation == PeerAccessOp::ENABLE) {
                 relations_[device].insert(record.peerDeviceId);
             } else if (record.operation == PeerAccessOp::DISABLE) {
                 relations_[device].erase(record.peerDeviceId);
+                mappedPeers_[device].erase(record.peerDeviceId);
             } else if (record.operation == PeerAccessOp::RESET) {
+                mappedPeers_.erase(device);
+                for (auto &relation : mappedPeers_) {
+                    relation.second.erase(device);
+                }
                 relations_.erase(device);
                 for (auto &relation : relations_) {
                     relation.second.erase(device);
@@ -293,6 +315,7 @@ private:
             }
             break;
         }
+        case PacketType::DEVICE_SUMMARY:
         case PacketType::MEM_REGION_PERMISSION:
             update = true;
             break;
@@ -314,12 +337,20 @@ private:
 
     // 更新目标设备状态前，等待所有获准访问它的来源设备此前的访问检查完成
     void WaitForReaders(int32_t device) {
+        for (const auto &relation : mappedPeers_) {
+            if (relation.second.count(device) != 0) {
+                Wait(devices_[relation.first].lastAccess);
+            }
+        }
         for (const auto &relation : relations_) {
             if (relation.second.count(device) != 0) {
                 Wait(devices_[relation.first].lastAccess);
             }
         }
     }
+
+    // 已建立过映射的设备对保守保留依赖直到撤权/reset；只影响等待，不授予地址权限
+    std::map<int32_t, std::set<int32_t>> mappedPeers_;
 
     // 同时写工具日志与可见的检测不完整提示
     void Fail(const char *reason) {

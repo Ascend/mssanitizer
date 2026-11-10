@@ -355,3 +355,27 @@ TEST(Protocol, ordered_binary_and_normal_packets_at_every_byte_boundary) {
     }).join();
 }
 } // namespace Sanitizer
+
+// 测试场景：P2P映射报文分段接收并复制Packet
+// 测试预期：类型、顺序号、所有方身份及精确区间完整保留
+TEST(Protocol, P2PMappingRoundTripAndCopy) {
+    // 与真实接收模型及已有半包测试一致，一条连接使用独立接收线程
+    std::thread([] {
+        PacketHead head{PacketType::P2P_MAPPING_RECORD, 0, 51};
+        P2PMappingRecord record{1, 2, 0x1008, 8, 0x1000};
+        MemCheckProtocol protocol;
+        const auto bytes = Serialize(head) + Serialize(record);
+        protocol.Feed(bytes.substr(0, bytes.size() - 1));
+        EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+        protocol.Feed(bytes.substr(bytes.size() - 1));
+        Packet original = protocol.GetPacket();
+        Packet packet(original);
+        ASSERT_EQ(packet.GetType(), PacketType::P2P_MAPPING_RECORD);
+        EXPECT_EQ(packet.GetOrderId(), 51);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.deviceId, 1);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.ownerDeviceId, 2);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.addr, 0x1008);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.size, 8);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.ownerAddr, 0x1000);
+    }).join();
+}

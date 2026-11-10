@@ -233,7 +233,7 @@ TEST_F(TestCommand, IPC_functions_basic)
     ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
 
     ChildPidContainer childPidVec{};
-    auto workerJob = [&config, &checker, &ipcMemName, this]() {
+    auto workerJob = [&config, &checker, &ipcMemName, &randSize, this]() {
         ThreadManager threadManager(config, false, LogLv::INFO, logPath_);
         IPCResponse response;
         IPCMemRecord record3;
@@ -245,6 +245,7 @@ TEST_F(TestCommand, IPC_functions_basic)
         ParseIPCResponse(responseStr, response);
         ASSERT_EQ(response.type, record3.type);
         ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
+        ASSERT_EQ(response.size, randSize);
 
         IPCMemRecord record4;
         record4.type = IPCOperationType::UNMAP_INFO;

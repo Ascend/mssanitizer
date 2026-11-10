@@ -799,6 +799,7 @@ struct HostMemoryInfo {
 };
 
 // 在线 SIMT 检查使用的远端分配快照；deviceId 是分配所属设备
+// 同一设备的多个范围可以合并覆盖一次访存，精确P2PMap窗口与设备级授权使用同一套合并规则
 struct PeerMemoryInfo {
     uint64_t addr;
     uint64_t size;
@@ -2332,6 +2333,15 @@ enum class PeerAccessOp : uint32_t {
     ENABLE = 0,
     DISABLE,
     RESET
+};
+
+// 进程内跨设备的精确地址区间映射记录
+struct P2PMappingRecord {
+    int32_t deviceId; // 使用共享内存地址的设备，来自显式dstDevId
+    int32_t ownerDeviceId; // 分配共享内存地址的设备
+    uint64_t addr; // 窗口起始地址；与 ownerAddr 同一虚拟地址空间，映射不改变业务地址
+    uint64_t size; // 映射的长度
+    uint64_t ownerAddr; // 原分配起点，释放/重分配时撤销所有关联映射
 };
 
 // 跨设备访问授权记录，供工具更新访问方到目标设备的有向关系
