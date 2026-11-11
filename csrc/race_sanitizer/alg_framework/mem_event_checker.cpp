@@ -18,6 +18,7 @@
 #include "mem_event_checker.h"
 
 #include <array>
+#include <limits>
 #include <set>
 #include "core/framework/arch_def.h"
 #include "core/framework/config_manager.h"
@@ -601,6 +602,12 @@ void MemEventChecker::BuildScanlineMetaData(std::vector<SortMetaData> &eventsMet
 }
 
 void MemEventChecker::ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const {
+    // 扫描元数据与快速路径桶按 uint32_t 存事件编号；超出范围时直接拦截，避免截断后给出错误结论。
+    if (this->events_.size() > static_cast<size_t>(std::numeric_limits<uint32_t>::max()) + 1U) {
+        SAN_ERROR_LOG("racecheck event count %zu exceeds uint32_t index range, skip race detection on this kernel",
+            this->events_.size());
+        return;
+    }
     std::vector<SortMetaData> eventsMetaData;
     bool hasAnyDynamic = false;
     BuildScanlineMetaData(eventsMetaData, hasAnyDynamic);
@@ -737,8 +744,9 @@ void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &event
         pipeIdx[i] = pIdx;
         ownTime[i] = this->events_[i].vt.Get(pIdx);
     }
-    std::array<std::array<std::vector<uint64_t>, NPIPE>, kMemTypeCount> wB;
-    std::array<std::array<std::vector<uint64_t>, NPIPE>, kMemTypeCount> rB;
+    // 端点已使用 uint32_t 索引，入口范围检查保证桶索引也可用 32 位存储，降低桶遍历的内存开销。
+    std::array<std::array<std::vector<uint32_t>, NPIPE>, kMemTypeCount> wB;
+    std::array<std::array<std::vector<uint32_t>, NPIPE>, kMemTypeCount> rB;
     std::vector<uint32_t> posInBucket(nEvents);
     const MemEvent *evData = this->events_.data();
     for (const auto &metaData : eventsMetaData) {
@@ -751,7 +759,7 @@ void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &event
             // 结束端点：从所属桶 O(1) 删除（把桶尾元素搬到删除位，再 pop_back）
             auto &bucket = (curWrite ? wB[mt][sub] : rB[mt][sub]);
             const uint32_t pos = posInBucket[curIdx];
-            const uint64_t moved = bucket.back();
+            const uint32_t moved = bucket.back();
             bucket[pos] = moved;
             posInBucket[moved] = pos;
             bucket.pop_back();
@@ -767,9 +775,32 @@ void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &event
                 if (q == sub) { continue; }
                 auto &bucket = slots[q];
                 if (bucket.empty()) { continue; }
-                for (uint64_t hIdx : bucket) {
+                // 同一当前事件在同一桶查询的 q 分量不变，按桶惰性计算一次。
+                // MIX 的完整 VC 索引可能带子核偏移；仅 hPipe == q 时复用，否则按 hPipe 取值。
+                bool b1Cached = false;
+                uint32_t b1Cache = 0;
+                for (uint32_t hIdx : bucket) {
                     const MemEvent &he = evData[hIdx];
-                    if (!IsInnerCoreRaceCandidate(ce, he, t1Pipe, a1, pipeIdx[hIdx], ownTime[hIdx])) {
+                    const uint32_t hPipe = pipeIdx[hIdx];
+                    const uint32_t a2 = he.vt.Get(t1Pipe);
+                    if (a1 == a2) {
+                        continue;
+                    }
+                    uint32_t b1;
+                    if (hPipe == q) {
+                        if (!b1Cached) {
+                            b1Cache = ce.vt.Get(q);
+                            b1Cached = true;
+                        }
+                        b1 = b1Cache;
+                    } else {
+                        b1 = ce.vt.Get(hPipe);
+                    }
+                    const uint32_t b2 = ownTime[hIdx];
+                    if (!VectorClock::IsNotHappensBefore(a1, a2, b1, b2)) {
+                        continue;
+                    }
+                    if (IsAtomicAgainst(ce, he)) {
                         continue;
                     }
                     EventIdxInfo i1{};

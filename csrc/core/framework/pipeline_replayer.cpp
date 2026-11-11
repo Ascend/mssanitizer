@@ -19,7 +19,7 @@
 
 namespace Sanitizer {
 
-void PipelineReplayer::Init(KernelType kernelType, DeviceType deviceType, uint32_t blockDim)
+void PipelineReplayer::Init(KernelType kernelType, DeviceType deviceType, uint32_t blockDim, bool compactMemoryRuns)
 {
     kernelType_ = kernelType;
     deviceType_ = deviceType;
@@ -27,8 +27,10 @@ void PipelineReplayer::Init(KernelType kernelType, DeviceType deviceType, uint32
     uint32_t totalBlockNum = NeedExpandBlockDim(kernelType, deviceType)
         ? blockDim * C220_MIX_SUB_BLOCKDIM : blockDim;
     eventContainer_.Init(totalBlockNum);
+    compactMemoryRuns_ = compactMemoryRuns;
+    lastWasMemoryRun_.assign(compactMemoryRuns ? totalBlockNum : 0U, 0U);
     // 跨 kernel 复用需要清空，否则上一 kernel 未配对的 SET_FLAG 会满足本 kernel 的 WAIT_FLAG，造成同步问题漏报。
-    syncDB_.assign(totalBlockNum, SyncEventDataBase{});
+    syncDB_.assign(totalBlockNum, {});
     crossCoreSyncInfoContainer_.Init(totalBlockNum, kernelType);
 
     getRlsBufMap_.clear();
@@ -45,11 +47,32 @@ void PipelineReplayer::Do(const SanEvent& event)
         event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         // 收集阶段：缓存 MSTX set 计数，并将事件推入 eventContainer_
         CacheMstxCrossSet(event);
-        // 统计内存事件数，供回放前预分配输出缓冲区
-        if (event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT) {
+        // 压缩前统计全部输入内存事件，保证回放前预分配仍按原始事件总数计算。
+        const bool isMemory = event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT;
+        if (isMemory) {
             ++memEventCount_;
         }
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_);
+        if (compactMemoryRuns_ && blockIndex < lastWasMemoryRun_.size()) {
+            // 连续内存段按 block 独立维护，其他 block 的交错事件不截断本 block 的内存段。
+            auto &lastWasMemory = lastWasMemoryRun_[blockIndex];
+            if (isMemory) {
+                if (lastWasMemory) {
+                    return;
+                }
+                lastWasMemory = 1U;
+                // 保留一次原 S 队列的非阻塞出队，维持卡死判定所需的零/非零推进语义，并避免 MEMCPY_BLOCKS 拆分。
+                // TIME_EVENT 固定在 S 队列，不迁移也不触发内存回调；仅压缩模式使用，默认 initcheck 回放不变。
+                SanEvent marker = event;
+                marker.type = EventType::TIME_EVENT;
+                marker.pipe = PipeType::PIPE_S;
+                marker.timeInfo = nullptr;
+                eventContainer_.Push(marker, PipeType::PIPE_S, blockIndex);
+                return;
+            }
+            lastWasMemory = 0U;
+        }
+        // Invalid block indices still reach Push's original diagnostic.
         eventContainer_.Push(event, PipeType::PIPE_S, blockIndex);
         return;
     }
@@ -149,7 +172,8 @@ ReturnType PipelineReplayer::ProcessMemEvent(const SanEvent& event) {
     return ReturnType::PROCESS_OK;
 }
 
-// PIPE 间同步 (set_flag / wait_flag)，复用 SyncEventDataBase
+// PIPE 间同步只需判断配对，无需保存或合并 VT；每个 block 内以完整五元组匹配。
+// 键包含 srcPipe、dstPipe、eventId、memType、isRetrogress，重复 SET 分别计数，每次成功 WAIT 仅消费一个。
 ReturnType PipelineReplayer::ProcessSyncEvent(const SanEvent& event)
 {
     auto e = SyncEvent{};
@@ -162,14 +186,15 @@ ReturnType PipelineReplayer::ProcessSyncEvent(const SanEvent& event)
     uint32_t blockIdx = GetEventBlockIndex(event, kernelType_, deviceType_);
 
     if (event.eventInfo.syncInfo.opType == SyncType::SET_FLAG) {
-        VectorTime vt{};
-        syncDB_[blockIdx].Set(e, vt);
+        ++syncDB_[blockIdx][e];
         return ReturnType::PROCESS_OK;
     }
 
     if (event.eventInfo.syncInfo.opType == SyncType::WAIT_FLAG) {
-        VectorTime vt{};
-        if (syncDB_[blockIdx].Get(e, vt)) {
+        auto &syncCounts = syncDB_[blockIdx];
+        auto it = syncCounts.find(e);
+        if (it != syncCounts.end() && it->second != 0U) {
+            --it->second;
             return ReturnType::PROCESS_OK;
         } else {
             return ReturnType::PROCESS_STALLED;
@@ -299,8 +324,9 @@ ReturnType PipelineReplayer::ProcessMstxCrossNpuBarrier(const SanEvent& event)
     return ProcessMstxCrossCoreBarrier(decayEvent);
 }
 
-// BUF 同步 (GET_BUF / RLS_BUF)，复用 getRlsBufMap_ 的 .size() 计数能力
-// 使用 getBufCount_ 追踪 get 消费次数来判断卡死
+// BUF 同步：累计 release 次数 + 1 表示可用总容量，其中 1 是隐含的初始 buffer。
+// rlsCount 是累计 release 门槛，getBufCount_ 则追踪已消费容量；两项条件需同时满足。
+// 阻塞模式 GET 成功只增加消费次数，不扣减累计 release 次数，以保留后续 rlsCount 判断所需的历史。
 ReturnType PipelineReplayer::ProcessGetRlsBufSyncEvent(const SanEvent& event)
 {
     uint32_t blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_);
@@ -310,7 +336,7 @@ ReturnType PipelineReplayer::ProcessGetRlsBufSyncEvent(const SanEvent& event)
     if (bufSync.opType == SyncType::GET_BUF && bufSync.mode == BufMode::BLOCK_MODE) {
         auto it = getRlsBufMap_.find(bufKey);
         uint64_t consumed = getBufCount_[bufKey];
-        uint64_t available = (it == getRlsBufMap_.cend() ? 0 : it->second.size()) + 1;
+        uint64_t available = (it == getRlsBufMap_.cend() ? 0 : it->second) + 1;
 
         if (bufSync.rlsCount == 0U) {
             if (consumed + 1 > available) {
@@ -321,14 +347,13 @@ ReturnType PipelineReplayer::ProcessGetRlsBufSyncEvent(const SanEvent& event)
             // 每个buf_id的第一个get_buf，不具备阻塞作用
             return ReturnType::PROCESS_OK;
         }
-        if (it == getRlsBufMap_.cend() || it->second.size() < bufSync.rlsCount || consumed + 1 > available) {
+        if (it == getRlsBufMap_.cend() || it->second < bufSync.rlsCount || consumed + 1 > available) {
             return ReturnType::PROCESS_STALLED;
         }
         ++getBufCount_[bufKey];
         return ReturnType::PROCESS_OK;
     } else if (bufSync.opType == SyncType::RLS_BUF) {
-        VectorTime vt{};
-        getRlsBufMap_[bufKey].push_back(vt);
+        ++getRlsBufMap_[bufKey];
     }
     return ReturnType::PROCESS_OK;
 }

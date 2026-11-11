@@ -16,8 +16,15 @@
 
 #include <gtest/gtest.h>
 #include <vector>
+#include <cstring>
 
+#include "event_container.h"
+#include "pipe_line.h"
+#include "cross_core_sync_info_container.h"
+#include "core/framework/barrier_database.hpp"
+#define private public
 #include "pipeline_replayer.h"
+#undef private
 #include "core/framework/event_def.h"
 #include "core/framework/arch_def.h"
 #include "core/framework/record_defs.h"
@@ -72,6 +79,62 @@ protected:
         ReplayerCallbackType type;
         SanEvent event;
     };
+
+    static void AssertSameEvent(const SanEvent &actual, const SanEvent &expected) {
+        EXPECT_EQ(actual.serialNo, expected.serialNo);
+        EXPECT_EQ(actual.type, expected.type);
+        EXPECT_EQ(actual.pipe, expected.pipe);
+        // Both payloads are copies of the same trace event: compare every union byte, not a selected sync key.
+        EXPECT_EQ(std::memcmp(&actual.eventInfo, &expected.eventInfo, sizeof(actual.eventInfo)), 0);
+        EXPECT_EQ(actual.timeInfo, expected.timeInfo);
+        EXPECT_EQ(actual.loc.fileNo, expected.loc.fileNo);
+        EXPECT_EQ(actual.loc.lineNo, expected.loc.lineNo);
+        EXPECT_EQ(actual.loc.pc, expected.loc.pc);
+        EXPECT_EQ(actual.loc.deviceIdx, expected.loc.deviceIdx);
+        EXPECT_EQ(actual.loc.kernelIdx, expected.loc.kernelIdx);
+        EXPECT_EQ(actual.loc.deviceId, expected.loc.deviceId);
+        EXPECT_EQ(actual.loc.coreId, expected.loc.coreId);
+        EXPECT_EQ(actual.loc.blockType, expected.loc.blockType);
+        EXPECT_EQ(actual.isAtomicMode, expected.isAtomicMode);
+        EXPECT_EQ(actual.recordType, expected.recordType);
+        EXPECT_EQ(actual.closedRingStartSerialNo, expected.closedRingStartSerialNo);
+    }
+
+    static void CompareCompactModes(const std::vector<SanEvent> &trace, const std::vector<SanEvent> &expectedStuck,
+        KernelType kernel = KernelType::AIVEC, uint32_t blockDim = kDefaultBlockDim) {
+        for (bool compact : {false, true}) {
+            SCOPED_TRACE(compact);
+            PipelineReplayer replayer;
+            replayer.Init(kernel, DeviceType::ASCEND_910B1, blockDim, compact);
+            std::vector<SanEvent> stuck;
+            uint64_t inputMemory = 0;
+            replayer.RegisterCallback([&](ReplayerCallbackType type, const SanEvent &event) {
+                if (type == ReplayerCallbackType::ALL_DEVICE_STUCK) {
+                    stuck.push_back(event);
+                } else {
+                    EXPECT_FALSE(compact);
+                    EXPECT_TRUE(event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT);
+                }
+            });
+            for (const auto &event : trace) {
+                replayer.Do(event);
+                inputMemory += event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT;
+                ASSERT_FALSE(replayer.IsFinished());
+            }
+            ASSERT_EQ(replayer.GetMemEventCount(), inputMemory);
+            SanEvent finish{};
+            finish.type = EventType::SANITIZER_CONTROL_EVENT;
+            finish.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+            replayer.Do(finish);
+            ASSERT_TRUE(replayer.IsFinished());
+            EXPECT_EQ(replayer.GetMemEventCount(), inputMemory);
+            ASSERT_EQ(stuck.size(), expectedStuck.size());
+            for (size_t i = 0; i < stuck.size(); ++i) {
+                SCOPED_TRACE(i);
+                AssertSameEvent(stuck[i], expectedStuck[i]);
+            }
+        }
+    }
 
     static constexpr uint32_t kDefaultBlockDim = 2U;
     PipelineReplayer replayer_;
@@ -190,6 +253,261 @@ static SanEvent MakeBufEvent(
     e.eventInfo.bufSyncInfo.rlsCount = rlsCount;
     e.eventInfo.bufSyncInfo.mode = mode;
     return e;
+}
+
+static ReturnType ProcessSyncQueueReference(SyncEventDataBase &queue, const SanEvent &event) {
+    const auto &info = event.eventInfo.syncInfo;
+    SyncEvent key{};
+    key.info.srcPipe = static_cast<uint8_t>(info.srcPipe);
+    key.info.dstPipe = static_cast<uint8_t>(info.dstPipe);
+    key.info.eventId = static_cast<uint8_t>(info.eventId);
+    key.info.memType = static_cast<uint8_t>(info.memType);
+    key.info.isRetrogress = info.isRetrogress;
+    VectorTime vt{};
+    if (info.opType == SyncType::SET_FLAG) {
+        queue.Set(key, vt);
+    } else if (info.opType == SyncType::WAIT_FLAG && !queue.Get(key, vt)) {
+        return ReturnType::PROCESS_STALLED;
+    }
+    return ReturnType::PROCESS_OK;
+}
+
+// The old replayer retained every release vector and counted successful blocking gets.
+struct BufQueueReference {
+    std::map<std::pair<uint32_t, uint64_t>, std::vector<VectorTime>> releases;
+    std::map<std::pair<uint32_t, uint64_t>, uint64_t> consumed;
+
+    ReturnType Process(const SanEvent &event, uint32_t block) {
+        const auto &info = event.eventInfo.bufSyncInfo;
+        auto key = std::make_pair(block, info.bufId);
+        if (info.opType == SyncType::RLS_BUF) {
+            releases[key].push_back(VectorTime{});
+        } else if (info.opType == SyncType::GET_BUF && info.mode == BufMode::BLOCK_MODE) {
+            auto it = releases.find(key);
+            auto &used = consumed[key];
+            auto count = it == releases.end() ? 0U : it->second.size();
+            if ((info.rlsCount != 0U && (it == releases.end() || count < info.rlsCount)) ||
+                used + 1 > count + 1) {
+                return ReturnType::PROCESS_STALLED;
+            }
+            ++used;
+        }
+        return ReturnType::PROCESS_OK;
+    }
+};
+
+static void CompareBufQueueReference(PipelineReplayer &replayer, BufQueueReference &reference,
+    const SanEvent &event, uint32_t block) {
+    EXPECT_EQ(replayer.ProcessGetRlsBufSyncEvent(event), reference.Process(event, block));
+    EXPECT_EQ(replayer.getBufCount_, reference.consumed);
+    ASSERT_EQ(replayer.getRlsBufMap_.size(), reference.releases.size());
+    for (const auto &entry : reference.releases) {
+        auto it = replayer.getRlsBufMap_.find(entry.first);
+        ASSERT_NE(it, replayer.getRlsBufMap_.end());
+        EXPECT_EQ(it->second, entry.second.size());
+    }
+}
+
+TEST_F(TestPipelineReplayer, sync_counts_match_queue_exhaustion_failure_and_refill) {
+    for (bool compact : {false, true}) {
+        SCOPED_TRACE(compact);
+        replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 1, compact);
+        SyncEventDataBase reference;
+        for (auto op : {SyncType::WAIT_FLAG, SyncType::WAIT_FLAG, SyncType::SET_FLAG, SyncType::SET_FLAG,
+            SyncType::WAIT_FLAG, SyncType::WAIT_FLAG, SyncType::WAIT_FLAG, SyncType::WAIT_FLAG,
+            SyncType::SET_FLAG, SyncType::WAIT_FLAG, SyncType::WAIT_FLAG}) {
+            SCOPED_TRACE(static_cast<int>(op));
+            auto event = MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 7, op);
+            auto before = replayer_.syncDB_[0];
+            auto expected = ProcessSyncQueueReference(reference, event);
+            ASSERT_EQ(replayer_.ProcessSyncEvent(event), expected);
+            if (expected == ReturnType::PROCESS_STALLED) {
+                // Neither missing nor exhausted waits mutate state.
+                ASSERT_EQ(replayer_.syncDB_[0].size(), before.size());
+                if (!before.empty()) { EXPECT_EQ(replayer_.syncDB_[0].begin()->second, before.begin()->second); }
+            }
+        }
+        ASSERT_EQ(replayer_.syncDB_[0].size(), 1U);
+        EXPECT_EQ(replayer_.syncDB_[0].begin()->second, 0U);
+    }
+}
+
+TEST_F(TestPipelineReplayer, sync_counts_match_queue_for_each_of_five_key_fields) {
+    auto base = MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 7, SyncType::SET_FLAG);
+    std::vector<SanEvent> keys(6, base);
+    keys[1].eventInfo.syncInfo.srcPipe = PipeType::PIPE_MTE3;
+    keys[2].eventInfo.syncInfo.dstPipe = PipeType::PIPE_S;
+    keys[3].eventInfo.syncInfo.eventId = 8;
+    keys[4].eventInfo.syncInfo.memType = MemType::L1;
+    keys[5].eventInfo.syncInfo.isRetrogress = true;
+    for (bool compact : {false, true}) {
+        SCOPED_TRACE(compact);
+        replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 1, compact);
+        SyncEventDataBase reference;
+        ASSERT_EQ(replayer_.ProcessSyncEvent(base), ProcessSyncQueueReference(reference, base));
+        for (size_t i = 1; i < keys.size(); ++i) {
+            SCOPED_TRACE(i);
+            auto wait = keys[i];
+            wait.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
+            ASSERT_EQ(ProcessSyncQueueReference(reference, wait), ReturnType::PROCESS_STALLED);
+            EXPECT_EQ(replayer_.ProcessSyncEvent(wait), ReturnType::PROCESS_STALLED);
+            EXPECT_EQ(replayer_.syncDB_[0].size(), 1U);
+        }
+        for (size_t i = 1; i < keys.size(); ++i) {
+            EXPECT_EQ(replayer_.ProcessSyncEvent(keys[i]), ProcessSyncQueueReference(reference, keys[i]));
+        }
+        ASSERT_EQ(replayer_.syncDB_[0].size(), keys.size());
+        for (auto it = keys.rbegin(); it != keys.rend(); ++it) {
+            auto wait = *it;
+            wait.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
+            EXPECT_EQ(replayer_.ProcessSyncEvent(wait), ProcessSyncQueueReference(reference, wait));
+            EXPECT_EQ(replayer_.ProcessSyncEvent(wait), ProcessSyncQueueReference(reference, wait));
+        }
+    }
+}
+
+TEST_F(TestPipelineReplayer, sync_counts_match_queue_with_block_and_mix_subblock_isolation) {
+    for (auto kernel : {KernelType::AIVEC, KernelType::MIX}) {
+        for (bool compact : {false, true}) {
+            SCOPED_TRACE(::testing::Message() << static_cast<int>(kernel) << ":" << compact);
+            replayer_.Init(kernel, DeviceType::ASCEND_910B1, 2, compact);
+            const uint32_t blocks = kernel == KernelType::MIX ? 6U : 2U;
+            std::vector<SanEvent> events;
+            std::vector<SyncEventDataBase> reference(blocks);
+            for (uint32_t block = 0; block < blocks; ++block) {
+                auto event = MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 7,
+                    SyncType::SET_FLAG, block);
+                if (kernel == KernelType::MIX) {
+                    // Explicit AIV0/AIV1/AIC0/AIV2/AIV3/AIC1 layout, independent of the production mapper.
+                    event.loc.blockType = block % 3 == 2 ? BlockType::AICUBE : BlockType::AIVEC;
+                    event.loc.coreId = block % 3 == 2 ? block / 3 : block / 3 * 2 + block % 3;
+                }
+                events.push_back(event);
+            }
+            ASSERT_EQ(replayer_.syncDB_.size(), blocks);
+            for (uint32_t producer = 0; producer < blocks; ++producer) {
+                SCOPED_TRACE(producer);
+                EXPECT_EQ(replayer_.ProcessSyncEvent(events[producer]),
+                    ProcessSyncQueueReference(reference[producer], events[producer]));
+                for (uint32_t consumer = 0; consumer < blocks; ++consumer) {
+                    if (consumer == producer) { continue; }
+                    auto wait = events[consumer];
+                    wait.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
+                    auto before = replayer_.syncDB_;
+                    ASSERT_EQ(ProcessSyncQueueReference(reference[consumer], wait), ReturnType::PROCESS_STALLED);
+                    EXPECT_EQ(replayer_.ProcessSyncEvent(wait), ReturnType::PROCESS_STALLED);
+                    for (uint32_t block = 0; block < blocks; ++block) {
+                        ASSERT_EQ(replayer_.syncDB_[block].size(), before[block].size());
+                        if (!before[block].empty()) {
+                            EXPECT_EQ(replayer_.syncDB_[block].begin()->second, before[block].begin()->second);
+                        }
+                    }
+                }
+                auto wait = events[producer];
+                wait.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
+                EXPECT_EQ(replayer_.ProcessSyncEvent(wait), ProcessSyncQueueReference(reference[producer], wait));
+                EXPECT_EQ(replayer_.ProcessSyncEvent(wait), ProcessSyncQueueReference(reference[producer], wait));
+            }
+        }
+    }
+}
+
+TEST_F(TestPipelineReplayer, token_counts_reset_on_init_with_changed_blockdim_and_mode) {
+    for (bool compact : {false, true}) {
+        for (uint32_t blockDim : {1U, 3U}) {
+            SCOPED_TRACE(::testing::Message() << blockDim << ":" << compact);
+            replayer_.Init(blockDim == 1 ? KernelType::MIX : KernelType::AIVEC,
+                DeviceType::ASCEND_910B1, blockDim == 1 ? 2 : 1, !compact);
+            auto set = MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 7, SyncType::SET_FLAG);
+            auto release = MakeBufEvent(PipeType::PIPE_V, 17, SyncType::RLS_BUF, 0, BufMode::NONBLOCK_MODE);
+            auto get = MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE);
+            SyncEventDataBase syncReference;
+            BufQueueReference bufReference;
+            EXPECT_EQ(replayer_.ProcessSyncEvent(set), ProcessSyncQueueReference(syncReference, set));
+            CompareBufQueueReference(replayer_, bufReference, release, 0);
+            CompareBufQueueReference(replayer_, bufReference, get, 0);
+            if (blockDim == 1) {
+                auto lastSet = set;
+                lastSet.loc.blockType = BlockType::AICUBE;
+                lastSet.loc.coreId = 1;
+                SyncEventDataBase lastReference;
+                EXPECT_EQ(replayer_.ProcessSyncEvent(lastSet), ProcessSyncQueueReference(lastReference, lastSet));
+                release.loc = lastSet.loc;
+                CompareBufQueueReference(replayer_, bufReference, release, 5);
+            }
+            // Leave both an unconsumed flag and a release, plus a consumed get, across Init.
+            auto kernel = blockDim == 1 ? KernelType::AIVEC : KernelType::MIX;
+            replayer_.Init(kernel, DeviceType::ASCEND_910B1, blockDim, compact);
+            syncReference = SyncEventDataBase{};
+            bufReference = BufQueueReference{};
+            ASSERT_EQ(replayer_.syncDB_.size(), blockDim == 1 ? 1U : 9U);
+            for (const auto &counts : replayer_.syncDB_) { EXPECT_TRUE(counts.empty()); }
+            EXPECT_TRUE(replayer_.getRlsBufMap_.empty());
+            EXPECT_TRUE(replayer_.getBufCount_.empty());
+            set.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
+            EXPECT_EQ(replayer_.ProcessSyncEvent(set), ProcessSyncQueueReference(syncReference, set));
+            get.eventInfo.bufSyncInfo.rlsCount = 1;
+            CompareBufQueueReference(replayer_, bufReference, get, 0); // No stale release.
+            get.eventInfo.bufSyncInfo.rlsCount = 0;
+            CompareBufQueueReference(replayer_, bufReference, get, 0); // Fresh first-get allowance.
+            CompareBufQueueReference(replayer_, bufReference, get, 0); // Then exhausted again.
+        }
+    }
+}
+
+TEST_F(TestPipelineReplayer, buf_counts_match_old_vectors_for_exhaustive_short_traces) {
+    const std::vector<SanEvent> alphabet = {
+        MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE),
+        MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 1, BufMode::BLOCK_MODE),
+        MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 2, BufMode::BLOCK_MODE),
+        MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 0, BufMode::NONBLOCK_MODE),
+        MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 2, BufMode::NONBLOCK_MODE),
+        MakeBufEvent(PipeType::PIPE_V, 17, SyncType::RLS_BUF, 0, BufMode::BLOCK_MODE),
+        MakeBufEvent(PipeType::PIPE_V, 17, SyncType::RLS_BUF, 2, BufMode::NONBLOCK_MODE)};
+    size_t traceCount = 0;
+    size_t combinations = 1;
+    for (size_t length = 0; length <= 4; ++length, combinations *= alphabet.size()) {
+        for (size_t code = 0; code < combinations; ++code) {
+            for (bool compact : {false, true}) {
+                SCOPED_TRACE(::testing::Message() << length << ":" << code << ":" << compact);
+                replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 1, compact);
+                BufQueueReference reference;
+                size_t value = code;
+                for (size_t i = 0; i < length; ++i, value /= alphabet.size()) {
+                    CompareBufQueueReference(replayer_, reference, alphabet[value % alphabet.size()], 0);
+                }
+            }
+            ++traceCount;
+        }
+    }
+    EXPECT_EQ(traceCount, 2801U);
+    RecordProperty("buf_differential_trace_count_per_mode", traceCount);
+}
+
+TEST_F(TestPipelineReplayer, buf_counts_match_old_vectors_with_block_and_buffer_isolation) {
+    for (bool compact : {false, true}) {
+        SCOPED_TRACE(compact);
+        replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2, compact);
+        BufQueueReference reference;
+        const std::vector<SanEvent> trace = {
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::RLS_BUF, 2, BufMode::NONBLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::RLS_BUF, 0, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 18, SyncType::GET_BUF, 1, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 1, BufMode::BLOCK_MODE, 1),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 2, BufMode::NONBLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 2, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 2, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 2, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::RLS_BUF, 0, BufMode::NONBLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 17, SyncType::GET_BUF, 1, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_V, 18, SyncType::GET_BUF, 0, BufMode::NONBLOCK_MODE, 1),
+            MakeBufEvent(PipeType::PIPE_V, 18, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE, 1),
+            MakeBufEvent(PipeType::PIPE_V, 18, SyncType::GET_BUF, 0, BufMode::BLOCK_MODE, 1)};
+        for (const auto &event : trace) {
+            CompareBufQueueReference(replayer_, reference, event, event.loc.coreId);
+        }
+    }
 }
 
 // case 1. 基础生命周期：Init → Do(事件) → Do(KERNEL_FINISH) → IsFinished
@@ -627,4 +945,333 @@ TEST_F(TestPipelineReplayer, mix_kernel_with_single_vec_sub_block_dim_expect_no_
     replayer_.Do(MakeKernelFinishEvent());
     ASSERT_TRUE(replayer_.IsFinished());
     AssertNoStuck();
+}
+
+TEST_F(TestPipelineReplayer, compact_scheduler_and_default_memory_callback_contract) {
+    auto control = MakeEventBase(EventType::SANITIZER_CONTROL_EVENT, PipeType::PIPE_S, 0);
+    control.eventInfo.sanitizerControlInfo.type = SanitizerControlType::FINISH;
+    std::vector<SanEvent> trace = {
+        MakeMemEvent(PipeType::PIPE_MTE2, AccessType::MEMCPY_BLOCKS),
+        MakeDynamicMemEvent(PipeType::PIPE_V), MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE),
+        MakeTimeEvent(PipeType::PIPE_S), MakeMemEvent(PipeType::PIPE_MTE3, AccessType::READ), control,
+        MakeDynamicMemEvent(PipeType::PIPE_MTE1),
+        MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 3, SyncType::PIPE_BARRIER),
+        MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE)};
+    trace[0].loc.pc = 0x1234;
+    trace[0].loc.fileNo = 7;
+    trace[0].loc.lineNo = 99;
+    trace[0].closedRingStartSerialNo = 42;
+    for (bool compact : {false, true}) {
+        ResetReplayer(); // This three-argument Init must continue to mean full memory replay.
+        if (compact) { replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2, true); }
+        RegisterCollectingCallback();
+        for (const auto &event : trace) { replayer_.Do(event); }
+        ASSERT_EQ(replayer_.GetMemEventCount(), 6U);
+        ASSERT_EQ(replayer_.eventContainer_.GetAllQueSize(), compact ? 7U : 10U);
+        std::vector<SanEvent> processed;
+        PipeLine line(replayer_.eventContainer_);
+        line.RegisterEventFunc([&](const SanEvent &event) {
+            processed.push_back(event);
+            return replayer_.ProcessEvent(event);
+        });
+        line.Run();
+        ASSERT_TRUE(replayer_.eventContainer_.IsEmpty());
+        std::vector<SanEvent> expected;
+        if (compact) {
+            expected = {trace[0], trace[3], trace[4], trace[5], trace[6], trace[7], trace[8]};
+            for (size_t i : {0U, 2U, 4U, 6U}) {
+                expected[i].type = EventType::TIME_EVENT;
+                expected[i].pipe = PipeType::PIPE_S;
+                expected[i].timeInfo = nullptr;
+            }
+        } else {
+            expected = trace;
+            expected[0].eventInfo.memInfo.opType = AccessType::READ;
+            auto write = trace[0];
+            write.eventInfo.memInfo.opType = AccessType::WRITE;
+            expected.insert(expected.begin() + 1, write);
+        }
+        ASSERT_EQ(processed.size(), expected.size());
+        for (size_t i = 0; i < expected.size(); ++i) { AssertSameEvent(processed[i], expected[i]); }
+        std::vector<SanEvent> expectedCallbacks;
+        for (const auto &event : expected) {
+            if (event.type == EventType::MEM_EVENT || event.type == EventType::DYNAMIC_MEM_EVENT) {
+                expectedCallbacks.push_back(event);
+            }
+        }
+        ASSERT_EQ(callbackRecords_.size(), compact ? 0U : 7U);
+        ASSERT_EQ(callbackRecords_.size(), expectedCallbacks.size());
+        for (size_t i = 0; i < callbackRecords_.size(); ++i) {
+            EXPECT_EQ(callbackRecords_[i].type, ReplayerCallbackType::MEMORY_EVENT);
+            AssertSameEvent(callbackRecords_[i].event, expectedCallbacks[i]);
+        }
+        RecordProperty(compact ? "compact_scheduler_calls" : "default_scheduler_calls", processed.size());
+        RecordProperty(compact ? "compact_memory_callbacks" : "default_memory_callbacks", callbackRecords_.size());
+    }
+    CompareCompactModes(trace, {});
+}
+
+TEST_F(TestPipelineReplayer, compact_every_nonmemory_boundary_and_interleaved_blocks) {
+    for (auto type : {EventType::TIME_EVENT, EventType::SYNC_EVENT, EventType::CROSS_CORE_SYNC_EVENT,
+        EventType::CROSS_CORE_SOFT_SYNC_EVENT, EventType::BUF_SYNC_EVENT, EventType::MSTX_CROSS_SYNC_EVENT,
+        EventType::MSTX_CROSS_CORE_BARRIER, EventType::MSTX_CROSS_NPU_BARRIER, EventType::H_SYNC_EVENT,
+        EventType::MSTX_SIGNAL_SET_EVENT, EventType::MSTX_SIGNAL_WAIT_EVENT, EventType::REGISTER_EVENT,
+        EventType::SANITIZER_CONTROL_EVENT}) {
+        SCOPED_TRACE(static_cast<int>(type));
+        auto boundary0 = MakeEventBase(type, type == EventType::TIME_EVENT ? PipeType::PIPE_MTE3 : PipeType::PIPE_S, 0);
+        if (type == EventType::SANITIZER_CONTROL_EVENT) {
+            boundary0.eventInfo.sanitizerControlInfo.type = SanitizerControlType::FINISH;
+        }
+        auto boundary1 = boundary0;
+        boundary1.loc.coreId = 1;
+        std::vector<SanEvent> trace = {MakeMemEvent(PipeType::PIPE_MTE2, AccessType::MEMCPY_BLOCKS, 0),
+            MakeMemEvent(PipeType::PIPE_V, AccessType::READ, 1), boundary1,
+            MakeDynamicMemEvent(PipeType::PIPE_MTE3, 0), MakeDynamicMemEvent(PipeType::PIPE_V, 1), boundary0,
+            MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE, 0), MakeDynamicMemEvent(PipeType::PIPE_MTE1, 0)};
+        replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2, true);
+        for (const auto &event : trace) { replayer_.Do(event); }
+        ASSERT_EQ(replayer_.GetMemEventCount(), 6U);
+        ASSERT_EQ(replayer_.eventContainer_.GetAllQueSize(), 6U);
+        for (uint32_t block = 0; block < 2; ++block) {
+            auto expected = block == 0 ? std::vector<SanEvent>{trace[0], boundary0, trace[6]} :
+                std::vector<SanEvent>{trace[1], boundary1, trace[4]};
+            for (size_t i : {0U, 2U}) {
+                expected[i].type = EventType::TIME_EVENT;
+                expected[i].pipe = PipeType::PIPE_S;
+                expected[i].timeInfo = nullptr;
+            }
+            auto &container = replayer_.eventContainer_;
+            container.SetQueIndex(PipeType::PIPE_S);
+            for (const auto &event : expected) {
+                ASSERT_FALSE(container.IsCurQueEmpty());
+                AssertSameEvent(container.Front(), event);
+                container.Pop();
+            }
+            EXPECT_TRUE(container.IsCurQueEmpty());
+            container.SwitchToNextBlock();
+        }
+    }
+}
+
+TEST_F(TestPipelineReplayer, compact_true_deadlock_preserves_all_head_fields_and_order) {
+    auto waitV = MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 7, SyncType::WAIT_FLAG);
+    auto waitS = MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_MTE3, PipeType::PIPE_S, 8, SyncType::WAIT_FLAG);
+    auto get = MakeBufEvent(PipeType::PIPE_MTE3, 123, SyncType::GET_BUF, 2, BufMode::BLOCK_MODE, 1);
+    for (auto event : {&waitV, &waitS, &get}) {
+        event->loc.pc = 0x123400 + event->serialNo * 4;
+        event->loc.fileNo = 3;
+        event->loc.lineNo = 17 + event->serialNo;
+        event->loc.kernelIdx = 5;
+        event->loc.deviceId = 9;
+        event->isAtomicMode = true;
+        event->closedRingStartSerialNo = 11;
+    }
+    CompareCompactModes({MakeMemEvent(PipeType::PIPE_V, AccessType::MEMCPY_BLOCKS), waitV,
+        MakeDynamicMemEvent(PipeType::PIPE_MTE2), waitS,
+        MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE), MakeDynamicMemEvent(PipeType::PIPE_V),
+        MakeMemEvent(PipeType::PIPE_MTE2, AccessType::READ, 1), get,
+        MakeDynamicMemEvent(PipeType::PIPE_MTE3, 1)}, {waitS, waitV, get});
+}
+
+TEST_F(TestPipelineReplayer, compact_repeated_sync_and_cross_pipe_wait_before_set) {
+    std::vector<SanEvent> trace;
+    for (uint32_t round = 0; round < 3; ++round) {
+        trace.push_back(MakeMemEvent(PipeType::PIPE_MTE2, AccessType::MEMCPY_BLOCKS));
+        trace.push_back(MakeDynamicMemEvent(PipeType::PIPE_V));
+        trace.push_back(MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 5,
+            SyncType::WAIT_FLAG));
+        trace.push_back(MakeMemEvent(PipeType::PIPE_V, AccessType::READ));
+        trace.push_back(MakeSyncEvent(PipeType::PIPE_MTE2, PipeType::PIPE_MTE2, PipeType::PIPE_V, 5,
+            SyncType::SET_FLAG));
+    }
+    CompareCompactModes(trace, {});
+    auto extraWait = MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 5, SyncType::WAIT_FLAG);
+    trace.push_back(extraWait);
+    trace.push_back(MakeDynamicMemEvent(PipeType::PIPE_MTE3));
+    CompareCompactModes(trace, {extraWait});
+}
+
+TEST_F(TestPipelineReplayer, compact_mstx_crosscore_buf_and_barrier_traces) {
+    std::vector<std::vector<SanEvent>> traces = {
+        {MakeSoftSyncEvent(PipeType::PIPE_S, 42, SyncType::IB_WAIT, -1, 0, 0),
+            MakeSoftSyncEvent(PipeType::PIPE_S, 42, SyncType::IB_SET, -1, 0, 1)},
+        {MakeMstxCrossSyncEvent(PipeType::PIPE_S, 0xA000, 1, SyncType::MSTX_WAIT_CROSS, false, 0),
+            MakeMstxCrossSyncEvent(PipeType::PIPE_S, 0xA000, 1, SyncType::MSTX_SET_CROSS, false, 1)},
+        {MakeMstxCrossSyncEvent(PipeType::PIPE_S, 0xB000, 2, SyncType::MSTX_WAIT_CROSS, true, 0)},
+        {MakeBufEvent(PipeType::PIPE_V, 12, SyncType::GET_BUF, 1, BufMode::BLOCK_MODE),
+            MakeBufEvent(PipeType::PIPE_MTE2, 12, SyncType::RLS_BUF, 0, BufMode::BLOCK_MODE)},
+        {MakeMstxBarrierEvent(PipeType::PIPE_S, 2, 0), MakeMstxBarrierEvent(PipeType::PIPE_S, 2, 1)},
+        {MakeMstxNpuBarrierEvent(PipeType::PIPE_S, 1, 1, 0)},
+        {MakeBlockSyncEvent(PipeType::PIPE_S, 3, 0, SyncType::FFTS_SYNC, 0),
+            MakeBlockSyncEvent(PipeType::PIPE_S, 3, 0, SyncType::FFTS_SYNC, 1),
+            MakeBlockSyncEvent(PipeType::PIPE_S, 3, 0, SyncType::WAIT_FLAG_DEV, 0)}};
+    for (size_t i = 0; i < traces.size(); ++i) {
+        SCOPED_TRACE(i);
+        std::vector<SanEvent> trace;
+        for (const auto &event : traces[i]) {
+            trace.push_back(MakeMemEvent(PipeType::PIPE_MTE2, AccessType::MEMCPY_BLOCKS, event.loc.coreId));
+            trace.push_back(MakeDynamicMemEvent(PipeType::PIPE_V, event.loc.coreId));
+            trace.push_back(event);
+            trace.push_back(MakeMemEvent(PipeType::PIPE_V, AccessType::READ, event.loc.coreId));
+        }
+        CompareCompactModes(trace, {});
+    }
+    for (auto wait : {MakeSoftSyncEvent(PipeType::PIPE_S, 7, SyncType::IB_WAIT, -1, 0, 1),
+        MakeMstxCrossSyncEvent(PipeType::PIPE_S, 0xC000, 3, SyncType::MSTX_WAIT_CROSS, false),
+        MakeBlockSyncEvent(PipeType::PIPE_S, 5, 0, SyncType::WAIT_FLAG_DEV),
+        MakeBufEvent(PipeType::PIPE_S, 300, SyncType::GET_BUF, 2, BufMode::BLOCK_MODE),
+        MakeMstxBarrierEvent(PipeType::PIPE_S, 2, 0)}) {
+        CompareCompactModes({MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE, wait.loc.coreId), wait,
+            MakeDynamicMemEvent(PipeType::PIPE_MTE2, wait.loc.coreId)}, {wait});
+    }
+    // Existing SyncAll returns before SemCores::Wait while the remaining count is nonzero.
+    // Preserve its two real stuck heads; this is not a successful-barrier assertion.
+    auto all0 = MakeSoftSyncEvent(PipeType::PIPE_S, 0, SyncType::SYNC_ALL, 0, 2, 0);
+    auto all1 = MakeSoftSyncEvent(PipeType::PIPE_S, 0, SyncType::SYNC_ALL, 0, 2, 1);
+    CompareCompactModes({MakeDynamicMemEvent(PipeType::PIPE_V, 0), all0,
+        MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE, 0), MakeDynamicMemEvent(PipeType::PIPE_V, 1), all1,
+        MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE, 1)}, {all0, all1});
+}
+
+TEST_F(TestPipelineReplayer, compact_mix_expanded_subblocks_one_and_two_vec) {
+    for (uint8_t vecDim : {1U, 2U}) {
+        SCOPED_TRACE(vecDim);
+        std::vector<SanEvent> trace;
+        for (uint32_t core = 0; core < 2U * vecDim; ++core) {
+            auto set = MakeBlockSyncEvent(PipeType::PIPE_S, 0, 0, SyncType::FFTS_SYNC, core);
+            set.eventInfo.fftsSyncInfo.vecSubBlockDim = vecDim;
+            trace.push_back(MakeMemEvent(PipeType::PIPE_V, AccessType::MEMCPY_BLOCKS, core));
+            trace.push_back(MakeDynamicMemEvent(PipeType::PIPE_MTE2, core));
+            trace.push_back(set);
+            auto wait = set;
+            wait.serialNo = g_serialNo++;
+            wait.eventInfo.fftsSyncInfo.opType = SyncType::WAIT_FLAG_DEV;
+            trace.push_back(wait);
+        }
+        for (uint32_t core = 0; core < 2; ++core) {
+            auto mem = MakeMemEvent(PipeType::PIPE_MTE1, AccessType::WRITE, core);
+            mem.loc.blockType = BlockType::AICUBE;
+            trace.push_back(mem);
+            auto wait = MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 3,
+                SyncType::WAIT_FLAG, core);
+            wait.loc.blockType = BlockType::AICUBE;
+            trace.push_back(wait);
+            auto set = wait;
+            set.serialNo = g_serialNo++;
+            set.pipe = PipeType::PIPE_MTE2;
+            set.eventInfo.syncInfo.opType = SyncType::SET_FLAG;
+            trace.push_back(set);
+        }
+        CompareCompactModes(trace, {}, KernelType::MIX);
+        auto missing = MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 9,
+            SyncType::WAIT_FLAG, 1);
+        missing.loc.blockType = BlockType::AICUBE;
+        trace.push_back(missing);
+        CompareCompactModes(trace, {missing}, KernelType::MIX);
+    }
+}
+
+TEST_F(TestPipelineReplayer, compact_reinit_resets_unfinished_memory_runs_and_sync_state) {
+    for (bool compact : {true, false, true}) {
+        replayer_.Init(KernelType::MIX, DeviceType::ASCEND_910B1, 2, true);
+        replayer_.Do(MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE, 1));
+        replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2, compact);
+        ASSERT_EQ(replayer_.GetMemEventCount(), 0U);
+        ASSERT_EQ(replayer_.eventContainer_.GetAllQueSize(), 0U);
+        callbackRecords_.clear();
+        RegisterCollectingCallback();
+        replayer_.Do(MakeMemEvent(PipeType::PIPE_MTE2, AccessType::MEMCPY_BLOCKS, 1));
+        EXPECT_EQ(replayer_.eventContainer_.GetAllQueSize(), compact ? 1U : 2U);
+        replayer_.Do(MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 7, SyncType::SET_FLAG));
+        replayer_.Do(MakeKernelFinishEvent());
+        ASSERT_TRUE(replayer_.IsFinished());
+        AssertNoStuck();
+        EXPECT_EQ(callbackRecords_.size(), compact ? 0U : 2U);
+        callbackRecords_.clear();
+        replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2, compact);
+        auto wait = MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 7, SyncType::WAIT_FLAG);
+        replayer_.Do(wait);
+        replayer_.Do(MakeKernelFinishEvent());
+        ASSERT_EQ(callbackRecords_.size(), 1U);
+        EXPECT_EQ(callbackRecords_[0].type, ReplayerCallbackType::ALL_DEVICE_STUCK);
+        AssertSameEvent(callbackRecords_[0].event, wait);
+    }
+}
+
+TEST_F(TestPipelineReplayer, compact_empty_trace_empty_blocks_and_invalid_blocks) {
+    CompareCompactModes({}, {}, KernelType::AIVEC, 0);
+    CompareCompactModes({}, {}, KernelType::AIVEC, 4);
+    CompareCompactModes({MakeMemEvent(PipeType::PIPE_V, AccessType::READ, 3)}, {}, KernelType::AIVEC, 4);
+    for (bool compact : {false, true}) {
+        replayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 1, compact);
+        callbackRecords_.clear();
+        RegisterCollectingCallback();
+        auto invalid = MakeMemEvent(PipeType::PIPE_V, AccessType::MEMCPY_BLOCKS, 999);
+        invalid.serialNo = 999001;
+        replayer_.Do(invalid);
+        invalid.type = EventType::DYNAMIC_MEM_EVENT;
+        invalid.serialNo = 999002;
+        replayer_.Do(invalid);
+        auto sync = MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 1, SyncType::WAIT_FLAG, 999);
+        sync.serialNo = 999003;
+        replayer_.Do(sync);
+        EXPECT_EQ(replayer_.GetMemEventCount(), 2U);
+        EXPECT_EQ(replayer_.eventContainer_.GetAllQueSize(), 0U);
+        replayer_.Do(MakeKernelFinishEvent());
+        EXPECT_TRUE(replayer_.IsFinished());
+        EXPECT_TRUE(callbackRecords_.empty());
+    }
+}
+
+TEST_F(TestPipelineReplayer, compact_exhaustive_small_traces_preserve_stuck_fronts) {
+    const std::vector<SanEvent> alphabet = {
+        MakeMemEvent(PipeType::PIPE_V, AccessType::WRITE), MakeDynamicMemEvent(PipeType::PIPE_MTE3),
+        MakeMemEvent(PipeType::PIPE_MTE2, AccessType::MEMCPY_BLOCKS),
+        MakeSyncEvent(PipeType::PIPE_S, PipeType::PIPE_V, PipeType::PIPE_S, 7, SyncType::WAIT_FLAG),
+        MakeSyncEvent(PipeType::PIPE_V, PipeType::PIPE_MTE2, PipeType::PIPE_V, 5, SyncType::WAIT_FLAG),
+        MakeSyncEvent(PipeType::PIPE_MTE2, PipeType::PIPE_MTE2, PipeType::PIPE_V, 5, SyncType::SET_FLAG),
+        MakeMemEvent(PipeType::PIPE_V, AccessType::READ, 1), MakeTimeEvent(PipeType::PIPE_MTE3)};
+    size_t traceCount = 0;
+    size_t combinations = 1;
+    for (size_t length = 0; length <= 4; ++length, combinations *= alphabet.size()) {
+        for (size_t code = 0; code < combinations; ++code) {
+            SCOPED_TRACE(::testing::Message() << length << ":" << code);
+            std::vector<SanEvent> trace;
+            size_t value = code;
+            for (size_t i = 0; i < length; ++i, value /= alphabet.size()) {
+                auto event = alphabet[value % alphabet.size()];
+                event.serialNo = i + 1;
+                event.loc.pc = 0x1000 + i * 4;
+                trace.push_back(event);
+            }
+            std::vector<SanEvent> baseline;
+            for (bool compact : {false, true}) {
+                PipelineReplayer replay;
+                replay.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2, compact);
+                std::vector<SanEvent> stuck;
+                replay.RegisterCallback([&](ReplayerCallbackType type, const SanEvent &event) {
+                    if (type == ReplayerCallbackType::ALL_DEVICE_STUCK) {
+                        EXPECT_NE(event.type, EventType::MEM_EVENT);
+                        EXPECT_NE(event.type, EventType::DYNAMIC_MEM_EVENT);
+                        EXPECT_NE(event.type, EventType::TIME_EVENT);
+                        stuck.push_back(event);
+                    } else {
+                        EXPECT_FALSE(compact);
+                    }
+                });
+                for (const auto &event : trace) { replay.Do(event); }
+                replay.Do(MakeKernelFinishEvent());
+                ASSERT_TRUE(replay.IsFinished());
+                if (!compact) {
+                    baseline = stuck;
+                } else {
+                    ASSERT_EQ(stuck.size(), baseline.size());
+                    for (size_t i = 0; i < stuck.size(); ++i) { AssertSameEvent(stuck[i], baseline[i]); }
+                }
+            }
+            ++traceCount;
+        }
+    }
+    EXPECT_EQ(traceCount, 4681U);
+    RecordProperty("differential_trace_count", traceCount);
 }

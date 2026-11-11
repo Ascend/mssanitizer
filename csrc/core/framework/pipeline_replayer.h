@@ -18,6 +18,7 @@
 #define CORE_FRAMEWORK_PIPELINE_REPLAYER_H
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <functional>
 #include <cstdint>
@@ -41,13 +42,14 @@ enum class ReplayerCallbackType : uint8_t {
 
 // 流水线回放器 -- 竞争检测回放逻辑提取，剥离掉竞争检测和向量时钟更新等算法，单纯实现pipe事件的顺序回放
 // 1. 所有 VectorClock::UpdateLogicTime / UpdateVectorTime 调用全部删除
-// 2. 所有容器接口调用时传入局部空 VectorTime{}（值无意义，不会被 RunAlgorithm 消费）
-// 3. 跳过 MEM_EVENT / TIME_EVENT / DYNAMIC_MEM_EVENT（直接返回 PROCESS_OK）
+// 2. PIPE 和 BUF 同步只保存计数；核间同步容器仍使用局部 VectorTime{}
+// 3. 内存事件通过回调传到外部，TIME_EVENT 直接返回 PROCESS_OK
 // 4. 不调用 memChecker_.RunAlgorithm()，不进行竞争检测
 class PipelineReplayer {
 public:
     // 初始化
-    void Init(KernelType kernelType, DeviceType deviceType, uint32_t blockDim);
+    // Synccheck may compact memory runs; this mode does not emit MEMORY_EVENT callbacks.
+    void Init(KernelType kernelType, DeviceType deviceType, uint32_t blockDim, bool compactMemoryRuns = false);
 
     // 输入：接收 SanEvent
     void Do(const SanEvent& event);
@@ -82,11 +84,13 @@ private:
 private:
     // 事件处理相关容器
     EventContainer eventContainer_;
-    std::vector<SyncEventDataBase> syncDB_;
+    std::vector<std::unordered_map<SyncEvent, uint64_t, SyncEvent, SyncEvent>> syncDB_;
     CrossCoreSyncInfoContainer crossCoreSyncInfoContainer_;
 
     // 收集阶段内存事件总数（replayedRecords_ 预分配用）
     uint64_t memEventCount_ = 0U;
+    bool compactMemoryRuns_ = false;
+    std::vector<uint8_t> lastWasMemoryRun_;
 
     using CrossCoreBarrierDatabase = BarrierDatabase<CrossNpuBarrierConf, uint32_t>;
     CrossCoreBarrierDatabase crossCoreBarrier_;
@@ -94,10 +98,9 @@ private:
     // key: (addr, flagId), value: set 次数（纯计数，无 VT）
     std::map<std::pair<uint64_t, uint64_t>, uint64_t> mstxSetCrossMap_;
 
-    // key: (blockIdx, bufId), value: rls_buf 事件附带的向量时间列表
-    //       仅通过 .size() 判断 rls_buf 数量是否满足 get_buf 的 rlsCount
-    std::map<std::pair<uint32_t, uint64_t>, std::vector<VectorTime>> getRlsBufMap_;
-    // 辅助：各 bufId 累计已消费的 get_buf 次数，与队列 size 比对判断卡死
+    // key: (blockIdx, bufId), value: 累计 rls_buf 次数
+    std::map<std::pair<uint32_t, uint64_t>, uint64_t> getRlsBufMap_;
+    // 辅助：各 bufId 累计已消费的 get_buf 次数，与 release 计数比对判断卡死
     std::map<std::pair<uint32_t, uint64_t>, uint64_t> getBufCount_;
 
     // 回放控制

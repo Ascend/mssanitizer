@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <any>
 #include <mutex>
+#include <tuple>
 #include "sanitizer_base.h"
 #include "record_pre_process.h"
 #define private public
@@ -939,6 +940,73 @@ TEST(SyncSanitizer, DoRedundancyCheck_PipeBarrierAndNonSync_expect_correct)
     memEvent.pipe = PipeType::PIPE_V;
     syncSan.DoRedundancyCheck(memEvent);
     EXPECT_TRUE(syncSan.pipeRedundancyEvents_.find(PipeType::PIPE_V) == syncSan.pipeRedundancyEvents_.end());
+}
+
+TEST(SyncSanitizer, compact_replay_preserves_complete_stuck_diagnostics) {
+    auto memory = [](uint32_t core, uint64_t serial, EventType type) {
+        SanEvent e{};
+        e.type = type;
+        e.pipe = PipeType::PIPE_MTE2;
+        e.serialNo = serial;
+        e.loc.coreId = core;
+        e.loc.blockType = BlockType::AIVEC;
+        e.eventInfo.memInfo.opType = AccessType::MEMCPY_BLOCKS;
+        return e;
+    };
+    auto wait = [](uint32_t core, PipeType pipe, uint64_t serial) {
+        SanEvent e{};
+        e.type = EventType::SYNC_EVENT;
+        e.pipe = pipe;
+        e.serialNo = serial;
+        e.loc.coreId = core;
+        e.loc.blockType = BlockType::AIVEC;
+        e.loc.pc = 0x123400 + serial * 4;
+        e.loc.lineNo = 10 + serial;
+        e.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
+        e.eventInfo.syncInfo.srcPipe = PipeType::PIPE_MTE3;
+        e.eventInfo.syncInfo.dstPipe = pipe;
+        e.eventInfo.syncInfo.eventId = serial;
+        return e;
+    };
+    auto waitV = wait(0, PipeType::PIPE_V, 2);
+    auto waitS = wait(0, PipeType::PIPE_S, 4);
+    auto waitOther = wait(1, PipeType::PIPE_S, 7);
+    std::vector<SanEvent> trace = {memory(0, 1, EventType::MEM_EVENT), waitV,
+        memory(0, 3, EventType::DYNAMIC_MEM_EVENT), waitS, memory(0, 5, EventType::MEM_EVENT),
+        memory(1, 6, EventType::MEM_EVENT), waitOther, memory(1, 8, EventType::DYNAMIC_MEM_EVENT)};
+    PushKernelFinish(trace);
+    std::string baselineMessage;
+    auto fields = [](const ErrorEvent &e) {
+        return std::make_tuple(e.serialNo, e.deviceId, e.kernelIdx, e.coreId, e.addr, e.fileNo, e.lineNo,
+            e.pc, e.accessType, e.memType, e.pipeType, e.blockType, e.threadLoc.idX, e.threadLoc.idY,
+            e.threadLoc.idZ, e.threadLoc.mainScalarPc, e.isSimt, std::string(e.instructName));
+    };
+    std::vector<ErrorEvent> baselineErrors;
+    for (bool compact : {false, true}) {
+        SyncSanitizer sync;
+        std::string message;
+        InitSyncSanForStuckTest(sync, message, 2);
+        if (!compact) {
+            sync.pipelineReplayer_.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, 2);
+        } // The true branch uses SyncSanitizer::Init's production opt-in, without overriding it.
+        SanitizerRecord record{};
+        sync.Do(record, trace);
+        EXPECT_EQ(sync.pipelineReplayer_.GetMemEventCount(), 5U);
+        ASSERT_EQ(sync.stuckEvents_.size(), 3U);
+        EXPECT_EQ(sync.stuckEvents_[0].serialNo, waitS.serialNo);
+        EXPECT_EQ(sync.stuckEvents_[1].serialNo, waitV.serialNo);
+        EXPECT_EQ(sync.stuckEvents_[2].serialNo, waitOther.serialNo);
+        ASSERT_NE(message.find("kernel locked up"), std::string::npos);
+        if (!compact) {
+            baselineMessage = message;
+            baselineErrors = sync.stuckEvents_;
+        } else {
+            EXPECT_EQ(message, baselineMessage);
+            for (size_t i = 0; i < baselineErrors.size(); ++i) {
+                EXPECT_EQ(fields(sync.stuckEvents_[i]), fields(baselineErrors[i]));
+            }
+        }
+    }
 }
 
 } // namespace
