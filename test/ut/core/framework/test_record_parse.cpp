@@ -1678,6 +1678,69 @@ TEST_F(TestRecordParse, parse_load_3d_record)
     ASSERT_EQ(events[2209].eventInfo.memInfo, memOpInfo1);
 }
 
+TEST_F(TestRecordParse, parse_load_3d_ordered_reads_and_metadata)
+{
+    // One channel's spatial indices, with width-major filter traversal and clipped padding.
+    const std::vector<uint32_t> spatialIndices{5, 5, 7, 7, 5, 13, 5, 13, 7, 15, 7, 15, 13, 13, 15, 15};
+    for (uint16_t extent : {4, 0, 1}) {
+        SCOPED_TRACE(extent);
+        SanitizerRecord sanitizerRecord{};
+        sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+        auto &record = sanitizerRecord.payload.kernelRecord;
+        record.recordType = RecordType::LOAD_3D;
+        record.blockType = BlockType::AICUBE;
+        record.serialNo = 123;
+        auto &load = record.payload.load3DRecord;
+        load.location = {12, 34, 0x5678, 111};
+        load.src = 0x2000;
+        load.dst = 0x4000;
+        load.srcMemType = MemType::L1;
+        load.dstMemType = MemType::L0A;
+        load.dataType = DataType::DATA_B16;
+        load.fMapC = 32;
+        load.fMapW = extent;
+        load.fMapH = extent;
+        load.fMapTopPad = load.fMapBottomPad = load.fMapLeftPad = load.fMapRightPad = extent == 0 ? 0 : 1;
+        load.filterW = load.filterH = extent == 1 ? 1 : 2;
+        load.filterWStride = load.filterHStride = 2;
+        load.filterWDilation = load.filterHDilation = 2;
+        load.matrixKStep = load.matrixMStep = 16;
+        load.matrixRptStride = load.matrixRptTimes = 1;
+
+        std::vector<uint64_t> expectedAddresses;
+        if (extent == 4) {
+            for (uint32_t channel = 0; channel < 2; ++channel) {
+                for (uint32_t index : spatialIndices) {
+                    expectedAddresses.push_back(load.src + (channel * 16 + index) * 32);
+                }
+            }
+        }
+        std::vector<SanEvent> events;
+        RecordParse::Parse(sanitizerRecord, events);
+        ASSERT_EQ(events.size(), expectedAddresses.size() + 1);
+        for (size_t i = 0; i < events.size(); ++i) {
+            SCOPED_TRACE(i);
+            const auto &event = events[i];
+            EXPECT_EQ(event.serialNo, record.serialNo);
+            EXPECT_EQ(event.loc.blockType, record.blockType);
+            EXPECT_EQ(event.loc.coreId, load.location.blockId);
+            EXPECT_EQ(event.loc.fileNo, load.location.fileNo);
+            EXPECT_EQ(event.loc.lineNo, load.location.lineNo);
+            EXPECT_EQ(event.loc.pc, load.location.pc);
+            EXPECT_EQ(event.type, EventType::MEM_EVENT);
+            EXPECT_EQ(event.pipe, PipeType::PIPE_MTE1);
+            const bool write = i == expectedAddresses.size();
+            const MemOpInfo expected = {write ? MemType::L0A : MemType::L1,
+                write ? AccessType::WRITE : AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+                InstrName::NONE, 8, write ? load.dst : expectedAddresses[i], 1, write ? 512U : 32U,
+                1, 1, 1, static_cast<uint16_t>(write ? 512 : 0)};
+            EXPECT_EQ(event.eventInfo.memInfo, expected);
+            EXPECT_EQ(event.eventInfo.memInfo.vectorMask.mask0, DEFAULT_VECTOR_MASK.mask0);
+            EXPECT_EQ(event.eventInfo.memInfo.vectorMask.mask1, DEFAULT_VECTOR_MASK.mask1);
+        }
+    }
+}
+
 TEST_F(TestRecordParse, parse_load_b2_record)
 {
     std::vector<SanEvent> events;

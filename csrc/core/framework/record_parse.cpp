@@ -17,6 +17,7 @@
 
 #include "record_parse.h"
 
+#include <array>
 #include <functional>
 #include <map>
 #include <utility>
@@ -1899,7 +1900,8 @@ static void ParseRecordLoad3DFMap(const Load3DRecord &load3DRecord, std::vector<
     // 对src做对齐检查
     memInfo.addr = load3DRecord.src;
     AlignChecker::Instance().CheckAlign(event, RecordType::LOAD_3D);
-    std::vector<std::vector<int32_t>> fMapPos(0);
+    // Each feature-map coordinate is {channel block, height, width}.
+    std::vector<std::array<int32_t, 3>> fMapPos(0);
     for (uint32_t fMc = 0; fMc < fMapC1; ++fMc) {
         int32_t fMhMax = load3DRecord.fMapH + load3DRecord.fMapBottomPad;
         for (int32_t fMh = -load3DRecord.fMapTopPad; fMh < fMhMax; fMh += load3DRecord.filterHStride) {
@@ -1909,7 +1911,8 @@ static void ParseRecordLoad3DFMap(const Load3DRecord &load3DRecord, std::vector<
             }
         }
     }
-    std::vector<std::vector<uint16_t>> filterPos(0);
+    // Each filter coordinate is {width, height}, matching the traversal below.
+    std::vector<std::array<uint16_t, 2>> filterPos(0);
     for (uint16_t fw = 0; fw < load3DRecord.filterW; ++fw) {
         for (uint16_t fh = 0; fh < load3DRecord.filterH; ++fh) {
             filterPos.push_back({ fw, fh });
