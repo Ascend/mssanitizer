@@ -722,27 +722,82 @@ void MemEventChecker::ScanSinglePipeWindow(const std::vector<SortMetaData> &even
     }
 }
 
+// ScanSingleBlockFast 的候选对判定（时钟并发且非原子），同 block 快速路径与多块回退
+// 路径共享此单一实现，避免两份判定规则漂移：
+// SameBlock=true：b1 用桶级外提值 b1Fixed，并做前置排除——b1Fixed >= ownTime[hIdx]
+//                （当前事件已知晓历史事件发射之后的进度）时必存在 happens-before，
+//                只读预计算数组、不触碰历史事件结构体，直接拒绝；
+// SameBlock=false：b1 按基线策略逐对查询（历史事件 pipeIdx 等于桶号时按桶缓存一次）。
+// SameBlock 为编译期模板参数，分支在编译期折叠，热路径无额外运行时开销。
+// 地址重叠检查由调用方继续执行。
+template <bool SameBlock>
+bool MemEventChecker::IsRaceCandidate(const MemEvent &ce, const MemEvent &he, uint32_t hIdx,
+    uint32_t t1Pipe, uint32_t a1, uint32_t b1Fixed, uint32_t q,
+    const std::vector<uint32_t> &pipeIdx, const std::vector<uint32_t> &ownTime,
+    bool &b1Cached, uint32_t &b1Cache) const
+{
+    if (SameBlock && b1Fixed >= ownTime[hIdx]) {
+        return false;
+    }
+    const uint32_t a2 = he.vt.Get(t1Pipe);
+    if (a1 == a2) {
+        return false;
+    }
+    uint32_t b1 = b1Fixed;
+    if (!SameBlock) {
+        const uint32_t hPipe = pipeIdx[hIdx];
+        if (hPipe == q) {
+            if (!b1Cached) {
+                b1Cache = ce.vt.Get(q);
+                b1Cached = true;
+            }
+            b1 = b1Cache;
+        } else {
+            b1 = ce.vt.Get(hPipe);
+        }
+    }
+    if (!VectorClock::IsNotHappensBefore(a1, a2, b1, ownTime[hIdx])) {
+        return false;
+    }
+    return !IsAtomicAgainst(ce, he);
+}
+
 void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
     RaceMemEventsIdx &raceMemEventsIdx) const {
-    (void)ctx;   // 判定已内联，不使用 ctx.checkFunc
+    (void)ctx;   // 判定提取到 IsRaceCandidate 模板，不走 ctx.checkFunc 回调
     // ==== SINGLE_BLOCK 快速路径 ====
-    // 把 IsInnerCoreRaceEvent 内联进扫描循环：
-    //  - 预计算每个事件的 VC pipe 索引 pipeIdx 与"自时钟分量" ownTime=vt.Get(ownPipe)，
-    //    使 IsNotHappensBefore 的 4 次 Get 降为 2 次（a1=ownTime[cur]、b2=ownTime[hist]）；
-    //  - (memType,pipe) 桶用连续 std::vector 存活跃事件索引 + O(1) swap-and-pop 删除，
-    //    取代 unordered_set 的逐节点遍历（消除 1.6 亿次指针追逐）；
-    //  - 用 events_.data() 裸指针 + operator[] 取代 std::vector::at 与成员函数指针间接调用。
-    // KV: wB/rB 下标 = [memType][pipe]；value = 该桶内"已开始未结束"的历史写/读事件 idx 的连续 vector
-    //     posInBucket[i] = 事件 i 在其当前所属桶 vector 中的下标（供 O(1) swap-and-pop 删除）
+    // 把 IsInnerCoreRaceEvent 的判定提取为 IsRaceCandidate 模板（同 block 快速路径与
+    // 多块回退共享单一实现，模板参数为编译期常量，分支折叠）；其余结构：
+    // KV: wB/rB 下标 = [memType][pipe]；value = 该桶内活跃（开始端点已处理、结束端点未到）
+    //     的历史写/读事件索引；posInBucket[i] = 事件 i 在其所属桶中的下标（供 O(1) 删除）
     constexpr uint32_t NPIPE = static_cast<uint32_t>(PipeType::SIZE);
     const size_t nEvents = this->events_.size();
+    // 向量时钟索引 pipeIdx = blockIdx*NPIPE + pipe（GetPipeIdxByMemEvent），非 MIX 核的
+    // blockIdx 恒为 0。SINGLE_BLOCK checker 的事件入队前经 RaceSanitizer::IsTargetEvent
+    // 过滤，只保证 coreId 相同与 blockType 在本 checker 范围内（AIV checker 同时接收
+    // AIVEC 与 AICORE）；MIX 展开索引含 blockIdx 分量（GetEventExpandBlockIndex：
+    // AIVEC 取 coreId/子槽数、AICORE 取 coreId，见 pipeline_replayer.h），同 coreId 的
+    // AIVEC 与 AICORE 展开后可能落在不同 blockIdx。因此"全部事件同 blockIdx"不恒成立，
+    // 需 allSameBlock 逐事件运行时校验：同 blockIdx（非展开设备、或展开后恰好同槽）时
+    // 启用桶级外提与前置排除，否则回退逐对原逻辑，判定结果不变。
+    const bool expandBlockDim = NeedExpandBlockDim(this->kernelType_, this->deviceType_);
     std::vector<uint32_t> pipeIdx(nEvents);
     std::vector<uint32_t> ownTime(nEvents);
+    bool allSameBlock = true;
+    uint32_t blockIdxFloor = 0U;   // 全部事件共享的 blockIdx（即 events_[0] 的 pipeIdx/NPIPE）
     for (size_t i = 0; i < nEvents; ++i) {
         const uint32_t pIdx = GetPipeIdxByMemEvent<RaceCheckType::SINGLE_BLOCK_CHECK>(
             this->events_[i], this->kernelType_, this->deviceType_);
         pipeIdx[i] = pIdx;
         ownTime[i] = this->events_[i].vt.Get(pIdx);
+        if (expandBlockDim) {
+            const uint32_t floor = pIdx / NPIPE;
+            if (i == 0U) {
+                blockIdxFloor = floor;
+            } else if (floor != blockIdxFloor) {
+                allSameBlock = false;
+            }
+        }
     }
     // 端点已使用 uint32_t 索引，入口范围检查保证桶索引也可用 32 位存储，降低桶遍历的内存开销。
     std::array<std::array<std::vector<uint32_t>, NPIPE>, kMemTypeCount> wB;
@@ -768,6 +823,8 @@ void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &event
         // 开始端点：只与"异 pipe"的历史事件比较（同 pipe 不可能构成核内竞争）
         const uint32_t t1Pipe = pipeIdx[curIdx];
         const uint32_t a1 = ownTime[curIdx];
+        // b1Invariant：全部事件同 blockIdx 时才启用下方的桶级外提与前置排除
+        const bool b1Invariant = allSameBlock;
         const int passes = curWrite ? 2 : 1;
         for (int pass = 0; pass < passes; ++pass) {
             auto &slots = (pass == 0) ? wB[mt] : rB[mt];
@@ -775,32 +832,22 @@ void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &event
                 if (q == sub) { continue; }
                 auto &bucket = slots[q];
                 if (bucket.empty()) { continue; }
-                // 同一当前事件在同一桶查询的 q 分量不变，按桶惰性计算一次。
-                // MIX 的完整 VC 索引可能带子核偏移；仅 hPipe == q 时复用，否则按 hPipe 取值。
+                // 提速 1（查询外提）：b1 是当前事件时钟中"历史事件所在流水线"的分量。
+                // 桶内历史事件的 pipeIdx 恒为 blockIdxFloor*NPIPE + q，与具体历史事件
+                // 无关，故整桶只需查一次（b1Fixed），替代每候选对一次。
+                const uint32_t b1Fixed = b1Invariant ? ce.vt.Get(blockIdxFloor * NPIPE + q) : 0U;
                 bool b1Cached = false;
                 uint32_t b1Cache = 0;
                 for (uint32_t hIdx : bucket) {
                     const MemEvent &he = evData[hIdx];
-                    const uint32_t hPipe = pipeIdx[hIdx];
-                    const uint32_t a2 = he.vt.Get(t1Pipe);
-                    if (a1 == a2) {
-                        continue;
-                    }
-                    uint32_t b1;
-                    if (hPipe == q) {
-                        if (!b1Cached) {
-                            b1Cache = ce.vt.Get(q);
-                            b1Cached = true;
-                        }
-                        b1 = b1Cache;
-                    } else {
-                        b1 = ce.vt.Get(hPipe);
-                    }
-                    const uint32_t b2 = ownTime[hIdx];
-                    if (!VectorClock::IsNotHappensBefore(a1, a2, b1, b2)) {
-                        continue;
-                    }
-                    if (IsAtomicAgainst(ce, he)) {
+                    // 判定收敛到 IsRaceCandidate 单一实现：b1Invariant 作为编译期
+                    // 模板参数选择实例化，两条路径共享同一份时钟/原子判定规则
+                    const bool candidate = b1Invariant
+                        ? IsRaceCandidate<true>(ce, he, hIdx, t1Pipe, a1, b1Fixed, q, pipeIdx,
+                            ownTime, b1Cached, b1Cache)
+                        : IsRaceCandidate<false>(ce, he, hIdx, t1Pipe, a1, b1Fixed, q, pipeIdx,
+                            ownTime, b1Cached, b1Cache);
+                    if (!candidate) {
                         continue;
                     }
                     EventIdxInfo i1{};

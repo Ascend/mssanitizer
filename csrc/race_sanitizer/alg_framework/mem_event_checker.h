@@ -103,6 +103,15 @@ private:
     // 调用方需保证两个事件属于不同 pipe；pipeIdx/ownTime(=vt.Get(pipeIdx)) 由调用方预计算
     bool IsInnerCoreRaceCandidate(const MemEvent &event1, const MemEvent &event2,
         uint32_t pipeIdx1, uint32_t ownTime1, uint32_t pipeIdx2, uint32_t ownTime2) const;
+    // ScanSingleBlockFast 的候选对判定（时钟并发且非原子），同 block 快速路径与多块回退
+    // 路径共享此单一实现，避免两份判定规则漂移；地址重叠由调用方继续检查。
+    // SameBlock 为编译期模板参数：true 用桶级外提的 b1Fixed 并做前置排除，
+    // false 按基线策略逐对查询 b1（历史事件 pipeIdx 等于桶号时按桶缓存）
+    template <bool SameBlock>
+    bool IsRaceCandidate(const MemEvent &ce, const MemEvent &he, uint32_t hIdx,
+        uint32_t t1Pipe, uint32_t a1, uint32_t b1Fixed, uint32_t q,
+        const std::vector<uint32_t> &pipeIdx, const std::vector<uint32_t> &ownTime,
+        bool &b1Cached, uint32_t &b1Cache) const;
     bool IsInnerCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsCrossCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
