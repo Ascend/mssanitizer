@@ -27,6 +27,10 @@ target_link_libraries(mssanitizer_test gtest_main c_sec stdc++fs dl)
 set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/plugin/peer_host_layout_fixture.cpp" PROPERTIES
   INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/msopscommon/csrc;${CMAKE_SOURCE_DIR}/msopscommon/csrc/include/thirdparty")
 
+# SoC 一致性 UT 直接消费 common 的解析入口和同一份测试向量，不扩大其他 UT 的头路径。
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/hooks/test_soc_fallback.cpp" PROPERTIES
+  INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/msopscommon/csrc;${CMAKE_SOURCE_DIR}/msopscommon/test")
+
 # 在独立编译单元中验证融合 Host 适配器与现有设备记录协议。
 set(FUSION_ARGS_SOURCE "${CMAKE_SOURCE_DIR}/msopscommon/csrc/runtime/inject_helpers/FusionLaunchArgs.cpp")
 foreach(FUSION_DEPENDENCY IN ITEMS

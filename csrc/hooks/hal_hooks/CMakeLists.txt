@@ -21,4 +21,5 @@ target_include_directories(ascend_hal_hook PUBLIC
   ${SANITIZER_INC_DIR}
 )
 target_link_libraries(ascend_hal_hook ascend_hal c_sec dl pthread)
+target_include_directories(ascend_hal_hook PRIVATE ${ROOT_DIR}/msopscommon/csrc)
 target_link_options(ascend_hal_hook PRIVATE "-Wl,-z,defs")

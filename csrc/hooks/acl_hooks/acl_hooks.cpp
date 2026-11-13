@@ -26,6 +26,7 @@
 #include "vallina_symbol.h"
 #include "hooks_verify.h"
 #include "acl_hooks.h"
+#include "soc_fallback.h"
 
 using namespace Sanitizer;
 
@@ -55,9 +56,9 @@ void ReportDeviceTypeAfterSetDevice() {
         HOOK_LOG("get soc name FAILED");
         return;
     }
-    auto it = SOC_VERSION_MAP.find(socName);
-    DeviceType deviceType = it == SOC_VERSION_MAP.cend() ? DeviceType::INVALID : it->second;
-    if (it == SOC_VERSION_MAP.cend()) {
+    Sanitizer::DeviceType deviceType = ResolveSocVersion(socName);
+    HOOK_LOG("resolve soc version %s to device type %u", socName, static_cast<uint32_t>(deviceType));
+    if (deviceType == Sanitizer::DeviceType::INVALID) {
         std::cout << "[mssanitizer] unsupported soc version " << socName << std::endl;
     }
     HookReport::Instance().ReportDeviceType(deviceType);

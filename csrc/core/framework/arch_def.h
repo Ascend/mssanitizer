@@ -65,8 +65,11 @@ enum class DeviceType : uint32_t {
     ASCEND_910B2,
     ASCEND_910B3,
     ASCEND_910B4,
+    // 未收录的 910B / 93 系型号使用默认项，数值需与 common 保持一致。
+    ASCEND_910B_DEFAULT,
     ASCEND_910B_END,
 
+    // 该值会随设备摘要落盘，新增默认项后仍保持原协议值。
     ASCEND_310P,
 
     ASCEND_950_START = 10,
@@ -102,6 +105,7 @@ enum class DeviceType : uint32_t {
     ASCEND_950PR_9589,
     ASCEND_950PR_958b,
     ASCEND_950PR_9599,
+    ASCEND_950_DEFAULT,
     ASCEND_950_END,
 
     INVALID = 0xFFFFFFFFU,
