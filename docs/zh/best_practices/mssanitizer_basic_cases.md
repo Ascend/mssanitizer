@@ -20,13 +20,13 @@
 
 4. 使用msSanitizer检测工具拉起单算子可执行文件（以add为例）。
 
-    - 内存检测执行以下命令，具体参数说明请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数汇总>通用参数说明表”和《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数汇总>内存检测参数说明表”，内存检测请参考[内存检测示例说明](#12-内存检测示例说明)。
+    - 内存检测执行以下命令，具体参数说明请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数列表>通用参数说明表”和《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数列表>内存检测参数说明表”，内存检测请参考[内存检测示例说明](#12-内存检测示例说明)。
 
     ```shell
     mssanitizer --tool=memcheck --log-level=error ./add   # 内存检测需指定 --tool=memcheck
     ```
 
-    - 竞争检测执行以下命令，具体参数说明请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数汇总>通用参数说明表”，竞争检测请参考[竞争检测示例说明](#13-竞争检测示例说明)。
+    - 竞争检测执行以下命令，具体参数说明请参考《[MindStudio Sanitizer 使用指南](../user_guide/mssanitizer_user_guide.md)》中的“命令与参数参考>参数列表>通用参数说明表”，竞争检测请参考[竞争检测示例说明](#13-竞争检测示例说明)。
 
     ```shell
     mssanitizer --tool=racecheck --log-level=error ./add   # 竞争检测需指定 --tool=racecheck
@@ -46,7 +46,7 @@
 
 ## 2. 检测API调用的单算子
 
-完成自定义算子的开发部署后，通过单算子API执行的方式调用，添加检测相关编译选项重新编译算子并部署，使用msSanitizer工具运行可执行文件实现算子进行异常检测。
+完成自定义算子的开发部署后，通过单算子API执行的方式调用，添加检测相关编译选项重新编译算子并部署，使用msSanitizer工具运行可执行文件对算子进行异常检测。
 
 ### 2.1 前提条件
 
@@ -54,9 +54,9 @@
 
 > [!NOTE]
 >
-> 此样例工程默认按 Atlas A2 系列产品配置。若使用其他系列产品，需修改以下两处默认配置：
+> 此样例工程默认按Atlas A2系列产品配置。若使用其他系列产品，需修改以下两处默认配置：
 >
-> 1. 根目录 `CMakeLists.txt` 中 `ASCEND_COMPUTE_UNIT` 默认为 `ascend910b`，请根据实际芯片型号（通过 `npu-smi info` 查询 Chip Name）修改。例如 Atlas 950PR&950DT 系列产品需改为 `ascend950`。
+> 1. 根目录 `CMakeLists.txt` 中 `ASCEND_COMPUTE_UNIT` 默认为 `ascend910b`，请根据实际芯片型号（通过 `npu-smi info` 查询Chip Name）修改。例如Ascend 950PR&950DT系列产品需改为 `ascend950`。
 > 2. `op_host` 目录下 `add_custom_template.cpp` 中 `.AddConfig("ascend910b")` 的值需要同样修改。
 >
 > 下载代码样例时，需执行以下命令指定分支版本：
@@ -71,7 +71,7 @@
 
     > [!NOTE]
     >
-    > 在样例工程的`${git_clone_path}/cann-learning-hub/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04`目录下，修改在op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能
+    > 在样例工程的`${git_clone_path}/cann-learning-hub/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04`目录下，修改op_kernel/CMakeLists.txt文件，在Kernel侧实现中增加检测选项-sanitizer，以支持检测功能。
     >
     > ```cmake
     > npu_op_kernel_options(ascendc_kernels ALL OPTIONS -sanitizer)
@@ -139,7 +139,7 @@
     - -g
     - --cce-enable-sanitizer或--sanitizer
 
-    编辑样例工程目录下的“CMakeLists.txt”文件，参考核函数开发和运行验证的完整样例。请根据实际部署的 NPU 硬件架构选择对应的 `npu-arch` 参数，该参数由变量 `CMAKE_ASC_ARCHITECTURES` 指定。例如，Atlas 950PR&950DT 系列产品需将该变量改为 `dav-3510`；本样例中的值 `dav-2201` 适用于昇腾 A2/A3 系列产品。
+    编辑样例工程目录下的“CMakeLists.txt”文件，参考核函数开发和运行验证的完整样例。请根据实际部署的NPU硬件架构选择对应的 `npu-arch` 参数，该参数由变量 `CMAKE_ASC_ARCHITECTURES` 指定。例如，Ascend 950PR&950DT系列产品需将该变量改为 `dav-3510`；本样例中的值 `dav-2201` 适用于Atlas A2/A3系列产品。
 
     ```cmake
     target_compile_options(ascendc_kernels PRIVATE
@@ -177,7 +177,7 @@
 ### 4.1 前提条件
 
 - 参考[triton-ascend仓](https://gitcode.com/Ascend/triton-ascend)，完成Triton及Triton-Ascend插件的安装和配置。
-- 打开以下环境变量，使能 Triton 算子异常检测功能：
+- 打开以下环境变量，使能Triton算子异常检测功能：
 
     ```sh
     # 开启异常检测
@@ -294,8 +294,8 @@ flowchart TB
 
 内存泄漏定位可分为以下步骤：
 
-1. 使能Device系列接口进行泄漏检测，判断内存泄漏是否发生在Host侧。若没有，则定界到Device侧的应用出现泄漏；若有，则通过下一个步骤判断AscendCL接口调用是否发生泄漏；
-2. 使能AscendCL系列接口进行泄漏检测，判断用户代码调用AscendCL接口是否存在泄漏。若没有，则定界为非AscendCL接口调用问题；如果出现泄漏，则通过下一步定位到具体代码行；
+1. 使能Device系列接口进行泄漏检测，判断内存泄漏是否发生在Host侧。若没有，则定界到Device侧的应用出现泄漏；若有，则通过下一个步骤判断AscendCL接口调用是否发生泄漏。
+2. 使能AscendCL系列接口进行泄漏检测，判断用户代码调用AscendCL接口是否存在泄漏。若没有，则定界为非AscendCL接口调用问题；如果出现泄漏，则通过下一步定位到具体代码行。
 3. 使用msSanitizer检测工具中提供的新接口，对头文件重新编译，再用检测工具拉起检测程序，可定位到未释放内存的分配函数所对应的文件名与代码行号。新接口的详细说明请参见《[MindStudio Sanitizer 对外接口使用说明](../api_reference/mssanitizer_api_reference.md)》。
 
 ### 5.2 排查步骤
@@ -315,7 +315,7 @@ flowchart TB
 
         以下输出结果表明Host侧共有一处分配了内存但未释放，导致内存泄漏32800字节。
 
-        ```text
+        ```output
         ====== ERROR: LeakCheck: detected memory leaks
 
         ======    Direct leak of 32800 byte(s)
@@ -336,7 +336,7 @@ flowchart TB
 
         以下输出结果表明调用AscendCL接口时共有一处分配了内存但未释放，导致内存泄漏32768字节。
 
-          ```text
+          ```output
           ====== ERROR: LeakCheck: detected memory leaks
 
           ======    Direct leak of 32768 byte(s)

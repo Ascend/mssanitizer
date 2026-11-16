@@ -1,4 +1,4 @@
-# msSanitizer 安装指南
+# msSanitizer安装指南
 
 <br>
 
@@ -26,16 +26,16 @@
 
 #### 2.3.1 环境准备
 
-源码编译统一使用 MindStudio 标准构建环境。
+源码编译统一使用MindStudio标准构建环境。
 
-- 日常开发或使用已发布镜像，请参考《[MindStudio工具开发环境安装指导](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/dev_env_setup.md)》。
+- 日常开发或使用已发布镜像，请参见《[MindStudio工具开发环境安装指导](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/dev_env_setup.md)》。
 - 需要从基础操作系统复现环境、执行源码构建验证或单元测试验证时，必须参考《[MindStudio统一构建镜像制作指南](https://gitcode.com/Ascend/msot/blob/master/docs/zh/common/docker_image_build_guide.md)》，从openEuler基础镜像现场构建环境镜像。
 
-本文档后续的源码编译和单元测试命令，均在上述指定镜像容器或现场构建的环境镜像的容器中执行，CANN 软件包版本、GCC 版本和 Python 版本以统一镜像制作指南为准，本仓库不重复维护。
+本文档后续的源码编译和单元测试命令，均在上述指定镜像容器或现场构建的环境镜像的容器中执行，CANN软件包版本、GCC版本和 Python版本以统一镜像制作指南为准，本仓库不重复维护。
 
-镜像构建完成后，必须使用统一镜像制作指南第 7 章给出的 `ctr_in.py` 命令，在交互式终端中启动并进入容器。不得使用普通 `docker run` 创建容器，也不得使用 `docker exec <容器名> bash -c '<命令>'` 替代交互式环境；否则可能跳过 Python、GCC 和 CANN 环境初始化。
+镜像构建完成后，必须使用统一镜像制作指南第7章给出的`ctr_in.py`命令，在交互式终端中启动并进入容器。不得使用普通`docker run`创建容器，也不得使用`docker exec <容器名> bash -c '<命令>'`替代交互式环境；否则可能跳过Python、GCC和CANN环境初始化。
 
-进入 `ctr_in.py` 打开的交互式容器 Shell 后，执行如下命令克隆本仓库：
+进入`ctr_in.py`打开的交互式容器Shell后，执行如下命令克隆本仓库：
 
 ```bash
 cd ~
@@ -44,7 +44,7 @@ git clone https://gitcode.com/Ascend/mssanitizer.git
 
 #### 2.3.2 执行编译
 
-保持在 `ctr_in.py` 打开的同一个交互式容器 Shell 中，在仓库根目录执行以下命令，自动完成依赖下载与构建：
+保持在`ctr_in.py`打开的同一个交互式容器Shell中，在仓库根目录执行以下命令，自动完成依赖下载与构建：
 
 ```bash
 cd ~/mssanitizer
@@ -62,7 +62,7 @@ cd ~/mssanitizer
 python3 build.py test
 ```
 
-命令返回码为 0，且测试用例均无失败，表示单元测试通过。
+命令返回码为0，且测试用例均无失败，表示单元测试通过。
 
 #### 2.3.4 安装
 
@@ -88,10 +88,7 @@ chmod +x mindstudio-sanitizer_*.run
 >
 > 安装路径说明
 >
-> 若环境中已配置 `ASCEND_HOME_PATH` 环境变量，工具将安装至 `$ASCEND_HOME_PATH` 目录；
-> 否则，默认安装至 `$HOME/Ascend` 目录；
-> 如需指定自定义安装路径，请使用 `--install-path` 选项，例如：
-> `./mindstudio-sanitizer_*.run --install-path=./xxx --run`，即可将该运行包安装至 `xxx` 目录。
+> 若环境中已配置 `ASCEND_HOME_PATH` 环境变量，工具将安装至 `$ASCEND_HOME_PATH` 目录；否则，默认安装至 `$HOME/Ascend` 目录。如需指定自定义安装路径，请使用 `--install-path` 选项，例如：`./mindstudio-sanitizer_*.run --install-path=./xxx --run`，即可将该运行包安装至 `xxx` 目录。
 
 ## 3. 验证安装
 
@@ -130,16 +127,16 @@ mssanitizer --help
 
    卸载成功打印如下信息：
 
-   ```text
+   ```output
    Successfully uninstalled 1 tool ({tools_name})
    ```
 
 ## 5. 升级
 
-升级即"先卸后装"。直接执行安装命令，工具将自动卸载旧版本，并引导您完成覆盖安装。也可以手动执行卸载后再安装：
+升级即“先卸后装”。直接执行安装命令，工具将自动卸载旧版本，并引导您完成覆盖安装。也可以手动执行卸载后再安装：
 
-- 先卸载旧版本（参考第 4 节）
-- 再按第 2 节中的方式安装新版本
+- 先卸载旧版本（参考第4节）
+- 再按第2节中的方式安装新版本
 
 可通过`mssanitizer --version`命令查看当前环境的版本信息，再选择需要升级的版本。升级版本时需要关注版本配套关系，请参见《[版本说明](https://gitcode.com/Ascend/release-management/blob/master/MindStudio/master/release_notes.md)》。
 

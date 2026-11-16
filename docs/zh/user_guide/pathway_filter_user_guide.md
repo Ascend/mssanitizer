@@ -2,7 +2,7 @@
 
 <br>
 
-本功能在异常检测前过滤已知不受硬件支持的通路事件，减少由这类事件引起的误告警。过滤只作用于匹配规则的事件，不会关闭整个算子的异常检测。
+本功能在异常检测前过滤已知不受硬件支持的通路事件，减少由这类事件引起的误报。过滤只作用于匹配规则的事件，不会关闭整个算子的异常检测。
 
 ## 目录
 
@@ -69,7 +69,7 @@ echo "TOOL_EXIT=$?"
 
 Kernel 结束时，工具内部日志按消费者和 Kernel 输出实际移除的**事件数**，例如：
 
-```text
+```output
 Pathway filter consumer:RaceSanitizer, kernel:kernel, deviceId:0, deviceType:36, removed events:1
 ```
 
@@ -80,7 +80,7 @@ Pathway filter consumer:RaceSanitizer, kernel:kernel, deviceId:0, deviceType:36,
 | `====== ERROR:` | 检测器报告的异常。过滤统计与报告错误数是两个指标，不能相加或互相替代。 |
 | `TOOL_EXIT=0` | 检测进程正常退出；故意构造错误的算子仍可能同时出现预期的 `ERROR`。 |
 
-同一算子分别用 `memcheck`、`initcheck`、`racecheck` 运行时，每次都是独立检测，不能把多次运行中的 `removed events:1` 加成“一次移除了多条”。汇总脚本也可能重复展示同一条内部日志；核对计数时应查看本次运行的原始日志。
+同一算子分别用 `memcheck`、`initcheck`、`racecheck` 运行时，每次都是独立检测，不能把多次运行中的 `removed events:1` 累计成“一次移除了多条”。汇总脚本也可能重复展示同一条内部日志；核对计数时应查看本次运行的原始日志。
 
 判断功能是否生效，需要同时确认检测器确实完成插桩与事件采集、目标告警的前后变化，以及不匹配规则的真实异常是否仍被报告。单看“无告警”或“退出码为 0”都不够。
 

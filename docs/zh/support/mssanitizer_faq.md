@@ -14,12 +14,12 @@
 
     说明msSanitizer工具没有解析到正确的文件名和行号，根据用户的检测场景，有以下两种解决方法：
 
-    - 如果启用了"--check-cann-heap=yes"选项，对CANN软件栈内存进行检测，则可以通过引入Sanitizer API头文件并重新编译用户程序使检测工具获取到正确的文件名和行号，具体可参考《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中“检测CANN软件栈的内存>内存泄漏检测使用原理>步骤4”。
+    - 如果启用了`--check-cann-heap=yes`选项，对CANN软件栈内存进行检测，则可以通过引入Sanitizer API头文件并重新编译用户程序使检测工具获取到正确的文件名和行号，具体可参考《[基础案例](../best_practices/mssanitizer_basic_cases.md)》中“检测CANN软件栈的内存>内存泄漏检测使用原理>步骤4”。
     - 如果正在对算子进行异常检测，那么可能是在算子编译阶段未启用"-g"编译选项，启用"-g"编译选项后才能生成正确的文件名和行号，具体可参考《[MindStudio Sanitizer工具用户指南](../user_guide/mssanitizer_user_guide.md)》中的“使用前准备>内核调用符场景准备”。
 
 - 文件名显示正确，但行号显示为"0"。
 
-    这种情况一般是因为使用了"-O2"或"-O3"编译选项进行算子代码编译，编译器对算子代码进行优化时导致代码行变化，可通过在算子编译阶段使用"-O0"禁用编译器优化来解决这个问题。
+    这种情况一般是因为使用了"-O2"或"-O3"编译选项进行算子代码编译，编译器对算子代码进行优化时导致代码行号变化，可通过在算子编译阶段使用"-O0"禁用编译器优化来解决这个问题。
 
 ## msSanitizer工具使用"--cce-enable-sanitizer -g"编译算子时出现"InputSection too large"错误
 
@@ -35,7 +35,7 @@
 
 通过增加编译选项，启用编译器扩大跳转范围的特性来解决。在《[MindStudio Sanitizer工具用户指南](../user_guide/mssanitizer_user_guide.md)》中的“使用前准备>配置编译选项>在编译选项中增加-g”选项"--cce-enable-sanitizer -g"后增加"-Xaicore-start -mcmodel=large -mllvm -cce-aicore-relax -Xaicore-end"。
 
-```shell
+```cmake
 target_compile_options(${smoke_testcase}_npu PRIVATE
                      -O2
                      -std=c++17
@@ -49,7 +49,7 @@ target_compile_options(${smoke_testcase}_npu PRIVATE
 
 **问题现象**
 
-使用msSanitizer工具进行异常检测时，提示"113023 records undetected, please use --cache-size=_xx_  to run the operator again" 。
+使用msSanitizer工具进行异常检测时，提示"113023 records undetected, please use --cache-size=_xx_  to run the operator again"。
 
 **原因分析**
 
@@ -102,7 +102,7 @@ export PYTORCH_NO_NPU_MEMORY_CACHING=1
 
 > [!NOTE]
 > 
-> 不添加编译选项时算子的优化等级需为O2，并保证算子链接阶段增加`-q`选项保留符号重定位信息，否则检测功能可能失效。该方式不适用于Atlas推理系列产品，且仅适用于算子内核调用场景。
+> 不添加编译选项时算子的优化等级需为`-O2`，并保证算子链接阶段增加`-q`选项保留符号重定位信息，否则检测功能可能失效。该方式不适用于Atlas推理系列产品，且仅适用于算子内核调用场景。
 
 ## 四种检测工具的使用顺序建议
 
@@ -114,7 +114,7 @@ export PYTORCH_NO_NPU_MEMORY_CACHING=1
 
 建议按以下顺序使用：
 
-1. **先运行 memcheck（内存检测）**，确认算子程序无内存异常（非法读写、多核踩踏、非对齐访问、内存泄漏、非法释放等）
+1. **先运行memcheck（内存检测）**，确认算子程序无内存异常（非法读写、多核踩踏、非对齐访问、内存泄漏、非法释放等）
 2. 确认无内存异常后，再按需运行：
    - **racecheck（竞争检测）**：检查数据竞争问题
    - **initcheck（未初始化检测）**：检查脏数据读取问题
@@ -152,7 +152,7 @@ target_compile_options(${smoke_testcase}_npu PRIVATE -O2 --sanitizer -g)
 
 再次执行相同的检测命令，通常即可获取到调用栈的异常信息。
 
-## cmake ../cmake 和 cmake .. 有什么区别
+## cmake ../cmake和 cmake ..有什么区别
 
 **问题现象**
 

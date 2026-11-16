@@ -1,4 +1,4 @@
-# MindStudio Sanitizer 对外接口使用说明
+# MindStudio Sanitizer对外接口使用说明
 
 <br>
 
@@ -8,7 +8,7 @@
 
 msSanitizer工具包含sanitizer接口和mstx扩展接口两种类型。sanitizer接口用于CANN软件栈的检测，与ACL系列接口一一对应。此类接口会在ACL对应接口的功能基础上，额外向工具上报接口调用位置的代码文件和行号信息，使用时需导入sanitizer API头文件和链接动态库，具体请参见《[MindStudio Sanitizer典型案例](../best_practices/mssanitizer_basic_cases.md)》中的“检测CANN软件栈的内存>导入API头文件和链接动态库”。mstx扩展接口用于用户自定义上报内存池信息，以实现更准确的检测，具体请参见[mstx扩展功能](#mstx扩展功能)。
 
-**表 1**  msSanitizer工具接口列表
+**表 1** msSanitizer工具接口列表
 
 |接口名称|功能简介|
 |--|--|
@@ -56,7 +56,7 @@ aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy poli
 
 **参数说明**
 
-**表 2**  参数说明
+**表 2** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -97,7 +97,7 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 
 **参数说明**
 
-**表 3**  参数说明
+**表 3** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -138,7 +138,7 @@ aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno);
 
 **参数说明**
 
-**表 4**  参数说明
+**表 4** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -177,7 +177,7 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 
 **参数说明**
 
-**表 5**  参数说明
+**表 5** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -219,7 +219,7 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 
 **参数说明**
 
-**表 6**  参数说明
+**表 6** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -262,7 +262,7 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 
 **参数说明**
 
-**表 7**  参数说明
+**表 7** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -305,7 +305,7 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 
 **参数说明**
 
-**表 8**  参数说明
+**表 8** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -349,7 +349,7 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 
 **参数说明**
 
-**表 9**  参数说明
+**表 9** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -394,7 +394,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 
 **参数说明**
 
-**表 10**  参数说明
+**表 10** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -403,7 +403,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 |src|输入|源内存地址指针。|
 |spitch|输入|源内存中相邻两列向量的地址距离。|
 |width|输入|待复制的矩阵宽度。|
-|height|输入|待复制的矩阵高度。height最大设置为5*1024*1024=5242880，否则接口返回失败。|
+|height|输入|待复制的矩阵高度。height最大可设置为5*1024*1024=5242880，否则接口返回失败。|
 |kind|输入|内存复制的类型，预留参数，配置枚举值中的值无效，系统内部会根据源内存地址指针、目的内存地址指针判断是否可以将源地址的数据复制到目的地址，如果不可以，则系统会返回报错。|
 |stream|输入|指定执行内存复制任务的Stream。|
 |filename|输入|矩阵数据内存复制被调用处的文件名。|
@@ -440,7 +440,7 @@ void sanitizerReportMalloc(void *ptr, uint64_t size);
 
 **参数说明**
 
-**表 11**  参数说明
+**表 11** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -477,7 +477,7 @@ void sanitizerReportFree(void *ptr);
 
 **参数说明**
 
-**表 12**  参数说明
+**表 12** 参数说明
 
 |参数名|输入/输出|描述|
 |--|--|--|
@@ -503,9 +503,9 @@ mstx接口是MindStudio提供的一套扩展接口，它允许用户在应用程
 
 ### mstx接口列表
 
-msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/zh/api_reference/README.md)》。
+msSanitizer工具调用的mstx接口列表如[表13](#table111)所示，具体使用情况请参考《[MindStudio Tools Extension Library接口文档](https://gitcode.com/Ascend/mstx/blob/26.2.0/docs/zh/api_reference/README.md)》。
 
-**表 13**  msSanitizer工具调用的mstx接口列表<a name="table111"></a>
+**表 13** msSanitizer工具调用的mstx接口列表<a name="table111"></a>
 
 |接口名称|功能简介|
 |--|--|
@@ -514,7 +514,7 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 |mstxMemRegionsRegister|注册内存池二次分配。用户需保证RegionsRegister的内存位于mstxMemHeapRegister注册的范围内，否则工具会提示越界读写。|
 |mstxMemRegionsUnregister|注销内存池二次分配。|
 |mstxMemHeapUnregister|注销内存池时，与之关联的Regions将一并被注销。|
-|mstxMemPermissionsAssign|通过该接口上报内存读写属性，使用mssanitizer拉起算子程序时，如果算子内进行了与内存属性不符的读写操作，可以检测出非法访问的错误。|
+|mstxMemPermissionsAssign|通过该接口上报内存读写属性，使用msSanitizer拉起算子程序时，如果算子内进行了与内存属性不符的读写操作，可以检测出非法访问的错误。|
 
 ### mstx接口的使用
 
@@ -523,9 +523,9 @@ msSanitizer工具调用的mstx接口列表如[表1](#table111)所示，具体使
 
     >[!NOTE]
     >
-    > 此样例工程默认按 Atlas A2 系列产品配置。若使用其他系列产品，需修改以下两处默认配置：
+    > 此样例工程默认按Atlas A2系列产品配置。若使用其他系列产品，需修改以下两处默认配置：
     >
-    > 1. 根目录 `CMakeLists.txt` 中 `ASCEND_COMPUTE_UNIT` 默认为 `ascend910b`，请根据实际芯片型号（通过 `npu-smi info` 查询 Chip Name）修改。例如 Atlas 950PR&950DT 系列产品需改为 `ascend950`。
+    > 1. 根目录 `CMakeLists.txt` 中 `ASCEND_COMPUTE_UNIT` 默认为 `ascend910b`，请根据实际芯片型号（通过 `npu-smi info` 查询Chip Name）修改。例如Ascend 950PR&950DT系列产品需改为 `ascend950`。
     > 2. `op_host` 目录下 `add_custom_template.cpp` 中 `.AddConfig("ascend910b")` 的值需要同样修改。
 
 - 在`${git_clone_path}/cann-learning-hub/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04/test/CMakeLists.txt`路径下新增库文件`libms_tools_ext.so`，地址为：`${INSTALL_DIR}/lib64/libms_tools_ext.so`。

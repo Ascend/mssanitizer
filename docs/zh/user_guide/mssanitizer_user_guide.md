@@ -1,4 +1,4 @@
-# MindStudio Sanitizer 使用指南
+# MindStudio Sanitizer使用指南
 
 <br>
 
@@ -78,7 +78,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 > [!NOTE]
 >
-> 在`<<<>>>`自定义算子接入torch场景时，默认使用内存池的方式管理GM内存，可能会导致越界检测结果不准确。因此，在检测前需要额外设置如下环境变量关闭内存池，从而获得更精确的检测结果。
+> 在`<<<>>>`自定义算子接入Ptorch场景时，默认使用内存池的方式管理GM内存，可能会导致越界检测结果不准确。因此，在检测前需要额外设置如下环境变量关闭内存池，从而获得更精确的检测结果。
 >
 > ```shell
 > export PYTORCH_NO_NPU_MEMORY_CACHING=1
@@ -86,7 +86,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 ### 4.2 单算子API调用场景
 
-1. 单算子API调用(aclnn)场景，使用检测工具拉起算子API运行脚本，例如：
+1. 单算子API调用（aclnn）场景，使用检测工具拉起算子API运行脚本，例如：
 
     ```shell
     mssanitizer --tool=memcheck bash run.sh
@@ -129,7 +129,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 ## 5. 算子编译选项配置（可选）
 
-用户可根据需求自行选择是否修改编译选项重新编译算子，两种场景的详细说明如下。
+用户可根据需求自行选择是否修改编译选项重新编译算子，两种场景的详细说明如下：
 
 ### 5.1 不修改编译选项（快速定界）
 
@@ -170,7 +170,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 内存检测能够检测并报告诸如内存非法读写、多核踩踏、非对齐访问、内存泄漏、非法释放及分配内存未使用等异常操作，如下表所示。
 
-**表 1**  内存异常类型
+**表 1** 内存异常类型
 
 | 异常名 | 描述 | 位置 | 支持地址空间 |
 | --- | --- | --- | --- |
@@ -182,8 +182,8 @@ mssanitizer --tool=memcheck ./add_npu
 | [分配内存未使用](#6136-分配内存未使用) | 对内存分配后未使用导致的异常。 | Kernel、Host | GM |
 | [Ascend 950PR&950DT系列产品SIMT单元异常信息](#6137-ascend-950pr950dt系列产品simt单元异常信息) | SIMT架构下展示异常信息发生的线程位置。 | Kernel | GM |
 | [线程间踩踏](#6138-线程间踩踏) | AI Core核心内线程间访问了重叠的内存导致的踩踏问题。 | Kernel | GM |
-| [寄存器告警](#6139-寄存器告警) | 寄存器未回归默认值时，告警提示用户有寄存器值残留。 | Kernel | GM |
-| [GM内存安全区越界写入](#61310-gm内存安全区越界写入) | 使用aicpu tiling下沉功能时，tiling函数出现的越界写入行为 | Host | GM |
+| [寄存器告警](#6139-寄存器告警) | 寄存器未复位默认值时，告警提示用户有寄存器值残留。 | Kernel | GM |
+| [GM内存安全区越界写入](#61310-gm内存安全区越界写入) | 使用AI CPU tiling下沉功能时，tiling函数出现的越界写入行为。 | Host | GM |
 
 #### 6.1.2 启用内存检测
 
@@ -199,7 +199,7 @@ mssanitizer --tool=memcheck ./add_npu
 >
 > - 当用户程序运行完成后，界面将会打印异常报告。
 > - 当用户使用PyTorch等框架接入算子时，框架内部可能会通过内存池管理GM内存，而内存池通常会一次性分配大量GM内存，并在运行过程中复用。此时，若用户对算子进行检测并记录GM上所有内存分配和释放的信息，会因为内存池的内存管理方式导致检测信息不准确。因此检测工具提供了手动上报GM内存分配信息的接口，方便用户在算子调用时手动上报该算子应当使用的GM内存范围，详细接口介绍请参见《[MindStudio Sanitizer对外接口使用说明](../api_reference/mssanitizer_api_reference.md)》中的sanitizerReportMalloc和sanitizerReportFree接口。
-> - msSanitizer工具也支持对Atlas A2系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi)》中的“高阶API > Hccl >  Hccl Kernel侧接口”章节。
+> - msSanitizer工具也支持对Atlas A2系列产品的AllReduce、AllGather、ReduceScatter、AlltoAll接口及Atlas A3系列产品的AllGather、ReduceScatter、AlltoAllV接口进行非法读写的检测，具体介绍请参见《[Ascend C算子开发接口](https://www.hiascend.com/document/redirect/CannCommercialAscendCApi)》中的“高阶API > Hccl > Hccl Kernel侧接口”章节。
 > - msSanitizer工具也支持对通算融合类算子的非法读写检测。
 > - 当前Ascend 950PR&950DT系列产品支持内存检测中GM/UB/L1/L0A/L0B/L0C，其他暂不支持。
 > - 当前在UB地址空间的内存检测默认使用物理上限作为可用空间。
@@ -213,7 +213,7 @@ mssanitizer --tool=memcheck ./add_npu
 非法读写异常信息的产生是由于算子程序中，通过读或写的方式访问了一块未分配的内存。此错误一般发生在GM或片上内存上，GM异常是由于GM分配的大小与实际算子程序中访问的范围不一致导致，而片上内存的异常是由于算子程序的访问范围超过硬件容量上限导致。
 
 ```text
-====== ERROR: illegal read of size 224  // 异常的基本信息,包含非法读写的类型以及被非法访问的字节数,非法读写包括read(非法读取)和write(非法写入)
+====== ERROR: illegal read of size 224  // 异常的基本信息，包含非法读写的类型以及被非法访问的字节数，非法读写包括read(非法读取)和write(非法写入)
 ======    at 0x12c0c0015000 on GM in add_custom_kernel  // 异常发生的内存位置信息，包含发生的核函数名、地址空间与内存地址，此处的内存地址指一次内存访问中的首地址
 ======    in block aiv(0) on device 0  // 异常代码对应Vector核的block索引
 ======    code in pc current 0x77c (serialNo:10) // 当前异常发生的pc指针和调用api行为的序列号
@@ -303,7 +303,7 @@ AI Core是AI处理器中的计算核心，AI处理器内部有多个AI Core，�
 ```text
 ====== ERROR: illegal free()     // 异常的基本信息，表明发生了非法释放异常
 ======    at 0x124080013000 on GM      // 异常发生的内存位置信息，包含发生的地址空间与内存地址
-======    code in add_custom.cpp:84 (serialNo:63)    // 异常发生的代码定位信息,包含文件名、行号和调用api行为的序列号
+======    code in add_custom.cpp:84 (serialNo:63)    // 异常发生的代码定位信息，包含文件名、行号和调用api行为的序列号
 ```
 
 以上示例中，对GM上的"0x124080013000"地址进行了非法释放，且导致异常发生的指令对应于算子实现文件add_custom.cpp的第84行。
@@ -314,14 +314,14 @@ AI Core是AI处理器中的计算核心，AI处理器内部有多个AI Core，�
 
 ```text
 ====== WARNING: Unused memory of 1000 byte(s)     //异常的基本信息，表明检测到内存分配未使用异常
-======    at 0x1240c0016000 on GM                    // 异常发生的内存位置信息,包含发生的地址空间与内存地址
-======    code in add_custom.cpp:2 (serialNo:69)   //异常发生的代码定位信息,包含文件名、行号和调用api行为的序列号
+======    at 0x1240c0016000 on GM                    // 异常发生的内存位置信息，包含发生的地址空间与内存地址
+======    code in add_custom.cpp:2 (serialNo:69)   //异常发生的代码定位信息，包含文件名、行号和调用api行为的序列号
 ====== SUMMARY: 1100byte(s) unused memory in 2 allocation(s) // 内存分配未使用的总结信息，包括未使用内存块的个数及字节等信息
 ```
 
 ##### 6.1.3.7 Ascend 950PR&950DT系列产品SIMT单元异常信息
 
-SIMT架构下异常信息的展示会额外提供异常信息发生的线程位置，线程id从0开始计数，例如下方异常信息发生在线程idX=1 idY=0，idZ=0处。Ascend 950PR&950DT系列产品SIMT单元异常时，错误信息展示如下：
+SIMT架构下异常信息的展示会额外提供异常信息发生的线程位置，线程id从0开始计数，例如下方异常信息发生在线程idX=1、idY=0、idZ=0处。Ascend 950PR&950DT系列产品SIMT单元异常时，错误信息展示如下：
 
 ```text
 ====== ERROR: illegal read of size 4
@@ -367,7 +367,7 @@ SIMT架构下多线程编程时，如果各线程对GM的访问未正确处理�
 
 ##### 6.1.3.10 GM内存安全区越界写入
 
-开发自定义算子使用aicpu tiling下沉功能时，tiling函数中可能出现越界写行为，使用检测工具拉起算子时通过检查缓冲区的内容判断是否出现越界，并在出现越界异常时以告警的形式进行提示。当前告警信息展示内存地址和越界长度。
+开发自定义算子使用AI CPU tiling下沉功能时，tiling函数中可能出现越界写行为，使用检测工具拉起算子时通过检查缓冲区的内容判断是否出现越界，并在出现越界异常时以告警的形式进行提示。当前告警信息展示内存地址和越界长度。
 
 ```text
 ====== ERROR: illegal write of size 16 byte(s)
@@ -387,9 +387,9 @@ SIMT架构下多线程编程时，如果各线程对GM的访问未正确处理�
 
 #### 6.2.1 竞争异常类型
 
-内存竞争是指两个内存事件（其中至少有一个为写事件）尝试访问同一块内存时，出现不符合基于预期执行顺序的结果。这种异常会导致数据竞争，从而使程序的运行或输出取决于内存事件的实际执行顺序。竞争检测功能可识别以下三种典型的内存竞争：
+内存竞争是指两个内存事件（其中至少有一个为写事件）尝试访问同一块内存时，出现不符合预期执行顺序的结果。这种异常会导致数据竞争，从而使程序的运行或输出取决于内存事件的实际执行顺序。竞争检测功能可识别以下三种典型的内存竞争：
 
-**表 2**  内存竞争类型
+**表 2** 内存竞争类型
 
 | 异常名 | 描述 | 位置 | 支持地址空间 |
 | --- | --- | --- | --- |
@@ -423,11 +423,11 @@ mssanitizer --tool=racecheck --check-cross-npu-races=yes application
 
 竞争检测会输出一系列信息，详细说明有关算子各PIPE之间存在的内存数据竞争访问风险。
 
-- 以下示例中表示了AICore 0的Vector核内部中存在对UB的先写后读竞争风险，PIPE_MTE2流水中存在对"0x0"地址的写入操作事件，该操作对应算子实现文件add_custom.cpp中的第17行，PIPE_MTE3流水中存在对"0x0"地址的读取操作事件，该操作对应算子实现文件add_custom.cpp中的第22行。
+- 以下示例中表示了AI Core 0的Vector核内部中存在对GM的先写后读竞争风险，PIPE_MTE2流水中存在对"0x0"地址的写入操作事件，该操作对应算子实现文件add_custom.cpp中的第17行，PIPE_MTE3流水中存在对"0x0"地址的读取操作事件，该操作对应算子实现文件add_custom.cpp中的第22行。
 
     ```text
     ====== ERROR: Potential RAW hazard detected at GM in kernel_float on device 0:  // 竞争事件类型、异常内存块信息、竞争发生的核函数名
-    ======    PIPE_MTE2 Write at RAW()+0x0 in block 0 (aiv) on device 0 at pc current 0xa98 (serialNo:14)  // 竞争事件的详细信息,包含该事件所在的PIPE、操作类型、内存访问起始地址、核类型、AICore信息以及代码执行的pc指针和调用api行为的序列号
+    ======    PIPE_MTE2 Write at RAW()+0x0 in block 0 (aiv) on device 0 at pc current 0xa98 (serialNo:14)  // 竞争事件的详细信息，包含该事件所在的PIPE、操作类型、内存访问起始地址、核类型、AICore信息以及代码执行的pc指针和调用api行为的序列号
     ======    #0 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/impl/dav_c220/kernel_operator_data_copy_impl.h:58:9  // 以下为异常发生代码的调用栈，包含文件名、行号和列号
     ======    #1 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:58:9
     ======    #2 ${ASCEND_HOME_PATH}/compiler/tikcpp/tikcfw/inner_interface/inner_kernel_operator_data_copy_intf.cppm:443:5
@@ -465,7 +465,7 @@ mssanitizer --tool=racecheck --check-cross-npu-races=yes application
 
 #### 6.3.1 未初始化异常类型
 
-**表 3**  未初始化异常类型
+**表 3** 未初始化异常类型
 
 | 异常名 | 描述 | 位置 | 支持地址空间 |
 | --- | --- | --- | --- |
@@ -479,9 +479,11 @@ mssanitizer --tool=racecheck --check-cross-npu-races=yes application
 mssanitizer --tool=initcheck application   # application为用户程序
 ```
 
-默认仅检测栈空间（`stack`，对应 PRIVATE）。使用 `--initcheck-address-space` 指定检测范围，支持 `stack`、`gm`、`ub`、`l0a`、`l0b`、`l0c`、`l1` 和 `all`，多个地址空间以逗号分隔。该参数仅在启用 `--tool=initcheck` 时生效，检测能力仍受芯片支持范围限制。
+默认仅检测栈空间。可通过`--initcheck-address-space`参数指定检测范围，支持 `stack`、`gm`、`ub`、`l0a`、`l0b`、`l0c`、`l1` 和 `all`，多个地址空间以逗号分隔。该参数仅在启用`--tool=initcheck`时生效，且具体检测能力受芯片支持范围限制。
 
-**升级说明：** 旧版本默认检测全部受支持空间，当前版本调整为默认仅检测栈空间。不显式指定检测范围时，工具会在启动检测前提示一次。若要保留旧版本对 GM、UB、L1 和 L0 等空间的检测，请增加 `--initcheck-address-space=all`。未选中空间的未初始化读取不会产生初始化检测报告，也不会因此触发 `--error-exitcode`。
+> [!NOTE]
+>
+> 旧版本默认检测所有受支持空间；当前版本默认仅检测栈空间。若未显式指定检测范围，工具将在启动检测前提示一次。如需保留旧版本对GM、UB、L0、L1等空间的检测，请添加参数：`--initcheck-address-space=all`。未选中空间的未初始化读取不会产生初始化检测报告，也不会因此触发`--error-exitcode`。
 
 ```shell
 mssanitizer --tool=initcheck --initcheck-address-space=stack,gm application
@@ -502,7 +504,7 @@ mssanitizer --tool=initcheck --initcheck-address-space=all application
 
 未初始化的异常场景一般是算子读取了已申请但未初始化的内存，发生在GM、UB、L1、L0{ABC}、栈空间上。
 
-以下示例表示了算子程序中kernel侧存在224字节的未初始化读，发生在GM上，出现在代码add_custom.cpp的第18行。
+以下示例表示了算子程序中Kernel侧存在224字节的未初始化读，发生在GM上，出现在代码add_custom.cpp的第18行。
 
 ```text
 ====== ERROR: uninitialized read of size 224  // 异常的基本信息，包含读取的未初始化字节数
@@ -533,7 +535,7 @@ mssanitizer --tool=initcheck --initcheck-address-space=all application
 
 #### 6.4.1 同步异常类型
 
-**表 4**  同步异常类型
+**表 4** 同步异常类型
 
 | 异常名 | 描述 | 位置 |
 | --- | --- | --- |
@@ -591,13 +593,13 @@ mssanitizer --tool=synccheck application   # application为用户程序
     Ctrl-C received. Running kernel will be killed, and you can press Ctrl-C again to force quit.
     ```
 
-- 收到ctrl-c的算子终止运行时，工具打印算子进程退出信息。
+- 收到ctrl-c终止算子运行时，工具打印算子进程退出信息。
 
     ```text
     user program /date/XXX/test_fatbin exited by signal(2)
     ```
 
-- 算子卡死告警
+- 算子卡死告警。
 
     ```text
     ====== ERROR: Sync error detected kernel locked up at
@@ -646,11 +648,11 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 1. options：为检测工具的命令行选项，详细的参数选项及其默认值，请参考 [7.2 参数列表](#72-参数列表)。
 2. user_program：为用户算子程序。
 3. user_options：为用户程序的命令行选项。
-4. --：如要加载的程序本身带有命令行参数时，在程序之前使用"--"分隔检测工具和用户程序，例如：`mssanitizer -- application parameter1 parameter2 ...`
+4. --：如要加载的程序本身带有命令行参数时，在程序之前使用"--"分隔检测工具和用户程序，例如：`mssanitizer -- application parameter1 parameter2 ...`。
 
 ### 7.2 参数列表
 
-**表1：通用参数说明**
+**表 5** 通用参数说明
 
 | 参数名称 | 参数描述 | 参数取值 | 必选 |
 | --- | --- | --- | --- |
@@ -664,7 +666,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | --kernel-name | 指定要检测的算子名称。 | 支持使用算子名中的部分字符串来进行模糊匹配。如果不指定，则系统默认会对整个程序执行期间所调度的所有算子进行检测。<br>例如，需要同时检测名为"abcd"和"bcd"的算子时，可以通过配置--kernel-name="bc"来实现这一需求，系统会自动识别并检测所有包含"bc"字符串的算子。 | 否 |
 | --full-backtrace | 显示 AscendC API 内的调用栈回溯。 | yes：显示完整的调用栈回溯。<br>no（默认）：不显示 AscendC API 内的调用栈。 | 否 |
 | --demangle | 设置输出中函数名显示的 demangle 模式。 | full（默认）：显示完整的 demangle 后的函数名。<br>simple：仅显示函数名，不包含返回值、参数列表。<br>no：显示未 demangle 的函数名。 | 否 |
-| --padding | 指定GM内存安全区长度 | 可设定范围为 32~1024 之间的整数，单位为字节。<br>默认值为32。| 否 |
+| --padding | 指定GM内存安全区长度。 | 可设定范围为 32~1024 之间的整数，单位为字节。<br>默认值为32。| 否 |
 | --error-exitcode | 指定当算子程序返回成功且工具检出error类异常时，msSanitizer的退出码。 | 可设定为整数，按低8位截断（进程退出码仅低8位有效）。<br>默认值为0，表示不改变工具的退出码。<br>说明：<br>仅error类异常（报告中以ERROR开头）生效，warning类异常不生效。<br>算子程序自身返回非0时，工具退出码与算子程序相同，该选项不生效。 | 否 |
 | -h，--help | 输出帮助信息。 | - | 否 |
 
@@ -675,7 +677,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 > - `255`：工具参数或配置错误（选项取值非法、互斥选项冲突、日志文件非法、未指定被检测程序等）。
 > - `1`：拉起算子程序失败（程序不存在、无执行权限、进程创建失败等）。
 
-**表2：内存检测参数说明**
+**表 6** 内存检测参数说明
 
 | 参数名称 | 参数描述 | 参数取值 | 必选 |
 | --- | --- | --- | --- |
@@ -686,7 +688,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 | --check-cann-heap | 使能CANN软件栈内存检测。 | yes/no（默认） | 否 |
 | --trace-non-default-spr-reg | 追踪使用非默认值寄存器的指令。 | vector <br>说明：当前仅支持vector指令，该功能需要随memcheck功能一同开启，若无memcheck，该功能不生效。 | 否 |
 
-**表3：竞争检测参数说明**
+**表 7** 竞争检测参数说明
 
 | 参数名称 | 参数描述 | 参数取值 | 必选 |
 | --- | --- | --- | --- |
@@ -766,7 +768,7 @@ error  info   warn
 
 ### 7.5 输出文件说明
 
-| 结果件名称 | 说明 |
+| 结果文件名称 | 说明 |
 | --- | --- |
 | mssanitizer_{TIMESTAMP}_{PID}.log | msSanitizer工具运行过程中，在mindstudio_sanitizer_log目录下生成的工具日志，TIMESTAMP为当前时间戳，PID为当前检测工具的PID。 |
 | kernel.{PID}.o | msSanitizer工具运行过程中，会在当前路径下生成的算子缓存文件。其中，PID为当前使用的检测工具的PID，该算子缓存文件用于解析异常调用栈。正常情况下，msSanitizer工具退出时会自动清理该算子缓存文件。当msSanitizer工具异常退出（如被用户"CTRL+C"中止）时，该算子缓存文件会保留在文件系统中。因为该算子缓存文件包含算子的调试信息，建议限制其他用户对此文件的访问权限，并在检测工具运行完成后及时删除。 |
@@ -779,7 +781,7 @@ error  info   warn
 3. Device 侧内存检测与 CANN 软件栈内存检测不可同时启用；若同时启用，会报错`CANNOT specify both '--check-cann-heap=yes' and '--check-device-heap=yes'`。
 4. 未初始化检测必须检测所有block，不支持启用单block检测功能；若同时启用，会报错`CANNOT specify both '--tool=initcheck' and '--block-id=<id>'`。
 5. 启用 `--check-dcci` 后，竞争检测将只分析 dcci 缺失，不会展示除 dcci 缺失以外的其他竞争检测结果。
-6. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 Ascend CL 接口的内存泄漏检测，不支持 Device 接口检测。
+6. 使用 msSanitizer 提供的 API 头文件重新编译的程序，仅适用于基于 AscendCL 接口的内存泄漏检测，不支持 Device 接口检测。
 7. msSanitizer工具当前只支持对 blockDim 小于 100 的算子进行检测。
 8. 工具尚无法感知Ascend 950PR&950DT系列产品在SIMD VF函数内的向量计算指令对UB的读写行为，因此Ascend 950PR&950DT系列产品未初始化检测暂不支持UB空间。
 9. 工具暂不支持通过aclnn配置CCU方式下发的算子进行异常检测。

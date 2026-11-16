@@ -12,20 +12,23 @@ msSanitizer 工具是基于昇腾 AI 处理器的异常检测工具，包含单�
 
 ### 2.1【环境】必备环境准备（强制前置 ⚠️）
 
-🛑 **本节为强制前置步骤！跳过将导致后续操作大量出现失败。**  
+🛑 **本节为强制前置步骤！跳过将导致后续操作出现大量失败。**
+
 本教程**仅支持**标准化 CANN 容器环境，不兼容裸机、虚拟机或其他非标准容器部署。
 
 #### 2.1.1 安装 CANN 容器环境
 
-✅ **请严格按以下指南完成环境安装：**  
+✅ **请严格按以下指南完成环境安装：**
+
 👉 **<a href="https://gitcode.com/Ascend/msot/blob/master/docs/zh/quick_start/installation_guide.md" target="_blank">《昇腾 AI 算子开发工具链学习环境安装指南》</a>**
 
-> ⏱️ **外网可达环境下预计耗时：约 3 分钟**  
+> ⏱️ **外网可达环境下预计耗时：约 3 分钟**
+>
 > 安装完成后，您将获得一个预装所有算子工具、示例代码和依赖库的标准化容器环境。
 
 #### 2.1.2 执行环境自检脚本（必须通过！）
 
-在如下正式体验前，请**全文复制下方整段脚本**，粘贴到终端执行，只有输出全部显示为 [PASS] 才能继续：
+在正式体验前，请**全文复制下方整段脚本**，粘贴到终端执行，只有输出全部显示为 [PASS] 才能继续：
 
 ```bash
 # 1. 容器环境检查
@@ -69,10 +72,10 @@ MY_OP_PKG=$(find ./build_out -maxdepth 1 -name "custom_opp_*.run" | head -1) && 
 ```
 
 > [!NOTE]
-> 
+>
 > 如果重新部署时出现如下告警，则说明环境变量 ASCEND_CUSTOM_OPP_PATH 值不正确或包含多个以冒号间隔的路径：
 >
-> ```text
+> ```output
 > [ERROR] environment variable ASCEND_CUSTOM_OPP_PATH=/home/gitcode/samples/operator/ascendc/0_introduction/12_matmulleakyrelu_frameworklaunch/CustomOp/build_out/test/vendors/customize: is set and has multiple path in it (colon inside), which will cause the custom op installed incorrectly. Please use the --install-path option to specify an installation path instead.
 > ```
 >
@@ -124,7 +127,7 @@ mssanitizer --tool=racecheck -- bash run.sh
 ======    #5 /root/ot_demo/workspace/src/AddCustom/op_kernel/add_custom.cpp:169:9
 ```
 
-#### 2.3.6 未初始化检测
+#### 2.3.6 执行未初始化检测
 
 ```bash
 cd ~/ot_demo/workspace/src/caller
