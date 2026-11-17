@@ -6,7 +6,7 @@
 
 **API Overview**
 
-The msSanitizer tool contains two types of APIs: sanitizer APIs and msTX APIs. The sanitizer APIs are used to check the CANN software stack and correspond to the ACL APIs. These APIs additionally report the code file and line number of the API called to the tool. The header file of the sanitizer APIs needs to be imported and the dynamic library needs to be linked. For details, see "Checking the Memory of the CANN Software Stack" > "Importing the API Header File and Linking the Dynamic Library" in [MindStudio Sanitizer Typical Cases](../best_practices/mssanitizer_basic_cases.md). The msTX APIs are used to report custom memory pool information for more accurate check. For details, see [msTX Functions](#mstx-functions).
+The msSanitizer tool contains two types of APIs: sanitizer APIs and msTX APIs. The sanitizer APIs are used to check the CANN software stack and correspond to the ACL APIs. These APIs additionally report the code file and line number of the API called to the tool. The header file of the sanitizer APIs needs to be imported and the dynamic library needs to be linked. For details, see "Checking the Memory of the CANN Software Stack" > "Importing the API Header File and Linking the Dynamic Library" in [MindStudio Sanitizer Best Practices](../best_practices/mssanitizer_basic_cases.md). The msTX APIs are used to report custom memory pool information for more accurate check. For details, see [msTX Functions](#mstx-functions).
 
 **Table 1** msSanitizer APIs
 
@@ -101,7 +101,7 @@ aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolic
 
 |Parameter|Input/Output|Description|
 |--|--|--|
-|devPtr|Output|Pointer to the "pointer to the allocated device memory".|
+|devPtr|Output|Pointer to the "pointer to the allocated device memory"|
 |size|Input|Allocated memory size, in bytes. Must not be 0.|
 |policy|Input|Memory allocation policy. For the type definition, see [aclrtMemMallocPolicy](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910beta1/API/runtimeapi/aclcppdevg_03_1349.html).|
 |filename|Input|Name of the file where memory allocation is called|
@@ -405,7 +405,7 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
 |width|Input|Matrix width to be copied|
 |height|Input|Matrix height to be copied. The maximum height can be set to 5242880 (5 × 1024 × 1024). Otherwise, a failure is returned.|
 |kind|Input|Memory copy type. It is a reserved parameter, and the configured enumeration values are invalid. The system determines whether to copy data from the source address to the destination address based on the pointers to the source and destination memory addresses. If not, an error is reported.|
-|stream|Input|Stream specified for executing the memory copy task.|
+|stream|Input|Stream specified for executing the memory copy task|
 |filename|Input|Name of the file where matrix data memory copy is called|
 |lineno|Input|Number of the line where matrix data memory copy is called|
 
@@ -519,13 +519,16 @@ The msTX APIs are a set of extension APIs provided by MindStudio to allow you to
 ### msTX API Usage
 
 - By default, the msSanitizer tool enables the msTX APIs, allowing you to customize the memory space address and size for operators to identify operator memory issues quickly.
-- Currently, msTX APIs can be used in two ways: library files and header files. The following uses the code in [AclNNInvocation](https://gitee.com/ascend/samples/tree/master/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation) as an example:
+- Currently, msTX APIs can be used in two ways: library files and header files. The following uses the code in [custom_op_04](https://gitcode.com/cann/cann-learning-hub/tree/8.5.0/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04) as an example:
 
     > [!NOTE]
     >
-    > This sample project does not support Atlas A3 products.
+    > This sample project is configured for Atlas A2 products by default. If you use products of another series, modify the following two default configurations:
+    >
+    > 1. In the `CMakeLists.txt` file in the root directory, `ASCEND_COMPUTE_UNIT` defaults to `ascend910b`. Change it based on the actual chip model. Query the Chip Name by running the `npu-smi info` command. For example, for Atlas 950PR&950DT products, change it to `ascend950`.
+    > 2. In `add_custom_template.cpp` in the `op_host` directory, change the value of `.AddConfig("ascend910b")` in the same way.
 
-- Add the library file `libms_tools_ext.so` to the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/CMakeLists.txt` directory. The address is `${INSTALL_DIR}/lib64/libms_tools_ext.so`.
+- Add the library file `libms_tools_ext.so` to the `${git_clone_path}/cann-learning-hub/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04/test/CMakeLists.txt` file. The address is `${INSTALL_DIR}/lib64/libms_tools_ext.so`.
 
     ```cmake
         # Header path
@@ -541,7 +544,7 @@ The msTX APIs are a set of extension APIs provided by MindStudio to allow you to
 
     ```
 
-- In the `${git_clone_path}/samples/operator/ascendc/0_introduction/1_add_frameworklaunch/AclNNInvocation/src/main.cpp` directory, build and link the user program to the DL library. The address of the corresponding header file `ms_tools_ext.h` is `${INSTALL_DIR}/include/mstx`.
+- In the `${git_clone_path}/cann-learning-hub/tutorials/ascendc_operator_development/03_intermediate_vector_operator_development/src/custom_op_04/test/main.cpp` file, build and link the user program to the DL library. The address of the corresponding header file `ms_tools_ext.h` is `${INSTALL_DIR}/include/mstx`.
 
     ```c
     ...

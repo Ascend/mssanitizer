@@ -136,7 +136,7 @@ You can uninstall by following these steps:
 
 ## 5. Upgrade
 
-Simply run the installation command. The tool automatically uninstalls the old version and guides you through the overwrite installation. You can also uninstall the tool manually and then install it again:
+Upgrading means uninstalling the old version and then installing the new one. Simply run the installation command, and the tool automatically uninstalls the old version and guides you through the overwrite installation. You can also uninstall the tool manually and then install it again:
 
 - Uninstall the old version first (see Section 4).
 - Then install the new version by following the methods in Section 2.

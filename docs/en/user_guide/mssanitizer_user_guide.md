@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-MindStudio Sanitizer (msSanitizer) is a tool based on AI Processors. It provides memory check, race check, uninitialization check, and synchronization check in single-operator development scenarios.
+MindStudio Sanitizer (an exception check tool, msSanitizer) is a tool based on AI Processors. It provides memory check, race check, uninitialization check, and synchronization check in single-operator development scenarios.
 
 | Function    | Description                                                                                              |
 | ---------- |--------------------------------------------------------------------------------------------------|
@@ -64,6 +64,8 @@ The standard process of using msSanitizer to check operator exceptions is as fol
 >
 > You are advised to run memcheck (memory check) first to ensure that the operator program has no memory exception, and then run racecheck, initcheck, or synccheck as required.
 
+For details about event filtering for pathways that the hardware does not support and the meaning of the `removed events` log, see the [Pathway Event Filtering User Guide](./pathway_filter_user_guide.md).
+
 ## 4. Application Scenarios
 
 ### 4.1 Kernel Launch
@@ -100,7 +102,7 @@ mssanitizer --tool=memcheck ./add_npu
 
 1. In PyTorch graph mode (TorchAir), the check can be performed only when no compilation option is added to msSanitizer. For details, see [5. (Optional) Configuring Operator Compilation Options](#5-optional-configuring-operator-compilation-options).
 2. In PyTorch graph mode (TorchAir), the Ascend IR graph execution mode and aclgraph graph execution mode are supported. For details, see "PyTorch Graph Mode (TorchAir)" > "Reduce-Overhead Mode" > "Configuring the Reduce-Overhead Mode" in the [TorchNPU](https://www.hiascend.com/document/detail/en/Pytorch/720/modthirdparty/torchairuseguide/torchair_00015.html).
-3. For details about the PyTorch framework calling scenario, see "PyTorch Framework Feature Guide" > "Custom Operator Adaptation Development" > "OpPlugin-based Operator Adaptation Development" in [TorchNPU](https://www.hiascend.com/document/detail/en/Pytorch/latest/ptmoddevg/Frameworkfeatures/docs/en/framework_feature_guide_pytorch/adaptation_overview_opplugin.md). For details, see "Checking Operators Called by PyTorch APIs" in the [example](../best_practices/mssanitizer_basic_cases.md).
+3. For details about the PyTorch framework calling scenario, see "PyTorch Framework Feature Guide" > "Custom Operator Adaptation Development" > "OpPlugin-based Operator Adaptation Development" in [TorchNPU](https://www.hiascend.com/document/detail/en/Pytorch/latest/ptmoddevg/Frameworkfeatures/docs/en/framework_feature_guide_pytorch/adaptation_overview_opplugin.md). For details, see "Checking Operators Called by PyTorch APIs" in [Basic Cases](../best_practices/mssanitizer_basic_cases.md).
 
 ### 4.4 Triton Operator Calling Scenario
 
@@ -178,7 +180,7 @@ The following table lists memory exception types supported by memory check, incl
 | [Illegal Release](#6135-illegal-release)| This exception occurs when the memory address that is not allocated or has been released is released.| Host | GM |
 | [Memory Leak](#6134-memory-leak)| This exception occurs when the memory usage keeps increasing during program running after the allocated memory is not released after being used.| Host | GM |
 | [Allocated Memory Unused](#6136-allocated-memory-unused)| This exception occurs when memory is not used after being allocated.| Kernel, Host| GM |
-| [Ascend 950PR and 950DT SIMT unit exception](#6137-atlas-950pr-and-950dt-simt-unit-exception)| Displays the thread where the exception occurs in the SIMT architecture.| Kernel | GM|
+| [Ascend 950PR and 950DT SIMT unit exception](#6137-ascend-950pr-and-950dt-simt-unit-exception)| Displays the thread where the exception occurs in the SIMT architecture.| Kernel | GM|
 | [Inter-Thread Corruption](#6138-inter-thread-corruption)| This exception occurs when threads in the AI Core access overlapped memory.| Kernel | GM |
 | [Register Alarm](#6139-register-alarm)| If the register value is not restored to the default value, an alarm is generated, indicating that there is residual register value.| Kernel | GM |
 | [GM Memory Safe Area Out-of-Bounds Write](#61310-gm-memory-safe-area-out-of-bounds-write)| When the aicpu tiling downshift function is used, the out-of-bounds write behavior of the tiling function may occur.| Host | GM |
@@ -477,9 +479,9 @@ When running the msSanitizer tool, run the following command to enable the unini
 mssanitizer --tool=initcheck application   // Application indicates the user program
 ```
 
-By default, only stack memory (`stack`, corresponding to PRIVATE) is checked. Use `--initcheck-address-space` to select the address spaces to check. Supported values are `stack`, `gm`, `ub`, `l0a`, `l0b`, `l0c`, `l1`, and `all`. Separate multiple values with commas. This option takes effect only when `--tool=initcheck` is enabled, and the available checks remain subject to the capabilities of the target chip.
+By default, the tool checks only the stack space (`stack`, corresponding to PRIVATE). Use `--initcheck-address-space` to specify the check scope. The supported address spaces are `stack`, `gm`, `ub`, `l0a`, `l0b`, `l0c`, `l1`, and `all`. Separate multiple address spaces with commas. This option takes effect only when `--tool=initcheck` is enabled. The check capability is still limited by the address spaces that the chip supports.
 
-**Upgrade note:** Previous versions checked all supported address spaces by default. The default is now stack only. When no address space is explicitly selected, the tool prints a notice once before starting detection. Add `--initcheck-address-space=all` to preserve the previous coverage of GM, UB, L1, L0, and other supported spaces. Uninitialized reads in unselected spaces do not produce initcheck reports and therefore do not trigger `--error-exitcode`.
+**Upgrade note:** Earlier versions checked all supported address spaces by default. The current version changes the default to check only the stack space. If you do not explicitly specify a check scope, the tool prompts you once before it starts the check. To retain the checks that earlier versions performed on spaces such as GM, UB, L1, and L0, add `--initcheck-address-space=all`. An uninitialized read in an address space that is not selected does not generate an uninitialization check report, and therefore does not trigger the exit code set by `--error-exitcode`.
 
 ```shell
 mssanitizer --tool=initcheck --initcheck-address-space=stack,gm application
@@ -560,7 +562,7 @@ mssanitizer --tool=synccheck application // Application indicates the user progr
 The synchronization check exception report lists the information about the unpaired `SetFlag` instructions in each operator in sequence, including the source flow, target flow, and specific location.
 
     ```text
-    ====== WARNING: Unpaired set_flag instructions detected  // Unpaired `set_flag` instruction detected
+    ====== WARNING: Unpaired set_flag instructions detected  // Unpaired set_flag instruction detected
     ======    from PIPE_S to PIPE_MTE3 in kernel  // Identifies the synchronization from PIPE_S to PIPE_MTE3. PIPE_MTE3 waits for PIPE_S
     ======    in block aiv(0) on device 1  // The exception code corresponds to the block index and device number of the Vector core. In this example, the block index is 0 and the device number is 1
     ======    code in pc current 0x2c94 (serialNo:31) // PC pointer of the current exception and sequence number of the API call behavior
@@ -663,21 +665,21 @@ The configuration of each part is described as follows:
 | --full-backtrace | Displays the call stack backtrace within the AscendC API.| `yes`: Displays the complete call stack backtrace.<br>`no` (default): Does not display the call stack of the AscendC API.| No|
 | --demangle | Sets the demangle mode for displaying function names in the output.| `full` (default): Displays the complete demangled function name.<br>`simple`: Displays only the function name, excluding the return value and parameter list.<br>`no`: Displays the function name that is not demangled.| No|
 | --padding | Specifies the length of the GM memory safe area.| The value is an integer ranging from 32 to 1024, in bytes.<br>Defaults to 32.| No|
-| --error-exitcode | Specifies the exit code of msSanitizer when the operator program exits successfully and errors are detected.| The value is an integer, truncated to the low 8 bits (only the low 8 bits of a process exit code are effective).<br>Defaults to 0, which means the exit code is not changed.<br>Note:<br>Only errors (reports starting with `ERROR`) take effect; warnings do not.<br>If the operator program itself returns a non-zero code, msSanitizer returns the same code and this option does not take effect.| No|
+| --error-exitcode | Specifies the exit code of msSanitizer when the operator program returns success and the tool detects an error-type exception.| The value is an integer, truncated to the lower 8 bits (only the lower 8 bits of a process exit code are valid).<br>Defaults to 0, indicating that the tool exit code is not changed.<br>Note:<br>This option takes effect only for error-type exceptions (those whose reports start with ERROR) and not for warning-type exceptions.<br>If the operator program itself returns a non-zero value, the tool exit code is the same as that of the operator program, and this option does not take effect.| No|
 | -h, --help| Outputs help information.| - | No|
 
 > [!NOTE]
 >
-> Exit code conventions of msSanitizer:
+> The msSanitizer exit codes are as follows:
 >
-> - `255`: Invalid tool arguments or configuration (invalid option value, conflicting options, invalid log file, no program specified, etc.).
-> - `1`: Failed to launch the operator program (program does not exist, no execute permission, process creation failure, etc.).
+> - `255`: Tool parameter or configuration error (invalid option value, conflict between mutually exclusive options, invalid log file, no program to be checked is specified, and so on).
+> - `1`: The operator program fails to start (the program does not exist, it does not have execute permission, or process creation fails, and so on).
 
 **Table 2: Memory check options**
 
 | Option| Description| Value| Mandatory (Yes or No)|
 | --- | --- | --- | --- |
-| --initcheck-address-space | Selects the address spaces for uninitialization check. Takes effect only with initcheck. Separate multiple values with commas. | stack (default), gm, ub, l0a, l0b, l0c, l1, all | No |
+| --initcheck-address-space | Specifies the address space for the uninitialization check. This option takes effect only for `initcheck`, and multiple values are separated by commas.| `stack` (default), `gm`, `ub`, `l0a`, `l0b`, `l0c`, `l1`, `all`| No|
 | --check-unused-memory | Enables the check for unused allocated memory.| `yes`/`no` (default)| No|
 | --leak-check | Enables memory leak check.| `yes`/`no` (default)| No|
 | --check-device-heap | Enables device memory check.| `yes`/`no` (default)| No|
@@ -767,8 +769,8 @@ error  info   warn
 | Result File| Description|
 | --- | --- |
 | mssanitizer_{TIMESTAMP}_{PID}.log | msSanitizer logs generated in the `mindstudio_sanitizer_log` directory during the running of the tool. `TIMESTAMP` indicates the current timestamp, and `PID` indicates the PID of the current check tool.|
-| kernel.{PID}.o | Operator cache files generated during the running of the msSanitizer tool. `PID` indicates the PID of the current check tool. The operator cache files are used to parse the abnormal call stack. In normal cases, the operator cache file is automatically cleared when msSanitizer exits. When msSanitizer exits abnormally (for example, terminated by pressing **Ctrl+C**), the operator cache files are retained in the file system. The operator cache file contains the debug information of the operator. You are advised to restrict the access permission of other users to the file, and delete the file as soon as possible after the check tool is executed.|
-| tmp_{PID}_{TIMESTAMP} | Temporary folder generated during the running of the msSanitizer tool. `PID` indicates the PID of the current check tool, and `TIMESTAMP` indicates the current timestamp. This folder is used to generate the operator kernel binary file. In normal cases, the folder is automatically cleared when the msSanitizer exits. When the environment variable `export INJ_LOG_LEVEL=0` is used to enable the debug log function or the tool exits abnormally (for example, the tool is stopped by pressing **Ctrl+C**), the folder is retained in the file system for debugging. This folder contains the operator debug information. You are advised to restrict the access permission of other users to the folder, and delete it as soon as possible after the debugging is complete.|
+| kernel.{PID}.o | Operator cache files that are generated in the current directory during the running of the msSanitizer tool. `PID` indicates the PID of the current check tool. The operator cache files are used to parse the abnormal call stack. In normal cases, the operator cache file is automatically cleared when msSanitizer exits. When msSanitizer exits abnormally (for example, terminated by pressing **Ctrl+C**), the operator cache files are retained in the file system. The operator cache file contains the debug information of the operator. You are advised to restrict the access permission of other users to the file, and delete the file as soon as possible after the check tool is executed.|
+| tmp_{PID}_{TIMESTAMP} | Temporary folder that is generated in the current directory during the running of the msSanitizer tool. `PID` indicates the PID of the current check tool, and `TIMESTAMP` indicates the current timestamp. This folder is used to generate the operator kernel binary file. In normal cases, the folder is automatically cleared when the msSanitizer exits. When the environment variable `export INJ_LOG_LEVEL=0` is used to enable the debug log function or the tool exits abnormally (for example, the tool is stopped by pressing **Ctrl+C**), the folder is retained in the file system for debugging. This folder contains the operator debug information. You are advised to restrict the access permission of other users to the folder, and delete it as soon as possible after the debugging is complete.|
 
 ## 8. Restrictions and Precautions
 

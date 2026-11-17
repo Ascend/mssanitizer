@@ -10,7 +10,7 @@ Enable **address space layout randomization** (ASLR) (level 2) in the system. Ru
 
 1. All tools in this repository are designed to run with minimal permissions. For security reasons, do not use `root` or other privileged accounts. Always install and execute tools as a regular user.
 
-2. If a tool depends on CANN, install the CANN package under the same non-privileged user. After running the `source` command, do not modify the environment variables in `set_env.sh`.
+2. If a tool depends on CANN, to ensure security, use the CANN package that is installed by default under the same non-privileged user. After running the `source` command, do not modify the environment variables in `set_env.sh`.
 
 3. Before using any tools, set umask to 0027 or stricter to ensure generated files meet minimum security requirements.
 
@@ -62,7 +62,7 @@ During tool use, some functions related to code lines may access customer operat
 
 ## Runtime Security
 
-1. When loading a dataset that exceeds available memory, or when monitoring runs too long and generated data fills the available drive space, the tool may exit unexpectedly.
+1. When a dataset is loaded and its memory size exceeds the memory capacity limit, errors may occur and cause the process to exit unexpectedly. If data collection runs too long and the generated data exceeds the available drive space, the tool may also exit unexpectedly.
 
 2. If an exception occurs during operation, the tool will exit the process and print error messages. This is expected behavior. You are advised to locate the specific cause of the error based on the error prompts, such as by viewing log files or result files generated during the collection and parsing process.
 
