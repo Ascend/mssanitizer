@@ -56,7 +56,58 @@ const KernelErrorDesc *StackDesignFirstError(std::vector<uint8_t> &info)
     return reinterpret_cast<const KernelErrorDesc *>(
         bytes + sizeof(RecordType) + sizeof(KernelErrorRecord) + sizeof(SimtLoadStoreRecord));
 }
+struct PrivateProbePair {
+    decltype(&__sanitizer_report_simt_ldk_u8) stackProbe;
+    decltype(&__sanitizer_report_simt_ld_u8) genericProbe;
+    uint64_t width;
+    KernelErrorType errorType;
+};
+
+const PrivateProbePair PRIVATE_PROBES[] = {
+    {__sanitizer_report_simt_ldk_u8, __sanitizer_report_simt_ld_u8, 1, KernelErrorType::ILLEGAL_ADDR_READ},
+    {__sanitizer_report_simt_ldk_s8, __sanitizer_report_simt_ld_s8, 1, KernelErrorType::ILLEGAL_ADDR_READ},
+    {__sanitizer_report_simt_ldk_u16, __sanitizer_report_simt_ld_u16, 2, KernelErrorType::ILLEGAL_ADDR_READ},
+    {__sanitizer_report_simt_ldk_s16, __sanitizer_report_simt_ld_s16, 2, KernelErrorType::ILLEGAL_ADDR_READ},
+    {__sanitizer_report_simt_ldk_b32, __sanitizer_report_simt_ld_b32, 4, KernelErrorType::ILLEGAL_ADDR_READ},
+    {__sanitizer_report_simt_stk_b8, __sanitizer_report_simt_st_b8, 1, KernelErrorType::ILLEGAL_ADDR_WRITE},
+    {__sanitizer_report_simt_stk_b16, __sanitizer_report_simt_st_b16, 2, KernelErrorType::ILLEGAL_ADDR_WRITE},
+    {__sanitizer_report_simt_stk_b32, __sanitizer_report_simt_st_b32, 4, KernelErrorType::ILLEGAL_ADDR_WRITE},
+};
 } // namespace
+
+TEST(SimtLoadStoreInstructions, legal_private_stack_operands_and_generic_pointers_produce_no_errors)
+{
+    for (const auto &probe : PRIVATE_PROBES) {
+        for (uint64_t target : {uint64_t{0}, uint64_t{0x100}, uint64_t{0x8000} - probe.width}) {
+            SCOPED_TRACE(testing::Message() << "target=" << target << " width=" << probe.width);
+            auto info = CreateStackDesignSimtInfo();
+            // LDK/STK 的地址操作数是线程栈内偏移；普通 LD/ST 接收完整指针，先扣除虚拟栈窗口基址。
+            probe.stackProbe(info.data(), 0x1000, 0, target, 0);
+            probe.genericProbe(info.data(), 0x1000, 0, GetSysVaBase() + 0x100000 + target, 0);
+            EXPECT_EQ(StackDesignSimtHead(info)->recordWriteCount, 0U);
+            EXPECT_EQ(StackDesignSimtHead(info)->recordCount, 0U);
+        }
+    }
+}
+
+TEST(SimtLoadStoreInstructions, private_stack_operands_and_generic_pointers_agree_at_thread_limit)
+{
+    for (const auto &probe : PRIVATE_PROBES) {
+        for (bool generic : {false, true}) {
+            auto info = CreateStackDesignSimtInfo();
+            const uint64_t addr = generic ? GetSysVaBase() + 0x108000 : 0x8000;
+            auto report = generic ? probe.genericProbe : probe.stackProbe;
+            report(info.data(), 0x1000, 0, addr, 0);
+            ASSERT_EQ(StackDesignSimtHead(info)->recordWriteCount, 1U);
+            ASSERT_EQ(StackDesignSimtHead(info)->recordCount, 1U);
+            const auto error = StackDesignFirstError(info);
+            EXPECT_EQ(error->space, AddressSpace::PRIVATE);
+            EXPECT_EQ(error->errorType, probe.errorType);
+            EXPECT_EQ(error->payload.illegalDesc.addr, 0x8000U);
+            EXPECT_EQ(error->payload.illegalDesc.illegalSize, probe.width);
+        }
+    }
+}
 
 TEST(SimtLoadStoreInstructions, stack_design_online_gm_left_partial_overlap_is_not_silently_accepted)
 {
@@ -100,7 +151,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
-    head.simtInfo.ubDynamicSize = 0x10000; // 显式指定 UB 大小，保持 UB 访问(addr>=0x10000)越界，符合原期望
+    head.simtInfo.ubDynamicSize = 0x10000; // 模拟动态 UB 配置；检测使用物理上限，下述 UB 访问仍合法。
     head.checkParms.defaultcheck = true;
     head.checkParms.memcheck = true;
     head.supportSimt = true;
@@ -151,6 +202,12 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     __sanitizer_report_simt_sts_b32(memInfo.data(), 0x1000, 0, 0x10000, 11);
     __sanitizer_report_simt_sts_b64(memInfo.data(), 0x1000, 0, 0x10000, 11);
     __sanitizer_report_simt_sts_b128(memInfo.data(), 0x1000, 0, 0x10000, 11);
+    auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
+        head.offsetInfo.simtErrorInfo.offset);
+    // 前面的 10 次 LDG/STG 和 8 次普通 LD/ST 均访问未登记的 GM，共产生 18 条错误；12 次 UB 访问合法。
+    ASSERT_EQ(blockHead->recordWriteCount, 18U);
+    ASSERT_EQ(blockHead->recordCount, 18U);
+    // 以下 8 次 LDK/STK 故意使用 8 MiB 的线程栈偏移，超过 32 KiB，新增 8 条 PRIVATE 越界错误。
     __sanitizer_report_simt_ldk_u8(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_ldk_s8(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_ldk_u16(memInfo.data(), 0x1000, 0, 0x800000, 11);
@@ -159,10 +216,8 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     __sanitizer_report_simt_stk_b8(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_stk_b16(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_stk_b32(memInfo.data(), 0x1000, 0, 0x800000, 11);
-    auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
-        head.offsetInfo.simtErrorInfo.offset);
-    ASSERT_EQ(blockHead->recordWriteCount, 18);
-    ASSERT_EQ(blockHead->recordCount, 18);
+    ASSERT_EQ(blockHead->recordWriteCount, 18U + 8U);
+    ASSERT_EQ(blockHead->recordCount, 18U + 8U);
 }
 
 TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)

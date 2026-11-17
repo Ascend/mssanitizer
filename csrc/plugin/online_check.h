@@ -116,6 +116,7 @@ private:
      * @brief 检测当前ub指令内存行为是否有非法读写行为，如果有则返回非法读写的长度，返回值表示是否有非法行为
     */
     AICORE_FUNC_HEAD bool UbReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const;
+    AICORE_FUNC_HEAD bool PrivateReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const;
 
     /* @param addrInfo      simt指令的信息
      * @brief 检测当前内存行为是否有非对齐读写行为，如果有则返回true，否则返回false
@@ -271,7 +272,7 @@ AICORE_FUNC_HEAD void OnlineCheck::Do(AddrInfo const &addrInfo, Record const &re
     /// 1. 越界读写检测，后续拓展其他检测能力
     uint64_t illegalSize = 0U;
     if (DoMemCheck(memInfo_) && (GmReadWriteCheck(addrInfo, illegalSize) ||
-        UbReadWriteCheck(addrInfo, illegalSize))) {
+        UbReadWriteCheck(addrInfo, illegalSize) || PrivateReadWriteCheck(addrInfo, illegalSize))) {
         auto &illegalDesc = errorDesc.payload.illegalDesc;
         illegalDesc.addr = addrInfo.addr;
         illegalDesc.illegalSize = illegalSize;
@@ -593,6 +594,17 @@ AICORE_FUNC_HEAD bool OnlineCheck::PeerCovers(AddrInfo const &addrInfo) const {
         }
     }
     return false;
+}
+
+AICORE_FUNC_HEAD bool OnlineCheck::PrivateReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const
+{
+    if (addrInfo.space != AddressSpace::PRIVATE) {
+        return false;
+    }
+    // A5：msopscommon 通过 rtDeviceSetLimitOrigin 将每个 SIMT 线程的栈容量设为 0x8000 字节（32KB）。
+    constexpr uint64_t simtThreadStackSize = 0x8000U;
+    illegalSize = addrInfo.size - CalIntersectionSize(addrInfo.addr, addrInfo.size, 0, simtThreadStackSize);
+    return illegalSize != 0;
 }
 
 AICORE_FUNC_HEAD bool OnlineCheck::UbReadWriteCheck(AddrInfo const &addrInfo, uint64_t &illegalSize) const

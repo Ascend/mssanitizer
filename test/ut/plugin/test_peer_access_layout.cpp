@@ -10,6 +10,30 @@
 #include <cstring>
 
 using namespace Sanitizer;
+TEST(PeerOnlineLayout, HostProtocolSupportsFixedPrivateThreadBounds) {
+    ASSERT_EQ(PeerHostGlobalSize(), sizeof(RecordGlobalHead));
+    const size_t size = PeerHostBufferSize(0, 0, 1);
+    for (uint64_t addr : {uint64_t{0x3ffc}, uint64_t{0x7ffc}, uint64_t{0x8000}, uint64_t{0x47ffc}}) {
+        SCOPED_TRACE(addr);
+        std::vector<uint8_t> bytes(size, 0);
+        PeerWriteHostBuffer(bytes.data(), 0, 0, 1, 0);
+        auto *global = reinterpret_cast<RecordGlobalHead *>(bytes.data());
+        auto *block = bytes.data() + sizeof(RecordGlobalHead);
+        auto *simt = block + global->offsetInfo.simtErrorInfo.offset;
+        OnlineCheck check;
+        check.Init(bytes.data(), simt, block, 0);
+        SimtLoadStoreRecord record{};
+        record.space = AddressSpace::PRIVATE;
+        record.size = 4;
+        record.detailedDataType = DetailedDataType::B32;
+        record.addr = addr;
+        check.Process<RecordType::SIMT_ST>(record);
+        check.Process<RecordType::SIMT_LD>(record);
+        auto *head = reinterpret_cast<SimtRecordBlockHead *>(simt);
+        EXPECT_EQ(head->recordWriteCount, addr >= 0x8000U ? 2U : 0U);
+    }
+}
+
 TEST(PeerOnlineLayout, HostProtocolWrittenBufferIsConsumedByRealPluginInEveryBlock) {
     ASSERT_EQ(PeerHostGlobalSize(), sizeof(RecordGlobalHead));
     // 远端扩展位于原参数寄存器之后，不移动既有字段
