@@ -60,6 +60,8 @@ inline std::string FormatAddressSpace(AddressSpace space)
             return "BT";
         case AddressSpace::FB:
             return "FB";
+        case AddressSpace::SSBUF:
+            return "SSBUF";
         default:
             return "UNKNOWN";
     }

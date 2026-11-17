@@ -300,6 +300,7 @@ std::ostream &operator<<(std::ostream &os, MemType memType)
         {MemType::FB,  "FB"},
         {MemType::GM,  "GM"},
         {MemType::UNKNOWN, "UNKNOWN"},
+        {MemType::SSBUF, "SSBUF"},
     };
 
     return FormatEnum(os, MEM_TYPE_MAP, memType, "MemType");
@@ -384,6 +385,7 @@ std::ostream &operator<<(std::ostream &os, AddressSpace space)
         {AddressSpace::UB,  "UB"},
         {AddressSpace::BT,  "BT"},
         {AddressSpace::FB,  "FB"},
+        {AddressSpace::SSBUF,  "SSBUF"},
         {AddressSpace::UNKNOWN,  "UNKNOWN"},
     };
 

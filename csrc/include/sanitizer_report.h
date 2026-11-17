@@ -26,6 +26,12 @@ namespace Sanitizer {
 
 constexpr std::size_t MSTX_API_NAME_LENGTH = 64UL;
 
+// Ascend950(dav_3510) 标量共享缓冲（SSBUF）位于独立地址窗口，紧邻 UB 下方。
+// 窗口内偏移 0 合法，每个 1C2V block 可用 3KB（AIC 1KB + AIV0/AIV1 各 1KB）。
+constexpr uint64_t SSBUF_ADDR_OFFSET = 0x40000UL;
+constexpr uint64_t SSBUF_ADDR_WINDOW_SIZE = 0x40000UL;
+constexpr uint64_t SSBUF_SIZE = 3UL * 1024UL;
+
 enum class InterfaceType : uint32_t {
     MSTX_SET_CROSS_SYNC = 0,
     MSTX_WAIT_CROSS_SYNC,
@@ -60,6 +66,7 @@ enum class AddressSpace : int32_t {
     UB,
     BT,         // bias table
     FB,         // fixPipe buffer
+    SSBUF,      // Ascend950 scalar share buffer
     UNKNOWN = -1,  // 设备端无法归类的地址空间：空指针/野指针落点（如 sysva 窗口保留区）或地址分类环境异常
 };
 

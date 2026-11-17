@@ -17,9 +17,26 @@
 #ifndef ADDR_PROCESS
 #define ADDR_PROCESS
 
+#include "sanitizer_report.h"
 #include "utils.h"
 
+// SSBUF 仅存在于 Ascend950(dav_3510)。Host UT 不定义 __CCE_IS_AICORE__，需要保留分类用例。
+#if !(defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1) || \
+    (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 3510))
+#define SANITIZER_ENABLE_SSBUF 1
+#else
+#define SANITIZER_ENABLE_SSBUF 0
+#endif
+
 namespace Sanitizer {
+
+// Ascend950(dav_3510) 的 SSBUF 窗口：[sysVaBase + 0x40000, sysVaBase + 0x80000)。
+// 该窗口紧邻 UB 下方，bit19=0、bit18=1；当前分类逻辑只识别 bit19，会把 SSBUF 误判为 UNKNOWN。
+AICORE_FUNC_HEAD bool IsSsBufAddress(uint64_t addr, uint64_t sysVaBase)
+{
+    const uint64_t ssBufBase = sysVaBase + SSBUF_ADDR_OFFSET;
+    return addr >= ssBufBase && addr < ssBufBase + SSBUF_ADDR_WINDOW_SIZE;
+}
 
 // 与 RemapAddress 的区别是：只做地址分类，不修改地址（不截断）
 AICORE_FUNC_HEAD AddressSpace ClassifyScalarAddress(uint64_t addr, uint64_t sysVaBase)
@@ -31,6 +48,11 @@ AICORE_FUNC_HEAD AddressSpace ClassifyScalarAddress(uint64_t addr, uint64_t sysV
     if (GetUintFromConf<23, 20>(addr) != 0) {
         return AddressSpace::PRIVATE;
     }
+#if SANITIZER_ENABLE_SSBUF
+    if (IsSsBufAddress(addr, sysVaBase)) {
+        return AddressSpace::SSBUF;
+    }
+#endif
     return GetUintFromConf<19>(addr) == 1 ? AddressSpace::UB : AddressSpace::UNKNOWN;
 }
 
@@ -44,6 +66,15 @@ AICORE_FUNC_HEAD AddressSpace RemapAddress(uint64_t &addr) {
         addr = GetUintFromConf<47, 0>(addr);
         return AddressSpace::GM;
     }
+
+#if SANITIZER_ENABLE_SSBUF
+    /// Ssbuf 与 UB 同属 bits[24:20]==0 的片上窗口：bit19=0/bit18=1 为 SSBUF，bit19=1 为 UB。
+    if (GetUintFromConf<48, 25>(addr) == GetUintFromConf<48, 25>(sysVaBase) &&
+        GetUintFromConf<24, 20>(addr) == 0x00 && IsSsBufAddress(addr, sysVaBase)) {
+        addr -= sysVaBase + SSBUF_ADDR_OFFSET;
+        return AddressSpace::SSBUF;
+    }
+#endif
 
     /// 有同名函数时，mix算子链接时会优先链接cube.o中的函数，会导致mix算子load/store指令越界，这里需保证vec/cube函数逻辑相同
     if (GetUintFromConf<48, 25>(addr) == GetUintFromConf<48, 25>(sysVaBase) && GetUintFromConf<24, 20>(addr) == 0x00 &&
@@ -76,10 +107,22 @@ AICORE_FUNC_HEAD AddressSpace RemapAddress(uint64_t &addr) {
 AICORE_FUNC_HEAD AddressSpace SimtRemapAddress(uint64_t &Rn, int64_t offset, uint8_t dataType) {
     uint64_t addr = Rn + offset * dataType;
     uint64_t sysVaBase = GetSysVaBase();
+#if SANITIZER_ENABLE_SSBUF
+    constexpr uint64_t SSBUF_MEM_START = SSBUF_ADDR_OFFSET;                    // SSBUF 起始偏移
+    constexpr uint64_t SSBUF_MEM_END = SSBUF_ADDR_OFFSET + SSBUF_ADDR_WINDOW_SIZE; // SSBUF 结束偏移
+#endif
     constexpr uint64_t SHARED_MEM_START = 0x80000;      // Shared Memory 起始偏移
     constexpr uint64_t SHARED_MEM_END = 0x100000;       // Shared Memory 结束偏移
     constexpr uint64_t STACK_MEM_START = 0x100000;      // Stack Memory 起始偏移
     constexpr uint64_t STACK_MEM_END = 0x1000000;       // Stack Memory 结束偏移
+
+#if SANITIZER_ENABLE_SSBUF
+    // 检查是否属于 SSBUF（标量共享缓冲访问）
+    if (addr >= (sysVaBase + SSBUF_MEM_START) && addr < (sysVaBase + SSBUF_MEM_END)) {
+        Rn -= (sysVaBase + SSBUF_MEM_START);
+        return AddressSpace::SSBUF;
+    }
+#endif
 
     // 检查是否属于 Shared Memory（LDS STS访问）
     if (addr >= (sysVaBase + SHARED_MEM_START) && addr < (sysVaBase + SHARED_MEM_END)) {
@@ -94,9 +137,15 @@ AICORE_FUNC_HEAD AddressSpace SimtRemapAddress(uint64_t &Rn, int64_t offset, uin
     }
 
     // 检查是否属于异常访问
+#if SANITIZER_ENABLE_SSBUF
+    if (addr >= sysVaBase && addr < (sysVaBase + SSBUF_MEM_START)) {
+        return AddressSpace::UNKNOWN;
+    }
+#else
     if (addr >= sysVaBase && addr < (sysVaBase + SHARED_MEM_START)) {
         return AddressSpace::UNKNOWN;
     }
+#endif
 
     // 其余情况属于 Global Memory（LDG STG访问）
     return AddressSpace::GM;
@@ -122,5 +171,7 @@ AICORE_FUNC_HEAD uint64_t GmAddrSubOffset(__gm__ uint8_t *memInfo, MemType memTy
 
 
 } // namespace Sanitizer
+
+#undef SANITIZER_ENABLE_SSBUF
 
 #endif // ADDR_PROCESS

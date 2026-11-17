@@ -243,6 +243,7 @@ inline MemType AddrSpaceToMemType(AddressSpace addrSpace)
         { AddressSpace::FB, MemType::FB },
         { AddressSpace::UNKNOWN, MemType::UNKNOWN },
         { AddressSpace::PRIVATE, MemType::PRIVATE },
+        { AddressSpace::SSBUF, MemType::SSBUF },
     };
     auto it = ADDR_SPACE_TO_MEM_TYPE_MAP.find(addrSpace);
     return it == ADDR_SPACE_TO_MEM_TYPE_MAP.cend() ? MemType::UNKNOWN : it->second;
