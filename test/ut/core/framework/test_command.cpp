@@ -18,13 +18,20 @@
 #include <gtest/gtest.h>
 #include <fstream>
 #include <climits>
+#include <cstdio>
 #include <cstdlib>
+#include <mutex>
 #include <stdexcept>
 #include <experimental/filesystem>
 #include <system_error>
 #include <unistd.h>
 
+#define private public
+#include "utility/log.h"
+#undef private
+
 #include "command.h"
+#include "core/framework/device_manager.h"
 #include "record_defs.h"
 #include "protocol.h"
 #include "thread_manager.h"
@@ -82,6 +89,85 @@ public:
 };
 
 Path TestCommand::launcherPath_{""};
+
+namespace {
+// Keep diagnostic output and internal SAN_* logs local to this invocation.
+class ScopedCommandLogCapture {
+public:
+    ScopedCommandLogCapture() : log_(Log::GetLog()), capture_(std::tmpfile()), savedFile_(log_->fp_),
+        savedLogSizeRate_(log_->maxDebugLogSizeRate_)
+    {
+        log_->sLogBuff_.swap(savedBuffer_);
+        log_->fp_ = capture_;
+        log_->maxDebugLogSizeRate_ = 1024;
+        testing::internal::CaptureStdout();
+    }
+
+    ~ScopedCommandLogCapture()
+    {
+        if (capturingStdout_) {
+            const auto output = testing::internal::GetCapturedStdout();
+            if (testing::Test::HasFailure()) {
+                std::fwrite(output.data(), 1, output.size(), stdout);
+            }
+        }
+        log_->fp_ = savedFile_;
+        log_->maxDebugLogSizeRate_ = savedLogSizeRate_;
+        log_->sLogBuff_.swap(savedBuffer_);
+        if (capture_ != nullptr) {
+            std::fclose(capture_);
+        }
+    }
+
+    bool IsOpen() const { return capture_ != nullptr; }
+
+    std::string Read()
+    {
+        std::string output = testing::internal::GetCapturedStdout();
+        capturingStdout_ = false;
+        std::fflush(capture_);
+        std::rewind(capture_);
+        char buffer[4096];
+        while (const size_t size = std::fread(buffer, 1, sizeof(buffer), capture_)) {
+            output.append(buffer, size);
+        }
+        return output;
+    }
+
+private:
+    Log *log_;
+    FILE *capture_;
+    FILE *savedFile_;
+    long savedLogSizeRate_;
+    std::string savedBuffer_;
+    bool capturingStdout_ = true;
+};
+} // namespace
+
+void ResetIPCMap();
+
+class TestCommandPackets : public TestCommand {
+public:
+    void SetUp() override
+    {
+        ResetState();
+        TestCommand::SetUp();
+    }
+
+    void TearDown() override
+    {
+        ResetState();
+        TestCommand::TearDown();
+    }
+
+private:
+    static void ResetState()
+    {
+        ResetIPCMap();
+        DeviceManager::Instance().GetSharedMemorySpans(0).GetSpans().clear();
+        DeviceManager::Instance().Clear();
+    }
+};
 
 TEST_F(TestCommand, run_ls_command_expect_success)
 {
@@ -652,4 +738,127 @@ TEST(Command, IPC_map_unmap_in_parent_expect_cover_handle_host_mem)
     HandleIpcMemRecord(checker, destroyRecord, threadManager, RespFunc);
 
     ResetIPCMap();
+}
+
+// 通过真实连接覆盖内核摘要、越界记录、内存区域权限、非法KERNEL_RECORD和日志包的处理路径
+TEST_F(TestCommandPackets, receive_kernel_and_boundary_packets_expect_processed)
+{
+    ScopedCommandLogCapture capture;
+    ASSERT_TRUE(capture.IsOpen());
+    const std::string payloadPath = dumpPath_ + "/kernel_and_boundary_packets.bin";
+    const DeviceInfoSummary device{DeviceType::ASCEND_910_PREMIUM_A, 1, 4, 0};
+    std::string bytes = Serialize(PacketHead{PacketType::DEVICE_SUMMARY, 0, 1}, device);
+
+    auto addKernelSummary = [&bytes](uint64_t orderId, const std::string &name, bool isKernelWithDBI) {
+        KernelSummary summary{};
+        summary.pcStartAddr = 0x1000 + orderId;
+        summary.blockDim = 1;
+        summary.kernelType = KernelType::AIVEC;
+        summary.isKernelWithDBI = isKernelWithDBI;
+        summary.hasDebugLine = false;
+        strcpy_s(summary.kernelName, sizeof(summary.kernelName), name.c_str());
+        bytes += Serialize(PacketHead{PacketType::KERNEL_SUMMARY, 0, orderId}, summary);
+    };
+    addKernelSummary(2, "", false);
+    addKernelSummary(3, "_Z3addii_mix_aic", true);
+    addKernelSummary(4, "plain_kernel_name", false);
+    addKernelSummary(5, "_Z3addii_mix_aiv", false);
+
+    GMAddrOutOfBoundRecord outOfBoundRecord{0x1000, 0x100, 0x2000, 0x10};
+    bytes += Serialize(PacketHead{PacketType::GM_ADDR_OUT_OF_BOUND_RECORD, 0, 6}, outOfBoundRecord);
+
+    MemRegionPermissionDesc permission{0x3000, 0x100, 0, MSTX_MEM_PERMISSIONS_REGION_FLAGS_SHARED};
+    bytes += Serialize(PacketHead{PacketType::MEM_REGION_PERMISSION, 0, 7}, permission);
+
+    const std::string invalidBlock = "x";
+    bytes += Serialize(PacketHead{PacketType::KERNEL_RECORD, 0, 8},
+        static_cast<uint64_t>(invalidBlock.size())) + invalidBlock;
+
+    const std::string marker = "kernel-and-boundary-packets-complete";
+    bytes += Serialize(PacketHead{PacketType::LOG_STRING, 0, 9}, static_cast<uint64_t>(marker.size())) + marker;
+    {
+        std::ofstream payload(payloadPath, std::ios::binary);
+        ASSERT_TRUE(payload.is_open());
+        payload.write(bytes.data(), bytes.size());
+        ASSERT_TRUE(payload.good());
+    }
+
+    const std::string client = R"(
+import os, socket, sys
+with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+    connection.connect(('\0' + os.environ['MSOP_SOCKET_PATH']).ljust(108, '\0'))
+    connection.recv(65536)
+    with open(sys.argv[1], 'rb') as payload:
+        connection.sendall(payload.read())
+    connection.shutdown(socket.SHUT_WR)
+)";
+    Config config{.defaultCheck = true, .memCheck = true};
+    Command command(config, false, LogLv::INFO, "");
+    ProgramStatus status = command.Exec({"/usr/bin/python3", "-c", client, payloadPath});
+    ASSERT_FALSE(status.launchError);
+    ASSERT_TRUE(status.exitedNormally);
+    ASSERT_EQ(status.exitCode, 0);
+
+    const std::string output = capture.Read();
+    EXPECT_NE(output.find("Start memcheck sanitizer on kernel unknown"), std::string::npos);
+    EXPECT_NE(output.find("Start memcheck sanitizer on kernel \"add(int, int)\""), std::string::npos);
+    EXPECT_NE(output.find("Start memcheck sanitizer on kernel plain_kernel_name"), std::string::npos);
+    EXPECT_NE(output.find("ERROR: illegal write of size 16"), std::string::npos);
+    EXPECT_NE(output.find("MemSize 1 is less than the required record protocol head size"), std::string::npos);
+    EXPECT_NE(output.find("HOOK: " + marker), std::string::npos);
+    auto &sharedSpans = DeviceManager::Instance().GetSharedMemorySpans(0).GetSpans();
+    ASSERT_EQ(sharedSpans.size(), 1U);
+    EXPECT_EQ(sharedSpans.front().vmin, permission.addr);
+    EXPECT_EQ(sharedSpans.front().vmax, permission.addr + permission.size);
+}
+
+// 覆盖共享内存销毁时向映射方投递 FREE、重复映射失败以及销毁后再解映射的分支
+TEST_F(TestCommandPackets, IPC_destroy_with_sharee_and_unmap_after_destroy_expect_success)
+{
+    ScopedCommandLogCapture capture;
+    ASSERT_TRUE(capture.IsOpen());
+    const char *ipcMemName = "SHARED_MEM_DESTROY_WITH_SHAREE";
+    Config config{
+        .defaultCheck = true,
+        .memCheck = true,
+    };
+    ThreadManager threadManager(config, false, LogLv::INFO, "");
+    Checker checker(config, false);
+
+    IPCMemRecord setRecord;
+    setRecord.type = IPCOperationType::SET_INFO;
+    setRecord.setInfo.addr = 0x1000;
+    setRecord.setInfo.size = 4096;
+    strcpy_s(setRecord.setInfo.name, sizeof(setRecord.setInfo.name), ipcMemName);
+    HandleIpcMemRecord(checker, setRecord, threadManager, RespFunc);
+
+    IPCMemRecord mapRecord;
+    mapRecord.type = IPCOperationType::MAP_INFO;
+    mapRecord.mapInfo.addr = 0x2000;
+    strcpy_s(mapRecord.mapInfo.name, sizeof(mapRecord.mapInfo.name), ipcMemName);
+    HandleIpcMemRecord(checker, mapRecord, threadManager, RespFunc);
+    IPCResponse response;
+    ParseIPCResponse(ResponseHandler::response, response);
+    ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
+
+    HandleIpcMemRecord(checker, mapRecord, threadManager, RespFunc);
+    ParseIPCResponse(ResponseHandler::response, response);
+    ASSERT_EQ(response.status, ResponseStatus::FAIL);
+
+    IPCMemRecord destroyRecord;
+    destroyRecord.type = IPCOperationType::DESTROY_INFO;
+    strcpy_s(destroyRecord.destroyInfo.name, sizeof(destroyRecord.destroyInfo.name), ipcMemName);
+    HandleIpcMemRecord(checker, destroyRecord, threadManager, RespFunc);
+    ParseIPCResponse(ResponseHandler::response, response);
+    ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
+
+    IPCMemRecord unmapRecord;
+    unmapRecord.type = IPCOperationType::UNMAP_INFO;
+    unmapRecord.unmapInfo.addr = 0x2000;
+    HandleIpcMemRecord(checker, unmapRecord, threadManager, RespFunc);
+    ParseIPCResponse(ResponseHandler::response, response);
+    ASSERT_EQ(response.status, ResponseStatus::SUCCESS);
+
+    checker.Finish();
+    EXPECT_NE(capture.Read().find("Freeing sharee GM: addr:0x2000"), std::string::npos);
 }
