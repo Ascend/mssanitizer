@@ -1033,4 +1033,57 @@ TEST(MemEventChecker, mix_single_block_sync_chain_expect_no_race)
     ASSERT_EQ(raceMemEventsIdx.size(), 0U);
 }
 
+
+
+namespace {
+uint32_t RunSingleBlockActiveCase(uint32_t historyCount, uint32_t currentClockAtHistoryPipe,
+    uint32_t firstHistoryOwnTime)
+{
+    const uint32_t nPipe = static_cast<uint32_t>(PipeType::SIZE);
+    std::vector<MemEvent> events;
+    events.reserve(historyCount + 1U);
+    for (uint32_t i = 0U; i < historyCount; ++i) {
+        DenseVectorTime t(nPipe, 1U);
+        t[static_cast<uint32_t>(PipeType::PIPE_MTE1)] = firstHistoryOwnTime + i;
+        events.push_back(MakeMixBlockEvent(0U, false, PipeType::PIPE_MTE1, AccessType::WRITE, 0U, i, t));
+    }
+    DenseVectorTime current(nPipe, 1U);
+    current[static_cast<uint32_t>(PipeType::PIPE_MTE1)] = currentClockAtHistoryPipe;
+    current[static_cast<uint32_t>(PipeType::PIPE_MTE2)] = 3U;
+    events.push_back(MakeMixBlockEvent(
+        0U, false, PipeType::PIPE_MTE2, AccessType::WRITE, 0U, historyCount, current));
+
+    MemEventChecker checker;
+    checker.Init(KernelType::AIVEC, DeviceType::ASCEND_910B1, RaceCheckType::SINGLE_BLOCK_CHECK);
+    for (const auto &event : events) {
+        checker.PushEvent(event);
+    }
+    MemEventChecker::RaceMemEventsIdx raceMemEventsIdx;
+    MemEventChecker::RaceMemEventsIdx missDcciEventsIdx;
+    checker.ScanlineAlgorithm(raceMemEventsIdx, missDcciEventsIdx);
+    return static_cast<uint32_t>(raceMemEventsIdx.size());
+}
+}
+
+// 活跃事件数 64/65 分别走小桶全枚举和区间二分路径，两者结果必须一致。
+TEST(MemEventChecker, single_block_active_limit_paths_consistent)
+{
+    const CheckDcciGuard dcciGuard(false);
+    EXPECT_EQ(RunSingleBlockActiveCase(64U, 1U, 2U), 64U);
+    EXPECT_EQ(RunSingleBlockActiveCase(65U, 1U, 2U), 65U);
+}
+
+// 当前事件在历史 pipe 上的时钟等于首条历史事件的自时钟：等值段应被跳过。
+TEST(MemEventChecker, single_block_interval_skips_equal_clock_boundary)
+{
+    const CheckDcciGuard dcciGuard(false);
+    EXPECT_EQ(RunSingleBlockActiveCase(65U, 2U, 2U), 64U);
+}
+
+// 当前事件已看到全部历史事件：区间整体为空，不应产生竞争。
+TEST(MemEventChecker, single_block_interval_empty_when_all_history_synchronized)
+{
+    const CheckDcciGuard dcciGuard(false);
+    EXPECT_EQ(RunSingleBlockActiveCase(65U, 100U, 2U), 0U);
+}
 }

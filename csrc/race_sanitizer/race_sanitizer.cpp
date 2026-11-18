@@ -47,6 +47,17 @@ uint8_t inline ThreadRaceToAccessType(Sanitizer::KernelErrorType errorType, bool
     return 0U;
 }
 
+// 硬同步/MSTX 核间同步事件需要同时送入 AIV/AIC 两个 checker。
+bool IsCrossCoreSyncEvent(const Sanitizer::SanEvent &event) {
+    if (event.type == Sanitizer::EventType::CROSS_CORE_SYNC_EVENT) {
+        return true;
+    }
+    if (event.type != Sanitizer::EventType::MSTX_CROSS_SYNC_EVENT) {
+        return false;
+    }
+    const auto opType = event.eventInfo.mstxCrossInfo.opType;
+    return opType == Sanitizer::SyncType::MSTX_SET_CROSS || opType == Sanitizer::SyncType::MSTX_WAIT_CROSS;
+}
 }
 
 namespace Sanitizer {
@@ -164,14 +175,22 @@ void RaceSanitizer::RaceSanitizerRecord(std::shared_ptr<std::vector<RaceDispInfo
 
 void RaceSanitizer::SingleBlockRaceCheck(EventRange events)
 {
+    const uint32_t targetBlockId = checkBlockId_ == CHECK_ALL_BLOCK ? defaultCheckBlockId_ : checkBlockId_;
+    auto &aivChecker = raceAlgs_[static_cast<uint8_t>(RaceAlgCheckBlockType::RACE_ALG_AIV_CHECK)];
+    auto &aicChecker = raceAlgs_[static_cast<uint8_t>(RaceAlgCheckBlockType::RACE_ALG_AIC_CHECK)];
     for (const auto &event : events) {
-        if (IsTargetEvent(event, BlockType::AIVEC) || IsTargetEvent(event, BlockType::AICORE)) {
-            raceAlgs_[static_cast<uint8_t>(RaceAlgCheckBlockType::RACE_ALG_AIV_CHECK)]->Do(event);
+        if (event.type == EventType::SANITIZER_CONTROL_EVENT || IsCrossCoreSyncEvent(event)) {
+            aivChecker->Do(event);
+            aicChecker->Do(event);
+            continue;
         }
-    }
-    for (const auto &event : events) {
-        if (IsTargetEvent(event, BlockType::AICUBE)) {
-            raceAlgs_[static_cast<uint8_t>(RaceAlgCheckBlockType::RACE_ALG_AIC_CHECK)]->Do(event);
+        if (event.loc.coreId != targetBlockId) {
+            continue;
+        }
+        if (event.loc.blockType == BlockType::AIVEC || event.loc.blockType == BlockType::AICORE) {
+            aivChecker->Do(event);
+        } else if (event.loc.blockType == BlockType::AICUBE) {
+            aicChecker->Do(event);
         }
     }
 }

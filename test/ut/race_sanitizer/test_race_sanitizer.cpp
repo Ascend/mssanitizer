@@ -695,4 +695,68 @@ TEST(RaceInfoDisplay, report_flag_id_warn_infos_expect_correct)
     S::ReportFlagIdWarnInfos(infos, "kernel", msgFunc);
     EXPECT_EQ(msgs.size(), 1u);
 }
+
+
+namespace {
+class RecordingRaceAlg final : public RaceAlgBase {
+public:
+    RecordingRaceAlg() : RaceAlgBase(KernelType::AIVEC, DeviceType::ASCEND_910B1, 1U) {}
+    void Do(const SanEvent &event) override { seen.push_back(event.serialNo); }
+    bool IsFinished() const override { return true; }
+    std::shared_ptr<std::vector<RaceDispInfo>> GetResult() const override { return nullptr; }
+
+    std::vector<uint64_t> seen;
+};
+
+SanEvent MakeDispatchEvent(uint64_t serialNo, EventType type, uint32_t coreId, BlockType blockType)
+{
+    SanEvent event{};
+    event.serialNo = serialNo;
+    event.type = type;
+    event.loc.coreId = coreId;
+    event.loc.blockType = blockType;
+    return event;
+}
+}
+
+// SingleBlockRaceCheck 的实际分派入口：同步/控制事件广播到 AIV/AIC，
+// 普通访存按目标 coreId + blockType 只进入对应 checker。
+TEST(RaceSanitizer, single_block_dispatch_routes_events_to_expected_checkers)
+{
+    RaceSanitizer alg;
+    DeviceInfoSummary deviceInfoSummary{};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    alg.SetDeviceInfo(deviceInfoSummary, Config{});
+    KernelSummary kernelSummary{};
+    kernelSummary.kernelType = KernelType::MIX;
+    kernelSummary.blockDim = 1U;
+    ASSERT_TRUE(alg.SetKernelInfo(kernelSummary));
+
+    auto aivChecker = std::make_shared<RecordingRaceAlg>();
+    auto aicChecker = std::make_shared<RecordingRaceAlg>();
+    alg.raceAlgs_[0] = aivChecker;
+    alg.raceAlgs_[1] = aicChecker;
+
+    std::vector<SanEvent> events;
+    events.push_back(MakeDispatchEvent(1U, EventType::SANITIZER_CONTROL_EVENT, 99U, BlockType::AIVEC));
+    events.push_back(MakeDispatchEvent(2U, EventType::CROSS_CORE_SYNC_EVENT, 99U, BlockType::AICUBE));
+    SanEvent mstxSet = MakeDispatchEvent(3U, EventType::MSTX_CROSS_SYNC_EVENT, 99U, BlockType::AIVEC);
+    mstxSet.eventInfo.mstxCrossInfo.opType = SyncType::MSTX_SET_CROSS;
+    events.push_back(mstxSet);
+    SanEvent mstxWait = MakeDispatchEvent(4U, EventType::MSTX_CROSS_SYNC_EVENT, 99U, BlockType::AICUBE);
+    mstxWait.eventInfo.mstxCrossInfo.opType = SyncType::MSTX_WAIT_CROSS;
+    events.push_back(mstxWait);
+    events.push_back(MakeDispatchEvent(5U, EventType::MEM_EVENT, 0U, BlockType::AIVEC));
+    events.push_back(MakeDispatchEvent(6U, EventType::MEM_EVENT, 0U, BlockType::AICORE));
+    events.push_back(MakeDispatchEvent(7U, EventType::MEM_EVENT, 0U, BlockType::AICUBE));
+    events.push_back(MakeDispatchEvent(8U, EventType::MEM_EVENT, 1U, BlockType::AIVEC));
+    SanEvent mstxNonBroadcast = MakeDispatchEvent(9U, EventType::MSTX_CROSS_SYNC_EVENT, 99U, BlockType::AIVEC);
+    mstxNonBroadcast.eventInfo.mstxCrossInfo.opType = SyncType::SET_FLAG;
+    events.push_back(mstxNonBroadcast);
+
+    alg.SingleBlockRaceCheck(EventRange(events));
+
+    EXPECT_EQ(aivChecker->seen, (std::vector<uint64_t>{1U, 2U, 3U, 4U, 5U, 6U}));
+    EXPECT_EQ(aicChecker->seen, (std::vector<uint64_t>{1U, 2U, 3U, 4U, 7U}));
+}
 }

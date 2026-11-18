@@ -722,147 +722,348 @@ void MemEventChecker::ScanSinglePipeWindow(const std::vector<SortMetaData> &even
     }
 }
 
-// ScanSingleBlockFast 的候选对判定（时钟并发且非原子），同 block 快速路径与多块回退
-// 路径共享此单一实现，避免两份判定规则漂移：
-// SameBlock=true：b1 用桶级外提值 b1Fixed，并做前置排除——b1Fixed >= ownTime[hIdx]
-//                （当前事件已知晓历史事件发射之后的进度）时必存在 happens-before，
-//                只读预计算数组、不触碰历史事件结构体，直接拒绝；
-// SameBlock=false：b1 按基线策略逐对查询（历史事件 pipeIdx 等于桶号时按桶缓存一次）。
-// SameBlock 为编译期模板参数，分支在编译期折叠，热路径无额外运行时开销。
-// 地址重叠检查由调用方继续执行。
-template <bool SameBlock>
-bool MemEventChecker::IsRaceCandidate(const MemEvent &ce, const MemEvent &he, uint32_t hIdx,
-    uint32_t t1Pipe, uint32_t a1, uint32_t b1Fixed, uint32_t q,
-    const std::vector<uint32_t> &pipeIdx, const std::vector<uint32_t> &ownTime,
-    bool &b1Cached, uint32_t &b1Cache) const
-{
-    if (SameBlock && b1Fixed >= ownTime[hIdx]) {
-        return false;
+namespace {
+
+// 超过该成员数的桶只维护活跃列表，不建 Fenwick。
+constexpr uint32_t kHugeBucketMemberLimit = 256U * 1024U;
+// 活跃成员较少时，二分开销不划算，直接枚举活跃成员。
+constexpr uint32_t kSmallActiveLimit = 64U;
+// 事件不属于任何桶（长度为 0 的事件不参与竞争检查）。
+constexpr int32_t kNoBucket = -1;
+
+// SINGLE_BLOCK 扫描的桶索引。
+// 桶键为 (memType, pipeSlot, rw)，桶内成员按事件索引升序排列；
+// 普通桶用扁平 Fenwick 维护活跃位置，超大桶改用活跃事件列表。
+class SingleBlockBuckets {
+public:
+    SingleBlockBuckets(
+        const std::vector<MemEvent> &events, const std::vector<uint32_t> &eventPipeSlot, uint32_t pipeCount)
+        : pipeCount_(pipeCount), bucketCount_(static_cast<uint32_t>(kMemTypeCount) * pipeCount * 2U),
+          members_(bucketCount_), bucketOfEvent_(events.size(), kNoBucket), posInBucket_(events.size(), 0U),
+          isHugeBucket_(bucketCount_, 0U), hugeActive_(bucketCount_) {
+        BuildMembers(events, eventPipeSlot);
+        MarkHugeBuckets();
+        BuildFenwickOffsets();
     }
-    const uint32_t a2 = he.vt.Get(t1Pipe);
-    if (a1 == a2) {
-        return false;
+
+    uint32_t BucketIndex(uint32_t memType, uint32_t pipeSlot, bool write) const {
+        return ((memType * pipeCount_) + pipeSlot) * 2U + (write ? 0U : 1U);
     }
-    uint32_t b1 = b1Fixed;
-    if (!SameBlock) {
-        const uint32_t hPipe = pipeIdx[hIdx];
-        if (hPipe == q) {
-            if (!b1Cached) {
-                b1Cache = ce.vt.Get(q);
-                b1Cached = true;
+
+    uint32_t MemberCount(uint32_t bucket) const { return static_cast<uint32_t>(members_[bucket].size()); }
+
+    const std::vector<uint32_t> &Members(uint32_t bucket) const { return members_[bucket]; }
+
+    bool IsHuge(uint32_t bucket) const { return isHugeBucket_[bucket] != 0U; }
+
+    uint32_t ActiveCount(uint32_t bucket) const {
+        return IsHuge(bucket) ? static_cast<uint32_t>(hugeActive_[bucket].size()) : activeCount_[bucket];
+    }
+
+    const std::vector<uint32_t> &HugeActive(uint32_t bucket) const { return hugeActive_[bucket]; }
+
+    void Activate(uint32_t eventIdx) {
+        const int32_t bucket = bucketOfEvent_[eventIdx];
+        if (bucket == kNoBucket) {
+            return;
+        }
+        const uint32_t validBucket = static_cast<uint32_t>(bucket);
+        if (IsHuge(validBucket)) {
+            auto &active = hugeActive_[validBucket];
+            posInBucket_[eventIdx] = static_cast<uint32_t>(active.size());
+            active.push_back(eventIdx);
+            return;
+        }
+        FenwickAdd(validBucket, posInBucket_[eventIdx], +1);
+    }
+
+    void Deactivate(uint32_t eventIdx) {
+        const int32_t bucket = bucketOfEvent_[eventIdx];
+        if (bucket == kNoBucket) {
+            return;
+        }
+        const uint32_t validBucket = static_cast<uint32_t>(bucket);
+        if (IsHuge(validBucket)) {
+            auto &active = hugeActive_[validBucket];
+            const uint32_t pos = posInBucket_[eventIdx];
+            const uint32_t moved = active.back();
+            active[pos] = moved;
+            posInBucket_[moved] = pos;
+            active.pop_back();
+            return;
+        }
+        FenwickAdd(validBucket, posInBucket_[eventIdx], -1);
+    }
+
+    // 返回桶内 [0, pos) 区间的活跃成员数。
+    uint32_t ActiveCountBefore(uint32_t bucket, uint32_t pos) const {
+        uint32_t count = 0U;
+        for (uint32_t i = pos; i > 0U; i -= LowBit(i)) {
+            count += static_cast<uint32_t>(fenwick_[fenwickOffset_[bucket] + i]);
+        }
+        return count;
+    }
+
+    // 返回桶内第 rank 个（1-based）活跃成员的桶内位置（0-based）。
+    uint32_t SelectActive(uint32_t bucket, uint32_t rank) const {
+        const uint32_t memberCount = MemberCount(bucket);
+        uint32_t pos = 0U;
+        uint32_t bit = 1U;
+        while ((bit << 1U) <= memberCount) {
+            bit <<= 1U;
+        }
+        for (; bit != 0U; bit >>= 1U) {
+            const uint32_t next = pos + bit;
+            if (next <= memberCount) {
+                const uint32_t val = static_cast<uint32_t>(fenwick_[fenwickOffset_[bucket] + next]);
+                if (val < rank) {
+                    pos = next;
+                    rank -= val;
+                }
             }
-            b1 = b1Cache;
-        } else {
-            b1 = ce.vt.Get(hPipe);
+        }
+        return pos;
+    }
+
+private:
+    static uint32_t LowBit(uint32_t value) { return value & (~value + 1U); }
+
+    void BuildMembers(const std::vector<MemEvent> &events, const std::vector<uint32_t> &eventPipeSlot) {
+        for (size_t i = 0; i < events.size(); ++i) {
+            if (GetMemMaxLength(events[i]) == 0U) {
+                continue;
+            }
+            const uint32_t bucket =
+                BucketIndex(EffMemType(events[i]), eventPipeSlot[i], EffOpType(events[i]) == AccessType::WRITE);
+            posInBucket_[i] = static_cast<uint32_t>(members_[bucket].size());
+            members_[bucket].push_back(static_cast<uint32_t>(i));
+            bucketOfEvent_[i] = static_cast<int32_t>(bucket);
         }
     }
-    if (!VectorClock::IsNotHappensBefore(a1, a2, b1, ownTime[hIdx])) {
-        return false;
-    }
-    return !IsAtomicAgainst(ce, he);
-}
 
+    void MarkHugeBuckets() {
+        for (uint32_t bucket = 0U; bucket < bucketCount_; ++bucket) {
+            if (MemberCount(bucket) > kHugeBucketMemberLimit) {
+                isHugeBucket_[bucket] = 1U;
+            }
+        }
+    }
+
+    void BuildFenwickOffsets() {
+        fenwickOffset_.resize(bucketCount_ + 1U, 0U);
+        for (uint32_t bucket = 0U; bucket < bucketCount_; ++bucket) {
+            const uint32_t segmentSize = IsHuge(bucket) ? 1U : MemberCount(bucket) + 1U;
+            fenwickOffset_[bucket + 1U] = fenwickOffset_[bucket] + segmentSize;
+        }
+        fenwick_.assign(fenwickOffset_[bucketCount_], 0);
+        activeCount_.assign(bucketCount_, 0U);
+    }
+
+    void FenwickAdd(uint32_t bucket, uint32_t pos, int32_t delta) {
+        const uint32_t memberCount = MemberCount(bucket);
+        for (uint32_t i = pos + 1U; i <= memberCount; i += LowBit(i)) {
+            fenwick_[fenwickOffset_[bucket] + i] += delta;
+        }
+        activeCount_[bucket] = static_cast<uint32_t>(static_cast<int32_t>(activeCount_[bucket]) + delta);
+    }
+
+    uint32_t pipeCount_;     // 压缩后的 pipe 槽位数
+    uint32_t bucketCount_;   // 桶总数 = memType 数 × pipeCount_ × 2（读/写）
+    // 桶 -> 桶内成员的事件索引，按事件索引升序排列
+    std::vector<std::vector<uint32_t>> members_;
+    // 事件 -> 所属桶；kNoBucket 表示长度为 0、不参与竞争检查
+    std::vector<int32_t> bucketOfEvent_;
+    // 事件 -> 在所属桶内的位置，供 Fenwick 或活跃列表 O(1) 删除
+    std::vector<uint32_t> posInBucket_;
+    // 桶 -> 是否为超大桶；超大桶不建 Fenwick，改用 hugeActive_
+    std::vector<uint8_t> isHugeBucket_;
+    // 超大桶 -> 当前活跃事件索引列表
+    std::vector<std::vector<uint32_t>> hugeActive_;
+    // 扁平 Fenwick：桶 b 的树占用 [fenwickOffset_[b], fenwickOffset_[b+1])，内部 1-based
+    std::vector<uint32_t> fenwickOffset_;
+    // 所有普通桶的 Fenwick 树按桶拼接；1 表示对应位置的成员活跃
+    std::vector<int32_t> fenwick_;
+    // 普通桶 -> 当前活跃成员数
+    std::vector<uint32_t> activeCount_;
+};
+
+} // namespace
+
+// ==== SINGLE_BLOCK 快速路径（向量时钟单调性剪枝） ====
+// 桶键按完整 pipe 索引划分（blockIdx*NPIPE + pipe，MIX 展开时含子核偏移），
+// 记 e1 为当前事件、e2 为桶内历史事件；p1 为当前事件所在 pipe，p2 为历史事件所在 pipe。
+// e1p1/e1p2 分别为 e1 在 p1/p2 上的 vector time，e2p1/e2p2 分别为 e2 在 p1/p2 上的 vector time。
+// 同一桶内 histPipe 恒定，同一 pipe 上的向量时钟分量单调不减，因此 e2p1、e2p2 都随事件时间单调不减；
+// 当前事件固定时 e1p1、e1p2 为常量。并发条件
+//   (e1p1 < e2p1 && e1p2 > e2p2) || (e1p1 > e2p1 && e1p2 < e2p2)
+// 中，e2p2 <= e1p2 表示当前事件已看到历史事件（e2 HB e1），前缀可整段跳过；
+// 剩余 e2p2 > e1p2 的候选中，只有 e2p1 < e1p1（历史事件尚未看到当前事件）才可能并发。
+// 因此只需二分两个边界：
+//   firstHistNotSeenByCur = first(e2p2 > e1p2)
+//   firstHistSeesCur      = first(e2p1 >= e1p1)
+// 只枚举 [firstHistNotSeenByCur, firstHistSeesCur) 内的活跃事件，避免逐对查询向量时钟。
+// （e2p1 > e1p1 && e2p2 < e1p2 对应互相已知的因果环，精确向量时钟下恒空，不再保留。）
+//
+// 数据布局：
+//  - 每个事件归属唯一的 (memType, pipeSlot, rw) 桶；桶内成员按事件索引升序静态排列；
+//  - 普通桶用扁平 Fenwick 维护活跃计数，支持 O(log m) 增删和第 k 个活跃成员定位；
+//  - 超大桶只维护活跃事件列表，避免为少量查询维护 Fenwick；
+//  - 预计算稠密 clockTable[event][pipeSlot]，把向量时钟查询从稀疏二分降为连续内存访问。
 void MemEventChecker::ScanSingleBlockFast(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
     RaceMemEventsIdx &raceMemEventsIdx) const {
-    (void)ctx;   // 判定提取到 IsRaceCandidate 模板，不走 ctx.checkFunc 回调
-    // ==== SINGLE_BLOCK 快速路径 ====
-    // 把 IsInnerCoreRaceEvent 的判定提取为 IsRaceCandidate 模板（同 block 快速路径与
-    // 多块回退共享单一实现，模板参数为编译期常量，分支折叠）；其余结构：
-    // KV: wB/rB 下标 = [memType][pipe]；value = 该桶内活跃（开始端点已处理、结束端点未到）
-    //     的历史写/读事件索引；posInBucket[i] = 事件 i 在其所属桶中的下标（供 O(1) 删除）
-    constexpr uint32_t NPIPE = static_cast<uint32_t>(PipeType::SIZE);
-    const size_t nEvents = this->events_.size();
-    // 向量时钟索引 pipeIdx = blockIdx*NPIPE + pipe（GetPipeIdxByMemEvent），非 MIX 核的
-    // blockIdx 恒为 0。SINGLE_BLOCK checker 的事件入队前经 RaceSanitizer::IsTargetEvent
-    // 过滤，只保证 coreId 相同与 blockType 在本 checker 范围内（AIV checker 同时接收
-    // AIVEC 与 AICORE）；MIX 展开索引含 blockIdx 分量（GetEventExpandBlockIndex：
-    // AIVEC 取 coreId/子槽数、AICORE 取 coreId，见 pipeline_replayer.h），同 coreId 的
-    // AIVEC 与 AICORE 展开后可能落在不同 blockIdx。因此"全部事件同 blockIdx"不恒成立，
-    // 需 allSameBlock 逐事件运行时校验：同 blockIdx（非展开设备、或展开后恰好同槽）时
-    // 启用桶级外提与前置排除，否则回退逐对原逻辑，判定结果不变。
-    const bool expandBlockDim = NeedExpandBlockDim(this->kernelType_, this->deviceType_);
-    std::vector<uint32_t> pipeIdx(nEvents);
-    std::vector<uint32_t> ownTime(nEvents);
-    bool allSameBlock = true;
-    uint32_t blockIdxFloor = 0U;   // 全部事件共享的 blockIdx（即 events_[0] 的 pipeIdx/NPIPE）
-    for (size_t i = 0; i < nEvents; ++i) {
+    (void)ctx; // 判定已内联，不使用 ctx.checkFunc
+    const size_t eventCount = this->events_.size();
+    if (eventCount == 0U) {
+        return;
+    }
+
+    std::vector<uint32_t> pipeIdx(eventCount);
+    std::vector<uint32_t> ownTime(eventCount);
+    for (size_t i = 0; i < eventCount; ++i) {
         const uint32_t pIdx = GetPipeIdxByMemEvent<RaceCheckType::SINGLE_BLOCK_CHECK>(
             this->events_[i], this->kernelType_, this->deviceType_);
         pipeIdx[i] = pIdx;
         ownTime[i] = this->events_[i].vt.Get(pIdx);
-        if (expandBlockDim) {
-            const uint32_t floor = pIdx / NPIPE;
-            if (i == 0U) {
-                blockIdxFloor = floor;
-            } else if (floor != blockIdxFloor) {
-                allSameBlock = false;
+    }
+
+    // 把稀疏 pipe 索引压缩成稠密槽位；同一槽位内 pipe 索引恒定。
+    // 展开 blockDim 时桶键带子核偏移，保证同一桶内 histPipe 恒定；
+    // SINGLE_BLOCK 下不同核心的事件不会进入同一个 checker。
+    std::vector<uint32_t> uniquePipes(pipeIdx);
+    std::sort(uniquePipes.begin(), uniquePipes.end());
+    uniquePipes.erase(std::unique(uniquePipes.begin(), uniquePipes.end()), uniquePipes.end());
+    const uint32_t pipeCount = static_cast<uint32_t>(uniquePipes.size());
+    std::vector<uint32_t> pipeSlotOfEvent(eventCount);
+    for (size_t i = 0; i < eventCount; ++i) {
+        pipeSlotOfEvent[i] = static_cast<uint32_t>(
+            std::lower_bound(uniquePipes.begin(), uniquePipes.end(), pipeIdx[i]) - uniquePipes.begin());
+    }
+
+    // 稠密向量时钟表：事件数 × pipe 数；按字节数限制，超过上限时退回稀疏查询，避免异常 trace 撑爆内存。
+    constexpr uint64_t kMaxDenseClockBytes = 256ull * 1024ull * 1024ull;
+    const uint64_t clockEntryCount = static_cast<uint64_t>(eventCount) * pipeCount;
+    std::vector<uint32_t> clockTable;
+    if (clockEntryCount <= kMaxDenseClockBytes / sizeof(uint32_t)) {
+        clockTable.resize(eventCount * pipeCount);
+        for (size_t i = 0; i < eventCount; ++i) {
+            for (uint32_t slot = 0U; slot < pipeCount; ++slot) {
+                clockTable[i * pipeCount + slot] = this->events_[i].vt.Get(uniquePipes[slot]);
             }
         }
     }
-    // 端点已使用 uint32_t 索引，入口范围检查保证桶索引也可用 32 位存储，降低桶遍历的内存开销。
-    std::array<std::array<std::vector<uint32_t>, NPIPE>, kMemTypeCount> wB;
-    std::array<std::array<std::vector<uint32_t>, NPIPE>, kMemTypeCount> rB;
-    std::vector<uint32_t> posInBucket(nEvents);
-    const MemEvent *evData = this->events_.data();
+    auto clockAt = [&](uint32_t eventIdx, uint32_t pipeSlot) -> uint32_t {
+        if (clockTable.empty()) {
+            return this->events_[eventIdx].vt.Get(uniquePipes[pipeSlot]);
+        }
+        return clockTable[static_cast<size_t>(eventIdx) * pipeCount + pipeSlot];
+    };
+
+    SingleBlockBuckets buckets(this->events_, pipeSlotOfEvent, pipeCount);
+    const MemEvent *eventData = this->events_.data();
     for (const auto &metaData : eventsMetaData) {
-        const uint64_t curIdx = metaData.eventIdx;
-        const MemEvent &ce = evData[curIdx];
-        const uint8_t mt = EffMemType(ce);
-        const uint32_t sub = static_cast<uint32_t>(ce.pipe);
-        const bool curWrite = (EffOpType(ce) == AccessType::WRITE);
+        const uint32_t curIdx = metaData.eventIdx;
         if (!metaData.isStart) {
-            // 结束端点：从所属桶 O(1) 删除（把桶尾元素搬到删除位，再 pop_back）
-            auto &bucket = (curWrite ? wB[mt][sub] : rB[mt][sub]);
-            const uint32_t pos = posInBucket[curIdx];
-            const uint32_t moved = bucket.back();
-            bucket[pos] = moved;
-            posInBucket[moved] = pos;
-            bucket.pop_back();
+            buckets.Deactivate(curIdx);
             continue;
         }
-        // 开始端点：只与"异 pipe"的历史事件比较（同 pipe 不可能构成核内竞争）
-        const uint32_t t1Pipe = pipeIdx[curIdx];
-        const uint32_t a1 = ownTime[curIdx];
-        // b1Invariant：全部事件同 blockIdx 时才启用下方的桶级外提与前置排除
-        const bool b1Invariant = allSameBlock;
-        const int passes = curWrite ? 2 : 1;
-        for (int pass = 0; pass < passes; ++pass) {
-            auto &slots = (pass == 0) ? wB[mt] : rB[mt];
-            for (uint32_t q = 0; q < NPIPE; ++q) {
-                if (q == sub) { continue; }
-                auto &bucket = slots[q];
-                if (bucket.empty()) { continue; }
-                // 提速 1（查询外提）：b1 是当前事件时钟中"历史事件所在流水线"的分量。
-                // 桶内历史事件的 pipeIdx 恒为 blockIdxFloor*NPIPE + q，与具体历史事件
-                // 无关，故整桶只需查一次（b1Fixed），替代每候选对一次。
-                const uint32_t b1Fixed = b1Invariant ? ce.vt.Get(blockIdxFloor * NPIPE + q) : 0U;
-                bool b1Cached = false;
-                uint32_t b1Cache = 0;
-                for (uint32_t hIdx : bucket) {
-                    const MemEvent &he = evData[hIdx];
-                    // 判定收敛到 IsRaceCandidate 单一实现：b1Invariant 作为编译期
-                    // 模板参数选择实例化，两条路径共享同一份时钟/原子判定规则
-                    const bool candidate = b1Invariant
-                        ? IsRaceCandidate<true>(ce, he, hIdx, t1Pipe, a1, b1Fixed, q, pipeIdx,
-                            ownTime, b1Cached, b1Cache)
-                        : IsRaceCandidate<false>(ce, he, hIdx, t1Pipe, a1, b1Fixed, q, pipeIdx,
-                            ownTime, b1Cached, b1Cache);
-                    if (!candidate) {
-                        continue;
+
+        const MemEvent &curEvent = eventData[curIdx];
+        const uint32_t curSlot = pipeSlotOfEvent[curIdx];
+        const uint32_t e1p1 = ownTime[curIdx]; // e1 在 p1 上的 vector time
+        const uint8_t curMemType = EffMemType(curEvent);
+        const bool curWrite = (EffOpType(curEvent) == AccessType::WRITE);
+        EventIdxInfo curInfo{};
+        curInfo.eventIdx = curIdx;
+        EventIdxInfo histInfo{};
+        auto emitRace = [&](uint32_t histIdx) {
+            const MemEvent &histEvent = eventData[histIdx];
+            if (IsAtomicAgainst(curEvent, histEvent)) {
+                return;
+            }
+            histInfo.eventIdx = histIdx;
+            if (IsMemSpaceOverlap(curEvent, histEvent, curInfo, histInfo)) {
+                raceMemEventsIdx.emplace_back(curInfo, histInfo);
+            }
+        };
+
+        // 当前事件为写时，需要同时比较历史写和历史读；当前为读时只比较历史写。
+        const uint32_t comparePassCount = curWrite ? 2U : 1U;
+        for (uint32_t comparePass = 0U; comparePass < comparePassCount; ++comparePass) {
+            const bool historyIsWrite = (comparePass == 0U);
+            for (uint32_t histSlot = 0U; histSlot < pipeCount; ++histSlot) {
+                if (histSlot == curSlot) {
+                    continue;
+                }
+                const uint32_t bucket = buckets.BucketIndex(curMemType, histSlot, historyIsWrite);
+                const uint32_t memberCount = buckets.MemberCount(bucket);
+                const uint32_t activeCount = buckets.ActiveCount(bucket);
+                if (memberCount == 0U || activeCount == 0U) {
+                    continue;
+                }
+                const uint32_t e1p2 = clockAt(curIdx, histSlot); // e1 在 p2 上的 vector time
+                auto checkClockConcurrent = [&](uint32_t histIdx) {
+                    const uint32_t e2p1 = clockAt(histIdx, curSlot); // e2 在 p1 上的 vector time
+                    if (e1p1 == e2p1) {
+                        return;
                     }
-                    EventIdxInfo i1{};
-                    i1.eventIdx = curIdx;
-                    EventIdxInfo i2{};
-                    i2.eventIdx = hIdx;
-                    if (IsMemSpaceOverlap(ce, he, i1, i2)) {
-                        raceMemEventsIdx.emplace_back(i1, i2);
+                    const uint32_t e2p2 = clockAt(histIdx, histSlot); // e2 在 p2 上的 vector time
+                    if (!VectorClock::IsNotHappensBefore(e1p1, e2p1, e1p2, e2p2)) {
+                        return;
                     }
+                    emitRace(histIdx);
+                };
+
+                if (buckets.IsHuge(bucket)) {
+                    for (uint32_t histIdx : buckets.HugeActive(bucket)) {
+                        checkClockConcurrent(histIdx);
+                    }
+                    continue;
+                }
+
+                const std::vector<uint32_t> &bucketMembers = buckets.Members(bucket);
+                if (activeCount <= kSmallActiveLimit) {
+                    for (uint32_t rank = 1U; rank <= activeCount; ++rank) {
+                        checkClockConcurrent(bucketMembers[buckets.SelectActive(bucket, rank)]);
+                    }
+                    continue;
+                }
+
+                // 桶内成员的 e2p2、e2p1 均随事件索引单调不减，可二分出候选区间。
+                auto findFirstClockAtLeast = [&](uint32_t clockSlot, uint32_t minValue) -> uint32_t {
+                    uint32_t lo = 0U;
+                    uint32_t hi = memberCount;
+                    while (lo < hi) {
+                        const uint32_t mid = lo + ((hi - lo) >> 1U);
+                        if (clockAt(bucketMembers[mid], clockSlot) >= minValue) {
+                            hi = mid;
+                        } else {
+                            lo = mid + 1U;
+                        }
+                    }
+                    return lo;
+                };
+
+                // e2p2 <= e1p2 是 HB 前缀，整体跳过；等值段也要跳过，得到第一个 e2p2 > e1p2。
+                const uint32_t firstHistOwnTimeAtLeastCur = findFirstClockAtLeast(histSlot, e1p2);
+                uint32_t firstHistNotSeenByCur = firstHistOwnTimeAtLeastCur;
+                while (firstHistNotSeenByCur < memberCount &&
+                    clockAt(bucketMembers[firstHistNotSeenByCur], histSlot) == e1p2) {
+                    ++firstHistNotSeenByCur;
+                }
+                // e2p1 >= e1p1 表示历史事件已看到当前事件，从这里开始不再是候选。
+                const uint32_t firstHistSeesCur = findFirstClockAtLeast(curSlot, e1p1);
+                if (firstHistNotSeenByCur >= firstHistSeesCur) {
+                    continue;
+                }
+
+                const uint32_t activeBefore = buckets.ActiveCountBefore(bucket, firstHistNotSeenByCur);
+                const uint32_t activeInRange = buckets.ActiveCountBefore(bucket, firstHistSeesCur) - activeBefore;
+                for (uint32_t rank = 1U; rank <= activeInRange; ++rank) {
+                    emitRace(bucketMembers[buckets.SelectActive(bucket, activeBefore + rank)]);
                 }
             }
         }
-        auto &bucket = (curWrite ? wB[mt][sub] : rB[mt][sub]);
-        posInBucket[curIdx] = static_cast<uint32_t>(bucket.size());
-        bucket.push_back(curIdx);
+        buckets.Activate(curIdx);
     }
 }
 
