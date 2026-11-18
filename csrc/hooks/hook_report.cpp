@@ -294,15 +294,23 @@ bool HookReport::ReportLogString(std::string const &logString)
     return WriteOrdered(std::move(buffer));
 }
 
-bool HookReport::ReportMalloc(uint64_t addr, uint64_t size, MemInfoSrc memInfoSrc)
-{
-    ReportAddrInfo addrInfo{addr, size, memInfoSrc};
+bool HookReport::ReportBufferedMemOp(MemOpType opType, const ReportAddrInfo &addrInfo, MemInfoSrc memInfoSrc) {
     /// 如果当前来源已确定，则直接上报
     if (determined_) {
-        if (memInfoSrc == memInfoSrc_) {
-            return ReportMalloc(addrInfo);
-        } else {
+        if (memInfoSrc != memInfoSrc_) {
             return true;
+        }
+        switch (opType) {
+        case MemOpType::MALLOC:
+            return ReportMalloc(addrInfo);
+        case MemOpType::FREE:
+            return ReportFree(addrInfo);
+        case MemOpType::LOAD:
+            return ReportLoad(addrInfo);
+        case MemOpType::STORE:
+            return ReportStore(addrInfo);
+        default:
+            return false;
         }
     }
 
@@ -310,72 +318,27 @@ bool HookReport::ReportMalloc(uint64_t addr, uint64_t size, MemInfoSrc memInfoSr
     memInfoSrc_ = std::max(memInfoSrc_, memInfoSrc);
 
     /// 当前来源未确定则将记录缓存
-    MemOpRecord record = CreateRecord(MemOpType::MALLOC, addrInfo);
+    MemOpRecord record = CreateRecord(opType, addrInfo);
     recordBuffer_.emplace_back(memInfoSrc, record);
     return true;
 }
 
-bool HookReport::ReportFree(uint64_t addr, MemInfoSrc memInfoSrc)
-{
-    ReportAddrInfo addrInfo{addr, memInfoSrc};
-    /// 如果当前来源已确定，则直接上报
-    if (determined_) {
-        if (memInfoSrc == memInfoSrc_) {
-            return ReportFree(addrInfo);
-        } else {
-            return true;
-        }
-    }
+bool HookReport::ReportMalloc(uint64_t addr, uint64_t size, MemInfoSrc memInfoSrc) {
+    return ReportBufferedMemOp(MemOpType::MALLOC, ReportAddrInfo{addr, size, memInfoSrc}, memInfoSrc);
+}
 
-    /// 根据优先级规则更新当前采用的 MemInfoFrom
-    memInfoSrc_ = std::max(memInfoSrc_, memInfoSrc);
-
-    /// 当前来源未确定则将记录缓存
-    MemOpRecord record = CreateRecord(MemOpType::FREE, addrInfo);
-    recordBuffer_.emplace_back(memInfoSrc, record);
-    return true;
+bool HookReport::ReportFree(uint64_t addr, MemInfoSrc memInfoSrc) {
+    return ReportBufferedMemOp(MemOpType::FREE, ReportAddrInfo{addr, memInfoSrc}, memInfoSrc);
 }
 
 bool HookReport::ReportLoad(uint64_t addr, uint64_t size, MemInfoSrc memInfoSrc)
 {
-    ReportAddrInfo addrInfo{addr, size, memInfoSrc};
-    /// 如果当前来源已确定，则直接上报
-    if (determined_) {
-        if (memInfoSrc == memInfoSrc_) {
-            return ReportLoad(addrInfo);
-        } else {
-            return true;
-        }
-    }
-
-    /// 根据优先级规则更新当前采用的 MemInfoFrom
-    memInfoSrc_ = std::max(memInfoSrc_, memInfoSrc);
-
-    /// 当前来源未确定则将记录缓存
-    MemOpRecord record = CreateRecord(MemOpType::LOAD, addrInfo);
-    recordBuffer_.emplace_back(memInfoSrc, record);
-    return true;
+    return ReportBufferedMemOp(MemOpType::LOAD, ReportAddrInfo{addr, size, memInfoSrc}, memInfoSrc);
 }
 
 bool HookReport::ReportStore(uint64_t addr, uint64_t size, MemInfoSrc memInfoSrc)
 {
-    ReportAddrInfo addrInfo{addr, size, memInfoSrc};
-    /// 如果当前来源已确定，则直接上报
-    if (determined_) {
-        if (memInfoSrc == memInfoSrc_) {
-            return ReportStore(addrInfo);
-        } else {
-            return true;
-        }
-    }
-
-    /// 根据优先级规则更新当前采用的 MemInfoFrom
-    memInfoSrc_ = std::max(memInfoSrc_, memInfoSrc);
-
-    /// 当前来源未确定则将记录缓存
-    MemOpRecord record = CreateRecord(MemOpType::STORE, addrInfo);
-    recordBuffer_.emplace_back(memInfoSrc, record);
-    return true;
+    return ReportBufferedMemOp(MemOpType::STORE, ReportAddrInfo{addr, size, memInfoSrc}, memInfoSrc);
 }
 
 void HookReport::DetermineMemInfoSrc(void)

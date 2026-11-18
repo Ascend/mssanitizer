@@ -64,6 +64,114 @@ void ReportDeviceTypeAfterSetDevice() {
     HookReport::Instance().ReportDeviceType(deviceType);
 }
 
+constexpr aclError HOOK_INVALID_RET = static_cast<aclError>(-1);
+
+/// 从真实 libascendcl.so 解析同名符号，失败时统一记录日志。
+template <typename Fn> Fn GetAclVallina(char const *symbol) {
+    Fn fn = AclSymbol::Instance().Get<Fn>(symbol);
+    if (fn == nullptr) {
+        HOOK_LOG("vallina func get FAILED");
+    }
+    return fn;
+}
+
+void ReportMallocAddr(void **devPtr, size_t size, char const *filename, int lineno) {
+    if (devPtr == nullptr) {
+        HOOK_LOG("[ERROR] Argument devPtr should not be a null pointer.");
+        return;
+    }
+    uint64_t addr = reinterpret_cast<uint64_t>(*devPtr);
+    ReportAddrInfo addrInfo{addr, size, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+    if (!HookReport::Instance().ReportMalloc(addrInfo, -1)) {
+        HOOK_LOG("report to saniziter FAILED");
+    }
+}
+
+void ReportFreeAddr(void *devPtr, char const *filename, int lineno) {
+    uint64_t addr = reinterpret_cast<uint64_t>(devPtr);
+    ReportAddrInfo addrInfo{addr, 0, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+    if (!HookReport::Instance().ReportFree(addrInfo)) {
+        HOOK_LOG("report to saniziter FAILED");
+    }
+}
+
+void ReportMemsetIfDevice(void *devPtr, size_t count, char const *filename, int lineno) {
+    uint64_t addr = reinterpret_cast<uint64_t>(devPtr);
+    if (!halIsDevicePtr(addr)) {
+        return;
+    }
+    ReportAddrInfo addrInfo{addr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+    if (!HookReport::Instance().ReportMemset(addrInfo)) {
+        HOOK_LOG("report to saniziter FAILED");
+    }
+}
+
+void ReportMemcpyTransfer(
+    uint64_t dstAddr, uint64_t srcAddr, size_t count, aclrtMemcpyKind kind, char const *filename, int lineno) {
+    HookReport &report = HookReport::Instance();
+    bool result = true;
+    if (kind == ACL_MEMCPY_HOST_TO_DEVICE || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
+        ReportAddrInfo addrInfo{dstAddr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+        result &= report.ReportStore(addrInfo);
+    }
+    if (kind == ACL_MEMCPY_DEVICE_TO_HOST || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
+        ReportAddrInfo addrInfo{srcAddr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+        result &= report.ReportLoad(addrInfo);
+    }
+    if (!result) {
+        HOOK_LOG("report to saniziter FAILED");
+    }
+}
+
+void ReportMemcpy2dTransfer(uint64_t dstAddr, uint64_t dpitch, uint64_t srcAddr, uint64_t spitch, size_t width,
+    size_t height, aclrtMemcpyKind kind, char const *filename, int lineno) {
+    HookReport &report = HookReport::Instance();
+    bool result = true;
+    for (uint64_t r = 0; r < height; ++r) {
+        if (r >= MAX_MEMORY_RECORD_HEIGHT) { // height max num MAX_MEMORY_RECORD_HEIGHT Prevent infinite loops
+            HOOK_LOG("halMemcpy2D pCopy copy2d height exceed 60*1024^3, skip others memcpy2d check");
+            return;
+        }
+        if (kind == ACL_MEMCPY_HOST_TO_DEVICE || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
+            ReportAddrInfo addrInfo{
+                dstAddr + r * dpitch, width, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+            result &= report.ReportStore(addrInfo);
+        }
+        if (kind == ACL_MEMCPY_DEVICE_TO_HOST || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
+            ReportAddrInfo addrInfo{
+                srcAddr + r * spitch, width, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
+            result &= report.ReportLoad(addrInfo);
+        }
+    }
+    if (!result) {
+        HOOK_LOG("report to saniziter FAILED");
+    }
+}
+
+template <typename Fn>
+aclError MallocAndReport(
+    char const *symbol, void **devPtr, size_t size, aclrtMemMallocPolicy policy, char const *filename, int lineno) {
+    auto vallina = GetAclVallina<Fn>(symbol);
+    if (vallina == nullptr) {
+        return HOOK_INVALID_RET;
+    }
+    aclError ret = vallina(devPtr, size, policy);
+    if (ret != 0) {
+        return ret;
+    }
+    ReportMallocAddr(devPtr, size, filename, lineno);
+    return ret;
+}
+
+template <typename Fn> aclError FreeAndReport(char const *symbol, void *devPtr, char const *filename, int lineno) {
+    auto vallina = GetAclVallina<Fn>(symbol);
+    if (vallina == nullptr) {
+        return HOOK_INVALID_RET;
+    }
+    ReportFreeAddr(devPtr, filename, lineno);
+    return vallina(devPtr);
+}
+
 }  // namespace Dummy
 
 aclError aclrtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy)
@@ -88,10 +196,9 @@ aclError aclrtSetDevice(int32_t deviceId) { return sanitizerRtSetDevice(deviceId
 aclError sanitizerRtSetDevice(int32_t deviceId, char const *filename, int lineno) {
     (void)filename;
     (void)lineno;
-    auto vallina = AclSymbol::Instance().Get<AclrtSetDevice>("aclrtSetDevice");
+    auto vallina = GetAclVallina<AclrtSetDevice>("aclrtSetDevice");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(deviceId);
@@ -140,10 +247,9 @@ aclError aclrtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, size_t sp
 
 aclError sanitizerDvppMalloc(void **devPtr, size_t size, char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AcldvppMalloc>("acldvppMalloc");
+    auto vallina = GetAclVallina<AcldvppMalloc>("acldvppMalloc");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(devPtr, size);
@@ -152,139 +258,43 @@ aclError sanitizerDvppMalloc(void **devPtr, size_t size, char const *filename, i
     }
 
     /// report to sanitizer here
-    if (!devPtr) {
-        HOOK_LOG("[ERROR] Argument devPtr should not be a null pointer.");
-        return ret;
-    }
-    uint64_t addr = reinterpret_cast<uint64_t>(*devPtr);
-    ReportAddrInfo addrInfo{addr, size, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-    if (!HookReport::Instance().ReportMalloc(addrInfo, -1)) {
-        HOOK_LOG("vallina func get FAILED");
-    }
-
+    ReportMallocAddr(devPtr, size, filename, lineno);
     return ret;
 }
 
 aclError sanitizerRtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy,
                            char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclMalloc>("aclrtMalloc");
-    if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
-    }
-
-    aclError ret = vallina(devPtr, size, policy);
-    if (ret != 0) {
-        return ret;
-    }
-
-    /// report to sanitizer here
-    if (!devPtr) {
-        HOOK_LOG("[ERROR] Argument devPtr should not be a null pointer.");
-        return ret;
-    }
-    uint64_t addr = reinterpret_cast<uint64_t>(*devPtr);
-    ReportAddrInfo addrInfo{addr, size, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-    if (!HookReport::Instance().ReportMalloc(addrInfo, -1)) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
-
-    return ret;
+    return MallocAndReport<AclMalloc>("aclrtMalloc", devPtr, size, policy, filename, lineno);
 }
 
 aclError sanitizerRtMallocCached(void **devPtr, size_t size, aclrtMemMallocPolicy policy,
                                  char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclMallocCached>("aclrtMallocCached");
-    if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
-    }
-
-    aclError ret = vallina(devPtr, size, policy);
-    if (ret != 0) {
-        return ret;
-    }
-
-    /// report to sanitizer here
-    if (!devPtr) {
-        HOOK_LOG("[ERROR] Argument devPtr should not be a null pointer.");
-        return ret;
-    }
-    uint64_t addr = reinterpret_cast<uint64_t>(*devPtr);
-    ReportAddrInfo addrInfo{addr, size, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-    if (!HookReport::Instance().ReportMalloc(addrInfo, -1)) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
-
-    return ret;
+    return MallocAndReport<AclMallocCached>("aclrtMallocCached", devPtr, size, policy, filename, lineno);
 }
 
 aclError sanitizerRtFree(void *devPtr, char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclrtFree>("aclrtFree");
-    if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
-    }
-
-    /// report to sanitizer here
-    uint64_t addr = reinterpret_cast<uint64_t>(devPtr);
-    ReportAddrInfo addrInfo{addr, 0, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-    if (!HookReport::Instance().ReportFree(addrInfo)) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
-
-    aclError ret = vallina(devPtr);
-    if (ret != 0) {
-        return ret;
-    }
-
-    return ret;
+    return FreeAndReport<AclrtFree>("aclrtFree", devPtr, filename, lineno);
 }
 
 aclError sanitizerRtFreeWithDevSync(void *devPtr, char const *filename, int lineno) {
-    auto vallina = AclSymbol::Instance().Get<AclrtFreeWithDevSync>("aclrtFreeWithDevSync");
-    if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
-    }
-
-    /// report to sanitizer here
-    uint64_t addr = reinterpret_cast<uint64_t>(devPtr);
-    ReportAddrInfo addrInfo{addr, 0, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-    if (!HookReport::Instance().ReportFree(addrInfo)) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
-
-    aclError ret = vallina(devPtr);
-    if (ret != 0) {
-        return ret;
-    }
-
-    return ret;
+    return FreeAndReport<AclrtFreeWithDevSync>("aclrtFreeWithDevSync", devPtr, filename, lineno);
 }
 
 aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t count,
                            char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclrtMemset>("aclrtMemset");
+    auto vallina = GetAclVallina<AclrtMemset>("aclrtMemset");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(devPtr, maxCount, value, count);
 
     /// report to sanitizer here
-    uint64_t addr = reinterpret_cast<uint64_t>(devPtr);
-    if (halIsDevicePtr(addr)) {
-        ReportAddrInfo addrInfo{addr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-        if (!HookReport::Instance().ReportMemset(addrInfo)) {
-            HOOK_LOG("report to saniziter FAILED");
-        }
-    }
+    ReportMemsetIfDevice(devPtr, count, filename, lineno);
 
     return ret;
 }
@@ -292,22 +302,15 @@ aclError sanitizerRtMemset(void *devPtr, size_t maxCount, int32_t value, size_t 
 aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, size_t count, aclrtStream stream,
                                 char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclrtMemsetAsync>("aclrtMemsetAsync");
+    auto vallina = GetAclVallina<AclrtMemsetAsync>("aclrtMemsetAsync");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(devPtr, maxCount, value, count, stream);
 
     /// report to sanitizer here
-    uint64_t addr = reinterpret_cast<uint64_t>(devPtr);
-    if (halIsDevicePtr(addr)) {
-        ReportAddrInfo addrInfo{addr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-        if (!HookReport::Instance().ReportMemset(addrInfo)) {
-            HOOK_LOG("report to saniziter FAILED");
-        }
-    }
+    ReportMemsetIfDevice(devPtr, count, filename, lineno);
 
     return ret;
 }
@@ -315,30 +318,16 @@ aclError sanitizerRtMemsetAsync(void *devPtr, size_t maxCount, int32_t value, si
 aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind,
                            char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclrtMemcpy>("aclrtMemcpy");
+    auto vallina = GetAclVallina<AclrtMemcpy>("aclrtMemcpy");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(dst, destMax, src, count, kind);
 
     /// report to sanitizer here
-    uint64_t dstAddr = reinterpret_cast<uint64_t>(dst);
-    uint64_t srcAddr = reinterpret_cast<uint64_t>(src);
-    HookReport& report = HookReport::Instance();
-    bool result = true;
-    if (kind == ACL_MEMCPY_HOST_TO_DEVICE || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-        ReportAddrInfo addrInfo{dstAddr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-        result &= report.ReportStore(addrInfo);
-    }
-    if (kind == ACL_MEMCPY_DEVICE_TO_HOST || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-        ReportAddrInfo addrInfo{srcAddr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-        result &= report.ReportLoad(addrInfo);
-    }
-    if (!result) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
+    ReportMemcpyTransfer(
+        reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src), count, kind, filename, lineno);
 
     return ret;
 }
@@ -346,30 +335,16 @@ aclError sanitizerRtMemcpy(void *dst, size_t destMax, const void *src, size_t co
 aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size_t count,
                                 aclrtMemcpyKind kind, aclrtStream stream, char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclrtMemcpyAsync>("aclrtMemcpyAsync");
+    auto vallina = GetAclVallina<AclrtMemcpyAsync>("aclrtMemcpyAsync");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(dst, destMax, src, count, kind, stream);
 
     /// report to sanitizer here
-    uint64_t dstAddr = reinterpret_cast<uint64_t>(dst);
-    uint64_t srcAddr = reinterpret_cast<uint64_t>(src);
-    HookReport& report = HookReport::Instance();
-    bool result = true;
-    if (kind == ACL_MEMCPY_HOST_TO_DEVICE || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-        ReportAddrInfo addrInfo{dstAddr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-        result &= report.ReportStore(addrInfo);
-    }
-    if (kind == ACL_MEMCPY_DEVICE_TO_HOST || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-        ReportAddrInfo addrInfo{srcAddr, count, static_cast<uint64_t>(lineno), filename, MemInfoSrc::ACL};
-        result &= report.ReportLoad(addrInfo);
-    }
-    if (!result) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
+    ReportMemcpyTransfer(
+        reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src), count, kind, filename, lineno);
 
     return ret;
 }
@@ -377,38 +352,16 @@ aclError sanitizerRtMemcpyAsync(void *dst, size_t destMax, const void *src, size
 aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height,
                              aclrtMemcpyKind kind, char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclrtMemcpy2d>("aclrtMemcpy2d");
+    auto vallina = GetAclVallina<AclrtMemcpy2d>("aclrtMemcpy2d");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(dst, dpitch, src, spitch, width, height, kind);
 
     /// report to sanitizer here
-    uint64_t dstAddr = reinterpret_cast<uint64_t>(dst);
-    uint64_t srcAddr = reinterpret_cast<uint64_t>(src);
-    HookReport& report = HookReport::Instance();
-    bool result = true;
-    for (uint64_t r = 0; r < height; ++r) {
-        if (r >= MAX_MEMORY_RECORD_HEIGHT) {  // height max num MAX_MEMORY_RECORD_HEIGHT Prevent infinite loops
-            HOOK_LOG("halMemcpy2D pCopy copy2d height exceed 60*1024^3, skip others memcpy2d check");
-            return ret;
-        }
-        if (kind == ACL_MEMCPY_HOST_TO_DEVICE || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-            ReportAddrInfo addrInfo{dstAddr + r * dpitch, width, static_cast<uint64_t>(lineno),
-                filename, MemInfoSrc::ACL};
-            result &= report.ReportStore(addrInfo);
-        }
-        if (kind == ACL_MEMCPY_DEVICE_TO_HOST || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-            ReportAddrInfo addrInfo{srcAddr + r * spitch, width, static_cast<uint64_t>(lineno),
-                filename, MemInfoSrc::ACL};
-            result &= report.ReportLoad(addrInfo);
-        }
-    }
-    if (!result) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
+    ReportMemcpy2dTransfer(reinterpret_cast<uint64_t>(dst), dpitch, reinterpret_cast<uint64_t>(src), spitch, width,
+        height, kind, filename, lineno);
 
     return ret;
 }
@@ -416,10 +369,9 @@ aclError sanitizerRtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t s
 aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height,
                                   aclrtMemcpyKind kind, aclrtStream stream, char const *filename, int lineno)
 {
-    auto vallina = AclSymbol::Instance().Get<AclrtMemcpy2dAsync>("aclrtMemcpy2dAsync");
+    auto vallina = GetAclVallina<AclrtMemcpy2dAsync>("aclrtMemcpy2dAsync");
     if (vallina == nullptr) {
-        HOOK_LOG("vallina func get FAILED");
-        return -1;
+        return HOOK_INVALID_RET;
     }
 
     aclError ret = vallina(dst, dpitch, src, spitch, width, height, kind, stream);
@@ -430,30 +382,9 @@ aclError sanitizerRtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, siz
     }
 
     /// report to sanitizer here
-    uint64_t dstAddr = reinterpret_cast<uint64_t>(dst);
-    uint64_t srcAddr = reinterpret_cast<uint64_t>(src);
-    HookReport& report = HookReport::Instance();
-    bool result = true;
     // 地址参数回绕防护
-    for (uint64_t r = 0; r < height; ++r) {
-        if (r >= MAX_MEMORY_RECORD_HEIGHT) {  // height max num MAX_MEMORY_RECORD_HEIGHT Prevent infinite loops
-            HOOK_LOG("halMemcpy2D pCopy copy2d height exceed 60*1024^3, skip others memcpy2d check");
-            return ret;
-        }
-        if (kind == ACL_MEMCPY_HOST_TO_DEVICE || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-            ReportAddrInfo addrInfo{dstAddr + r * dpitch, width, static_cast<uint64_t>(lineno),
-                filename, MemInfoSrc::ACL};
-            result &= report.ReportStore(addrInfo);
-        }
-        if (kind == ACL_MEMCPY_DEVICE_TO_HOST || kind == ACL_MEMCPY_DEVICE_TO_DEVICE) {
-            ReportAddrInfo addrInfo{srcAddr + r * spitch, width, static_cast<uint64_t>(lineno),
-                filename, MemInfoSrc::ACL};
-            result &= report.ReportLoad(addrInfo);
-        }
-    }
-    if (!result) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
+    ReportMemcpy2dTransfer(reinterpret_cast<uint64_t>(dst), dpitch, reinterpret_cast<uint64_t>(src), spitch, width,
+        height, kind, filename, lineno);
 
     return ret;
 }

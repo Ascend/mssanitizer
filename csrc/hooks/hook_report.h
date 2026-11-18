@@ -89,6 +89,8 @@ private:
     HookReport(void);
     // 本进程的 HookReport 连接按发送顺序给每个完整业务包编号。
     bool WriteOrdered(std::string message);
+    // 来源未确定时缓存、确定后直接上报的公共流程。
+    bool ReportBufferedMemOp(MemOpType opType, const ReportAddrInfo &addrInfo, MemInfoSrc memInfoSrc);
 
 private:
     std::unique_ptr<CommunicationClient> client_;

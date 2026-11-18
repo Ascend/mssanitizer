@@ -19,7 +19,8 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
-#include <cstring>
+#include <functional>
+#include <utility>
 
 #include "communication.h"
 #include "config.h"
@@ -65,10 +66,11 @@ public:
 
     void Stop() { server_.Close(); }
 
-    bool WaitForMessage(std::string &outMsg)
-    {
+    bool WaitForMessage(std::string &outMsg) { return TryWaitForMessage(outMsg, std::chrono::seconds(5)); }
+
+    bool TryWaitForMessage(std::string &outMsg, std::chrono::milliseconds timeout) {
         std::unique_lock<std::mutex> lock(mtx_);
-        if (!cv_.wait_for(lock, std::chrono::seconds(5), [this] { return !receivedMsgs_.empty(); })) {
+        if (!cv_.wait_for(lock, timeout, [this] { return !receivedMsgs_.empty(); })) {
             return false;
         }
         outMsg = receivedMsgs_.front();
@@ -82,6 +84,98 @@ private:
     std::condition_variable cv_;
     std::vector<std::string> receivedMsgs_;
 };
+
+// 从上报消息中取出内存记录的操作类型，用于校验 Report* 到 MemOpType 的映射。
+MemOpType ParseMemOpType(const std::string &msg) {
+    if (msg.size() < sizeof(PacketHead) + sizeof(SanitizerRecord)) {
+        return MemOpType::INVALID;
+    }
+    SanitizerRecord record{};
+    std::memcpy(&record, msg.data() + sizeof(PacketHead), sizeof(record));
+    return record.payload.memoryRecord.type;
+}
+
+// 服务端按 socket 读取片段入队，测试侧累积到完整业务包后再解析，避免短读/粘包误判。
+class PacketReader {
+public:
+    using Source = std::function<bool(std::string &)>;
+
+    explicit PacketReader(Source source) : source_(std::move(source)) {}
+
+    bool NextSanitizerRecord(std::string &packet) {
+        constexpr size_t headerSize = sizeof(PacketHead);
+        constexpr size_t packetSize = sizeof(PacketHead) + sizeof(SanitizerRecord);
+        while (true) {
+            if (received_.size() < headerSize) {
+                if (!Fill()) {
+                    return false;
+                }
+                continue;
+            }
+            PacketHead head{};
+            std::memcpy(&head, received_.data(), headerSize);
+            if (head.type != PacketType::SANITIZER_RECORD) {
+                return false;
+            }
+            if (received_.size() < packetSize) {
+                if (!Fill()) {
+                    return false;
+                }
+                continue;
+            }
+            packet.assign(received_.data(), packetSize);
+            received_.erase(0, packetSize);
+            return true;
+        }
+    }
+
+    bool HasBufferedBytes() const { return !received_.empty(); }
+
+private:
+    bool Fill() {
+        std::string part;
+        if (!source_(part)) {
+            return false;
+        }
+        received_ += part;
+        return true;
+    }
+
+    Source source_;
+    std::string received_;
+};
+
+TEST(PacketReader, handles_split_and_coalesced_packets) {
+    auto MakePacket = [](MemOpType type) {
+        SanitizerRecord record{};
+        record.version = RecordVersion::MEMORY_RECORD;
+        record.payload.memoryRecord.type = type;
+        return Serialize(PacketHead{PacketType::SANITIZER_RECORD, 0, 0}, record);
+    };
+    const std::string first = MakePacket(MemOpType::LOAD);
+    const std::string second = MakePacket(MemOpType::STORE);
+    const std::string chunks[] = {
+        first.substr(0, 5),
+        first.substr(5) + second.substr(0, 10),
+        second.substr(10),
+    };
+    size_t index = 0;
+    constexpr size_t chunkCount = sizeof(chunks) / sizeof(chunks[0]);
+    PacketReader reader([&chunks, &index](std::string &part) {
+        if (index >= chunkCount) {
+            return false;
+        }
+        part = chunks[index++];
+        return true;
+    });
+    std::string packet;
+    ASSERT_TRUE(reader.NextSanitizerRecord(packet));
+    EXPECT_EQ(ParseMemOpType(packet), MemOpType::LOAD);
+    ASSERT_TRUE(reader.NextSanitizerRecord(packet));
+    EXPECT_EQ(ParseMemOpType(packet), MemOpType::STORE);
+    EXPECT_FALSE(reader.HasBufferedBytes());
+    EXPECT_FALSE(reader.NextSanitizerRecord(packet));
+}
 
 class HookReportTest : public testing::Test {
 protected:
@@ -264,14 +358,27 @@ TEST_F(HookReportTest, ReportMemOps_with_addrInfo_expect_success)
     auto &hook = HookReport::Instance();
     ReportAddrInfo addrInfo(0x1000, 0x100, 10, "test.cpp", MemInfoSrc::RT);
     ReportAddrInfo addrInfoFree(0x1000, MemInfoSrc::RT);
-    for (int i = 0; i < 3; ++i) {
-        std::string msg;
+    const MemOpType expected[] = {
+        MemOpType::MALLOC, MemOpType::FREE, MemOpType::STORE, MemOpType::LOAD, MemOpType::STORE};
+    PacketReader reader(
+        [this](std::string &part) { return server_->TryWaitForMessage(part, std::chrono::seconds(5)); });
+    for (int i = 0; i < 5; ++i) {
         switch (i) {
             case 0: EXPECT_TRUE(hook.ReportMalloc(addrInfo, 1)); break;
             case 1: EXPECT_TRUE(hook.ReportFree(addrInfoFree)); break;
-            default: EXPECT_TRUE(hook.ReportMemset(addrInfo)); break;
+            case 2:
+                EXPECT_TRUE(hook.ReportMemset(addrInfo));
+                break;
+            case 3:
+                EXPECT_TRUE(hook.ReportLoad(addrInfo));
+                break;
+            default:
+                EXPECT_TRUE(hook.ReportStore(addrInfo));
+                break;
         }
-        ASSERT_TRUE(server_->WaitForMessage(msg));
+        std::string packet;
+        ASSERT_TRUE(reader.NextSanitizerRecord(packet));
+        EXPECT_EQ(ParseMemOpType(packet), expected[i]);
     }
 }
 
@@ -279,27 +386,61 @@ TEST_F(HookReportTest, ReportMemOps_with_addrInfo_expect_success)
 TEST_F(HookReportTest, ReportOps_determine_src_expect_correct)
 {
     auto &hook = HookReport::Instance();
-    for (int i = 0; i < 2; ++i) {
+    const MemOpType expected[] = {MemOpType::MALLOC, MemOpType::FREE, MemOpType::LOAD, MemOpType::STORE};
+    PacketReader reader(
+        [this](std::string &part) { return server_->TryWaitForMessage(part, std::chrono::seconds(5)); });
+    for (int i = 0; i < 4; ++i) {
         hook.determined_ = false;
         hook.memInfoSrc_ = MemInfoSrc::RT;
         hook.recordBuffer_.clear();
-        if (i == 0) {
+        switch (i) {
+        case 0:
             EXPECT_TRUE(hook.ReportMalloc(0x1000, 0x100, MemInfoSrc::RT));
-        } else {
+            break;
+        case 1:
             EXPECT_TRUE(hook.ReportFree(0x1000, MemInfoSrc::RT));
+            break;
+        case 2:
+            EXPECT_TRUE(hook.ReportLoad(0x1000, 0x100, MemInfoSrc::RT));
+            break;
+        default:
+            EXPECT_TRUE(hook.ReportStore(0x1000, 0x100, MemInfoSrc::RT));
+            break;
         }
         EXPECT_EQ(hook.recordBuffer_.size(), 1U);
         hook.DetermineMemInfoSrc();
         EXPECT_TRUE(hook.recordBuffer_.empty());
-        std::string msg;
-        ASSERT_TRUE(server_->WaitForMessage(msg));
+        std::string packet;
+        ASSERT_TRUE(reader.NextSanitizerRecord(packet));
+        EXPECT_EQ(ParseMemOpType(packet), expected[i]);
     }
     hook.determined_ = true;
     hook.memInfoSrc_ = MemInfoSrc::RT;
-    EXPECT_TRUE(hook.ReportMalloc(0x1000, 0x100, MemInfoSrc::RT));
-    std::string msg;
-    ASSERT_TRUE(server_->WaitForMessage(msg));
+    const MemOpType determinedExpected[] = {MemOpType::MALLOC, MemOpType::FREE, MemOpType::LOAD, MemOpType::STORE};
+    for (int i = 0; i < 4; ++i) {
+        switch (i) {
+        case 0:
+            EXPECT_TRUE(hook.ReportMalloc(0x1000, 0x100, MemInfoSrc::RT));
+            break;
+        case 1:
+            EXPECT_TRUE(hook.ReportFree(0x1000, MemInfoSrc::RT));
+            break;
+        case 2:
+            EXPECT_TRUE(hook.ReportLoad(0x1000, 0x100, MemInfoSrc::RT));
+            break;
+        default:
+            EXPECT_TRUE(hook.ReportStore(0x1000, 0x100, MemInfoSrc::RT));
+            break;
+        }
+        std::string packet;
+        ASSERT_TRUE(reader.NextSanitizerRecord(packet));
+        EXPECT_EQ(ParseMemOpType(packet), determinedExpected[i]);
+    }
+    EXPECT_FALSE(reader.HasBufferedBytes());
+    /// 来源不一致时不应上报任何记录。
     EXPECT_TRUE(hook.ReportMalloc(0x1000, 0x100, MemInfoSrc::BYPASS));
+    std::string unexpectedMsg;
+    EXPECT_FALSE(server_->TryWaitForMessage(unexpectedMsg, std::chrono::milliseconds(100)));
 }
 
 // 独立HookReport入口由自己的发送锁和计数器管理；普通包与binary包必须连续完整。

@@ -49,6 +49,23 @@ template <typename Func> Func RealHal(char const *symbol) {
     return fn;
 }
 
+/// 上报 HAL 侧一次一维 memcpy 的读写访问，仅统计确实位于 device 的地址。
+void ReportHalMemcpy(DVdeviceptr dst, DVdeviceptr src, size_t byteCount) {
+    ReportAddrInfo addrInfo{dst, byteCount, MemInfoSrc::HAL};
+    HookReport &report = HookReport::Instance();
+    bool result = true;
+    if (halIsDevicePtr(dst)) {
+        result &= report.ReportStore(addrInfo);
+    }
+    if (halIsDevicePtr(src)) {
+        addrInfo.addr = src;
+        result &= report.ReportLoad(addrInfo);
+    }
+    if (!result) {
+        HOOK_LOG("report to saniziter FAILED");
+    }
+}
+
 } // namespace
 
 inline int32_t GetMallocModuleId(unsigned long long flag)
@@ -129,20 +146,8 @@ drvError_t drvMemcpy(DVdeviceptr dst, size_t destMax, DVdeviceptr src, size_t by
         return DRV_ERROR_INNER_ERR;
     }
     drvError_t ret = real(dst, destMax, src, byteCount);
-    ReportAddrInfo addrInfo{dst, byteCount, MemInfoSrc::HAL};
     /// report to sanitizer here
-    HookReport& report = HookReport::Instance();
-    bool result = true;
-    if (halIsDevicePtr(dst)) {
-        result &= report.ReportStore(addrInfo);
-    }
-    if (halIsDevicePtr(src)) {
-        addrInfo.addr = src;
-        result &= report.ReportLoad(addrInfo);
-    }
-    if (!result) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
+    ReportHalMemcpy(dst, src, byteCount);
 
     return ret;
 }
@@ -155,20 +160,8 @@ drvError_t halMemCpyAsync(DVdeviceptr dst, size_t destMax, DVdeviceptr src,
         return DRV_ERROR_INNER_ERR;
     }
     drvError_t ret = real(dst, destMax, src, byteCount, copyFd);
-    ReportAddrInfo addrInfo{dst, byteCount, MemInfoSrc::HAL};
     /// report to sanitizer here
-    HookReport& report = HookReport::Instance();
-    bool result = true;
-    if (halIsDevicePtr(dst)) {
-        result &= report.ReportStore(addrInfo);
-    }
-    if (halIsDevicePtr(src)) {
-        addrInfo.addr = src;
-        result &= report.ReportLoad(addrInfo);
-    }
-    if (!result) {
-        HOOK_LOG("report to saniziter FAILED");
-    }
+    ReportHalMemcpy(dst, src, byteCount);
 
     return ret;
 }
