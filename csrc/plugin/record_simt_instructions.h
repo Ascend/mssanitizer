@@ -47,11 +47,7 @@ AICORE_FUNC_HEAD void SimtRecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace sp
     record.threadLoc.idZ = GetThreadIdZ();
 #endif
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.Check<recordType>(record);
@@ -81,11 +77,7 @@ AICORE_FUNC_HEAD void SimtRecordAtomEvent(EXTRA_PARAMS_DEC, AddressSpace space, 
     record.threadLoc.idZ = GetThreadIdZ();
 #endif
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.Check<recordType>(record);
@@ -108,11 +100,7 @@ AICORE_FUNC_HEAD void SimtRecordSyncEvent(EXTRA_PARAMS_DEC)
     record.threadLoc.idZ = GetThreadIdZ();
 #endif
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     // 保留recordType和record的目的是为了指令落盘，便于后续定位问题
@@ -143,11 +131,7 @@ AICORE_FUNC_HEAD void SimtRecordEmptyEvent<RecordType::SIMT_END>(EXTRA_PARAMS_DE
     record.threadLoc.idZ = GetThreadIdZ();
 #endif
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.CopyShadowMemoryToMemInfo(record);

@@ -41,22 +41,25 @@ TEST(SyncInstructions, dbi_ffts_cross_core_sync_expect_get_correct_records)
     uint8_t mode = 0;
     uint8_t id = 2;
     uint64_t config = (0x1 | (mode << 4) | (id << 8));
+    constexpr uint64_t expectedPc = 0x1234;
     std::vector<uint8_t> memInfo(MEM_INFO_SIZE, 0);
-    __sanitizer_report_set_cross_core(memInfo.data(), record.location.pc, 0, record.dst, config);
+    __sanitizer_report_set_cross_core(memInfo.data(), expectedPc, 0, record.dst, config);
     RecordBlockHead blockHead = *reinterpret_cast<RecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead));
     ASSERT_EQ(blockHead.recordWriteCount, 0);
 
     RecordGlobalHead head{};
     head.checkParms.initcheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
-    __sanitizer_report_set_cross_core(memInfo.data(), record.location.pc, 0, record.dst, config);
+    __sanitizer_report_set_cross_core(memInfo.data(), expectedPc, 0, record.dst, config);
     ASSERT_EQ(blockHead.recordWriteCount, 0);
 
     head.checkParms.racecheck = true;
     std::copy_n(reinterpret_cast<uint8_t const*>(&head), sizeof(RecordGlobalHead), memInfo.begin());
-    __sanitizer_report_set_cross_core(memInfo.data(), record.location.pc, 0, record.dst, config);
+    __sanitizer_report_set_cross_core(memInfo.data(), expectedPc, 0, record.dst, config);
     uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
     auto x = reinterpret_cast<Sanitizer::FftsSyncRecord *>(ptr + sizeof(RecordType));
+    /// 先独立断言入口把调用方 PC 写入最终记录，再复制 location 比较其余字段，避免自证。
+    EXPECT_EQ(x->location.pc, expectedPc);
     record.location = x->location;
     ASSERT_TRUE(CheckRecordEqual<RecordType::FFTS_SYNC>(ptr, record));
 }

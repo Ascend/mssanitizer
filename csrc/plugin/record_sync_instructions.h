@@ -36,11 +36,7 @@ AICORE_FUNC_HEAD void RecordSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, pipe_t tpip
 
     uint64_t blockIdx = GetBlockIdx();
     auto record = SyncRecord {};
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.src = static_cast<PipeType>(pipe);
     record.dst = static_cast<PipeType>(tpipe);
@@ -63,11 +59,7 @@ AICORE_FUNC_HEAD void RecordBufEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_t buf
 
     uint64_t blockIdx = GetBlockIdx();
     auto record = BufRecord {};
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.pipe = static_cast<PipeType>(pipe);
     record.bufId = bufId;
@@ -91,11 +83,7 @@ AICORE_FUNC_HEAD void RecordSoftSyncEvent(EXTRA_PARAMS_DEC, int32_t waitBlockIdx
 
     uint64_t blockIdx = GetBlockIdx();
     auto record = SoftSyncRecord{};
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.waitCoreID = waitBlockIdx;
     record.usedCores = usedCores;
@@ -120,11 +108,7 @@ AICORE_FUNC_HEAD void RecordHardSyncEvent(EXTRA_PARAMS_DEC,
 
     uint64_t blockIdx = GetBlockIdx();
     auto record = HardSyncRecord {};
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.src = static_cast<PipeType>(pipe);
     record.dst = static_cast<PipeType>(tpipe);
@@ -148,11 +132,7 @@ AICORE_FUNC_HEAD void RecordPipeBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe)
 
     uint64_t blockIdx = GetBlockIdx();
     PipeBarrierRecord record;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.pipe = static_cast<PipeType>(pipe);
 
@@ -173,11 +153,7 @@ AICORE_FUNC_HEAD void RecordDsbBarrierEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint6
 
     uint64_t blockIdx = GetBlockIdx();
     DsbRecord record;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.pipe = static_cast<PipeType>(pipe);
     record.memDomain = static_cast<MemDsbType>(memDomain);
@@ -199,11 +175,7 @@ AICORE_FUNC_HEAD void RecordFftsSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, uint64_
 
     uint64_t blockIdx = GetBlockIdx();
     FftsSyncRecord record;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.dst = static_cast<PipeType>(pipe);
     constexpr uint64_t modeShift = 4;
@@ -226,11 +198,7 @@ AICORE_FUNC_HEAD void RecordWaitFlagDevEvent(EXTRA_PARAMS_DEC, int64_t flagID)
 
     uint64_t blockIdx = GetBlockIdx();
     WaitFlagDevRecord record;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.flagID = flagID;
 
@@ -251,11 +219,7 @@ AICORE_FUNC_HEAD void RecordWaitFlagDevEventWithPipe(EXTRA_PARAMS_DEC, pipe_t pi
 
     uint64_t blockIdx = GetBlockIdx();
     WaitFlagDevPipeRecord record;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.flagID = flagID;
     record.pipe = static_cast<PipeType>(pipe);
@@ -277,11 +241,7 @@ AICORE_FUNC_HEAD void RecordIntraBlockSyncEvent(EXTRA_PARAMS_DEC, pipe_t pipe, u
 
     uint64_t blockIdx = GetBlockIdx();
     IntraBlockSyncRecord record;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.pipe = static_cast<PipeType>(pipe);
     record.syncID = syncID;
@@ -297,11 +257,7 @@ AICORE_FUNC_HEAD void RecordSetAtomicEvent(EXTRA_PARAMS_DEC, AtomicMode mode)
 
     uint64_t blockIdx = GetBlockIdx();
     AtomicModeRecord record;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.mode = mode;
 

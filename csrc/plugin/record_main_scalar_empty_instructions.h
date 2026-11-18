@@ -35,11 +35,7 @@ AICORE_FUNC_HEAD void MainScalarRecordEmptyEvent(EXTRA_PARAMS_DEC)
     MainScalarEmptyRecord record{};
     record.location.blockId = blockIdx;
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<recordType>(record);

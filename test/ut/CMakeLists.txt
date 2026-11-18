@@ -21,6 +21,11 @@ target_compile_options(mssanitizer_test PRIVATE "-D__BUILD_TESTS__")
 set(test_utility_header ./test_utility)
 target_include_directories(mssanitizer_test PUBLIC ${asan_test_header} ${gtest_header} ${test_utility_header}
   ${hooks_header} ${JSON_INC} ${SANITIZER_THIRDPARTY_INCLUDE} ${SANITIZER_INC_DIR})
+
+# 动态插桩分支需要单独编译单元，验证 SET_RECORD_LOCATION 只写 pc。
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/plugin/test_record_location_dynamic_probe.cpp" PROPERTIES
+  COMPILE_DEFINITIONS "BUILD_DYNAMIC_PROBE")
+
 target_link_libraries(mssanitizer_test gtest_main c_sec stdc++fs dl)
 
 # 仅布局桥接 TU 使用 common 的 Host 协议；产品目标不引入这组头路径。

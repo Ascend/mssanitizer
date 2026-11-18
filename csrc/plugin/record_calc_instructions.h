@@ -140,11 +140,7 @@ AICORE_FUNC_HEAD void RecordUnaryOpFunc(EXTRA_PARAMS_DEC,
     auto record = UnaryOpRecord {};
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src =  reinterpret_cast<uint64_t>(src);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.dstBlockStride = dstBlockStride;
     record.srcBlockStride = srcBlockStride;
@@ -178,11 +174,7 @@ AICORE_FUNC_HEAD void RecordVecDupEvent(EXTRA_PARAMS_DEC, __ubuf__ T *dst,
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.dataBits = DataBitSize<T>::value;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.repeat = repeat;
     record.dstBlockStride = dstBlockStride;
@@ -222,11 +214,7 @@ AICORE_FUNC_HEAD void RecordBinaryOpFunc(EXTRA_PARAMS_DEC,
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src0 = reinterpret_cast<uint64_t>(src0);
     record.src1 = reinterpret_cast<uint64_t>(src1);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.dstBlockStride = dstBlockStride;
     record.src0BlockStride = src0BlockStride;
@@ -271,11 +259,7 @@ AICORE_FUNC_HEAD void RecordReduceOpFunc(EXTRA_PARAMS_DEC,
     auto record = ReduceOpRecord {};
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src = reinterpret_cast<uint64_t>(src);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.dstRepeatStride = dstRepeatStride;
     record.srcBlockStride = srcBlockStride;
@@ -324,11 +308,7 @@ AICORE_FUNC_HEAD void RecordVRegPropCoorOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst
     record.dataType = dataType;
     record.repeat = repeat;
     record.regionRange = regionRange;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.isExtract = isExtract;
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<recordType>(record);
@@ -476,11 +456,7 @@ AICORE_FUNC_HEAD void RecordVreducev2Func(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __u
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src0 = reinterpret_cast<uint64_t>(src0);
     record.src1 = reinterpret_cast<uint64_t>(src1);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.repeat = repeat;
     record.src0BlockStride = src0BlockStride;
@@ -541,11 +517,7 @@ AICORE_FUNC_HEAD void RecordVmrgsort4OpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, _
         uint64_t blockIdx = GetBlockIdx();
         Recorder recorder(memInfo, blockIdx);
         auto record = ElementRecord();
-#if !defined(BUILD_DYNAMIC_PROBE)
-        record.location.fileNo = fileNo;
-        record.location.lineNo = lineNo;
-#endif
-        record.location.pc = static_cast<uint64_t>(pc);
+        SET_RECORD_LOCATION(record);
         record.location.blockId = blockIdx;
         record.blockSize = srcUnit;
         record.dataBits = DataBitSize<T>::value;
@@ -627,11 +599,7 @@ AICORE_FUNC_HEAD void RecordVmrgsort4C310(EXTRA_PARAMS_DEC, uint64_t dst, uint64
     Recorder recorder(memInfo, blockIdx);
     Vms4v2RecordA5 record{};
     record.detailedDataType = detailedDataType;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.dst = dst;
     for (uint32_t i = 0; i < Vms4v2RecordA5::ARRAY_NUM; ++i) {
@@ -865,11 +833,7 @@ AICORE_FUNC_HEAD void RecordVgatherOpFunc(EXTRA_PARAMS_DEC, __ubuf__ T *dst, __u
     record.instrName = instrName;
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src = reinterpret_cast<uint64_t>(src);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.offsetAddr = offsetAddr;
     record.location.blockId = blockIdx;
     record.dstRepeatStride = dstRepeatStride;
@@ -961,11 +925,7 @@ AICORE_FUNC_HEAD void RecordMatrixMulOpFunc(EXTRA_PARAMS_DEC,
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src0 = reinterpret_cast<uint64_t>(src0);
     record.src1 = reinterpret_cast<uint64_t>(src1);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.m = m;
     record.k = k;
@@ -1105,11 +1065,7 @@ AICORE_FUNC_HEAD void RecordMmadA5(EXTRA_PARAMS_DEC, __cc__ void *dst, __ca__ vo
     record.dst = GetUintFromConf<31, 0>(reinterpret_cast<uint64_t>(dst));
     record.src0 = reinterpret_cast<uint64_t>(src0);
     record.src1 = reinterpret_cast<uint64_t>(src1);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.m = GetUintFromConf<11, 0>(config);
     record.k = GetUintFromConf<23, 12>(config);
     record.n = GetUintFromConf<35, 24>(config);
@@ -1200,11 +1156,7 @@ AICORE_FUNC_HEAD void RecordScatterVnchwconvEvent(EXTRA_PARAMS_DEC, ub_addr8_t d
     record.srcHighHalf = srcHighHalf;
     record.dataType = dataType;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     recorder.DumpRecord<RecordType::SCATTERVNCHWCONV>(record);
 }
 
@@ -1238,11 +1190,7 @@ AICORE_FUNC_HEAD void RecordScatterVnchwconvA5(EXTRA_PARAMS_DEC, ub_addr8_t dst,
     record.dstHighHalf = dstHighHalf;
     record.srcHighHalf = srcHighHalf;
     record.dataType = dataType;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     recorder.DumpRecord<RecordType::SCATTERVNCHWCONV_A5>(record);
 }
@@ -1259,11 +1207,7 @@ AICORE_FUNC_HEAD void RecordVbs32A5(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src
     Vbs32Record record{};
     record.dataType = dataType;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-        record.location.fileNo = fileNo;
-        record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.dst = dst;
     record.src0 = src0;
     record.src1 = src1;

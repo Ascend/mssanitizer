@@ -33,9 +33,20 @@
 #if defined(BUILD_DYNAMIC_PROBE)
 #define EXTRA_PARAMS memInfo, pc, bid
 #define EXTRA_PARAMS_DEC __gm__ uint8_t *memInfo, int64_t pc, uint32_t bid
+// 动态插桩没有源码行列号，只记录 pc。
+#define SET_RECORD_LOCATION(record) \
+    do { \
+        (record).location.pc = static_cast<uint64_t>(pc); \
+    } while (0)
 #else
 #define EXTRA_PARAMS memInfo, fileNo, lineNo, pc
 #define EXTRA_PARAMS_DEC __gm__ uint8_t *memInfo, uint64_t fileNo, uint64_t lineNo, int64_t pc
+#define SET_RECORD_LOCATION(record) \
+    do { \
+        (record).location.fileNo = fileNo; \
+        (record).location.lineNo = lineNo; \
+        (record).location.pc = static_cast<uint64_t>(pc); \
+    } while (0)
 #endif
 
 // AICORE 平台使用的 SANITIZER_REPORT 宏，用于声明桩函数接口

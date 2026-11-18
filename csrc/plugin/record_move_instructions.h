@@ -111,11 +111,7 @@ AICORE_FUNC_HEAD void RecordLoadStoreEvent(EXTRA_PARAMS_DEC, AddressSpace space,
     record.location.blockId = blockIdx;
     record.space = space;
     record.dataType = dataType;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     recorder.DumpRecord<recordType>(record);
 }
@@ -142,11 +138,7 @@ AICORE_FUNC_HEAD void RecordDmaMovEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<RecordType::DMA_MOV>(record);
@@ -190,11 +182,7 @@ AICORE_FUNC_HEAD void RecordDmaMovConvReluEvent(EXTRA_PARAMS_DEC, uint64_t dst, 
     record.srcMemType = srcMemType;
     record.srcDataType = srcDataType;
     record.dstDataType = dstDataType;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<recordType>(record);
@@ -230,11 +218,7 @@ AICORE_FUNC_HEAD void RecordDmaMovNd2nzEvent(EXTRA_PARAMS_DEC,
     auto record = DmaMovNd2nzRecord {};
     record.dst = GmAddrSubOffset(memInfo, dstMemType, dst);
     record.src = GmAddrSubOffset(memInfo, srcMemType, src);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.ndNum = ndNum;
     record.nValue = nValue;
@@ -289,11 +273,7 @@ AICORE_FUNC_HEAD void DumpDmaMovNd2nzDavRecord(EXTRA_PARAMS_DEC,
     record.dst = GmAddrSubOffset(memInfo, dstMemType, dst);
     record.src = GmAddrSubOffset(memInfo, srcMemType, src);
     record.location.blockId = static_cast<uint16_t>(blockIdx);
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.loop1SrcStride = GetUintFromConf<43, 4>(xm);
     record.nValue = GetUintFromConf<63, 48>(xm);
     record.dValue = GetUintFromConf<20, 0>(xt);
@@ -373,11 +353,7 @@ AICORE_FUNC_HEAD void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     record.blockSize = MATRIX_FRACTAL_SIZE;
     record.addrCalMode = calMode;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
@@ -417,11 +393,7 @@ AICORE_FUNC_HEAD void RecordLoad2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
     record.blockSize = MATRIX_FRACTAL_SIZE * mStep;
     record.addrCalMode = srcStride > 0 ? AddrCalMode::INC : AddrCalMode::DEC;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
@@ -451,11 +423,7 @@ AICORE_FUNC_HEAD void RecordLoadL12DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
     record.transposeMode = transposeMode;
 
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.dstMemType = dstMemType;
 
@@ -484,11 +452,7 @@ AICORE_FUNC_HEAD void RecordLoadL1Mx2DV2Event(EXTRA_PARAMS_DEC, uint64_t dst,
     record.dstStride = (config1 >> 16) & 0xFFFF;
 
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.dstMemType = dstMemType;
 
@@ -519,11 +483,7 @@ AICORE_FUNC_HEAD void RecordLoadL12DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t ds
     }
 
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<RecordType::LOAD_L1_2D_TRANSPOSE>(record);
@@ -542,11 +502,7 @@ AICORE_FUNC_HEAD void RecordLoadSmaskEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     record.dst = dst;
     record.src = GmAddrSubOffset(memInfo, srcMemType, src);
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     /// 计算ceil({{Xt[11], Xt[6:0]}/16}*32B为实际搬运长度
     record.smaskSize = ((((config & 0x800) >> 4) | (config & 0x7f)) + 15U) / 16U * 32U;
@@ -578,11 +534,7 @@ AICORE_FUNC_HEAD void RecordLoad2DEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     record.blockSize = MATRIX_FRACTAL_SIZE;
     record.addrCalMode = calMode;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
@@ -607,11 +559,7 @@ AICORE_FUNC_HEAD void RecordLoad2DSparseEvent(EXTRA_PARAMS_DEC, uint64_t dst, ui
     record.startId = startId;
     record.repeat = repeat;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
@@ -651,11 +599,7 @@ AICORE_FUNC_HEAD void RecordLoad2DTransposeEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     record.dstFracStride = dstFracStride;
     record.dataType = dataType;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
@@ -693,11 +637,7 @@ AICORE_FUNC_HEAD void RecordDecompressHeaderEvent(EXTRA_PARAMS_DEC, uint64_t src
     record.src = GmAddrSubOffset(memInfo, srcMemType, src);
     record.location.blockId = blockIdx;
     record.nBlock = nBlock;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
 
@@ -731,11 +671,7 @@ AICORE_FUNC_HEAD void RecordBroadcastEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint6
     record.srcGap = srcGap;
     record.dstGap = dstGap;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcDataType = srcDataType;
     record.dstDataType = dstDataType;
@@ -780,11 +716,7 @@ AICORE_FUNC_HEAD void RecordDcPreloadEvent(EXTRA_PARAMS_DEC, AddressSpace space,
     record.space = space;
     record.addr = GmAddrSubOffset(memInfo, MemType::GM, src);
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<RecordType::DC_PRELOAD>(record);
@@ -816,11 +748,7 @@ AICORE_FUNC_HEAD void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
     record.dstStartPointK = posK;
     record.dstStartPointM = posM;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.dataType = dataType;
 
     record.srcMemType = srcMemType;
@@ -851,11 +779,7 @@ AICORE_FUNC_HEAD void RecordLoadAWinograd(EXTRA_PARAMS_DEC,
     record.dstStartPointK = (config1 >> 20) & 0x0FFF;
     record.dstStartPointM = (config1 >> 48) & 0x0FFF;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.dataType = dataType;
 
     record.srcMemType = srcMemType;
@@ -889,11 +813,7 @@ AICORE_FUNC_HEAD void RecordLoadBWinograd(EXTRA_PARAMS_DEC,
     record.srcRptStride = srcRepeatStride;
     record.dstRptStride = dstRepeatStride;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
@@ -918,11 +838,7 @@ AICORE_FUNC_HEAD void RecordLoadBWinograd(EXTRA_PARAMS_DEC, __cb__ T* dst, __cbu
     record.srcRptStride = (config >> 16) & 0xFFFF;
     record.dstRptStride = (config >> 32) & 0xFF;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
@@ -980,11 +896,7 @@ AICORE_FUNC_HEAD void RecordLoad3DEvent(EXTRA_PARAMS_DEC,
     record.dst = dst;
     record.src = src;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.dataType = dataType;
@@ -1052,11 +964,7 @@ AICORE_FUNC_HEAD void RecordLoad3DV2Event(EXTRA_PARAMS_DEC,
     record.dst = dst;
     record.src = src & 0xffffffff;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.dataType = dataType;
@@ -1090,11 +998,7 @@ AICORE_FUNC_HEAD void RecordSet2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int64_t r
     auto config = static_cast<uint64_t>(repeat);
     record.dst = dst;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.repeat = config & 0x7FFF;
     record.dstBlockNum = (config >> 16) & 0x7FFF;
     record.dstBlockSize = dstMemType == MemType::L1 ? 32 : 512;
@@ -1116,11 +1020,7 @@ AICORE_FUNC_HEAD void RecordSetL12DEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_
     auto config = static_cast<uint64_t>(src);
     record.dst = dst;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.repeat = config & 0x7FFF;
     record.dstBlockNum = (config >> 16) & 0x7FFF;
     record.repeatGap = (config >> 32) & 0x7FFF;
@@ -1145,11 +1045,7 @@ AICORE_FUNC_HEAD void RecordM200Set2DEvent(EXTRA_PARAMS_DEC, uint64_t dst, int64
     uint8_t repeat = static_cast<uint64_t>(config) & 0xFF;
     record.dst = dst;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.repeat = 1;
     record.dstBlockNum = 1;
     record.dstBlockSize = 512 * repeat;
@@ -1176,11 +1072,7 @@ AICORE_FUNC_HEAD void RecordLoadImageEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     LoadImageRecord record = LoadImageRecord {};
     record.dst = dst;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.dstMemType = dstMemType;
     record.dataType = dataType;
     record.horSize = horSize;
@@ -1235,11 +1127,7 @@ AICORE_FUNC_HEAD void RecordMovAlignEvent(EXTRA_PARAMS_DEC,
     record.location.blockId = blockIdx;
     record.leftPaddingNum = leftPaddingNum;
     record.rightPaddingNum = rightPaddingNum;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.dataType = dataType;
 
     Recorder recorder(memInfo, blockIdx);
@@ -1336,11 +1224,7 @@ AICORE_FUNC_HEAD void RecordMovAlignEventV2(EXTRA_PARAMS_DEC, uint64_t dst,
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.dataType = dataType;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     RecordMovAlignEventV2Stride<srcMemType, dstMemType>(recorder, config, strideConfig, record);
     recorder.DumpRecord<RecordType::MOV_ALIGN_V2>(record);
@@ -1356,11 +1240,7 @@ AICORE_FUNC_HEAD void RecordNdDMAOut2Ub(EXTRA_PARAMS_DEC, uint64_t dst,
     uint64_t blockIdx = GetBlockIdx();
     Recorder recorder(memInfo, blockIdx);
     NdDMAOut2UbRecord record{};
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
     record.dst = dst;
     record.src = GmAddrSubOffset(memInfo, MemType::GM, src);
@@ -1415,11 +1295,7 @@ AICORE_FUNC_HEAD void RecordMovBtEvent(EXTRA_PARAMS_DEC,
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.convControl = convControl;
 
     Recorder recorder(memInfo, blockIdx);
@@ -1520,11 +1396,7 @@ AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t 
 
     uint64_t blockIdx = GetBlockIdx();
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     // ndNum/srcNdStride/dstNdStride来自ND_PARA，从桩函数set_nd_para中获取
@@ -1587,11 +1459,7 @@ AICORE_FUNC_HEAD void RecordMovFpV2Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_
 
     uint64_t blockIdx = GetBlockIdx();
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     // ndNum/srcNdStride/dstNdStride来自LOOP3_PARA，从桩函数set_loop3_para中获取
@@ -1642,11 +1510,7 @@ AICORE_FUNC_HEAD void RecordLoadB2Event(EXTRA_PARAMS_DEC, __cb__ T *dst, __cbuf_
 
     uint64_t blockID = GetBlockIdx();
     auto record = LoadB2Record{};
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.repeat = repeat;
     record.dst = reinterpret_cast<uint64_t>(dst);
     record.src = reinterpret_cast<uint64_t>(src);
@@ -1680,11 +1544,7 @@ AICORE_FUNC_HEAD void RecordScalarRedAndAtomEvent(EXTRA_PARAMS_DEC, uint64_t add
     record.addr = addr;
     record.size = size;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.detailedDataType = detailedDataType;
 
     Recorder recorder(memInfo, blockIdx);
@@ -1711,11 +1571,7 @@ AICORE_FUNC_HEAD void RecordDmaMovL1OrUbEvent(EXTRA_PARAMS_DEC, uint64_t dst,
     record.srcMemType = srcMemType;
     record.dstMemType = dstMemType;
     record.location.blockId = blockIdx;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<recordType>(record);
@@ -1779,11 +1635,7 @@ AICORE_FUNC_HEAD void RecordDmaMovL1BtEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint
     record.dataType = dataType;
     record.cvtEnable = GetUintFromConf<3, 3>(config);
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
 
     Recorder recorder(memInfo, blockIdx);
@@ -1806,11 +1658,7 @@ AICORE_FUNC_HEAD void RecordDmaMovL1FbEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint
     record.dstStride = GetUintFromConf<63, 48>(config);
     record.dstMemBlock = GetUintFromConf<19, 16>(dst);
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
 
     Recorder recorder(memInfo, blockIdx);
@@ -1830,11 +1678,7 @@ AICORE_FUNC_HEAD void RecordDcciEvent(
     record.entire = entire;
     record.type = type;
 
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
 
     Recorder recorder(memInfo, blockIdx);

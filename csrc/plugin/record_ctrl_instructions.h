@@ -32,11 +32,7 @@ AICORE_FUNC_HEAD void DumpRegisterSetRecord(EXTRA_PARAMS_DEC, RegisterSetRecord 
     }
 
     uint64_t blockIdx = GetBlockIdx();
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.location.blockId = blockIdx;
 
     Recorder recorder(memInfo, blockIdx);
@@ -159,11 +155,7 @@ AICORE_FUNC_HEAD void RecordCmpMask(EXTRA_PARAMS_DEC, __ubuf__ void *addr, Acces
     record.size = size;
     record.location.blockId = blockIdx;
     record.accessType = accessType;
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
 
     Recorder recorder(memInfo, blockIdx);
     recorder.DumpRecord<RecordType::CMPMASK_OP>(record);
@@ -184,10 +176,10 @@ AICORE_FUNC_HEAD uint64_t ExtractVaBits(uint64_t value)
     if ((idx != 0) && (idx != 2) && (idx != 4) && (idx != 6)) {
         return; // 可扩展错误处理
     }
- 
+
     uint64_t* target = nullptr; // 目标uint64_t指针
     uint8_t blockIdx = 0;       // 块索引（0或2，表示起始的16位块）
- 
+
     constexpr uint32_t lowIdxMax = 2;
     constexpr uint32_t highIdxOffset = 4;
     // 确定目标块（l64/h64）和块索引
@@ -198,16 +190,16 @@ AICORE_FUNC_HEAD uint64_t ExtractVaBits(uint64_t value)
         target = &va.h64;
         blockIdx = idx - highIdxOffset;
     }
- 
+
     // 构建32位数据：Xn在低16位，Xm在高16位
     uint32_t data32 = (uint32_t(Xm) << 16) | Xn;
 
     // 计算位移量（以0位为起点）
     uint8_t shift = blockIdx * 16;
- 
+
     // 创建掩码：清除目标32位，其他位保留
     uint64_t mask = ~(uint64_t(0xFFFFFFFF) << shift);
- 
+
     // 写入数据
     *target = (*target & mask) | (uint64_t(data32) << shift);
 }
@@ -280,11 +272,7 @@ AICORE_FUNC_HEAD void RecordLdva(EXTRA_PARAMS_DEC, ub_addr8_t dst, uint64_t src,
     LoadStoreRecord record {};
     record.addr = src;
     record.size = 32U; // 固定读32B
-#if !defined(BUILD_DYNAMIC_PROBE)
-    record.location.fileNo = fileNo;
-    record.location.lineNo = lineNo;
-#endif
-    record.location.pc = static_cast<uint64_t>(pc);
+    SET_RECORD_LOCATION(record);
     record.space = AddressSpace::UB;
     record.location.blockId= blockIdx;
     record.alignSize = 32U;
