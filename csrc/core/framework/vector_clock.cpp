@@ -17,40 +17,52 @@
 
 #include "vector_clock.h"
 
+#include <cstddef>
+#include <cstdint>
+
 namespace Sanitizer {
 
-void VectorClock::UpdateLogicTime(VectorTime &t, uint32_t pipe)
-{
-    t[pipe]++;
+void VectorClock::UpdateLogicTime(VectorTime &t, uint32_t pipe) {
+    t.Set(pipe, t.Get(pipe) + 1U);
 }
 
-/// 更新完向量时间之后，对应pipe的逻辑时间需要 +1
-void VectorClock::UpdateVectorTime(const VectorTime &in, VectorTime &out)
-{
-    auto count = std::min(in.size(), out.size());
-    for (uint32_t i = 0; i < count; i++) {
-        out[i] = std::max(in[i], out[i]);
+void VectorClock::UpdateVectorTime(const VectorTime &in, VectorTime &out) {
+    constexpr std::size_t kLinearMergeMin = 64U;
+    const std::size_t inN = in.heap ? in.heapEntries.size() : in.n;
+    if (inN >= kLinearMergeMin) {
+        out.MergeMax(in);
+        return;
     }
+    // 分量较少时逐分量 Set 更省（避免线性归并的统计/搬移开销）
+    if (!in.heap) {
+        for (uint16_t k = 0; k < in.n; ++k) { out.Set(in.idx[k], in.val[k]); }
+        return;
+    }
+    for (const auto &e : in.heapEntries) { out.Set(e.first, e.second); }
 }
 
-bool VectorClock::IsNotHappensBefore(const VectorTime &t1, const VectorTime &t2, uint32_t t1Pipe, uint32_t t2Pipe)
-{
-    /// 两个事件在两者各自的pipe上，其中一个pipe上的向量时间大于另外一个事件、另外一个pipe上的向量时间小于另外一个事件，
-    /// 说明两个事件存在并发关系
-    return (t1[t1Pipe] < t2[t1Pipe] && t1[t2Pipe] > t2[t2Pipe]) || (t1[t2Pipe] < t2[t2Pipe] && t1[t1Pipe] > t2[t1Pipe]);
+bool VectorClock::IsNotHappensBefore(const VectorTime &t1, const VectorTime &t2,
+    uint32_t t1Pipe, uint32_t t2Pipe) {
+    // 短路：t1Pipe 分量相等时两式首项均不成立，直接 false（省 2 次 Get）
+    const uint32_t a1 = t1.Get(t1Pipe);
+    const uint32_t a2 = t2.Get(t1Pipe);
+    if (a1 == a2) {
+        return false;
+    }
+    const uint32_t b1 = t1.Get(t2Pipe);
+    const uint32_t b2 = t2.Get(t2Pipe);
+    return IsNotHappensBefore(a1, a2, b1, b2);
 }
 
-bool VectorClock::IsHappensBefore(const VectorTime &t1, const VectorTime &t2, uint32_t t1Pipe, uint32_t t2Pipe) {
-    return t1[t1Pipe] <= t2[t1Pipe] && t1[t2Pipe] <= t2[t2Pipe];
+bool VectorClock::IsHappensBefore(const VectorTime &t1, const VectorTime &t2,
+    uint32_t t1Pipe, uint32_t t2Pipe) {
+    if (t1.Get(t1Pipe) > t2.Get(t1Pipe)) {
+        return false;
+    }
+    return t1.Get(t2Pipe) <= t2.Get(t2Pipe);
 }
 
-uint32_t VectorClock::GetLogicTime(const VectorTime &t, uint32_t pipe)
-{
-    return t[pipe];
-}
-
-bool VectorClock::IsEqual(const VectorTime &t1, const VectorTime &t2)
-{
+bool VectorClock::IsEqual(const VectorTime &t1, const VectorTime &t2) {
     return (t1 == t2);
 }
 }

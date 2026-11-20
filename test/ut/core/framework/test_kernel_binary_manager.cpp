@@ -15,6 +15,7 @@
  * ------------------------------------------------------------------------- */
 
 #include <gtest/gtest.h>
+#include <memory>
 #include <vector>
 
 #include "core/framework/kernel_binary_manager.h"
@@ -23,18 +24,20 @@ using namespace Sanitizer;
 
 TEST(KernelBinaryManager, get_not_exist_kernel_name_expect_get_failed)
 {
-    std::vector<char> binary;
+    KernelBinaryManager::BinaryPtr binary;
     ASSERT_FALSE(KernelBinaryManager::Instance().Get("unknown", binary));
 }
 
 TEST(KernelBinaryManager, get_exist_kernel_name_expect_get_success_and_get_correct_binary)
 {
-    std::vector<char> binary = {'1', '2', '3'};
+    std::vector<char> data{'1', '2', '3'};
+    auto binary = BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(data));
     KernelBinaryManager::Instance().Set("kernel", binary);
 
-    std::vector<char> binaryGet;
+    KernelBinaryManager::BinaryPtr binaryGet;
     ASSERT_TRUE(KernelBinaryManager::Instance().Get("kernel", binaryGet));
-    ASSERT_EQ(binaryGet, binary);
+    ASSERT_NE(binaryGet, nullptr);
+    ASSERT_EQ(std::vector<char>(binaryGet->data(), binaryGet->data() + binaryGet->size()), data);
 
     KernelBinaryManager::Instance().Clear();
 }

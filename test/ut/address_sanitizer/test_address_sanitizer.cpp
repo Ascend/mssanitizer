@@ -36,9 +36,125 @@
 #include "core/framework/utility/ustring.h"
 #include "core/framework/utility/path.h"
 #undef private
+#include "core/framework/config_manager.h"
+
+namespace Sanitizer {
+void MergeRecords(std::vector<MemOpRecord> &records);
+}
 
 namespace {
 using namespace Sanitizer;
+
+void ExpectSameConvertedRecords(const std::vector<MemOpRecord> &actual, const std::vector<MemOpRecord> &expected)
+{
+    ASSERT_EQ(actual.size(), expected.size());
+    for (size_t i = 0; i < actual.size(); ++i) {
+        SCOPED_TRACE(i);
+        const auto &a = actual[i];
+        const auto &e = expected[i];
+        EXPECT_EQ(a.serialNo, e.serialNo);
+        EXPECT_EQ(a.type, e.type);
+        EXPECT_EQ(a.coreId, e.coreId);
+        EXPECT_EQ(a.moduleId, e.moduleId);
+        EXPECT_EQ(a.srcAddr, e.srcAddr);
+        EXPECT_EQ(a.dstAddr, e.dstAddr);
+        EXPECT_EQ(a.srcSpace, e.srcSpace);
+        EXPECT_EQ(a.dstSpace, e.dstSpace);
+        EXPECT_EQ(a.memSize, e.memSize);
+        EXPECT_EQ(a.lineNo, e.lineNo);
+        EXPECT_EQ(a.blockType, e.blockType);
+        EXPECT_EQ(a.pc, e.pc);
+        EXPECT_EQ(a.side, e.side);
+        EXPECT_EQ(a.mainScalarPc, e.mainScalarPc);
+        EXPECT_EQ(a.ignoreIllegalCheck, e.ignoreIllegalCheck);
+        EXPECT_EQ(a.isSimt, e.isSimt);
+        EXPECT_EQ(a.recordType, e.recordType);
+    }
+}
+
+TEST(InitcheckConversion, incremental_merge_matches_expand_then_merge_for_varied_strides_and_locations)
+{
+    std::mt19937 rng(20261020);
+    std::vector<SanEvent> events;
+    for (uint64_t i = 0; i < 2000; ++i) {
+        SanEvent event{};
+        event.type = i % 17 == 0 ? EventType::SYNC_EVENT : EventType::MEM_EVENT;
+        event.serialNo = i + 1;
+        event.loc.pc = 4 * i;
+        event.loc.coreId = i % 4;
+        event.loc.lineNo = i % 100;
+        event.loc.blockType = BlockType::AIVEC;
+        event.recordType = RecordType::LOAD;
+        auto &mem = event.eventInfo.memInfo;
+        mem.addr = 0x1000 + (rng() % 64) * 8;
+        mem.memType = i % 3 ? MemType::GM : MemType::UB;
+        mem.opType = static_cast<AccessType>(rng() % 3);
+        mem.blockSize = 8;
+        mem.blockNum = 1 + rng() % 4;
+        mem.blockStride = rng() % 4;
+        mem.repeatTimes = rng() % 6;
+        mem.repeatStride = rng() % 5;
+        events.push_back(event);
+    }
+    MemOpRecord prefix{};
+    prefix.type = MemOpType::LOAD;
+    prefix.dstSpace = AddressSpace::GM;
+    prefix.dstAddr = 0x800;
+    prefix.memSize = 8;
+    prefix.serialNo = 9000;
+    std::vector<MemOpRecord> expected{prefix};
+    prefix.dstAddr += 8;
+    expected.push_back(prefix);
+    std::vector<MemOpRecord> actual = expected;
+    for (const auto &event : events) {
+        AddressSanitizer::ConvertSanEventToMemOpRecords(event, expected);
+    }
+    MergeRecords(expected);
+
+    AddressSanitizer sanitizer;
+    sanitizer.config_.initCheck = true;
+    sanitizer.ConvertEventsToRecords(events, actual);
+    ExpectSameConvertedRecords(actual, expected);
+}
+
+TEST(InitcheckConversion, incremental_merge_retains_first_location_and_simt_flags_across_event_boundaries)
+{
+    std::vector<ShadowMemoryRecord> memory(2);
+    for (size_t i = 0; i < memory.size(); ++i) {
+        memory[i].addr = 0x1000 + i * 8;
+        memory[i].size = 8;
+        memory[i].accessType = AccessType::READ;
+        memory[i].location.pc = 0x100 + i * 4;
+        memory[i].threadLoc.mainScalarPc = 0x200 + i * 4;
+    }
+    SanEvent dynamic{};
+    dynamic.type = EventType::DYNAMIC_MEM_EVENT;
+    dynamic.serialNo = 42;
+    dynamic.eventInfo.dynamicOpInfo.dynamicType = RecordType::SIMT_ENTRY;
+    dynamic.eventInfo.dynamicOpInfo.memType = MemType::GM;
+    dynamic.eventInfo.dynamicOpInfo.count = 1;
+    dynamic.eventInfo.dynamicOpInfo.buffer = memory.data();
+    SanEvent second = dynamic;
+    second.serialNo = 43;
+    second.eventInfo.dynamicOpInfo.buffer = memory.data() + 1;
+    std::vector<SanEvent> events{dynamic, second};
+    std::vector<MemOpRecord> expected;
+    AddressSanitizer::ConvertSanEventToMemOpRecords(dynamic, expected);
+    AddressSanitizer::ConvertSanEventToMemOpRecords(second, expected);
+    MergeRecords(expected);
+    ASSERT_EQ(expected.size(), 1U);
+
+    AddressSanitizer sanitizer;
+    sanitizer.config_.initCheck = true;
+    std::vector<MemOpRecord> actual;
+    sanitizer.ConvertEventsToRecords(events, actual);
+    ExpectSameConvertedRecords(actual, expected);
+    ASSERT_EQ(actual.size(), 1U);
+    EXPECT_EQ(actual[0].pc, 0x100U);
+    EXPECT_EQ(actual[0].mainScalarPc, 0x200U);
+    EXPECT_TRUE(actual[0].isSimt);
+    EXPECT_TRUE(actual[0].ignoreIllegalCheck);
+}
 
 static constexpr uint64_t LOCAL_BLOCK_SIZE = 32;
 static constexpr uint64_t SRC0_ADDR = 0x11;
@@ -381,6 +497,58 @@ TEST(AddressSanitizer, malloc_use_and_forget_free_expect_no_mem_not_use)
     asan->Exit();
     ASSERT_TRUE(msg.find("memory leaks") != std::string::npos);
     ASSERT_TRUE(msg.find("Unused memory") == std::string::npos);
+}
+
+class InitcheckUnusedMemoryTest : public testing::Test {
+protected:
+    void SetUp() override
+    {
+        savedMask_ = ConfigManager::Instance().GetInitcheckAddressSpaceMask();
+        ConfigManager::Instance().SetInitcheckAddressSpaceMask(InitcheckAddressSpaceBit(AddressSpace::PRIVATE));
+    }
+    void TearDown() override { ConfigManager::Instance().SetInitcheckAddressSpaceMask(savedMask_); }
+    uint32_t savedMask_{};
+};
+
+TEST_F(InitcheckUnusedMemoryTest, unused_check_requires_memcheck_at_free_and_exit)
+{
+    for (bool memCheck : {false, true}) {
+        for (bool writeMemory : {false, true}) {
+            for (bool freeBeforeExit : {false, true}) {
+                SCOPED_TRACE(testing::Message() << "memCheck=" << memCheck << " write=" << writeMemory
+                    << " free=" << freeBeforeExit);
+                Config config{};
+                config.initCheck = true;
+                config.memCheck = memCheck;
+                config.checkUnusedMemory = true;
+                DeviceInfoSummary device{};
+                device.device = DeviceType::ASCEND_910B1;
+                auto asan = SanitizerFactory::GetInstance().Create(ToolType::MEMCHECK);
+                ASSERT_TRUE(asan->SetDeviceInfo(device, config));
+                std::string output;
+                asan->RegisterNotifyFunc([&output](LogLv const &, SanitizerBase::MSG_GEN &&gen) {
+                    output += gen().message;
+                });
+                SanitizerRecord record{};
+                record.version = RecordVersion::MEMORY_RECORD;
+                record.payload.memoryRecord = CreateMemOpRecord(MemOpType::MALLOC);
+                EXPECT_FALSE(asan->CheckRecordBeforeProcess(record));
+                if (writeMemory) {
+                    record.payload.memoryRecord = CreateMemOpRecord(MemOpType::STORE);
+                    EXPECT_FALSE(asan->CheckRecordBeforeProcess(record));
+                }
+                const bool unused = memCheck && !writeMemory;
+                if (freeBeforeExit) {
+                    record.payload.memoryRecord = CreateMemOpRecord(MemOpType::FREE);
+                    EXPECT_FALSE(asan->CheckRecordBeforeProcess(record));
+                    EXPECT_EQ(output.find("Unused memory") != std::string::npos, unused) << output;
+                    output.clear();
+                }
+                asan->Exit();
+                EXPECT_EQ(output.find("unused memory") != std::string::npos, unused) << output;
+            }
+        }
+    }
 }
 
 TEST(AddressSanitizer, same_record_on_different_blocks_expect_get_reduced_errors)
@@ -3826,6 +3994,43 @@ TEST(AddressSanitizer, illegal_read_of_load_l1_2d_expect_reported_in_init_check)
     asan->ReportErrorMsg();
 
     ASSERT_NE(msg.find("0x4000"), std::string::npos);
+}
+
+TEST(AsanActionFactory, value_action_owns_record_and_dispatches_load_store)
+{
+    const DeviceType device = DeviceType::ASCEND_910B1;
+    ShadowMemory shadow;
+    ASSERT_TRUE(shadow.Init(device, CHIP_INFO_MAP.at(device)));
+    BoundsCheck bounds;
+    Config config{};
+    config.initCheck = true;
+    auto record = CreateMemOpRecord(MemOpType::LOAD);
+    record.dstSpace = AddressSpace::PRIVATE;
+    record.dstAddr = 32;
+    record.memSize = 8;
+    auto load = AsanActionFactory::CreateAsanAction(record);
+    ASSERT_TRUE(load.IsValid());
+    record.dstAddr = 64;
+    const auto errors = load.doAction(shadow, bounds, config, false);
+    ASSERT_EQ(errors.size(), 1U);
+    EXPECT_EQ(errors[0].type, MemErrorType::UNINITIALIZED_READ);
+    EXPECT_EQ(errors[0].auxData.badAddr.addr, 32U);
+    record.type = MemOpType::STORE;
+    record.dstAddr = 32;
+    auto store = AsanActionFactory::CreateAsanAction(record);
+    ASSERT_TRUE(store.IsValid());
+    EXPECT_TRUE(store.doAction(shadow, bounds, config, false).empty());
+    EXPECT_TRUE(load.doAction(shadow, bounds, config, false).empty());
+}
+
+TEST(AsanActionFactory, supported_types_and_invalid_type)
+{
+    for (auto type : {MemOpType::MALLOC, MemOpType::FREE, MemOpType::MEMCPY_BLOCKS,
+            MemOpType::LOAD, MemOpType::STORE}) {
+        EXPECT_TRUE(AsanActionFactory::CreateAsanAction(CreateMemOpRecord(type)).IsValid());
+    }
+    EXPECT_FALSE(AsanActionFactory::CreateAsanAction(
+        CreateMemOpRecord(static_cast<MemOpType>(0xFFFFFFFFU))).IsValid());
 }
 
 }

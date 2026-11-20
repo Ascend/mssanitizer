@@ -65,7 +65,6 @@ template <BlockType blockType>
 void CrossCoreSyncInfoContainer::UpdateSyncInfoInMode0(uint8_t flagId)
 {
     VectorTime vt;
-    vt.resize(maxBlockNum_ * static_cast<uint8_t>(PipeType::SIZE), 1);
     if (blockType == BlockType::AIVEC) {
         // 先获取最新向量时钟，再更新到所有block
         for (uint32_t i = 0; i < maxBlockNum_; i++) {

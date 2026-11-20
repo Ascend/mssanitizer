@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <ostream>
+#include "core/framework/binary_buffer.h"
 #include "core/framework/utility/singleton.h"
 
 #include "nlohmann/json.hpp"
@@ -74,12 +75,13 @@ private:
     CallStack(void) { }
     ~CallStack(void);
 
-    std::string Load(std::vector<char> const &binary);
+    std::string Load(BinaryBuffer const &binary);
     StackEachKernel ParseStacks(std::string const &msg) const;
     void ParseEachStack(nlohmann::json const &stackJson, StackEachKernel &stackCacheMap) const;
 
     mutable StackCacheMap pcStackMap_;
     mutable std::mutex mtx_;
+    mutable std::mutex loadMtx_;
     bool isPrintFullStack_{false};
     std::vector<std::string> kernelPaths_;
 };

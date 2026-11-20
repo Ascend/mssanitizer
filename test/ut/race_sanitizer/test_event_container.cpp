@@ -147,3 +147,35 @@ TEST(EventContainer, reinit_shall_reset_stuck_state_across_kernels)
     container.CheckCurDeviceStuck();
     ASSERT_TRUE(container.IsAllDeviceStuck());
 }
+
+
+TEST(SanEventQueue, chunk_boundaries_reference_stability_and_empty_reuse)
+{
+    SanEventQueue queue;
+    SanEvent event{};
+    event.serialNo = 0;
+    queue.Push(event);
+    const SanEvent *front = &queue.Front();
+    for (uint64_t i = 1; i < SanEventQueue::CHUNK_CAP * 3 + 5; ++i) {
+        event.serialNo = i;
+        queue.Push(SanEvent(event));
+    }
+    EXPECT_EQ(&queue.Front(), front);
+    EXPECT_EQ(front->serialNo, 0U);
+    const uint32_t total = queue.Size();
+    for (uint64_t i = 0; i < total; ++i) {
+        ASSERT_FALSE(queue.Empty());
+        EXPECT_EQ(queue.Front().serialNo, i);
+        queue.Pop();
+    }
+    EXPECT_TRUE(queue.Empty());
+    EXPECT_EQ(queue.Size(), 0U);
+    queue.Push(event);
+    EXPECT_EQ(queue.Front().serialNo, event.serialNo);
+    queue.Clear();
+    EXPECT_TRUE(queue.Empty());
+    queue.Push(SanEvent{});
+    EXPECT_EQ(queue.Size(), 1U);
+    queue.Pop();
+    EXPECT_TRUE(queue.Empty());
+}

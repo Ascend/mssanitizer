@@ -43,10 +43,15 @@ inline RaceDispInfo FillRaceDispInfo(bool isMissDcci, const MemEvent &event1, co
 template <RaceCheckType checkType>
 inline uint32_t GetPipeIdxByMemEvent(const MemEvent &event, KernelType kernelType, DeviceType deviceType)
 {
-    SanEvent sanEvent{};
-    sanEvent.loc = event.loc;
-    uint32_t blockIdx = GetEventBlockIndex(sanEvent, kernelType, deviceType, checkType);
+    uint32_t blockIdx = GetEventBlockIndexByLoc(event.loc, kernelType, deviceType, checkType);
     return (blockIdx * static_cast<uint16_t>(PipeType::SIZE)) + static_cast<uint16_t>(event.pipe);
+}
+
+inline uint32_t GetExpandPipeIdx(MemEvent const &event, uint32_t blockNum)
+{
+    uint32_t blockIdx = GetEventExpandBlockIndexByLoc(event.loc);
+    return event.loc.deviceIdx * blockNum * static_cast<uint32_t>(PipeType::SIZE) +
+        blockIdx * static_cast<uint32_t>(PipeType::SIZE) + static_cast<uint32_t>(event.pipe);
 }
 
 struct CompareShadowMemoryRecord {
@@ -54,14 +59,8 @@ struct CompareShadowMemoryRecord {
     uint64_t idx;                  // record对应的全局索引
 };
 
-inline uint32_t GetExpandPipeIdx(MemEvent const &event, uint32_t blockNum)
-{
-    SanEvent sanEvent{};
-    sanEvent.loc = event.loc;
-    uint32_t blockIdx = GetEventExpandBlockIndex(sanEvent);
-    return event.loc.deviceIdx * blockNum * static_cast<uint32_t>(PipeType::SIZE) +
-        blockIdx * static_cast<uint32_t>(PipeType::SIZE) + static_cast<uint32_t>(event.pipe);
-}
+// 扫描线算法端点结构（定义见 mem_event_checker.cpp）
+struct SortMetaData;
 
 // 该类集成了内存块之间做竞争比较的功能。
 // 需要记录算子运行过程已经发生的所有内存事件(携带时间戳)
@@ -100,6 +99,19 @@ private:
     bool IsMemSpaceOverlap(const MemEvent &op1, const MemEvent &op2,
         EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsAtomicAgainst(const MemEvent& event1, const MemEvent& event2) const;
+    // 单块竞争前置判定（并发/非原子），地址重叠由调用方继续检查；
+    // 调用方需保证两个事件属于不同 pipe；pipeIdx/ownTime(=vt.Get(pipeIdx)) 由调用方预计算
+    bool IsInnerCoreRaceCandidate(const MemEvent &event1, const MemEvent &event2,
+        uint32_t pipeIdx1, uint32_t ownTime1, uint32_t pipeIdx2, uint32_t ownTime2) const;
+    // ScanSingleBlockFast 的候选对判定（时钟并发且非原子），同 block 快速路径与多块回退
+    // 路径共享此单一实现，避免两份判定规则漂移；地址重叠由调用方继续检查。
+    // SameBlock 为编译期模板参数：true 用桶级外提的 b1Fixed 并做前置排除，
+    // false 按基线策略逐对查询 b1（历史事件 pipeIdx 等于桶号时按桶缓存）
+    template <bool SameBlock>
+    bool IsRaceCandidate(const MemEvent &ce, const MemEvent &he, uint32_t hIdx,
+        uint32_t t1Pipe, uint32_t a1, uint32_t b1Fixed, uint32_t q,
+        const std::vector<uint32_t> &pipeIdx, const std::vector<uint32_t> &ownTime,
+        bool &b1Cached, uint32_t &b1Cache) const;
     bool IsInnerCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsSinglePipeRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
     bool IsCrossCoreRaceEvent(EventIdxInfo &idxInfo1, EventIdxInfo &idxInfo2) const;
@@ -112,6 +124,20 @@ private:
     void CheckExistRaceEvents(const std::unordered_set<uint64_t> &historyEventsIdx, CheckTypeFunc checkTypeFunc,
         uint64_t curEventIdx, RaceMemEventsIdx &raceMemEventsIdx) const;
     std::unordered_map<RaceCheckType, CheckTypeFunc> checkTypeMap_;
+
+    // 扫描线执行上下文：按 checkType 选定的判定回调 + DCCI 开关，避免各分支重复读取
+    struct ScanlineContext {
+        CheckTypeFunc checkFunc;  // 竞争判定回调
+        bool checkDcci;           // 是否 DCCI 检测模式
+        RaceCheckType checkType;  // 当前竞争检测类型
+    };
+    void BuildScanlineMetaData(std::vector<SortMetaData> &eventsMetaData, bool &hasAnyDynamic) const;
+    void ScanGeneric(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+        RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const;
+    void ScanSinglePipeWindow(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+        RaceMemEventsIdx &raceMemEventsIdx) const;
+    void ScanSingleBlockFast(const std::vector<SortMetaData> &eventsMetaData, const ScanlineContext &ctx,
+        RaceMemEventsIdx &raceMemEventsIdx) const;
 };
 
 }

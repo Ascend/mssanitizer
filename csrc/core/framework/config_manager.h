@@ -29,8 +29,13 @@ public:
     void Set(Config const &config) { config_ = config; }
     Config &Get() { return config_; }
 
+    // 仅供主机检测使用，在启动检测线程前设置，不改变通信配置 Config。
+    void SetInitcheckAddressSpaceMask(uint32_t mask) { initcheckAddressSpaceMask_ = mask; }
+    uint32_t GetInitcheckAddressSpaceMask() const { return initcheckAddressSpaceMask_; }
+
 private:
     Config config_{};
+    uint32_t initcheckAddressSpaceMask_ = InitcheckAddressSpaceBit(AddressSpace::PRIVATE);
 };
 
 } // namespace Sanitizer

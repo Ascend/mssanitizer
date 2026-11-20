@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #ifndef ADDRESS_SANITIZER_ADDRESS_SANITIZER_H
 #define ADDRESS_SANITIZER_ADDRESS_SANITIZER_H
 
@@ -43,6 +42,7 @@ public:
     bool SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config) override;
     bool SetKernelInfo(KernelSummary const &kernelInfo) override;
     void Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) override;
+    void DoEvents(const SanitizerRecord &record, EventRange events) override;
     void ParseOnlineError(const KernelErrorRecord &record, BlockType blockType, uint64_t serialNo) override;
     bool CheckRecordBeforeProcess(const SanitizerRecord &record) override;
     void RegisterNotifyFunc(const MSG_FUNC &func) override;
@@ -65,21 +65,23 @@ private:
     static void ConvertMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records);
     static void ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records);
     void DoMemOpRecord(MemOpRecord const &record, bool reduce);
-    size_t GetRecordsNum(const std::vector<SanEvent> &events) const;
+    size_t GetRecordsNum(EventRange events) const;
     void ReportErrorMsg();
     void ReportAfterKernelFinish();
     void CheckNonDefaultReg(const SanEvent &event);
     bool SwitchToScope(BoundsCheckScope scope);
     void BeforeScopeSwitch(MemOpRecord const &record);
     void AfterScopeSwitch(MemOpRecord const &record);
-    ErrorMsgList ScopeDoAction(std::shared_ptr<AsanAction> action);
+    ErrorMsgList ScopeDoAction(AsanAction& action);
     BoundsCheckScope MemInfoToScope(MemInfoSrc infoSrc);
     std::string ScopeToString(BoundsCheckScope scope);
     void UpdateHeapInfo(MemOpRecord const &record);
     void DoWithLocalTensor(const MstxRecord &record, const std::vector<MemOpRecord> &records);
     void AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord);
     void SetPermission(MemRegionPermissionDesc const &desc);
-    void ConvertEventsToRecords(const std::vector<SanEvent> &events, std::vector<MemOpRecord> &records);
+    void ConvertEventsToRecords(EventRange events, std::vector<MemOpRecord> &records);
+    bool NeedsInitcheckReplay() const;
+    bool StreamsPrivateMemory() const;
 
     std::unique_ptr<ShadowMemory> shadowMemory_;
     MSG_FUNC msgFunc_;
@@ -91,7 +93,10 @@ private:
     BoundsCheck boundsCheckDfx_;
     std::map<uint64_t, uint64_t> mstxHeapCacheMap_;
     PipelineReplayer pipelineReplayer_;
-    std::vector<SanEvent> replayedEvents_;
+    std::vector<MemOpRecord> replayedRecords_;
+    // 共享空间回放时 PRIVATE 事件按记录块内流式检测，复用该缓冲区。
+    std::vector<MemOpRecord> streamedPrivateRecords_;
+    size_t replayedEventCount_{};
     DeviceType deviceType_ = DeviceType::INVALID;
     uint64_t preSerialNo_{0};
 };

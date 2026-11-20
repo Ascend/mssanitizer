@@ -60,7 +60,8 @@ INSTANTIATE_TEST_CASE_P(FormatConverter, MemTypeToAddrSpaceTest,
         std::make_tuple(MemType::UB, AddressSpace::UB), std::make_tuple(MemType::BT, AddressSpace::BT),
         std::make_tuple(MemType::FB, AddressSpace::FB), std::make_tuple(MemType::GM, AddressSpace::GM),
         std::make_tuple(MemType::UNKNOWN, AddressSpace::UNKNOWN),
-        std::make_tuple(MemType::PRIVATE, AddressSpace::PRIVATE)));
+        std::make_tuple(MemType::PRIVATE, AddressSpace::PRIVATE),
+        std::make_tuple(static_cast<MemType>(255), AddressSpace::UNKNOWN)));
 
 class AddrSpaceToMemTypeTest : public testing::TestWithParam<std::tuple<AddressSpace, MemType>> {};
 TEST_P(AddrSpaceToMemTypeTest, addr_space_to_mem_type_given_addr_space_and_expect_correct_mem_type)

@@ -17,6 +17,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 #include <gtest/gtest.h>
 #include <any>
 #include <mutex>
@@ -53,7 +54,7 @@ inline std::vector<char> SerializeFileMap(void)
         auto strUUID = Serialize(uuid);
         fileMapping.insert(fileMapping.end(), strUUID.cbegin(), strUUID.cend());
     };
- 
+
     for_each(fileMappingList.begin(), fileMappingList.end(), fillFileMapping);
     return fileMapping;
 }
@@ -108,7 +109,7 @@ std::vector<char> CreateElf64Ehdr()
     st.e_shstrndx = 0;
     st.e_shentsize = sizeof(Elf64_Shdr);
     Elf64_Shdr nameSecHeader{};
- 
+
     std::string segName0 = ".seg_name";
     std::string segName1 = ".init_array_sanitizer_file_mapping";
     std::vector<char> segNameBuff;
@@ -116,10 +117,10 @@ std::vector<char> CreateElf64Ehdr()
     segNameBuff.push_back('\0');
     segNameBuff.insert(segNameBuff.end(), segName1.begin(), segName1.end());
     segNameBuff.push_back('\0');
- 
+
     auto fileMapping = SerializeFileMap();
     Elf64_Shdr fileMappingSecHeader;
- 
+
     size_t bufLen = sizeof(Elf64_Ehdr) + sizeof(Elf64_Shdr) * 2 + segNameBuff.size() + fileMapping.size();
     std::vector<char> buff(bufLen);
     auto strSt = Serialize(st);
@@ -131,14 +132,14 @@ std::vector<char> CreateElf64Ehdr()
     headPtr->e_shoff = nameSecAddr - segAddr;
     auto strNameSecHeader = Serialize(nameSecHeader);
     buffIt = std::copy_n(strNameSecHeader.cbegin(), strNameSecHeader.size(), buffIt);
- 
+
     auto fileMappingSecHeadPtr = reinterpret_cast<Elf64_Shdr*>(&(*buffIt));
     auto strFileMappingSecHead = Serialize(fileMappingSecHeader);
     buffIt = std::copy_n(strFileMappingSecHead.cbegin(), strFileMappingSecHead.size(), buffIt);
     nameSecHeadPtr->sh_offset = reinterpret_cast<Elf64_Off>(&(*buffIt)) - reinterpret_cast<Elf64_Off>(buff.data());
     nameSecHeadPtr->sh_size = segNameBuff.size();
     nameSecHeadPtr->sh_name = 0;
- 
+
     fileMappingSecHeadPtr->sh_name = segName0.size() + 1;
     buffIt = std::copy_n(segNameBuff.begin(), segNameBuff.size(), buffIt);
     fileMappingSecHeadPtr->sh_offset =
@@ -147,11 +148,11 @@ std::vector<char> CreateElf64Ehdr()
     std::copy_n(fileMapping.begin(), fileMapping.size(), buffIt);
     return buff;
 }
- 
+
 TEST(FileMapping, load_from_buffer_with_filename_with_complete_uuid_expect_get_file_map)
 {
     FileMapping &fileMapping = FileMapping::Instance();
-    std::vector<char> buffer = CreateElf64Ehdr();
+    auto buffer = BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(CreateElf64Ehdr()));
     auto loader = Sanitizer::ElfLoader();
     ASSERT_TRUE(loader.FromBuffer(buffer));
     Sanitizer::Elf elf = loader.Load();
@@ -162,4 +163,17 @@ TEST(FileMapping, load_from_buffer_with_filename_with_complete_uuid_expect_get_f
     for (const auto &p : expectFileMapping) {
         ASSERT_EQ(fileMapping.fileMap_[p.second].fileName, p.first);
     }
+}
+
+TEST(ElfLoaderDetail, parse_elf_with_too_small_or_bad_buffer_expect_fail)
+{
+    detail::ElfSections sections;
+    std::vector<char> tiny(4, 0);
+    auto tinyBuffer = BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(tiny));
+    ASSERT_FALSE(detail::ParseElf(*tinyBuffer, sections));
+
+    // 大小合法但没有 ELF magic
+    std::vector<char> garbage(1024, 0);
+    auto garbageBuffer = BinaryBuffer::FromVector(std::make_shared<const std::vector<char>>(garbage));
+    ASSERT_FALSE(detail::ParseElf(*garbageBuffer, sections));
 }

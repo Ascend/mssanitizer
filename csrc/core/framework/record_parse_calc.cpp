@@ -22,7 +22,7 @@
 #include "record_parse_calc.h"
 
 namespace Sanitizer {
-    
+
 inline uint64_t ParseUbAddrFromVaRegister(VaRegister const &vaRegister, uint8_t elemIdx)
 {
     uint64_t reg = elemIdx > 3 ? vaRegister.h64 : vaRegister.l64;
@@ -68,7 +68,7 @@ void ParseRecordScatterVnchwconv(const KernelRecord &record, std::vector<SanEven
     bool srcHighHalf = scatterVnchwconvecord.dataType == DataType::DATA_B8 && scatterVnchwconvecord.srcHighHalf;
     ParseVaRegisterEvents(scatterVnchwconvecord.src0, srcHighHalf, event, events);
     ParseVaRegisterEvents(scatterVnchwconvecord.src1, srcHighHalf, event, events);
- 
+
     memInfo.memType = MemType::UB;
     memInfo.opType = AccessType::WRITE;
     memInfo.repeatStride = scatterVnchwconvecord.dataType == DataType::DATA_B8 ?

@@ -162,7 +162,7 @@ void RaceSanitizer::RaceSanitizerRecord(std::shared_ptr<std::vector<RaceDispInfo
     }
 }
 
-void RaceSanitizer::SingleBlockRaceCheck(const std::vector<SanEvent> &events)
+void RaceSanitizer::SingleBlockRaceCheck(EventRange events)
 {
     for (const auto &event : events) {
         if (IsTargetEvent(event, BlockType::AIVEC) || IsTargetEvent(event, BlockType::AICORE)) {
@@ -176,7 +176,7 @@ void RaceSanitizer::SingleBlockRaceCheck(const std::vector<SanEvent> &events)
     }
 }
 
-void RaceSanitizer::SinglePipeRaceCheck(const std::vector<SanEvent> &events)
+void RaceSanitizer::SinglePipeRaceCheck(EventRange events)
 {
     for (const auto &event : events) {
         if ((IsTargetBlockId(event.loc.coreId) && (event.loc.blockType == BlockType::AIVEC ||
@@ -192,7 +192,7 @@ void RaceSanitizer::SinglePipeRaceCheck(const std::vector<SanEvent> &events)
     }
 }
 
-void RaceSanitizer::AllBlockRaceCheck(const std::vector<SanEvent> &events)
+void RaceSanitizer::AllBlockRaceCheck(EventRange events)
 {
     if (checkBlockId_ != CHECK_ALL_BLOCK) {
         return;
@@ -211,7 +211,7 @@ bool RaceSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
     return false;
 }
 
-void RaceSanitizer::DoImpl(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
+void RaceSanitizer::DoImpl(const SanitizerRecord &record, EventRange events) {
     if (IsMstxRecordWithTensor(record)) {
         return;
     }
@@ -221,9 +221,15 @@ void RaceSanitizer::DoImpl(const SanitizerRecord &record, const std::vector<SanE
     }
 
     // 进行检测：分核内（流水间和流水内）、核间遍历events，处理后进行检测
+    // 分发循环只做轻量事件入容器（stage-1）；重活（stage-2）已异步提交，见各 alg 的 Do
     SingleBlockRaceCheck(events);
     SinglePipeRaceCheck(events);
     AllBlockRaceCheck(events);
+
+    // 等所有 alg 的 stage-2（PipeLine 模拟 + RunAlgorithm）跑完，再取结果
+    for (auto &it : raceAlgs_) {
+        if (it) { it->WaitFinished(); }
+    }
 
     // 显示竞争结果
     for (const auto &it : raceAlgs_) {
@@ -253,6 +259,10 @@ void RaceSanitizer::DoImpl(const SanitizerRecord &record, const std::vector<SanE
 }
 
 void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
+    DoEvents(record, EventRange(events));
+}
+
+void RaceSanitizer::DoEvents(const SanitizerRecord &record, EventRange events) {
     if (record.version == RecordVersion::MEMORY_RECORD) {
         return;
     }
@@ -263,7 +273,12 @@ void RaceSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent
     }
 
     KernelRecord const &kernelRecord = record.payload.kernelRecord;
-    recordWindow_.push({record, events});
+    // The DCCI window outlives the borrowed range and modifies its events.
+    std::vector<SanEvent> ownedEvents;
+    if (!events.empty()) {
+        ownedEvents.assign(events.begin(), events.end());
+    }
+    recordWindow_.push({record, std::move(ownedEvents)});
 
     // clear queue
     if (kernelRecord.recordType == RecordType::BLOCK_FINISH || kernelRecord.recordType == RecordType::KERNEL_FINISH ||
@@ -419,6 +434,10 @@ void RaceSanitizer::RegisterNotifyFunc(const MSG_FUNC &func) { msgFunc_ = func; 
 
 void RaceSanitizer::Exit()
 {
+    // 兜底等待所有 alg 的 stage-2 完成
+    for (auto &a : raceAlgs_) {
+        if (a) { a->WaitFinished(); }
+    }
 }
 
 static std::shared_ptr<SanitizerBase> CreateRaceSanitizer()

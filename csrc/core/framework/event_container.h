@@ -18,12 +18,62 @@
 #ifndef CORE_FRAMEWORK_EVENT_CONTAINER_H
 #define CORE_FRAMEWORK_EVENT_CONTAINER_H
 
-#include <queue>
 #include <memory>
+#include <deque>
+#include <vector>
 #include <functional>
 #include "core/framework/event_def.h"
 
 namespace Sanitizer {
+
+// 以预留容量的 vector 为块，减少逐事件分配；deque 负责释放已消费块。
+// 块内不扩容，队尾入队不使 Front() 返回的引用失效；引用只能使用到 Pop() 前。
+class SanEventQueue {
+public:
+    static constexpr uint32_t CHUNK_CAP = 64U;
+    void Push(const SanEvent &event)
+    {
+        EnsureChunk();
+        chunks_.back().push_back(event);
+        ++size_;
+    }
+    void Push(SanEvent &&event)
+    {
+        EnsureChunk();
+        chunks_.back().push_back(std::move(event));
+        ++size_;
+    }
+    const SanEvent &Front() const { return chunks_.front()[head_]; }
+    void Pop()
+    {
+        ++head_;
+        --size_;
+        if (head_ == chunks_.front().size()) {
+            chunks_.pop_front();
+            head_ = 0U;
+        }
+    }
+    bool Empty() const { return size_ == 0U; }
+    uint32_t Size() const { return size_; }
+    void Clear()
+    {
+        chunks_.clear();
+        head_ = 0U;
+        size_ = 0U;
+    }
+
+private:
+    void EnsureChunk()
+    {
+        if (chunks_.empty() || chunks_.back().size() == CHUNK_CAP) {
+            chunks_.emplace_back();
+            chunks_.back().reserve(CHUNK_CAP);
+        }
+    }
+    std::deque<std::vector<SanEvent>> chunks_;
+    size_t head_ = 0U;
+    uint32_t size_ = 0U;
+};
 
 // 该类使用若干个队列存储事件，记录各PIPE里待执行的事件。一个类对象记录了一个AICore上的所有事件。
 class EventContainer {
@@ -32,8 +82,10 @@ public:
     void Init(uint32_t blockNum, uint32_t deviceNum = 1);
     // 将事件保存到对应的队列中
     void Push(const SanEvent &e, PipeType pipe, uint32_t blockIdx, uint32_t deviceIdx = 0);
-    // 获取当前队列头部事件
-    SanEvent Front() const;
+    // 右值重载：调用方传入临时/可交出的事件时避免拷贝
+    void Push(SanEvent &&e, PipeType pipe, uint32_t blockIdx, uint32_t deviceIdx = 0);
+    // 获取当前队列头部事件的引用（元素在 Pop/出队前保持有效；避免记录多时逐事件拷贝 SanEvent）
+    const SanEvent &Front() const;
     // 将当前队列的头部事件出队，表示事件处理完成
     void Pop();
     // 判断当前队列为空
@@ -78,7 +130,8 @@ private:
     bool IsCurDeviceEmpty() const;
 
 private:
-    std::vector<std::queue<SanEvent>> ques_;
+    // 用分块队列存储事件，避免 std::queue 每 2 个事件一次小堆分配
+    std::vector<SanEventQueue> ques_;
     uint32_t deviceNum_ = 0;
     uint32_t maxBlockNum_ = 0;
 

@@ -67,6 +67,11 @@ public:
      */
     RecordArray &GetRecordArray(uint32_t deviceId);
 
+    // Collection is needed only when ThreadManager will run cross-NPU detection.
+    RecordArray *GetRecordArrayForCollection(uint32_t deviceId) {
+        return config_.raceCheck && config_.checkCrossNpuRaces ? &GetRecordArray(deviceId) : nullptr;
+    }
+
     /**
      * @brief 设置异常报告输出回调
      */

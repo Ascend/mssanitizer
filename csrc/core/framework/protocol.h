@@ -23,7 +23,9 @@
 #include <memory>
 #include <cstdint>
 #include <algorithm>
+#include <utility>
 
+#include "binary_buffer.h"
 #include "record_defs.h"
 #include "utility/result.h"
 #include "utility/types.h"
@@ -83,26 +85,19 @@ public:
 
 public:
     Packet(void) : type_{PacketType::INVALID}, payload_{} { }
-    Packet(Packet const &rhs) : type_{rhs.type_}, payload_{rhs.payload_}
+    Packet(Packet const &rhs)
+        : type_{rhs.type_}, payload_{rhs.payload_}, binaryHolder_{rhs.binaryHolder_}, binaryBuffer_{rhs.binaryBuffer_}
     {
-        if (IsBinaryPacket(type_)) {
-            /// 拷贝构造进行深拷贝
-            uint64_t len = rhs.payload_.binary.len;
-            payload_.binary.buf = new(std::nothrow) char[len];
-            if (payload_.binary.buf != nullptr) {
-                std::copy_n(rhs.payload_.binary.buf, len, payload_.binary.buf);
-            } else {
-                type_ = PacketType::INVALID;
-            }
-        }
+        /// 二进制载荷由 binaryHolder_ / binaryBuffer_ 持有，拷贝后重新绑定 buf 指针
+        RebindBinary();
     }
-    Packet(Packet &&rhs) : type_{rhs.type_}, payload_{rhs.payload_}
+    Packet(Packet &&rhs) noexcept
+        : type_{rhs.type_}, payload_{rhs.payload_}, binaryHolder_{std::move(rhs.binaryHolder_)},
+          binaryBuffer_{std::move(rhs.binaryBuffer_)}
     {
-        if (IsBinaryPacket(type_)) {
-            /// 所有权转移
-            payload_.binary.buf = rhs.payload_.binary.buf;
-            rhs.payload_.binary.buf = nullptr;
-        }
+        /// 所有权随 binaryHolder_ / binaryBuffer_ 转移，重新绑定 buf 指针；并将被移出对象的 buf 置空，避免悬垂
+        RebindBinary();
+        rhs.RebindBinary();
     }
     explicit Packet(DeviceInfoSummary const &summary) : type_{PacketType::DEVICE_SUMMARY}
     {
@@ -132,22 +127,27 @@ public:
     {
         payload_.gmAddrOutOfBoundRecord = record;
     }
-    Packet(PacketType type, std::string const &binaryData) : type_{type}
+    Packet(PacketType type, std::string const &binaryData) : type_{type}, binaryHolder_{binaryData}
     {
-        uint64_t len = binaryData.size();
-        payload_.binary.len = len;
-        payload_.binary.buf = new char[len];
-        binaryData.copy(payload_.binary.buf, len);
+        RebindBinary();
+    }
+    // 右值版本：直接 move 接管二进制，不做整块拷贝
+    Packet(PacketType type, std::string &&binaryData) : type_{type}, binaryHolder_{std::move(binaryData)}
+    {
+        RebindBinary();
     }
     explicit Packet(KernelBinary const &kernelBinary) : Packet(PacketType::KERNEL_BINARY, kernelBinary.value) { }
-    explicit Packet(LogString const &logString) : Packet(PacketType::LOG_STRING, logString.value) { }
-    explicit Packet(KernelRecord const &kernelRecord) : Packet(PacketType::KERNEL_RECORD, kernelRecord.value) { }
-    ~Packet(void)
+    explicit Packet(KernelBinary &&kernelBinary) : Packet(PacketType::KERNEL_BINARY, std::move(kernelBinary.value)) { }
+    // fd 路径：二进制已由 BinaryBuffer 持有（mmap zero-copy）
+    Packet(PacketType type, BinaryBuffer::Ptr buffer) : type_{type}, binaryBuffer_{std::move(buffer)}
     {
-        if (IsBinaryPacket(type_)) {
-            delete[] payload_.binary.buf;
-        }
+        RebindBinary();
     }
+    explicit Packet(LogString const &logString) : Packet(PacketType::LOG_STRING, logString.value) { }
+    explicit Packet(LogString &&logString) : Packet(PacketType::LOG_STRING, std::move(logString.value)) { }
+    explicit Packet(KernelRecord const &kernelRecord) : Packet(PacketType::KERNEL_RECORD, kernelRecord.value) { }
+    explicit Packet(KernelRecord &&kernelRecord) : Packet(PacketType::KERNEL_RECORD, std::move(kernelRecord.value)) { }
+    ~Packet(void) = default;
 
     inline static bool IsBinaryPacket(PacketType type)
     {
@@ -165,6 +165,10 @@ public:
     {
         std::swap(type_, rhs.type_);
         std::swap(payload_, rhs.payload_);
+        std::swap(binaryHolder_, rhs.binaryHolder_);
+        std::swap(binaryBuffer_, rhs.binaryBuffer_);
+        RebindBinary();
+        rhs.RebindBinary();
     }
     PacketType GetType(void) const
     {
@@ -174,10 +178,35 @@ public:
     {
         return payload_;
     }
+    // fd 路径下返回 mmap'd BinaryBuffer；字节流路径返回 nullptr
+    BinaryBuffer::Ptr GetBinaryBuffer(void) const
+    {
+        return binaryBuffer_;
+    }
 
 private:
     PacketType type_;
     Payload payload_;
+    /// 二进制载荷的实际存储；payload_.binary.buf 指向其内部数据，随对象生命周期自动释放
+    std::string binaryHolder_;
+    /// fd 路径的二进制存储（mmap zero-copy），与 binaryHolder_ 二选一
+    BinaryBuffer::Ptr binaryBuffer_;
+
+    void RebindBinary(void)
+    {
+        if (!IsBinaryPacket(type_)) {
+            return;
+        }
+        if (binaryBuffer_ != nullptr) {
+            payload_.binary.len = binaryBuffer_->size();
+            payload_.binary.buf = binaryBuffer_->empty()
+                ? nullptr
+                : const_cast<char *>(binaryBuffer_->data()); // NOLINT(cppcoreguidelines-pro-type-const-cast)
+            return;
+        }
+        payload_.binary.len = binaryHolder_.size();
+        payload_.binary.buf = binaryHolder_.empty() ? nullptr : &binaryHolder_[0];
+    }
 };
 
 // Protocol类接收数据，根据协议解包
@@ -227,8 +256,12 @@ private:
     template <typename BinaryDataT>
     Packet GetBinaryDataPacket(void);
 
+    Packet GetKernelBinaryPacket(void);
+
     class Extractor;
     std::shared_ptr<Extractor> extractor_;
+    // P3: 已接收但尚未与长度对齐的 fd-backed 内核二进制 fd（-1 表示无）
+    int pendingBinaryFd_ { -1 };
 };
 
 enum class ResponseStatus : uint32_t { SUCCESS = 0, FAIL = 1000 };

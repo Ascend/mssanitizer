@@ -17,12 +17,22 @@
 
 #include "asan_action.h"
 #include "core/framework/record_defs.h"
+#include "core/framework/config_manager.h"
+#include "core/framework/initcheck_address_space.h"
 #include "core/framework/runtime_context.h"
 #include "mem_error_def.h"
 
 namespace {
 
 using namespace Sanitizer;
+
+template <typename Action>
+ErrorMsgList ExecuteAction(const MemOpRecord &record, ShadowMemory &shadowMemory, BoundsCheck &boundsCheck,
+    const Config &config, bool ignoreShadowMemory)
+{
+    Action action(record);
+    return action.doAction(shadowMemory, boundsCheck, config, ignoreShadowMemory);
+}
 
 inline void FillErrorLocInfo(MemOpRecord const &record, ErrorMsg &msg)
 {
@@ -40,28 +50,23 @@ inline void FillErrorLocInfo(MemOpRecord const &record, ErrorMsg &msg)
 } // namespace [Dummy]
 
 namespace Sanitizer {
-std::shared_ptr<AsanAction> AsanActionFactory::CreateAsanAction(
+AsanActionValue AsanActionFactory::CreateAsanAction(
     const MemOpRecord &record)
 {
-    using ActionCreateFunc = std::function<std::shared_ptr<AsanAction>(const MemOpRecord &)>;
-    static const std::map<MemOpType, ActionCreateFunc> CREATE_FUNC_MAP = {
-        {MemOpType::MALLOC,
-            [](const MemOpRecord &record) { return std::make_shared<AsanMalloc>(record); }},
-        {MemOpType::FREE,
-            [](const MemOpRecord &record) { return std::make_shared<AsanFree>(record); }},
-        {MemOpType::MEMCPY_BLOCKS,
-            [](const MemOpRecord &record) { return std::make_shared<AsanMemcpyBlocks>(record); }},
-        {MemOpType::LOAD,
-            [](const MemOpRecord &record) { return std::make_shared<AsanLoad>(record); }},
-        {MemOpType::STORE,
-            [](const MemOpRecord &record) { return std::make_shared<AsanStore>(record); }},
-    };
-
-    auto it = CREATE_FUNC_MAP.find(record.type);
-    if (it != CREATE_FUNC_MAP.end()) {
-        return CREATE_FUNC_MAP.at(record.type)(record);
+    switch (record.type) {
+        case MemOpType::MALLOC:
+            return AsanActionValue(record, ExecuteAction<AsanMalloc>);
+        case MemOpType::FREE:
+            return AsanActionValue(record, ExecuteAction<AsanFree>);
+        case MemOpType::MEMCPY_BLOCKS:
+            return AsanActionValue(record, ExecuteAction<AsanMemcpyBlocks>);
+        case MemOpType::LOAD:
+            return AsanActionValue(record, ExecuteAction<AsanLoad>);
+        case MemOpType::STORE:
+            return AsanActionValue(record, ExecuteAction<AsanStore>);
+        default:
+            return AsanActionValue(record, nullptr);
     }
-    return nullptr;
 }
 
 ErrorMsgList AsanMalloc::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsCheck, const Config &config,
@@ -112,7 +117,7 @@ ErrorMsgList AsanFree::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
     if (msg.isError) {
         errorMsgs.emplace_back(msg);
     }
-    if (config.checkUnusedMemory && !ignoreShadowMemory && record_.infoSrc != MemInfoSrc::BYPASS) {
+    if (config.memCheck && config.checkUnusedMemory && !ignoreShadowMemory && record_.infoSrc != MemInfoSrc::BYPASS) {
         msg = shadowMemory.CheckUnusedMem(record_.dstAddr, size);
         if (msg.isError) {
             msg.auxData.side = record_.side;
@@ -122,6 +127,12 @@ ErrorMsgList AsanFree::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
     }
 
     if (ignoreShadowMemory) { return errorMsgs; }
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+        config, ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckFilterScope::INITIALIZATION_CHECK);
+    // 仅跳过未启用的 GM 影子状态更新；上面的堆和边界记账仍需执行，memcheck 也不能跳过。
+    if (!config.memCheck && !IsInitcheckAddressSpaceEnabled(mask, AddressSpace::GM)) {
+        return errorMsgs;
+    }
     if (record_.infoSrc == MemInfoSrc::EXTRA) {
         shadowMemory.ClearBlockId(record_.dstAddr, size);
     } else {
@@ -159,7 +170,10 @@ ErrorMsgList AsanLoad::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
         }
     }
 
-    if (config.initCheck && !ignoreShadowMemory) {
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+        config, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
+        InitcheckFilterScope::INITIALIZATION_CHECK);
+    if (IsInitcheckAddressSpaceEnabled(mask, record_.dstSpace) && !ignoreShadowMemory) {
         MemOpRecordForShadow memOpRecordForShadow(record_);
         ErrorMsgList loadErrors = shadowMemory.LoadNBytes(memOpRecordForShadow, config.initCheck);
         for (auto &msg : loadErrors) {
@@ -185,7 +199,11 @@ ErrorMsgList AsanStore::doAction(ShadowMemory& shadowMemory, BoundsCheck &bounds
 
     // 写事件有两个条件需要进入 shadowmemory，一个是初始化检测，一个是多核踩踏
     // outOfBoundCheck 关闭时仍需进入以维护内存已使用状态，仅跳过踩踏检测，防止未使用内存告警误报
-    if ((config.initCheck || (config.memCheck && record_.dstSpace == AddressSpace::GM)) && !ignoreShadowMemory) {
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+        config, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
+        InitcheckFilterScope::INITIALIZATION_CHECK);
+    if ((IsInitcheckAddressSpaceEnabled(mask, record_.dstSpace) ||
+        (config.memCheck && record_.dstSpace == AddressSpace::GM)) && !ignoreShadowMemory) {
         MemOpRecordForShadow memOpRecordForShadow(record_);
         ErrorMsgList storeErrors = shadowMemory.StoreNBytes(memOpRecordForShadow, config.memCheck,
             config.outOfBoundCheck);

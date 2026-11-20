@@ -64,6 +64,8 @@ MindStudio Sanitizer（异常检测工具，msSanitizer）是一种基于AI处�
 >
 > 建议先运行 **memcheck**（内存检测），确认算子程序无内存异常后，再按需运行 racecheck / initcheck / synccheck。
 
+对于硬件不支持通路的事件过滤及 `removed events` 日志含义，参见《[通路事件过滤使用说明](./pathway_filter_user_guide.md)》。
+
 ## 4. 适用场景
 
 ### 4.1 Kernel直调场景
@@ -477,6 +479,15 @@ mssanitizer --tool=racecheck --check-cross-npu-races=yes application
 mssanitizer --tool=initcheck application   # application为用户程序
 ```
 
+默认仅检测栈空间（`stack`，对应 PRIVATE）。使用 `--initcheck-address-space` 指定检测范围，支持 `stack`、`gm`、`ub`、`l0a`、`l0b`、`l0c`、`l1` 和 `all`，多个地址空间以逗号分隔。该参数仅在启用 `--tool=initcheck` 时生效，检测能力仍受芯片支持范围限制。
+
+**升级说明：** 旧版本默认检测全部受支持空间，当前版本调整为默认仅检测栈空间。不显式指定检测范围时，工具会在启动检测前提示一次。若要保留旧版本对 GM、UB、L1 和 L0 等空间的检测，请增加 `--initcheck-address-space=all`。未选中空间的未初始化读取不会产生初始化检测报告，也不会因此触发 `--error-exitcode`。
+
+```shell
+mssanitizer --tool=initcheck --initcheck-address-space=stack,gm application
+mssanitizer --tool=initcheck --initcheck-address-space=all application
+```
+
 > [!NOTE]
 >
 > - 启动工具后，将会在当前目录下自动生成工具运行日志文件mssanitizer__{TIMESTAMP}__{_PID_}.log。
@@ -660,6 +671,7 @@ mssanitizer [<options>] [--] <user_program> [<user_options>]
 
 | 参数名称 | 参数描述 | 参数取值 | 必选 |
 | --- | --- | --- | --- |
+| --initcheck-address-space | 指定未初始化检测的地址空间，仅对initcheck生效，多个值以逗号分隔。 | stack（默认）、gm、ub、l0a、l0b、l0c、l1、all | 否 |
 | --check-unused-memory | 使能分配内存未使用检测。 | yes/no（默认） | 否 |
 | --leak-check | 使能内存泄漏检测。 | yes/no（默认） | 否 |
 | --check-device-heap | 使能Device侧内存检测。 | yes/no（默认） | 否 |

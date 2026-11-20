@@ -85,6 +85,8 @@ public:
     virtual uint8_t GetBits(uint64_t addr);
     virtual void Set(uint64_t addr, uint64_t size, uint8_t bits);
     virtual uint64_t UnifiedSizeAfter(uint64_t baseAddr, uint64_t size, uint64_t addr) const;
+    // 快速判断 [addr, addr+size) 内是否存在状态(低2bit)==status 的字节；无则返回 false
+    virtual bool RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const;
     // 掩码用于从地址中提取出查表使用的地址
     // 不同芯片的gm建模地址会有差异，因此掩码也会不同
 
@@ -115,6 +117,7 @@ public:
     uint8_t GetBits(uint64_t addr) override;
     void Set(uint64_t addr, uint64_t size, uint8_t bits) override;
     uint64_t UnifiedSizeAfter(uint64_t baseAddr, uint64_t size, uint64_t addr) const override;
+    bool RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const override;
 
 private:
     // 获取PM指针，不存在时返回空

@@ -98,8 +98,7 @@ TEST(StackDesign, private_tail_report_preserves_original_invalid_byte_format) {
         record.memSize = 4;
         record.side = MemOpSide::KERNEL;
         auto action = AsanActionFactory::CreateAsanAction(record);
-        ASSERT_NE(action, nullptr);
-        auto errors = action->doAction(shadow, bounds, config, true);
+        auto errors = action.doAction(shadow, bounds, config, true);
         ASSERT_EQ(errors.size(), 1);
         const auto &error = errors.front();
         EXPECT_EQ(error.auxData.nBadBytes, 2);

@@ -115,7 +115,7 @@ void SyncSanitizer::Init(KernelSummary const &kernelInfo)
     stuckEvents_.clear();
     isFinished_ = false;
 
-    pipelineReplayer_.Init(kernelInfo.kernelType, deviceType_, kernelInfo.blockDim);
+    pipelineReplayer_.Init(kernelInfo.kernelType, deviceType_, kernelInfo.blockDim, true);
 
     // 注册卡死回调：当所有 pipe 均阻塞时，收集各队列首个未处理事件
     pipelineReplayer_.RegisterCallback([this](ReplayerCallbackType type, const SanEvent &event) {
@@ -285,6 +285,10 @@ void SyncSanitizer::DoRedundancyCheck(SanEvent const &event)
 }
 
 void SyncSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
+    DoEvents(record, EventRange(events));
+}
+
+void SyncSanitizer::DoEvents(const SanitizerRecord &record, EventRange events) {
     if (IsMstxRecordWithTensor(record)) {
         return;
     }

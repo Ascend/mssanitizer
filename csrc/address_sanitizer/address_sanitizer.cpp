@@ -14,8 +14,9 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #include "address_sanitizer.h"
+#include "core/framework/initcheck_address_space.h"
+#include "core/framework/config_manager.h"
 
 #include <vector>
 #include <map>
@@ -74,7 +75,37 @@ void SetBasicMemInfo(MemOpRecord &record, const SanEvent &event)
     record.recordType = event.recordType;
 }
 
-void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event, MemType memType) {
+inline bool IsContinuousAddr(const MemOpRecord &lhs, const MemOpRecord &rhs)
+{
+    return (lhs.dstAddr + lhs.memSize == rhs.dstAddr) && (
+            lhs.type != MemOpType::MEMCPY_BLOCKS ||
+            lhs.srcAddr + lhs.memSize == rhs.srcAddr);
+}
+
+inline bool IsSameOp(const MemOpRecord &lhs, const MemOpRecord &rhs)
+{
+    return (lhs.type == rhs.type) && (lhs.dstSpace == rhs.dstSpace) && (
+            lhs.type != MemOpType::MEMCPY_BLOCKS ||
+            lhs.srcSpace == rhs.srcSpace);
+}
+
+class MemRecordSink {
+public:
+    explicit MemRecordSink(std::vector<MemOpRecord> &records) : records_(records) {}
+    void emplace_back(const MemOpRecord &record) {
+        if (!records_.empty() && IsSameOp(records_.back(), record) &&
+            IsContinuousAddr(records_.back(), record)) {
+            records_.back().memSize += record.memSize;
+        } else {
+            records_.emplace_back(record);
+        }
+    }
+private:
+    std::vector<MemOpRecord> &records_;
+};
+
+template <typename Records>
+void SimtEntryToSingle(Records &records, const SanEvent &event, MemType memType) {
     MemOpRecord record{};
     record.ignoreIllegalCheck = true;
     record.isSimt = true;
@@ -97,7 +128,8 @@ void SimtEntryToSingle(std::vector<MemOpRecord> &records, const SanEvent &event,
     }
 }
 
-void ProcessAndStoreMemOp(MemOpRecord &record, std::vector<MemOpRecord> &records)
+template <typename Records>
+void ProcessAndStoreMemOp(MemOpRecord &record, Records &records)
 {
     if (record.type == MemOpType::MEMCPY_BLOCKS) {
         record.srcAddr = record.dstAddr;
@@ -106,7 +138,8 @@ void ProcessAndStoreMemOp(MemOpRecord &record, std::vector<MemOpRecord> &records
 }
 
 // MemOpInfo转为MemOpRecord，单次repeat是单条记录
-void ConvertSingleRecordRepeats(const SanEvent &event, MemOpRecord &record, std::vector<MemOpRecord> &records)
+template <typename Records>
+void ConvertSingleRecordRepeats(const SanEvent &event, MemOpRecord &record, Records &records)
 {
     MemOpInfo memInfo = event.eventInfo.memInfo;
     record.memSize = memInfo.blockStride == 1U ? memInfo.blockSize * memInfo.blockNum : memInfo.blockSize;
@@ -137,7 +170,8 @@ void ConvertSingleRecordRepeats(const SanEvent &event, MemOpRecord &record, std:
 }
 
 // MemOpInfo转为MemOpRecord，单次repeat是多条有间隔的记录
-void ConvertMutiRecordRepeats(const SanEvent &event, MemOpRecord &record, std::vector<MemOpRecord> &records)
+template <typename Records>
+void ConvertMutiRecordRepeats(const SanEvent &event, MemOpRecord &record, Records &records)
 {
     MemOpInfo memInfo = event.eventInfo.memInfo;
     if (memInfo.repeatStride == 0) {
@@ -179,17 +213,8 @@ void ConvertMutiRecordRepeats(const SanEvent &event, MemOpRecord &record, std::v
     }
 }
 
-void AddressSanitizer::ConvertSanEventToMemOpRecords(const SanEvent &event,
-    std::vector<MemOpRecord> &records)
-{
-    if (event.type == EventType::MEM_EVENT) {
-        ConvertMemEvent(event, records);
-    } else if (event.type == EventType::DYNAMIC_MEM_EVENT) {
-        ConvertDynamicMemEvent(event, records);
-    }
-}
-
-void AddressSanitizer::ConvertMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
+template <typename Records>
+void ConvertMemEventRecords(const SanEvent &event, Records &records)
 {
     auto& memInfo = event.eventInfo.memInfo;
     if (memInfo.repeatTimes == 0) {
@@ -206,26 +231,38 @@ void AddressSanitizer::ConvertMemEvent(const SanEvent &event, std::vector<MemOpR
     }
 }
 
+template <typename Records>
+void ConvertEventRecords(const SanEvent &event, Records &records)
+{
+    if (event.type == EventType::MEM_EVENT) {
+        ConvertMemEventRecords(event, records);
+    } else if (event.type == EventType::DYNAMIC_MEM_EVENT &&
+        event.eventInfo.dynamicOpInfo.dynamicType == RecordType::SIMT_ENTRY) {
+        SimtEntryToSingle(records, event, event.eventInfo.dynamicOpInfo.memType);
+    }
+}
+
+void AddressSanitizer::ConvertSanEventToMemOpRecords(const SanEvent &event,
+    std::vector<MemOpRecord> &records)
+{
+    if (event.type == EventType::MEM_EVENT) {
+        ConvertMemEvent(event, records);
+    } else if (event.type == EventType::DYNAMIC_MEM_EVENT) {
+        ConvertDynamicMemEvent(event, records);
+    }
+}
+
+void AddressSanitizer::ConvertMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
+{
+    ConvertMemEventRecords(event, records);
+}
+
 void AddressSanitizer::ConvertDynamicMemEvent(const SanEvent &event, std::vector<MemOpRecord> &records)
 {
     auto& dynamicMemInfo = event.eventInfo.dynamicOpInfo;
     if (dynamicMemInfo.dynamicType == RecordType::SIMT_ENTRY) {
         SimtEntryToSingle(records, event, dynamicMemInfo.memType);
     }
-}
-
-inline bool IsContinuousAddr(const MemOpRecord &lhs, const MemOpRecord &rhs)
-{
-    return (lhs.dstAddr + lhs.memSize == rhs.dstAddr) && (
-            lhs.type != MemOpType::MEMCPY_BLOCKS ||
-            lhs.srcAddr + lhs.memSize == rhs.srcAddr);
-}
-
-inline bool IsSameOp(const MemOpRecord &lhs, const MemOpRecord &rhs)
-{
-    return (lhs.type == rhs.type) && (lhs.dstSpace == rhs.dstSpace) && (
-            lhs.type != MemOpType::MEMCPY_BLOCKS ||
-            lhs.srcSpace == rhs.srcSpace);
 }
 
 void MergeRecords(std::vector<MemOpRecord> &records)
@@ -271,11 +308,20 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
 
 bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
 {
-    replayedEvents_.clear();
+    replayedRecords_.clear();
+    replayedEventCount_ = 0;
+    // PRIVATE 在块内流式检测（即使同时回放其它空间），首个 block 到来前清除上次 kernel 的状态。
+    if (StreamsPrivateMemory() && shadowMemory_->IsReady()) {
+        shadowMemory_->ResetPrivateMemory();
+    }
     pipelineReplayer_.Init(kernelInfo.kernelType, deviceType_, kernelInfo.blockDim);
     pipelineReplayer_.RegisterCallback([this](ReplayerCallbackType type, const SanEvent &event) {
         if (type == ReplayerCallbackType::MEMORY_EVENT) {
-            replayedEvents_.push_back(event);
+            if (config_.initCheck) {
+                ++replayedEventCount_;
+                MemRecordSink sink(replayedRecords_);
+                ConvertEventRecords(event, sink);
+            }
         }
     });
     return false;
@@ -320,8 +366,14 @@ bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
 
     if (record.version == RecordVersion::KERNEL_RECORD) {
         if (record.payload.kernelRecord.recordType == RecordType::BLOCK_FINISH) {
-            shadowMemory_->ResetChipMemory();
-            shadowMemory_->ResetPrivateMemory();
+            // 回放共享空间时 chip 状态在每个 block 结束即失效；PRIVATE 若走块内流式，
+            // 必须先处理 BLOCK_FINISH 刷出的尾部事件，重置延后到 DoEvents。
+            if (!config_.initCheck || NeedsInitcheckReplay()) {
+                shadowMemory_->ResetChipMemory();
+            }
+            if (!config_.initCheck || !StreamsPrivateMemory()) {
+                shadowMemory_->ResetPrivateMemory();
+            }
             return true;
         }
         bool atomicEnabled;
@@ -373,21 +425,21 @@ bool AddressSanitizer::SwitchToScope(BoundsCheckScope scope)
     return true;
 }
 
-ErrorMsgList AddressSanitizer::ScopeDoAction(std::shared_ptr<AsanAction> action)
+ErrorMsgList AddressSanitizer::ScopeDoAction(AsanAction& action)
 {
     switch (boundsCheckScope_) {
         case AddressSanitizer::BoundsCheckScope::DFX:
-            return action->doAction(*shadowMemory_, boundsCheckDfx_, config_, false);
+            return action.doAction(*shadowMemory_, boundsCheckDfx_, config_, false);
         case AddressSanitizer::BoundsCheckScope::BYPASS: {
             // bypass第一次处理时先忽略shadowMemory，保证boundsCheck free时能获取到size，以防漏报；
-            ErrorMsgList dfxError = action->doAction(*shadowMemory_, boundsCheckDfx_, config_, true);
-            ErrorMsgList rtError = action->doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
+            ErrorMsgList dfxError = action.doAction(*shadowMemory_, boundsCheckDfx_, config_, true);
+            ErrorMsgList rtError = action.doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
             dfxError.reserve(dfxError.size() + rtError.size());
             dfxError.insert(dfxError.end(), rtError.begin(), rtError.end());
             return dfxError;
         }
         default:
-            return action->doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
+            return action.doAction(*shadowMemory_, boundsCheckRuntime_, config_, false);
     }
 }
 
@@ -472,7 +524,7 @@ void AddressSanitizer::AfterScopeSwitch(MemOpRecord const &record)
     }
 }
 
-size_t AddressSanitizer::GetRecordsNum(const std::vector<SanEvent> &events) const
+size_t AddressSanitizer::GetRecordsNum(EventRange events) const
 {
     size_t numRecords = 0;
     for (auto& event : events) {
@@ -506,14 +558,22 @@ void AddressSanitizer::SetPermission(MemRegionPermissionDesc const &desc)
     }
 }
 
-void AddressSanitizer::ConvertEventsToRecords(const std::vector<SanEvent> &events, std::vector<MemOpRecord> &records) {
+void AddressSanitizer::ConvertEventsToRecords(EventRange events, std::vector<MemOpRecord> &records) {
     size_t numRecords = GetRecordsNum(events);
-    // important, can speed much
     records.reserve(numRecords);
-    for (auto& event : events) {
-        ConvertSanEventToMemOpRecords(event, records);
+    if (config_.initCheck) {
+        // Preserve append-and-merge behavior for an existing prefix.
+        MergeRecords(records);
+        MemRecordSink sink(records);
+        for (const auto &event : events) {
+            ConvertEventRecords(event, sink);
+        }
+    } else {
+        for (const auto &event : events) {
+            ConvertSanEventToMemOpRecords(event, records);
+        }
+        MergeRecords(records);
     }
-    MergeRecords(records);
 }
 
 void AddressSanitizer::ReportAfterKernelFinish() {
@@ -543,11 +603,42 @@ void AddressSanitizer::CheckNonDefaultReg(const SanEvent &event) {
 }
 
 void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) {
+    DoEvents(record, EventRange(events));
+}
+
+bool AddressSanitizer::NeedsInitcheckReplay() const {
+    // scalar PRIVATE 访问已有块内程序序；选中其他地址空间时仍需同步回放。
+    const uint32_t mask = ConfigManager::Instance().GetInitcheckAddressSpaceMask();
+    return config_.initCheck && (mask & ~InitcheckAddressSpaceBit(AddressSpace::PRIVATE)) != 0U;
+}
+
+bool AddressSanitizer::StreamsPrivateMemory() const {
+    // PRIVATE 为核内私有数据，块内即有程序序，不需要跟随共享空间同步回放。
+    if (!config_.initCheck) {
+        return false;
+    }
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(config_,
+        ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS);
+    return IsInitcheckAddressSpaceEnabled(mask, AddressSpace::PRIVATE);
+}
+
+void AddressSanitizer::DoEvents(const SanitizerRecord &record, EventRange events) {
     if (record.version == RecordVersion::REGION_PERMISSION) {
         return SetPermission(record.payload.permissionDesc);
     }
 
+    const bool replay = NeedsInitcheckReplay();
+    const bool streamPrivate = StreamsPrivateMemory();
+    // PRIVATE 即使在回放模式下也按块流式处理，尾部事件处理完后再清理块内状态。
+    const bool streamingBlockFinish = streamPrivate &&
+        record.version == RecordVersion::KERNEL_RECORD &&
+        record.payload.kernelRecord.recordType == RecordType::BLOCK_FINISH;
     if (events.empty()) {
+        if (streamingBlockFinish) {
+            // 即使当前 block 无事件，也不能让初始化状态泄漏到下一 block。
+            shadowMemory_->ResetChipMemory();
+            shadowMemory_->ResetPrivateMemory();
+        }
         return;
     }
 
@@ -561,7 +652,7 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
         return;
     }
 
-    for (auto &event : events) {
+    for (const auto &event : events) {
         // 同一条指令会被拆成多个event（读和写），特殊情况下还会被拆成多条记录（vgather）
         // 但是“非默认寄存器值”对一条指令只需要检测一次，因此用serialNo过滤重复值
         if (config_.traceNonDefaultSprReg && event.serialNo != preSerialNo_) {
@@ -570,28 +661,75 @@ void AddressSanitizer::Do(const SanitizerRecord &record, const std::vector<SanEv
         preSerialNo_ = event.serialNo;
     }
 
-    // 未初始化检测需要感知同步事件，通过流水线回放还原真实执行顺序，避免跨核/跨block初始化误报，故初始化检测场景需要pipeline回放
-    // 纯内存检测（越界/对齐/踩踏）不依赖执行顺序，不走回放以降低开销
-    if (config_.initCheck) {
-        for (auto &event : events) {
+    // 共享空间初始化检测需按同步关系回放；PRIVATE 为核内私有数据，块内即有程序序，始终流式处理。
+    if (replay) {
+        const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
+            config_, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
+            InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS);
+        if (streamPrivate) {
+            // 按记录块隔离 PRIVATE 记录，避免与跨指令的相邻记录合并后报告错误的源码位置。
+            streamedPrivateRecords_.clear();
+        }
+        // 复用当前记录块的合并缓冲；PRIVATE 记录不进入回放。
+        MemRecordSink privateSink(streamedPrivateRecords_);
+        // 回放结束前预留转换结果容量，避免逐条追加导致大缓冲区反复扩容。
+        for (const auto &event : events) {
+            // 多工具共享解析结果时，仅在当前 initcheck 消费者中选择地址空间。
+            if (!ShouldCollectInitcheckEvent(mask, event)) {
+                continue;
+            }
+            if (streamPrivate && event.type == EventType::MEM_EVENT &&
+                FormatConverter::MemTypeToAddrSpace(event.eventInfo.memInfo.memType) == AddressSpace::PRIVATE) {
+                ConvertEventRecords(event, privateSink);
+                continue;
+            }
+            if (event.type == EventType::SANITIZER_CONTROL_EVENT &&
+                event.eventInfo.sanitizerControlInfo.type == SanitizerControlType::KERNEL_FINISH) {
+                replayedRecords_.reserve(pipelineReplayer_.GetMemEventCount());
+            }
             pipelineReplayer_.Do(event);
         }
+        // 原地检测 PRIVATE，不等待整 kernel 回放。
+        for (MemOpRecord const &r : streamedPrivateRecords_) {
+            this->DoMemOpRecord(r, true);
+        }
+        streamedPrivateRecords_.clear();
         if (pipelineReplayer_.IsFinished()) {
-            std::vector<MemOpRecord> records;
-            ConvertEventsToRecords(replayedEvents_, records);
-            for (MemOpRecord const &r : records) {
+            for (MemOpRecord const &r : replayedRecords_) {
                 this->DoMemOpRecord(r, true);
             }
             ReportAfterKernelFinish();
         }
+        if (streamingBlockFinish) {
+            shadowMemory_->ResetChipMemory();
+            shadowMemory_->ResetPrivateMemory();
+        }
         return;
     }
 
-    // 纯内存检测不依赖同步事件感知执行顺序，按block到达顺序增量处理
-    std::vector<MemOpRecord> records;
-    ConvertEventsToRecords(events, records);
-    for (MemOpRecord const &r : records) {
+    // 仅复用当前批次的转换缓冲区，不累计整 kernel 的内存访问记录。
+    replayedRecords_.clear();
+    const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(config_,
+        ConfigManager::Instance().GetInitcheckAddressSpaceMask(), InitcheckFilterScope::ADDRESS_SANITIZER_EVENTS);
+    if (mask == INITCHECK_ALL_ADDRESS_SPACES) {
+        ConvertEventsToRecords(events, replayedRecords_);
+    } else {
+        // 仅过滤当前消费者的输入，不修改其他工具所需的事件；未选中事件也不参与容量预估。
+        MemRecordSink sink(replayedRecords_);
+        for (const auto &event : events) {
+            if (ShouldCollectInitcheckEvent(mask, event)) {
+                ConvertEventRecords(event, sink);
+            }
+        }
+    }
+    for (MemOpRecord const &r : replayedRecords_) {
         this->DoMemOpRecord(r, true);
+    }
+
+    if (streamingBlockFinish) {
+        // 尾部事件检测完成后再清理状态，避免将同一 block 的先前写入误判为未初始化。
+        shadowMemory_->ResetChipMemory();
+        shadowMemory_->ResetPrivateMemory();
     }
 
     if (record.version == RecordVersion::KERNEL_RECORD &&
@@ -642,13 +780,9 @@ void AddressSanitizer::DoWithLocalTensor(const MstxRecord &record, const std::ve
             continue;
         }
 
-        auto action = AsanActionFactory::CreateAsanAction(r);
-        if (action == nullptr) {
-            SAN_WARN_LOG("Failed to create action");
-            return;
-        }
         BoundsCheck &boundsCheck = r.type == MemOpType::LOAD ? boundsCheckR : boundsCheckW;
-        ErrorMsgList errors = action->doAction(*shadowMemory_, boundsCheck, config_, true);
+        auto action = AsanActionFactory::CreateAsanAction(r);
+        ErrorMsgList errors = action.doAction(*shadowMemory_, boundsCheck, config_, true);
         for (auto const &error : errors) {
             this->errorBuffer_.Add(error);
         }
@@ -681,7 +815,7 @@ void AddressSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockTy
             if (kernelErrorDesc.l2StartAddr % 8 != 0) {
                 SAN_INFO_LOG("====== unaligned l2StartAddr=0x%lu", kernelErrorDesc.l2StartAddr);
             }
- 	    }
+        }
 
         if (kernelErrorDesc.errorType >= KernelErrorType::MAX) {
             SAN_ERROR_LOG("Unknown kernel error type: %u", static_cast<uint32_t>(kernelErrorDesc.errorType));
@@ -723,12 +857,13 @@ void AddressSanitizer::ParseOnlineError(const KernelErrorRecord &record, BlockTy
 void AddressSanitizer::DoMemOpRecord(MemOpRecord const &record, bool reduce)
 {
     auto action = AsanActionFactory::CreateAsanAction(record);
-    if (action == nullptr) {
+    if (!action.IsValid()) {
         SAN_WARN_LOG("Failed to create action");
         return;
     }
 
     ErrorMsgList errorTypes = ScopeDoAction(action);
+
     for (ErrorMsg const &error : errorTypes) {
         if (reduce) {
             this->errorBuffer_.Add(error);
@@ -762,7 +897,7 @@ void AddressSanitizer::Exit()
         return;
     }
 
-    if (config_.checkUnusedMemory) {
+    if (config_.memCheck && config_.checkUnusedMemory) {
         SummaryUnusedHeapCheck();
     }
 

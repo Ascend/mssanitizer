@@ -14,7 +14,6 @@
  * See the Mulan PSL v2 for more details.
  * ------------------------------------------------------------------------- */
 
-
 #ifndef CORE_FRAMEWORK_CHECKER_H
 #define CORE_FRAMEWORK_CHECKER_H
 
@@ -26,11 +25,13 @@
 #include <queue>
 #include <condition_variable>
 #include <mutex>
+#include <future>
 #include "sanitizer_base.h"
 #include "record_defs.h"
 #include "config.h"
 #include "runtime_context.h"
 #include "platform_config.h"
+#include "parse_pipeline.h"
 #include "utility/log.h"
 #include "protocol.h"
 
@@ -46,6 +47,13 @@ enum class BroadcastEvent : uint8_t {
     SANITIZER_RECORD_ARRIVED,
     KERNEL_BLOCK_ARRIVED,
     STOP,
+    MEMCHECK_COMPLETION,
+};
+
+struct RawBatch {
+    std::vector<SanitizerRecord> records;
+    std::vector<size_t> eventOffsets;
+    std::vector<SanEvent> events;
 };
 
 struct WorkArgs {
@@ -55,8 +63,9 @@ struct WorkArgs {
     DeviceInfoSummary deviceInfo;
     KernelSummary kernelSummary;
     std::string kernelNameDisplay;
-    std::vector<SanitizerRecord> records;
-    std::vector<std::vector<SanEvent>> events;
+    std::shared_ptr<const RawBatch> rawBatch;
+    // 消费线程处理到此标记时，通知此前的内存检查已完成。
+    std::shared_ptr<std::promise<void>> memcheckCompletion;
 };
 
 // Checker类主要用于将单条解析信息分发给合适的sanitier工具
@@ -70,6 +79,7 @@ public:
     explicit Checker(Config const &config, bool enableDebugLog);
     ~Checker();
 
+    // External producers must stop submitting work before Finish() is called.
     void Finish();
     void SetDeviceInfo(const DeviceInfoSummary &deviceInfo);
     void SetKernelInfo(const KernelSummary &kernelInfo);
@@ -77,13 +87,24 @@ public:
     void ParseOnlineError(const SanitizerRecord &record);
     // do check
     void Do(const SanitizerRecord& record);
-    void Do(const std::vector<SanitizerRecord> &records);
+    void Do(std::vector<SanitizerRecord> records);
+    // 在 memcheck 队列尾部放入完成标记，返回此前所有 memcheck 工作完成的等待点。
+    std::shared_future<void> CaptureMemcheckCompletion();
     bool SupportSimt() const;
     bool IsTargetBlock(uint64_t blockIdx) const;
 
 private:
+    static constexpr size_t MAX_QUEUED_BATCHES = 16;
+    void EnqueueWork(uint8_t consumeId, WorkArgs &&args);
     void ConsumeRecordThread(uint8_t consumeId, const std::thread::id &rootTid);
-    void ConsumeKernelBlock(uint8_t consumeId, WorkArgs const &args);
+    void ConsumeRecord(uint8_t consumeId, const SanitizerRecord &record, std::vector<SanEvent> &events,
+        uint64_t &removedPathwayEventCount);
+    void ConsumeKernelBlock(uint8_t consumeId, WorkArgs &args, uint64_t &removedPathwayEventCount,
+        std::vector<SanEvent> &filteredEvents);
+    void ReportPathwayFilterSummary(uint8_t consumeId, uint64_t removedPathwayEventCount) const;
+    // ---- 解析并行：有界、保序的解析流水线（见 parse_pipeline.h）----
+    ParseOut ParseRecords(ParseTask &&task);
+    void DispatchParsed(ParseOut &out);
     inline void WaitAfterConsumed(uint8_t consumeId);
     inline bool IsNeedFilterDbi(uint8_t toolIdx) const;
     inline bool IsNeedFilterDbi(const SanitizerRecord &record, uint8_t toolIdx) const;
@@ -97,23 +118,28 @@ private:
     std::ostream *detectionOstream_{};
 
     std::array<std::mutex, TOOL_NUM> mtx_{};
-    std::condition_variable workerCv_{};
-    std::condition_variable producerCv_{};
+    // 等待线程使用不同消费者的锁，因此共享通知使用 condition_variable_any。
+    std::condition_variable_any workerCv_{};
+    std::condition_variable_any producerCv_{};
 
     std::array<bool, TOOL_NUM> done_{};
     std::array<uint32_t, TOOL_NUM> errorCounts_{};
-    std::atomic_bool finishProduce_{};
     std::atomic_bool printMissDebugLine_{};
     std::array<std::queue<WorkArgs>, TOOL_NUM> workerArgs_{};
     std::vector<std::thread> workers_{};
     mutable std::mutex detMutex_{};
     mutable std::mutex doMutex_{};
 
+    // 解析流水线：并行解析 + 按提交顺序分发
+    OrderedParsePipeline pipeline_;
+
     std::array<std::shared_ptr<Sanitizer::SanitizerBase>, TOOL_NUM> sanitizerArr_{};
     std::array<bool, TOOL_NUM> initWithDeviceInfoDone_{};
     std::array<bool, TOOL_NUM> initWithKernelInfoDone_{};
     bool isKernelWithDBI_{false};
     DeviceType deviceType_{DeviceType::INVALID};
+    // 所属 client 线程的 rootTid：解析池线程与消费线程都按它解析 ThreadSingleton
+    std::thread::id rootTid_{};
 }; // class Checker
 
 } // namespace Sanitizer

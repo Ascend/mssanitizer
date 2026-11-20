@@ -76,6 +76,7 @@ void AlignChecker::CheckAlign(SanEvent &event, uint16_t alignSize)
         SetBasicMemInfo(msg, event);
         msg.auxData.side = MemOpSide::KERNEL;
         msg.auxData.serialNo = event.serialNo;
+        std::lock_guard<std::mutex> lock(errMutex_);
         errorBuffer_.Add(msg);
     }
 }
@@ -105,7 +106,12 @@ void AlignChecker::Notify()
     if (deviceType_ >= DeviceType::INVALID) {
         SAN_WARN_LOG("Invalid device type was set for align checker.");
     }
-    auto &&errorList = errorBuffer_.GetBuffer();
+    std::vector<ReducedErrorMsg> errorList;
+    {
+        std::lock_guard<std::mutex> lock(errMutex_);
+        errorList = errorBuffer_.GetBuffer();
+        errorBuffer_.Clear();
+    }
     for (ReducedErrorMsg const &error : errorList) {
         msgFunc_(LogLv::ERROR, [&error](void) {
             std::stringstream ss;
@@ -113,7 +119,6 @@ void AlignChecker::Notify()
             return DetectionInfo{ToolType::MEMCHECK, ss.str()};
         });
     }
-    errorBuffer_.Clear();
 }
 
 }  // namespace Sanitizer

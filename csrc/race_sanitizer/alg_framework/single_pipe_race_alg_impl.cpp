@@ -25,6 +25,12 @@ SinglePipeRaceAlgImpl::SinglePipeRaceAlgImpl(KernelType kernelType, DeviceType d
     memChecker_.Init(kernelType, deviceType, RaceCheckType::SINGLE_PIPE_CHECK);
 }
 
+SinglePipeRaceAlgImpl::~SinglePipeRaceAlgImpl()
+{
+    // 先等后台 stage-2 结束：它还会访问本 alg（含派生类）的解析状态与成员
+    WaitFinished();
+}
+
 void SinglePipeRaceAlgImpl::Do(const SanEvent& event)
 {
     // 阶段一 除了PIPE_S，其他流水都有可能出现竞争行为，将事件推入对应PIPE
@@ -36,27 +42,29 @@ void SinglePipeRaceAlgImpl::Do(const SanEvent& event)
         return;
     }
 
-    // 阶段二 模拟PIPE流水执行，进行竞争分析
-    PipeLine pipeLine(eventContainer_);
-    pipeLine.RegisterEventFunc(std::bind(&SinglePipeRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
-    // 这一步耗时会较长，可以单独放一个线程去处理
-    pipeLine.Run();
-    memChecker_.RunAlgorithm();
-    isFinished_ = true;
+    // 阶段二 模拟PIPE流水执行，进行竞争分析（异步：提交后台，Do 立即返回）
+    SubmitStage2([this]() {
+        PipeLine pipeLine(eventContainer_);
+        pipeLine.RegisterEventFunc(std::bind(&SinglePipeRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
+        pipeLine.Run();
+        memChecker_.RunAlgorithm();
+    });
 }
 
 bool SinglePipeRaceAlgImpl::IsFinished() const
 {
-    return isFinished_;
+    return isFinished_.load(std::memory_order_acquire);
 }
 
 std::shared_ptr<std::vector<RaceDispInfo>> SinglePipeRaceAlgImpl::GetResult() const
 {
+    WaitFinished();
     return memChecker_.GetResult();
 }
 
 uint32_t SinglePipeRaceAlgImpl::GetRaceCount() const
 {
+    WaitFinished();
     return memChecker_.GetRaceCount();
 }
 

@@ -50,10 +50,20 @@ public:
     static T &Instance()
     {
         static std::map<std::thread::id, T> insts;
-        auto threadId = RuntimeContext::Instance().rootTid_;
         static std::mutex mtx{};
+        // 调用方（如解析池线程）的 rootTid_ 在生命周期内固定，缓存后避免每个事件都加全局锁查 map。
+        // std::map 节点地址稳定且从不 erase，缓存裸指针安全。
+        thread_local std::thread::id cachedThreadId{};
+        thread_local T *cachedInstance = nullptr;
+        auto threadId = RuntimeContext::Instance().rootTid_;
+        if (cachedInstance != nullptr && cachedThreadId == threadId) {
+            return *cachedInstance;
+        }
         std::lock_guard<std::mutex> scopeLock(mtx);
-        return insts[threadId];
+        T &instance = insts[threadId];
+        cachedThreadId = threadId;
+        cachedInstance = &instance;
+        return instance;
     }
 
     ThreadSingleton(ThreadSingleton const &) = delete;

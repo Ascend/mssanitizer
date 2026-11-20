@@ -22,13 +22,17 @@ RaceAlgImpl::RaceAlgImpl(KernelType kernelType, DeviceType deviceType, uint32_t 
     : RaceAlgBase(kernelType, deviceType, blockDim)
 {
     uint32_t totalBlockNum = NeedExpandBlockDim(kernelType, deviceType) ? blockDim * C220_MIX_SUB_BLOCKDIM : 1;
+    // 稀疏向量时钟：缺省分量全为 1，无需逐元素初始化
     vc_.resize(totalBlockNum * static_cast<uint8_t>(PipeType::SIZE));
-    for (auto &it : vc_) {
-        it.resize(totalBlockNum * static_cast<uint8_t>(PipeType::SIZE), 1);
-    }
     eventContainer_.Init(totalBlockNum);
     crossCoreSyncInfoContainer_.Init(totalBlockNum, kernelType);
     memChecker_.Init(kernelType, deviceType, RaceCheckType::SINGLE_BLOCK_CHECK);
+}
+
+RaceAlgImpl::~RaceAlgImpl()
+{
+    // 先等后台 stage-2 结束：它还会访问本 alg（含派生类）的解析状态与成员
+    WaitFinished();
 }
 
 void RaceAlgImpl::Do(const SanEvent& event)
@@ -42,27 +46,29 @@ void RaceAlgImpl::Do(const SanEvent& event)
         return;
     }
 
-    // 阶段二 模拟PIPE流水执行，进行竞争分析
-    PipeLine pipeLine(eventContainer_);
-    pipeLine.RegisterEventFunc(std::bind(&RaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
-    // 这一步耗时会较长，可以单独放一个线程去处理
-    pipeLine.Run();
-    memChecker_.RunAlgorithm();
-    isFinished_ = true;
+    // 阶段二 模拟PIPE流水执行，进行竞争分析（异步：提交后台，Do 立即返回；外部调用者最后统一 WaitFinished）
+    SubmitStage2([this]() {
+        PipeLine pipeLine(eventContainer_);
+        pipeLine.RegisterEventFunc(std::bind(&RaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
+        pipeLine.Run();
+        memChecker_.RunAlgorithm();
+    });
 }
 
 bool RaceAlgImpl::IsFinished() const
 {
-    return isFinished_;
+    return isFinished_.load(std::memory_order_acquire);
 }
 
 std::shared_ptr<std::vector<RaceDispInfo>> RaceAlgImpl::GetResult() const
 {
+    WaitFinished();
     return memChecker_.GetResult();
 }
 
 uint32_t RaceAlgImpl::GetRaceCount() const
 {
+    WaitFinished();
     return memChecker_.GetRaceCount();
 }
 
@@ -77,9 +83,9 @@ ReturnType RaceAlgImpl::ProcessEvent(const SanEvent& event)
         SanEvent e;
         e.type = EventType::TIME_EVENT;
         e.pipe = event.pipe;
-        e.timeInfo = vc_[curPipeIdx];
+        e.timeInfo = AllocTimeInfo(vc_[curPipeIdx]);
         auto blockIndex = GetEventBlockIndex(event, kernelType_, deviceType_, RaceCheckType::SINGLE_BLOCK_CHECK);
-        eventContainer_.Push(e, e.pipe, blockIndex);
+        eventContainer_.Push(std::move(e), e.pipe, blockIndex);
         eventContainer_.Push(event, event.pipe, blockIndex);
         return ReturnType::PROCESS_OK;
     }
@@ -163,7 +169,10 @@ ReturnType RaceAlgImpl::ProcessSyncEvent(const SanEvent& event)
 ReturnType RaceAlgImpl::ProcessTimeEvent(const SanEvent& event)
 {
     uint32_t curPipe = eventContainer_.GetQueIndex();
-    VectorClock::UpdateVectorTime(event.timeInfo, vc_[curPipe]);
+    if (event.timeInfo != nullptr) {
+        VectorClock::UpdateVectorTime(*event.timeInfo, vc_[curPipe]);
+        FreeTimeInfo(event.timeInfo);
+    }
     VectorClock::UpdateLogicTime(vc_[curPipe], curPipe);
     return ReturnType::PROCESS_OK;
 }

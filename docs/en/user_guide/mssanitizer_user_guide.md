@@ -75,7 +75,7 @@ mssanitizer --tool=memcheck ./add_npu
 ```
 
 > [!NOTE]
-> 
+>
 > When the custom operators are launched through `<<<>>>` and integrated by torch, the GM is managed in memory pool mode by default, which may cause inaccurate out-of-bounds check results. Therefore, you need to set the following environment variable to disable the memory pool before the check to obtain more accurate check results:
 >
 > ```shell
@@ -119,7 +119,7 @@ To ensure check accuracy and avoid cache interference, set the following environ
 | `PYTORCH_NO_NPU_MEMORY_CACHING=1` | Disables the NPU memory pool mechanism of PyTorch to prevent it from interfering with the memory check result.|
 
 > [!NOTE]
-> 
+>
 > In a Triton scenario, PyTorch is used to create tensors. In the PyTorch framework, the GM is managed in memory pool mode by default, which interferes with memory check. Therefore, the memory cache must be disabled to ensure the validity of the check.
 
 For details, see section "Detecting Triton Operators" in [Basic Scenario Cases](../best_practices/mssanitizer_basic_cases.md).
@@ -465,6 +465,15 @@ When running the msSanitizer tool, run the following command to enable the unini
 mssanitizer --tool=initcheck application   // Application indicates the user program
 ```
 
+By default, only stack memory (`stack`, corresponding to PRIVATE) is checked. Use `--initcheck-address-space` to select the address spaces to check. Supported values are `stack`, `gm`, `ub`, `l0a`, `l0b`, `l0c`, `l1`, and `all`. Separate multiple values with commas. This option takes effect only when `--tool=initcheck` is enabled, and the available checks remain subject to the capabilities of the target chip.
+
+**Upgrade note:** Previous versions checked all supported address spaces by default. The default is now stack only. When no address space is explicitly selected, the tool prints a notice once before starting detection. Add `--initcheck-address-space=all` to preserve the previous coverage of GM, UB, L1, L0, and other supported spaces. Uninitialized reads in unselected spaces do not produce initcheck reports and therefore do not trigger `--error-exitcode`.
+
+```shell
+mssanitizer --tool=initcheck --initcheck-address-space=stack,gm application
+mssanitizer --tool=initcheck --initcheck-address-space=all application
+```
+
 > [!NOTE]
 >
 > - After the tool is started, the tool run log file `mssanitizer_{TIMESTAMP}_{PID}.log` is automatically generated in the current directory.
@@ -647,6 +656,7 @@ The configuration of each part is described as follows:
 
 | Option| Description| Value| Mandatory (Yes or No)|
 | --- | --- | --- | --- |
+| --initcheck-address-space | Selects the address spaces for uninitialization check. Takes effect only with initcheck. Separate multiple values with commas. | stack (default), gm, ub, l0a, l0b, l0c, l1, all | No |
 | --check-unused-memory | Enables the check for unused allocated memory.| `yes`/`no` (default)| No|
 | --leak-check | Enables memory leak check.| `yes`/`no` (default)| No|
 | --check-device-heap | Enables device memory check.| `yes`/`no` (default)| No|

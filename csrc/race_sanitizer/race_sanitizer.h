@@ -39,6 +39,7 @@ public:
     bool SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config) override;
     bool SetKernelInfo(KernelSummary const &kernelInfo) override;
     void Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) override;
+    void DoEvents(const SanitizerRecord &record, EventRange events) override;
     void ParseOnlineError(const KernelErrorRecord &record, BlockType blockType, uint64_t serialNo) override;
     bool CheckRecordBeforeProcess(const SanitizerRecord &record) override;
     void RegisterNotifyFunc(const MSG_FUNC &func) override;
@@ -46,11 +47,11 @@ public:
 
 private:
     // 核内竞争检测
-    void SingleBlockRaceCheck(const std::vector<SanEvent> &events);
+    void SingleBlockRaceCheck(EventRange events);
     // 核内单一流水竞争检测
-    void SinglePipeRaceCheck(const std::vector<SanEvent> &events);
+    void SinglePipeRaceCheck(EventRange events);
     // 核间竞争检测
-    void AllBlockRaceCheck(const std::vector<SanEvent> &events);
+    void AllBlockRaceCheck(EventRange events);
     void RaceSanitizerRecord(std::shared_ptr<std::vector<RaceDispInfo>> p);
     // 上报 mode4 场景 flag_id 非法告警
     void ReportFlagIdWarnInfo(const std::vector<CrossCoreSyncWarnInfo> &warnInfos);
@@ -60,7 +61,7 @@ private:
     bool IsTargetEvent(const SanEvent &event, BlockType targetBlockType);
 
     void MergeSimtErrors();
-    void DoImpl(const SanitizerRecord &record, const std::vector<SanEvent> &events);
+    void DoImpl(const SanitizerRecord &record, EventRange events);
     void PopWindowRecord(std::deque<KernelRecord> &aheadDcci, std::deque<KernelRecord> &afterDccis);
     uint32_t NearestDcciDistance(KernelRecord const &kernelRecord, SanEvent const &event,
         std::deque<KernelRecord> &aheadDcci, std::deque<KernelRecord> &afterDccis) const;
