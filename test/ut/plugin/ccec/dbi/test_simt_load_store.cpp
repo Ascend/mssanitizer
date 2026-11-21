@@ -31,6 +31,9 @@ using namespace Sanitizer;
 namespace SanitizerTest {
 
 namespace {
+constexpr uint64_t SIMT_STACK_LIMIT = 0x8000;
+constexpr uint64_t SIMT_STACK_WINDOW_OFFSET = 0x100000;
+
 std::vector<uint8_t> CreateStackDesignSimtInfo() {
     auto info = CreateMemInfo();
     auto head = reinterpret_cast<RecordGlobalHead *>(info.data());
@@ -53,6 +56,67 @@ const KernelErrorDesc *StackDesignFirstError(std::vector<uint8_t> &info) {
     return reinterpret_cast<const KernelErrorDesc *>(
         bytes + sizeof(RecordType) + sizeof(KernelErrorRecord) + sizeof(SimtLoadStoreRecord));
 }
+
+struct PrivateProbePair {
+    const char *name;
+    decltype(&__sanitizer_report_simt_ldk_u8) stackProbe;
+    decltype(&__sanitizer_report_simt_ld_u8) genericProbe;
+    uint64_t width;
+    KernelErrorType errorType;
+};
+
+const PrivateProbePair PRIVATE_PROBES[] = {
+    {"ldk_u8", __sanitizer_report_simt_ldk_u8, __sanitizer_report_simt_ld_u8, 1, KernelErrorType::ILLEGAL_ADDR_READ},
+    {"ldk_s8", __sanitizer_report_simt_ldk_s8, __sanitizer_report_simt_ld_s8, 1, KernelErrorType::ILLEGAL_ADDR_READ},
+    {"ldk_u16", __sanitizer_report_simt_ldk_u16, __sanitizer_report_simt_ld_u16, 2, KernelErrorType::ILLEGAL_ADDR_READ},
+    {"ldk_s16", __sanitizer_report_simt_ldk_s16, __sanitizer_report_simt_ld_s16, 2, KernelErrorType::ILLEGAL_ADDR_READ},
+    {"ldk_b32", __sanitizer_report_simt_ldk_b32, __sanitizer_report_simt_ld_b32, 4, KernelErrorType::ILLEGAL_ADDR_READ},
+    {"stk_b8", __sanitizer_report_simt_stk_b8, __sanitizer_report_simt_st_b8, 1, KernelErrorType::ILLEGAL_ADDR_WRITE},
+    {"stk_b16", __sanitizer_report_simt_stk_b16, __sanitizer_report_simt_st_b16, 2,
+        KernelErrorType::ILLEGAL_ADDR_WRITE},
+    {"stk_b32", __sanitizer_report_simt_stk_b32, __sanitizer_report_simt_st_b32, 4,
+        KernelErrorType::ILLEGAL_ADDR_WRITE},
+};
+
+class SimtPrivateProbes : public testing::TestWithParam<PrivateProbePair> {
+protected:
+    void ExpectAccess(uint64_t base, int64_t offset, uint64_t expectedAddr, uint64_t illegalSize) const {
+        const auto &probe = GetParam();
+        for (bool generic : {false, true}) {
+            SCOPED_TRACE(testing::Message() << "base=" << base << " offset=" << offset << " generic=" << generic);
+            auto info = CreateStackDesignSimtInfo();
+            const uint64_t addr = generic ? GetSysVaBase() + SIMT_STACK_WINDOW_OFFSET + base : base;
+            auto report = generic ? probe.genericProbe : probe.stackProbe;
+            report(info.data(), 0x1000, 0, addr, offset);
+            const auto *simtHead = StackDesignSimtHead(info);
+            const uint64_t expectedCount = illegalSize == 0 ? 0U : 1U;
+            ASSERT_EQ(simtHead->recordWriteCount, expectedCount);
+            ASSERT_EQ(simtHead->recordCount, expectedCount);
+            if (illegalSize == 0) {
+                continue;
+            }
+            const auto error = StackDesignFirstError(info);
+            EXPECT_EQ(error->space, AddressSpace::PRIVATE);
+            ASSERT_EQ(error->errorType, probe.errorType);
+            EXPECT_EQ(error->payload.illegalDesc.addr, expectedAddr);
+            EXPECT_EQ(error->payload.illegalDesc.illegalSize, illegalSize);
+        }
+    }
+};
+
+TEST_P(SimtPrivateProbes, stack_operands_and_generic_pointers_agree_at_stack_tail) {
+    const uint64_t width = GetParam().width;
+    ExpectAccess(0, 0, 0, 0);
+    ExpectAccess(0x100, 0, 0x100, 0);
+    ExpectAccess(SIMT_STACK_LIMIT - 2 * width, 1, SIMT_STACK_LIMIT - width, 0);
+    ExpectAccess(SIMT_STACK_LIMIT + width, -1, SIMT_STACK_LIMIT, width);
+    if (width > 1) {
+        ExpectAccess(SIMT_STACK_LIMIT - width - 1, 1, SIMT_STACK_LIMIT - 1, width - 1);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(SimtLoadStoreInstructions, SimtPrivateProbes, testing::ValuesIn(PRIVATE_PROBES),
+    [](const testing::TestParamInfo<PrivateProbePair> &info) { return info.param.name; });
 } // namespace
 
 TEST(SimtLoadStoreInstructions, stack_design_online_gm_left_partial_overlap_is_not_silently_accepted) {
@@ -95,7 +159,7 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
 {
     std::vector<uint8_t> memInfo = CreateMemInfo();
     RecordGlobalHead head{};
-    head.simtInfo.ubDynamicSize = 0x10000; // 显式指定 UB 大小，保持 UB 访问(addr>=0x10000)越界，符合原期望
+    head.simtInfo.ubDynamicSize = 0x10000; // 模拟动态 UB 配置；检测使用物理上限，下述 UB 访问仍合法。
     head.checkParms.defaultcheck = true;
     head.checkParms.memcheck = true;
     head.supportSimt = true;
@@ -146,6 +210,12 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     __sanitizer_report_simt_sts_b32(memInfo.data(), 0x1000, 0, 0x10000, 11);
     __sanitizer_report_simt_sts_b64(memInfo.data(), 0x1000, 0, 0x10000, 11);
     __sanitizer_report_simt_sts_b128(memInfo.data(), 0x1000, 0, 0x10000, 11);
+    auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
+        head.offsetInfo.simtErrorInfo.offset);
+    // 前面的 10 次 LDG/STG 和 8 次普通 LD/ST 均访问未登记的 GM，共产生 18 条错误；12 次 UB 访问合法。
+    ASSERT_EQ(blockHead->recordWriteCount, 18U);
+    ASSERT_EQ(blockHead->recordCount, 18U);
+    // 以下 8 次 LDK/STK 故意使用 8 MiB 的线程栈偏移，超过 32 KiB，新增 8 条 PRIVATE 越界错误。
     __sanitizer_report_simt_ldk_u8(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_ldk_s8(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_ldk_u16(memInfo.data(), 0x1000, 0, 0x800000, 11);
@@ -154,10 +224,8 @@ TEST(SimtLoadStoreInstructions, dump_simt_load_store_with_initcheck_expect_get_s
     __sanitizer_report_simt_stk_b8(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_stk_b16(memInfo.data(), 0x1000, 0, 0x800000, 11);
     __sanitizer_report_simt_stk_b32(memInfo.data(), 0x1000, 0, 0x800000, 11);
-    auto blockHead = reinterpret_cast<SimtRecordBlockHead const *>(memInfo.data() + sizeof(RecordGlobalHead) +
-        head.offsetInfo.simtErrorInfo.offset);
-    ASSERT_EQ(blockHead->recordWriteCount, 18);
-    ASSERT_EQ(blockHead->recordCount, 18);
+    ASSERT_EQ(blockHead->recordWriteCount, 18U + 8U);
+    ASSERT_EQ(blockHead->recordCount, 18U + 8U);
 }
 
 TEST(SimtLoadStoreInstructions, dump_simt_red_with_initcheck_expect_get_success)

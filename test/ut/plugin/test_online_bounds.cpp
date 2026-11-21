@@ -33,6 +33,7 @@ namespace {
 constexpr uint64_t MAX_ADDRESS = std::numeric_limits<uint64_t>::max();
 // Existing physical UB model; these tests do not validate individual UB object sizes.
 constexpr uint64_t UB_LIMIT = 253952;
+constexpr uint64_t SIMT_STACK_LIMIT = 32768;
 constexpr uint32_t READ_WRITE = MSTX_MEM_PERMISSIONS_REGION_FLAGS_DEFAULT;
 
 uint64_t IntersectionOracle(uint64_t addr, uint64_t size, uint64_t base, uint64_t length) {
@@ -262,15 +263,48 @@ TEST(OnlineBounds, gm_and_ub_checks_do_not_claim_other_address_spaces) {
     }
 }
 
+TEST(OnlineBounds, private_fixed_thread_capacity_checks_full_width)
+{
+    OnlineCheck check;
+    AddrInfo info{};
+    info.space = AddressSpace::PRIVATE;
+    for (uint64_t addr : {uint64_t{0}, SIMT_STACK_LIMIT - 1, SIMT_STACK_LIMIT, SIMT_STACK_LIMIT + 1,
+             MAX_ADDRESS - 1, MAX_ADDRESS}) {
+        for (uint64_t size : {uint64_t{0}, uint64_t{1}, uint64_t{4}, MAX_ADDRESS}) {
+            info.addr = addr;
+            info.size = size;
+            uint64_t illegal = 123;
+            uint64_t expected = size - IntersectionOracle(addr, size, 0, SIMT_STACK_LIMIT);
+            EXPECT_EQ(check.PrivateReadWriteCheck(info, illegal), expected != 0);
+            EXPECT_EQ(illegal, expected);
+        }
+    }
+}
+
+TEST(OnlineBounds, private_check_does_not_claim_other_address_spaces)
+{
+    OnlineCheck check;
+    AddrInfo info{};
+    info.addr = MAX_ADDRESS;
+    info.size = 4;
+    uint64_t illegal = 123;
+    for (auto space : {AddressSpace::GM, AddressSpace::UB, AddressSpace::UNKNOWN}) {
+        info.space = space;
+        EXPECT_FALSE(check.PrivateReadWriteCheck(info, illegal));
+    }
+    EXPECT_EQ(illegal, 123);
+}
+
 void ExpectOnlineRecord(AddressSpace space, uint64_t addr, uint64_t width, DetailedDataType type,
-    std::vector<HostMemoryInfo> ranges, bool write, bool enabled) {
+    std::vector<HostMemoryInfo> ranges, bool write, bool enabled, uint16_t threadId = 3) {
     SCOPED_TRACE(testing::Message() << "space=" << static_cast<int>(space) << " addr=" << addr << " width=" << width
-                                    << " write=" << write << " enabled=" << enabled);
+                                    << " write=" << write << " enabled=" << enabled << " threadId=" << threadId);
     const size_t simtOffset = sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
     std::vector<uint8_t> buffer(simtOffset + sizeof(SimtRecordBlockHead) + 4096, 0);
     auto head = reinterpret_cast<RecordGlobalHead *>(buffer.data());
     *head = RecordGlobalHead{};
     head->checkParms.memcheck = enabled;
+    head->supportSimt = true;
     head->offsetInfo.simtErrorInfo.size = sizeof(SimtRecordBlockHead) + 4096;
     auto block = reinterpret_cast<RecordBlockHead *>(buffer.data() + sizeof(RecordGlobalHead));
     *block = RecordBlockHead{};
@@ -286,12 +320,18 @@ void ExpectOnlineRecord(AddressSpace space, uint64_t addr, uint64_t width, Detai
     record.detailedDataType = type;
     record.location.pc = 0x80;
     record.location.blockId = 2;
-    record.threadLoc.idX = 3;
+    record.threadLoc.idX = threadId;
     if (space == AddressSpace::GM) {
         if (write) {
             check.Process<RecordType::SIMT_STG>(record);
         } else {
             check.Process<RecordType::SIMT_LDG>(record);
+        }
+    } else if (space == AddressSpace::PRIVATE) {
+        if (write) {
+            check.Process<RecordType::SIMT_ST>(record);
+        } else {
+            check.Process<RecordType::SIMT_LD>(record);
         }
     } else if (write) {
         check.Process<RecordType::SIMT_STS>(record);
@@ -299,8 +339,9 @@ void ExpectOnlineRecord(AddressSpace space, uint64_t addr, uint64_t width, Detai
         check.Process<RecordType::SIMT_LDS>(record);
     }
     const auto access = write ? AccessType::WRITE : AccessType::READ;
-    const uint64_t bad = space == AddressSpace::GM ? InvalidBytesOracle(addr, width, ranges, access)
-                                                   : width - IntersectionOracle(addr, width, 0, UB_LIMIT);
+    const uint64_t bad = space == AddressSpace::GM ? InvalidBytesOracle(addr, width, ranges, access) :
+        width - IntersectionOracle(addr, width, 0,
+            space == AddressSpace::PRIVATE ? SIMT_STACK_LIMIT : UB_LIMIT);
     // All calls below use actual 1/2/4/8/16-byte types, whose alignment equals their width.
     const bool misaligned = addr % width != 0;
     const uint32_t errors = enabled ? static_cast<uint32_t>(bad != 0) + misaligned : 0;
@@ -319,9 +360,10 @@ void ExpectOnlineRecord(AddressSpace space, uint64_t addr, uint64_t width, Detai
     std::memcpy(&header, cursor, sizeof(header));
     ASSERT_EQ(header.errorNum, errors);
     ASSERT_EQ(header.recordSize, sizeof(record));
-    EXPECT_EQ(header.recordType,
-        space == AddressSpace::GM ? (write ? RecordType::SIMT_STG : RecordType::SIMT_LDG)
-                                  : (write ? RecordType::SIMT_STS : RecordType::SIMT_LDS));
+    EXPECT_EQ(header.recordType, space == AddressSpace::GM ?
+        (write ? RecordType::SIMT_STG : RecordType::SIMT_LDG) :
+        (space == AddressSpace::PRIVATE ? (write ? RecordType::SIMT_ST : RecordType::SIMT_LD) :
+        (write ? RecordType::SIMT_STS : RecordType::SIMT_LDS)));
     cursor += sizeof(header);
     SimtLoadStoreRecord saved{};
     std::memcpy(&saved, cursor, sizeof(saved));
@@ -329,6 +371,7 @@ void ExpectOnlineRecord(AddressSpace space, uint64_t addr, uint64_t width, Detai
     EXPECT_EQ(saved.size, width);
     EXPECT_EQ(saved.space, space);
     EXPECT_EQ(saved.detailedDataType, type);
+    EXPECT_EQ(saved.threadLoc.idX, threadId);
     cursor += sizeof(saved);
     uint32_t illegalErrors = 0;
     uint32_t alignmentErrors = 0;
@@ -339,7 +382,7 @@ void ExpectOnlineRecord(AddressSpace space, uint64_t addr, uint64_t width, Detai
         EXPECT_EQ(error.space, space);
         EXPECT_EQ(error.location.pc, 0x80);
         EXPECT_EQ(error.location.blockId, 2);
-        EXPECT_EQ(error.threadLoc.idX, 3);
+        EXPECT_EQ(error.threadLoc.idX, threadId);
         if (error.errorType == KernelErrorType::MISALIGNED_ACCESS) {
             ++alignmentErrors;
         } else {
@@ -360,9 +403,10 @@ TEST(OnlineBounds, load_store_error_records_preserve_invalid_bytes_and_location)
     for (size_t i = 0; i < 5; ++i) {
         const uint64_t width = uint64_t{1} << i;
         for (bool write : {false, true}) {
-            for (auto space : {AddressSpace::GM, AddressSpace::UB}) {
+            for (auto space : {AddressSpace::GM, AddressSpace::UB, AddressSpace::PRIVATE}) {
                 const uint64_t base = space == AddressSpace::GM ? 0x2001000 : 0;
-                const uint64_t end = space == AddressSpace::GM ? base + 32 : UB_LIMIT;
+                const uint64_t end = space == AddressSpace::GM ? base + 32 :
+                    (space == AddressSpace::PRIVATE ? SIMT_STACK_LIMIT : UB_LIMIT);
                 for (uint64_t addr : {base, end - width, end, end + 1, end - width / 2}) {
                     ExpectOnlineRecord(space, addr, width, types[i], {{base, end - base, READ_WRITE}}, write, true);
                 }
@@ -377,10 +421,21 @@ TEST(OnlineBounds, load_store_error_records_preserve_invalid_bytes_and_location)
     }
 }
 
+TEST(OnlineBounds, private_stack_tail_error_preserves_lane) {
+    for (uint16_t threadId : {0, 1, 31}) {
+        for (bool write : {false, true}) {
+            ExpectOnlineRecord(AddressSpace::PRIVATE, SIMT_STACK_LIMIT - 1, 4, DetailedDataType::B32, {}, write, true,
+                threadId);
+        }
+    }
+}
+
 TEST(OnlineBounds, disabled_memcheck_emits_no_bounds_or_alignment_error) {
     for (bool write : {false, true}) {
         ExpectOnlineRecord(AddressSpace::GM, 0x2001001, 8, DetailedDataType::B64, {}, write, false);
         ExpectOnlineRecord(AddressSpace::UB, UB_LIMIT - 1, 8, DetailedDataType::B64, {}, write, false);
+        ExpectOnlineRecord(AddressSpace::PRIVATE, SIMT_STACK_LIMIT - 1, 8,
+            DetailedDataType::B64, {}, write, false);
     }
 }
 } // namespace
