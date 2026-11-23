@@ -22,6 +22,7 @@
 
 #include "platform_config.h"
 #include "constant.h"
+#include "utility/log.h"
 
 namespace Sanitizer {
 // 根据搬运的源内存类型查询PIPE类型
@@ -71,59 +72,52 @@ AddressSpace FormatConverter::MemTypeToAddrSpace(MemType memType)
 
 MemOpType FormatConverter::AccessTypeToMemOpType(AccessType type)
 {
-    static const std::map<AccessType, MemOpType> ACCESS_TYPE_TO_MEMOP_TYPE_MAP = {
-        {AccessType::READ,      MemOpType::LOAD},
-        {AccessType::WRITE,     MemOpType::STORE},
-        {AccessType::MEMCPY_BLOCKS,     MemOpType::MEMCPY_BLOCKS},
-    };
-    auto it = ACCESS_TYPE_TO_MEMOP_TYPE_MAP.find(type);
-    return it == ACCESS_TYPE_TO_MEMOP_TYPE_MAP.cend() ? MemOpType::INVALID : it->second;
+    switch (type) {
+        case AccessType::READ: return MemOpType::LOAD;
+        case AccessType::WRITE: return MemOpType::STORE;
+        case AccessType::MEMCPY_BLOCKS: return MemOpType::MEMCPY_BLOCKS;
+        default: return MemOpType::INVALID;
+    }
 }
 
 uint64_t FormatConverter::GetDataSizeByType(DataType dataType)
 {
-    static const std::map<DataType, uint64_t> DATA_TYPE_SIZE_MAP = {
-        {DataType::DATA_B8,  1U},
-        {DataType::DATA_B16, 2U},
-        {DataType::DATA_B32, 4U},
-        {DataType::DATA_B64, 8U},
-    };
-    auto it = DATA_TYPE_SIZE_MAP.find(dataType);
-    return it == DATA_TYPE_SIZE_MAP.cend() ? 1U : it->second;
+    switch (dataType) {
+        case DataType::DATA_B4:
+        case DataType::DATA_B8: return 1U;
+        case DataType::DATA_B16: return 2U;
+        case DataType::DATA_B32: return 4U;
+        case DataType::DATA_B64: return 8U;
+        default:
+            SAN_WARN_LOG("Unsupported dataType[%u]; falling back to 1 byte.", static_cast<unsigned int>(dataType));
+            return 1U;
+    }
 }
 
 bool FormatConverter::GetDataBitSizeByType(DataType dataType, uint16_t &dataBitSize)
 {
-    static const std::map<DataType, uint16_t> DATA_TYPE_BIT_SIZE_MAP = {
-        {DataType::DATA_B4,  4U},
-        {DataType::DATA_B8,  8U},
-        {DataType::DATA_B16, 16U},
-        {DataType::DATA_B32, 32U},
-        {DataType::DATA_B64, 64U},
-    };
-    auto it = DATA_TYPE_BIT_SIZE_MAP.find(dataType);
-    if (it != DATA_TYPE_BIT_SIZE_MAP.cend()) {
-        dataBitSize = it->second;
-        return true;
+    switch (dataType) {
+        case DataType::DATA_B4: dataBitSize = 4U; break;
+        case DataType::DATA_B8: dataBitSize = 8U; break;
+        case DataType::DATA_B16: dataBitSize = 16U; break;
+        case DataType::DATA_B32: dataBitSize = 32U; break;
+        case DataType::DATA_B64: dataBitSize = 64U; break;
+        default: return false;
     }
-    return false;
+    return true;
 }
 
 bool FormatConverter::GetDataTypeByDataBits(uint8_t dataBits, DataType &dataType)
 {
-    static const std::map<uint8_t, DataType> BIT_SIZE_DATA_TYPE_MAP = {
-        {4U,  DataType::DATA_B4},
-        {8U,  DataType::DATA_B8},
-        {16U, DataType::DATA_B16},
-        {32U, DataType::DATA_B32},
-        {64U, DataType::DATA_B64},
-    };
-    auto it = BIT_SIZE_DATA_TYPE_MAP.find(dataBits);
-    if (it != BIT_SIZE_DATA_TYPE_MAP.cend()) {
-        dataType = it->second;
-        return true;
+    switch (dataBits) {
+        case 4U: dataType = DataType::DATA_B4; break;
+        case 8U: dataType = DataType::DATA_B8; break;
+        case 16U: dataType = DataType::DATA_B16; break;
+        case 32U: dataType = DataType::DATA_B32; break;
+        case 64U: dataType = DataType::DATA_B64; break;
+        default: return false;
     }
-    return false;
+    return true;
 }
 
 uint16_t FindAlignMap(const std::string& key)

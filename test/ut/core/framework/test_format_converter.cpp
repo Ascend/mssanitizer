@@ -100,11 +100,14 @@ class GetDataBitSizeByTypeTest : public testing::TestWithParam<std::tuple<DataTy
 TEST_P(GetDataBitSizeByTypeTest, get_data_bit_size_by_type_given_data_type_and_expect_correct_bit_size)
 {
     auto [dataType, expectedSize, expectedResult] = GetParam();
-    uint16_t dataBitSize;
+    constexpr uint16_t originalSize = 123U;
+    uint16_t dataBitSize = originalSize;
     bool result = FormatConverter::GetDataBitSizeByType(dataType, dataBitSize);
     ASSERT_EQ(result, expectedResult);
     if (expectedResult) {
         ASSERT_EQ(dataBitSize, expectedSize);
+    } else {
+        ASSERT_EQ(dataBitSize, originalSize);
     }
 }
 INSTANTIATE_TEST_CASE_P(FormatConverter, GetDataBitSizeByTypeTest, testing::Values(
@@ -120,11 +123,14 @@ class GetDataTypeByDataBitsTest : public testing::TestWithParam<std::tuple<uint8
 TEST_P(GetDataTypeByDataBitsTest, get_data_type_by_data_bits_given_data_bits_and_expect_correct_data_type)
 {
     auto [dataBits, expectedType, expectedResult] = GetParam();
-    DataType dataType;
+    const auto originalType = DataType::DATA_B64;
+    DataType dataType = originalType;
     bool result = FormatConverter::GetDataTypeByDataBits(dataBits, dataType);
     ASSERT_EQ(result, expectedResult);
     if (expectedResult) {
         ASSERT_EQ(dataType, expectedType);
+    } else {
+        ASSERT_EQ(dataType, originalType);
     }
 }
 INSTANTIATE_TEST_CASE_P(FormatConverter, GetDataTypeByDataBitsTest, testing::Values(

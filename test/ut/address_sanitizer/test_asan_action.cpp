@@ -72,6 +72,60 @@ protected:
     MemOpRecord record_{};
 };
 
+TEST_F(AsanActionTest, illegal_access_preserves_error_type_and_location) {
+    config_.memCheck = true;
+    record_.moduleId = 7;
+    record_.lineNo = 42;
+    record_.pc = 0x1234;
+    record_.coreId = 3;
+    record_.blockType = BlockType::AICUBE;
+    record_.serialNo = 99;
+    record_.side = MemOpSide::KERNEL;
+    record_.recordType = RecordType::DMA_MOV;
+    record_.fileName[0] = 'a';
+
+    // 仅覆盖前半段，校验非法字节数不会在构造诊断时丢失。
+    ASSERT_FALSE(bounds_.Add(record_.dstSpace, record_.dstAddr, record_.memSize / 2).isError);
+    for (bool isRead : {true, false}) {
+        SCOPED_TRACE(isRead);
+        const auto errors = isRead ? Run(AsanLoad(record_), true) : Run(AsanStore(record_), true);
+        ASSERT_EQ(errors.size(), 1U);
+        EXPECT_EQ(errors[0].type, isRead ? MemErrorType::ILLEGAL_ADDR_READ : MemErrorType::ILLEGAL_ADDR_WRITE);
+        const auto &info = errors[0].auxData;
+        EXPECT_EQ(info.space, record_.dstSpace);
+        EXPECT_EQ(info.badAddr.addr, record_.dstAddr);
+        EXPECT_EQ(info.nBadBytes, record_.memSize / 2);
+        EXPECT_EQ(info.moduleId, record_.moduleId);
+        EXPECT_EQ(info.fileName, record_.fileName);
+        EXPECT_EQ(info.lineNo, record_.lineNo);
+        EXPECT_EQ(info.pc, record_.pc);
+        EXPECT_EQ(info.coreId, record_.coreId);
+        EXPECT_EQ(info.blockType, record_.blockType);
+        EXPECT_EQ(info.serialNo, record_.serialNo);
+        EXPECT_EQ(info.side, record_.side);
+        EXPECT_EQ(info.recordType, record_.recordType);
+    }
+}
+
+TEST_F(AsanActionTest, bounds_check_respects_memcheck_and_ignore_illegal_check) {
+    for (bool memCheck : {false, true}) {
+        for (bool ignoreIllegalCheck : {false, true}) {
+            SCOPED_TRACE(testing::Message() << "memCheck=" << memCheck << ", ignore=" << ignoreIllegalCheck);
+            config_.memCheck = memCheck;
+            record_.ignoreIllegalCheck = ignoreIllegalCheck;
+            const auto readErrors = Run(AsanLoad(record_), true);
+            const auto writeErrors = Run(AsanStore(record_), true);
+            if (memCheck && !ignoreIllegalCheck) {
+                ExpectError(readErrors, MemErrorType::ILLEGAL_ADDR_READ);
+                ExpectError(writeErrors, MemErrorType::ILLEGAL_ADDR_WRITE);
+            } else {
+                EXPECT_TRUE(readErrors.empty());
+                EXPECT_TRUE(writeErrors.empty());
+            }
+        }
+    }
+}
+
 TEST_F(AsanActionTest, stack_only_malloc_copy_free_do_not_materialize_gm_shadow) {
     config_.checkUnusedMemory = true;
     record_.memSize = 2 * ONE_SM_STAND_FOR_BYTE + 17;

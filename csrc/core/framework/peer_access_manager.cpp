@@ -23,6 +23,25 @@
 
 namespace Sanitizer {
 
+namespace {
+
+void RemoveMappingsForDevice(std::vector<P2PMappingRecord> &mappings, int32_t deviceId)
+{
+    mappings.erase(std::remove_if(mappings.begin(), mappings.end(), [deviceId](const P2PMappingRecord &mapping) {
+        return mapping.deviceId == deviceId || mapping.ownerDeviceId == deviceId;
+    }), mappings.end());
+}
+
+void RemoveMappingsForAllocation(std::vector<P2PMappingRecord> &mappings, int32_t ownerDeviceId, uint64_t ownerAddr)
+{
+    mappings.erase(std::remove_if(mappings.begin(), mappings.end(),
+        [ownerDeviceId, ownerAddr](const P2PMappingRecord &mapping) {
+            return mapping.ownerDeviceId == ownerDeviceId && mapping.ownerAddr == ownerAddr;
+        }), mappings.end());
+}
+
+} // namespace
+
 bool PeerAccessManager::Apply(int32_t pid, const PeerAccessRecord &record) {
     if (pid < 0 || record.deviceId < 0) {
         return false;
@@ -49,12 +68,7 @@ bool PeerAccessManager::Apply(int32_t pid, const PeerAccessRecord &record) {
         if (record.peerDeviceId != -1) {
             return false;
         }
-        {
-            auto &mappings = processes_[pid].mappings;
-            mappings.erase(std::remove_if(mappings.begin(), mappings.end(), [&record](const P2PMappingRecord &m) {
-                return m.deviceId == record.deviceId || m.ownerDeviceId == record.deviceId;
-            }), mappings.end());
-        }
+        RemoveMappingsForDevice(processes_[pid].mappings, record.deviceId);
         // 重置设备既不能继续访问其他设备，也不能继续被其他设备访问。
         relations.erase(record.deviceId);
         for (auto &item : relations) {
@@ -106,12 +120,7 @@ void PeerAccessManager::RevokeMappingsOfAllocation(int32_t pid, int32_t ownerDev
     }
 
     // 按"所有方设备 + 原分配起点"删除全部相关映射
-    auto &mappings = process->second.mappings;
-    mappings.erase(std::remove_if(mappings.begin(), mappings.end(),
-                       [ownerDeviceId, ownerAddr](const P2PMappingRecord &m) {
-                           return m.ownerDeviceId == ownerDeviceId && m.ownerAddr == ownerAddr;
-                       }),
-        mappings.end());
+    RemoveMappingsForAllocation(process->second.mappings, ownerDeviceId, ownerAddr);
 }
 
 void PeerAccessManager::RegisterDevice(int32_t pid, int32_t deviceId, AddressSanitizer *sanitizer,
@@ -131,11 +140,7 @@ void PeerAccessManager::UnregisterDevice(AddressSanitizer *sanitizer) {
         for (auto device = process.second.devices.begin(); device != process.second.devices.end();) {
             // 同一设备的新对象不能被旧对象的析构误删。
             if (device->second == sanitizer) {
-                const int32_t id = device->first;
-                auto &mappings = process.second.mappings;
-                mappings.erase(std::remove_if(mappings.begin(), mappings.end(), [id](const P2PMappingRecord &m) {
-                    return m.deviceId == id || m.ownerDeviceId == id;
-                }), mappings.end());
+                RemoveMappingsForDevice(process.second.mappings, device->first);
                 device = process.second.devices.erase(device);
             } else {
                 ++device;

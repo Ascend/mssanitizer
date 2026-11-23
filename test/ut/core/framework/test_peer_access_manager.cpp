@@ -35,14 +35,14 @@ bool InitDevice(AddressSanitizer &sanitizer, int32_t deviceId) {
     return sanitizer.SetDeviceInfo(info, config);
 }
 
-// 向检测器上报一段固定的 GM 分配。
-void Allocate(AddressSanitizer &sanitizer) {
+// 向检测器上报一段 GM 分配，默认沿用基础用例的固定地址。
+void Allocate(AddressSanitizer &sanitizer, uint64_t addr = 0x1000) {
     SanitizerRecord record{};
     record.version = RecordVersion::MEMORY_RECORD;
     record.payload.memoryRecord.type = MemOpType::MALLOC;
     record.payload.memoryRecord.infoSrc = MemInfoSrc::ACL;
     record.payload.memoryRecord.dstSpace = AddressSpace::GM;
-    record.payload.memoryRecord.dstAddr = 0x1000;
+    record.payload.memoryRecord.dstAddr = addr;
     record.payload.memoryRecord.memSize = 16;
     sanitizer.CheckRecordBeforeProcess(record);
 }
@@ -250,6 +250,102 @@ TEST_F(P2PMappingManager, AccessResetInvalidatesMapping) {
     ASSERT_TRUE(Map());
     ASSERT_TRUE(PeerAccessManager::Instance().Apply(710, {1, -1, PeerAccessOp::RESET}));
     EXPECT_TRUE(HasIllegalRead(access, 0x1004, 4));
+}
+
+enum class DeviceMappingRevocation { OWNER_RESET, ACCESS_RESET, OWNER_UNREGISTER, ACCESS_UNREGISTER };
+
+class MixedP2PMappingManager : public P2PMappingManager,
+    public testing::WithParamInterface<DeviceMappingRevocation> {};
+
+// 同一进程保留无关设备对，另一进程使用相同设备号，检查撤销范围没有扩大。
+TEST_P(MixedP2PMappingManager, DeviceRevocationPreservesUnrelatedMappings) {
+    auto &manager = PeerAccessManager::Instance();
+    ASSERT_TRUE(Map());
+    Allocate(owner, 0x2000);
+    ASSERT_TRUE(manager.ApplyMapping(710, {1, 2, 0x2004, 4, 0x2000}));
+    AddressSanitizer unrelatedAccess;
+    AddressSanitizer unrelatedOwner;
+    ASSERT_TRUE(InitDevice(unrelatedAccess, 3));
+    ASSERT_TRUE(InitDevice(unrelatedOwner, 4));
+    Allocate(unrelatedOwner);
+    ASSERT_TRUE(manager.ApplyMapping(710, {3, 4, 0x1004, 4, 0x1000}));
+
+    RuntimeContext::Instance().pid_ = 711;
+    AddressSanitizer otherProcessAccess;
+    AddressSanitizer otherProcessOwner;
+    ASSERT_TRUE(InitDevice(otherProcessAccess, 1));
+    ASSERT_TRUE(InitDevice(otherProcessOwner, 2));
+    Allocate(otherProcessOwner);
+    ASSERT_TRUE(manager.ApplyMapping(711, {1, 2, 0x1004, 4, 0x1000}));
+    RuntimeContext::Instance().pid_ = 710;
+
+    ASSERT_FALSE(HasIllegalRead(access, 0x1004, 4));
+    ASSERT_FALSE(HasIllegalRead(access, 0x2004, 4));
+    ASSERT_FALSE(HasIllegalRead(unrelatedAccess, 0x1004, 4));
+    ASSERT_FALSE(HasIllegalRead(otherProcessAccess, 0x1004, 4));
+    const auto operation = GetParam();
+    const bool revokeOwner = operation == DeviceMappingRevocation::OWNER_RESET ||
+        operation == DeviceMappingRevocation::OWNER_UNREGISTER;
+    const int32_t deviceId = revokeOwner ? 2 : 1;
+    if (operation == DeviceMappingRevocation::OWNER_RESET || operation == DeviceMappingRevocation::ACCESS_RESET) {
+        ASSERT_TRUE(manager.Apply(710, {deviceId, -1, PeerAccessOp::RESET}));
+    } else {
+        auto &device = revokeOwner ? owner : access;
+        manager.UnregisterDevice(&device);
+        // 重新登记原对象，使非法访问确实由映射失效导致，而不是缺少设备登记。
+        ASSERT_TRUE(InitDevice(device, deviceId));
+        if (revokeOwner) {
+            ASSERT_TRUE(owner.ContainsGmRange(0x1004, 4));
+            ASSERT_TRUE(owner.ContainsGmRange(0x2004, 4));
+        }
+    }
+    EXPECT_TRUE(HasIllegalRead(access, 0x1004, 4));
+    EXPECT_TRUE(HasIllegalRead(access, 0x2004, 4));
+    EXPECT_FALSE(HasIllegalRead(unrelatedAccess, 0x1004, 4));
+    EXPECT_FALSE(HasIllegalRead(otherProcessAccess, 0x1004, 4));
+}
+
+INSTANTIATE_TEST_CASE_P(SelectiveRevocation, MixedP2PMappingManager, testing::Values(
+    DeviceMappingRevocation::OWNER_RESET, DeviceMappingRevocation::ACCESS_RESET,
+    DeviceMappingRevocation::OWNER_UNREGISTER, DeviceMappingRevocation::ACCESS_UNREGISTER));
+
+TEST_F(P2PMappingManager, AllocationRevocationPreservesOtherAllocationsOwnersAndProcesses) {
+    auto &manager = PeerAccessManager::Instance();
+    ASSERT_TRUE(Map());
+    Allocate(owner, 0x2000);
+    ASSERT_TRUE(manager.ApplyMapping(710, {1, 2, 0x2004, 4, 0x2000}));
+    AddressSanitizer otherOwner;
+    ASSERT_TRUE(InitDevice(otherOwner, 3));
+    Allocate(otherOwner);
+    // 与目标分配使用相同 rootAddr，但窗口不重叠，避免其他映射掩盖撤销失败。
+    ASSERT_TRUE(manager.ApplyMapping(710, {1, 3, 0x1008, 4, 0x1000}));
+
+    RuntimeContext::Instance().pid_ = 711;
+    AddressSanitizer otherProcessAccess;
+    AddressSanitizer otherProcessOwner;
+    ASSERT_TRUE(InitDevice(otherProcessAccess, 1));
+    ASSERT_TRUE(InitDevice(otherProcessOwner, 2));
+    Allocate(otherProcessOwner);
+    ASSERT_TRUE(manager.ApplyMapping(711, {1, 2, 0x1004, 4, 0x1000}));
+    RuntimeContext::Instance().pid_ = 710;
+
+    ASSERT_FALSE(HasIllegalRead(access, 0x1004, 4));
+    ASSERT_FALSE(HasIllegalRead(access, 0x2004, 4));
+    ASSERT_FALSE(HasIllegalRead(access, 0x1008, 4));
+    ASSERT_FALSE(HasIllegalRead(otherProcessAccess, 0x1004, 4));
+    // 先在底层分配仍有效时直接撤销，避免底层 FREE 或重新 MALLOC 掩盖映射残留。
+    manager.RevokeMappingsOfAllocation(710, 2, 0x1000);
+    EXPECT_TRUE(HasIllegalRead(access, 0x1004, 4));
+    EXPECT_FALSE(HasIllegalRead(access, 0x2004, 4));
+    EXPECT_FALSE(HasIllegalRead(access, 0x1008, 4));
+    EXPECT_FALSE(HasIllegalRead(otherProcessAccess, 0x1004, 4));
+
+    ASSERT_TRUE(Map());
+    FreeOwner();
+    EXPECT_TRUE(HasIllegalRead(access, 0x1004, 4));
+    EXPECT_FALSE(HasIllegalRead(access, 0x2004, 4));
+    EXPECT_FALSE(HasIllegalRead(access, 0x1008, 4));
+    EXPECT_FALSE(HasIllegalRead(otherProcessAccess, 0x1004, 4));
 }
 
 // 测试场景：未曾采集ENABLE但有精确映射，此时采集到撤权

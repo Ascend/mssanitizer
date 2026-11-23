@@ -20,6 +20,21 @@
 
 namespace Sanitizer {
 
+namespace {
+
+inline bool HasApplicableRule(const PathwayFilter::RuleTable &rules, RecordType recordType) {
+    return std::any_of(rules.cbegin(), rules.cend(),
+        [recordType](const PathwayFilterRule &rule) { return rule.recordType.Matches(recordType); });
+}
+
+bool MatchesAnyRule(const PathwayFilter::RuleTable &rules, RecordType recordType, const SanEvent &event) {
+    return std::any_of(rules.cbegin(), rules.cend(), [recordType, &event](const PathwayFilterRule &rule) {
+        return PathwayFilter::Matches(rule, recordType, event);
+    });
+}
+
+} // namespace
+
 const PathwayFilter::RuleTable &PathwayFilter::GetRules() {
     // ParseScalarOpRecord emits PIPE_S_CAL; PIPE_S is retained for the exact representation in the Issue.
     // Use explicit pipe and record allowlists instead of Any to avoid widening the default filter boundary.
@@ -50,14 +65,11 @@ EventRange PathwayFilter::Filter(RecordType recordType, EventRange events, std::
         return events;
     }
     const auto &rules = GetRules();
-    if (std::none_of(rules.cbegin(), rules.cend(),
-            [recordType](const PathwayFilterRule &rule) { return rule.recordType.Matches(recordType); })) {
+    if (!HasApplicableRule(rules, recordType)) {
         return events;
     }
     const auto matches = [recordType, &rules](const SanEvent &event) {
-        return std::any_of(rules.cbegin(), rules.cend(), [recordType, &event](const PathwayFilterRule &rule) {
-            return PathwayFilter::Matches(rule, recordType, event);
-        });
+        return MatchesAnyRule(rules, recordType, event);
     };
     const auto firstMatch = std::find_if(events.begin(), events.end(), matches);
     if (firstMatch == events.end()) {
@@ -83,8 +95,7 @@ size_t PathwayFilter::FilterInPlace(RecordType recordType, std::vector<SanEvent>
 size_t PathwayFilter::FilterInPlace(RecordType recordType, SanEvent *events, size_t &size, const RuleTable &rules) {
     // A record type that no rule can match is a common fast path. Keep this check
     // derived from the rule table so adding a rule cannot make it stale.
-    if (std::none_of(rules.cbegin(), rules.cend(),
-            [recordType](const PathwayFilterRule &rule) { return rule.recordType.Matches(recordType); })) {
+    if (!HasApplicableRule(rules, recordType)) {
         return 0;
     }
 
@@ -93,9 +104,7 @@ size_t PathwayFilter::FilterInPlace(RecordType recordType, SanEvent *events, siz
     }
     const size_t oldSize = size;
     const auto newEnd = std::remove_if(events, events + size, [recordType, &rules](const SanEvent &event) {
-        return std::any_of(rules.cbegin(), rules.cend(), [recordType, &event](const PathwayFilterRule &rule) {
-            return PathwayFilter::Matches(rule, recordType, event);
-        });
+        return MatchesAnyRule(rules, recordType, event);
     });
     size = static_cast<size_t>(newEnd - events);
     return oldSize - size;

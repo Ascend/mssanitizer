@@ -59,6 +59,22 @@ bool CheckPeerAccessAddr(const MemOpRecord &record, const BoundsCheck &boundsChe
     return PeerAccessManager::Instance().CheckRemote(boundsCheck, record.dstAddr, record.memSize, accessType);
 }
 
+void CheckAccessBounds(const MemOpRecord &record, const BoundsCheck &boundsCheck, const Config &config,
+    AccessType accessType, ErrorMsgList &errorMsgs)
+{
+    if (!config.memCheck || record.ignoreIllegalCheck) {
+        return;
+    }
+    ErrorMsg msg = boundsCheck.Check(record.dstSpace, record.dstAddr, record.memSize, accessType);
+    if (msg.isError && !CheckPeerAccessAddr(record, boundsCheck, accessType)) {
+        const auto errorType = accessType == AccessType::READ ?
+            MemErrorType::ILLEGAL_ADDR_READ : MemErrorType::ILLEGAL_ADDR_WRITE;
+        msg.SetType(errorType, record.dstSpace, msg.auxData.badAddr.addr);
+        FillErrorLocInfo(record, msg);
+        errorMsgs.emplace_back(msg);
+    }
+}
+
 } // namespace [Dummy]
 
 namespace Sanitizer {
@@ -173,14 +189,7 @@ ErrorMsgList AsanLoad::doAction(ShadowMemory& shadowMemory, BoundsCheck &boundsC
                                 bool ignoreShadowMemory)
 {
     ErrorMsgList errorMsgs;
-    if (config.memCheck && !record_.ignoreIllegalCheck) {
-        ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize, AccessType::READ);
-        if (msg.isError && !CheckPeerAccessAddr(record_, boundsCheck, AccessType::READ)) {
-            msg.SetType(MemErrorType::ILLEGAL_ADDR_READ, record_.dstSpace, msg.auxData.badAddr.addr);
-            FillErrorLocInfo(record_, msg);
-            errorMsgs.emplace_back(msg);
-        }
-    }
+    CheckAccessBounds(record_, boundsCheck, config, AccessType::READ, errorMsgs);
 
     const uint32_t mask = GetEffectiveInitcheckAddressSpaceMask(
         config, ConfigManager::Instance().GetInitcheckAddressSpaceMask(),
@@ -200,14 +209,7 @@ ErrorMsgList AsanStore::doAction(ShadowMemory& shadowMemory, BoundsCheck &bounds
                                  bool ignoreShadowMemory)
 {
     ErrorMsgList errorMsgs;
-    if (config.memCheck && !record_.ignoreIllegalCheck) {
-        ErrorMsg msg = boundsCheck.Check(record_.dstSpace, record_.dstAddr, record_.memSize, AccessType::WRITE);
-        if (msg.isError && !CheckPeerAccessAddr(record_, boundsCheck, AccessType::WRITE)) {
-            msg.SetType(MemErrorType::ILLEGAL_ADDR_WRITE, record_.dstSpace, msg.auxData.badAddr.addr);
-            FillErrorLocInfo(record_, msg);
-            errorMsgs.emplace_back(msg);
-        }
-    }
+    CheckAccessBounds(record_, boundsCheck, config, AccessType::WRITE, errorMsgs);
 
     // 写事件有两个条件需要进入 shadowmemory，一个是初始化检测，一个是多核踩踏
     // outOfBoundCheck 关闭时仍需进入以维护内存已使用状态，仅跳过踩踏检测，防止未使用内存告警误报

@@ -237,22 +237,19 @@ ErrorMsg HeapBlockManager::FreeByPassBlock(const MemOpRecord &record, uint64_t &
     MemInfoSrc infoSrc = record.infoSrc;
     uint64_t addr = record.dstAddr;
 
-    auto processHeapBlock = [=](ErrorMsg &msg, HeapBlocks& heapMap) -> bool {
-        if (heapMap.find(addr) == heapMap.cend()) {
-            SAN_ERROR_LOG("Illegal free. serialNo:%lu, memInfoSrc:%s, addr:0x%lx",
-                record.serialNo, MemInfoSrcToString(infoSrc).c_str(), addr);
-            msg.SetType(MemErrorType::ILLEGAL_FREE, AddressSpace::GM, addr);
-            return true;
-        }
-        return false;
-    };
-    if (processHeapBlock(msg, heapBlocks_)) { return msg; }
-    if (processHeapBlock(msg, heapBlocksForDfx_)) { return msg; }
-    size = heapBlocks_[addr].len;
+    auto rtIt = heapBlocks_.find(addr);
+    auto dfxIt = heapBlocksForDfx_.find(addr);
+    if (rtIt == heapBlocks_.end() || dfxIt == heapBlocksForDfx_.end()) {
+        SAN_ERROR_LOG("Illegal free. serialNo:%lu, memInfoSrc:%s, addr:0x%lx",
+            record.serialNo, MemInfoSrcToString(infoSrc).c_str(), addr);
+        msg.SetType(MemErrorType::ILLEGAL_FREE, AddressSpace::GM, addr);
+        return msg;
+    }
+    size = rtIt->second.len;
     SAN_INFO_LOG("Free heap block. serialNo:%lu, memInfoSrc:%s, addr:0x%lx, rtSize:%lu, dfxSize:%lu",
-        record.serialNo, MemInfoSrcToString(infoSrc).c_str(), addr, heapBlocks_[addr].len, heapBlocksForDfx_[addr].len);
-    heapBlocks_.erase(addr);
-    heapBlocksForDfx_.erase(addr);
+        record.serialNo, MemInfoSrcToString(infoSrc).c_str(), addr, rtIt->second.len, dfxIt->second.len);
+    heapBlocks_.erase(rtIt);
+    heapBlocksForDfx_.erase(dfxIt);
     return msg;
 }
 

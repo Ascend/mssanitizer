@@ -148,6 +148,12 @@ void HandleHostMemRecord(Checker &checker, HostMemRecord const &record)
     checker.Do(MemoryRecordToSanitizerRecord(record));
 }
 
+void DispatchIpcMemRecord(Checker &checker, MemOpType opType, GMType addr, GMType size)
+{
+    HostMemRecord record{opType, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY, 0, addr, size};
+    HandleHostMemRecord(checker, record);
+}
+
 void HandleGMAddrOutOfBoundRecord(Checker &checker, GMAddrOutOfBoundRecord const &record)
 {
     RuntimeContext &ctx = RuntimeContext::Instance();
@@ -208,8 +214,7 @@ std::string ProcessIPCDestroyEvent(IPCMemRecord const &record, std::mutex &mux) 
         for (auto &p : shareeMemInfoList) {
             Checker *shareeChecker = p.first;
             auto addr = p.second.addr;
-            HostMemRecord mallocRecord{MemOpType::FREE, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY, 0, addr, 0};
-            HandleHostMemRecord(*shareeChecker, mallocRecord);
+            DispatchIpcMemRecord(*shareeChecker, MemOpType::FREE, addr, 0);
             SAN_INFO_LOG("Freeing sharee GM: addr:0x%lx.", addr);
         }
         resp.status = ResponseStatus::SUCCESS;
@@ -239,9 +244,7 @@ std::string ProcessIPCMapEvent(IPCMemRecord const &record, Checker &checker, std
             ShareeMemInfo shareeMemInfo{record.mapInfo.addr, size};
             it2->second.second.insert({&checker, std::move(shareeMemInfo)});
             Command::shareeMemInfoMp.insert({key, record.mapInfo.name});
-            HostMemRecord mallocRecord{MemOpType::MALLOC, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY,
-                0, record.mapInfo.addr, size};
-            HandleHostMemRecord(checker, mallocRecord);
+            DispatchIpcMemRecord(checker, MemOpType::MALLOC, record.mapInfo.addr, size);
             resp.size = size;
             resp.status = ResponseStatus::SUCCESS;
         }
@@ -264,9 +267,7 @@ std::string ProcessIPCUnmapEvent(IPCMemRecord const &record, Checker &checker, s
             std::string sharedMemoryLog = Utility::FormatNameForLog(it->second);
             SAN_INFO_LOG("Shared memory (%s) has already been destroyed.", sharedMemoryLog.c_str());
         } else {
-            HostMemRecord mallocRecord{MemOpType::FREE, MemInfoSrc::BYPASS, MemInfoDesc::IPC_MEMORY,
-                0, record.unmapInfo.addr, 0};
-            HandleHostMemRecord(checker, mallocRecord);
+            DispatchIpcMemRecord(checker, MemOpType::FREE, record.unmapInfo.addr, 0);
             itShared->second.second.erase(&checker);
         }
         Command::shareeMemInfoMp.erase(it);
