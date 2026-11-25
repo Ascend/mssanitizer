@@ -181,7 +181,7 @@ private:
             const auto &record = packet.GetPayload().p2pMappingRecord;
             if (record.deviceId != device || record.ownerDeviceId < 0 || record.ownerDeviceId == device ||
                 record.addr == 0 || record.size == 0 || record.addr > UINT64_MAX - record.size ||
-                record.ownerAddr > record.addr) {
+                record.ownerAddr > record.addr || (record.revoke && record.scope == 0)) {
                 Fail("invalid P2P mapping record");
                 return;
             }
@@ -397,7 +397,7 @@ void OrderedPacketScheduler::Submit(Job job) {
     auto &queue = processesQueueMap_[job.pid];
     if (!queue) {
         // 首次遇到该 PID 时创建队列和派发线程，再提交包
-        queue.reset(new ProcessQueue(job.pid, dispatch_, completion_, ipcUpdates_));
+        queue = std::unique_ptr<ProcessQueue>(new ProcessQueue(job.pid, dispatch_, completion_, ipcUpdates_));
     }
     queue->Submit(std::move(job));
 }

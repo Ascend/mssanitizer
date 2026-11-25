@@ -47,7 +47,7 @@ enum class PacketType : uint32_t {
     SANITIZER_RECORD,    // 用于上报 SanitizerRecord 记录
     GM_ADDR_OUT_OF_BOUND_RECORD,  // GM地址越界写记录
     PEER_ACCESS_RECORD, // ACL peerAccess 访存关系
-    P2P_MAPPING_RECORD, // 成功P2PMap产生的精确地址映射
+    P2P_MAPPING_RECORD, // HCCL窗口的精确地址授权
 
     // 用于server向client发送的消息
     IPC_RESPONSE = 3000,

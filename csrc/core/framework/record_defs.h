@@ -799,7 +799,7 @@ struct HostMemoryInfo {
 };
 
 // 在线 SIMT 检查使用的远端分配快照；deviceId 是分配所属设备
-// 同一设备的多个范围可以合并覆盖一次访存，精确P2PMap窗口与设备级授权使用同一套合并规则
+// 同一设备的多个范围可以合并覆盖一次访存，HCCL精确窗口与设备级授权使用同一套合并规则
 struct PeerMemoryInfo {
     uint64_t addr;
     uint64_t size;
@@ -2342,6 +2342,8 @@ struct P2PMappingRecord {
     uint64_t addr; // 窗口起始地址；与 ownerAddr 同一虚拟地址空间，映射不改变业务地址
     uint64_t size; // 映射的长度
     uint64_t ownerAddr; // 原分配起点，释放/重分配时撤销所有关联映射
+    uint64_t scope; // HCCL通信域身份；0表示无通信域归属，不随通信域销毁撤销
+    bool revoke; // true撤销同scope的该条精确映射，不影响其它通信域
 };
 
 // 跨设备访问授权记录，供工具更新访问方到目标设备的有向关系

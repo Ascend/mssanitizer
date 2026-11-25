@@ -89,8 +89,22 @@ bool PeerAccessManager::ApplyMapping(int32_t pid, const P2PMappingRecord &record
     }
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    // 确保映射的内存空间真实存在于被访问设备的已经登记分配内存内
     auto &process = processes_[pid];
+    if (record.revoke) {
+        if (record.scope == 0) {
+            return false;
+        }
+        auto &mappings = process.mappings;
+        mappings.erase(std::remove_if(mappings.begin(), mappings.end(),
+                           [&record](const P2PMappingRecord &m) {
+                               return m.deviceId == record.deviceId && m.ownerDeviceId == record.ownerDeviceId &&
+                                   m.addr == record.addr && m.size == record.size && m.ownerAddr == record.ownerAddr &&
+                                   m.scope == record.scope;
+                           }),
+            mappings.end());
+        return true;
+    }
+    // 确保映射的内存空间真实存在于被访问设备的已经登记分配内存内
     auto owner = process.devices.find(record.ownerDeviceId);
     if (owner == process.devices.end() || !owner->second->ContainsGmRange(record.addr, record.size)) {
         return false;
@@ -98,8 +112,8 @@ bool PeerAccessManager::ApplyMapping(int32_t pid, const P2PMappingRecord &record
 
     // 去重后push_back
     const auto same = [&record](const P2PMappingRecord &m) {
-        return m.deviceId == record.deviceId && m.ownerDeviceId == record.ownerDeviceId &&
-            m.addr == record.addr && m.size == record.size && m.ownerAddr == record.ownerAddr;
+        return m.deviceId == record.deviceId && m.ownerDeviceId == record.ownerDeviceId && m.addr == record.addr &&
+            m.size == record.size && m.ownerAddr == record.ownerAddr && m.scope == record.scope;
     };
     if (std::find_if(process.mappings.begin(), process.mappings.end(), same) == process.mappings.end()) {
         // 按使用方、所有方、窗口起点排序，访存检查通过一次连续扫描合并窗口
