@@ -18,6 +18,7 @@
 #ifndef RACE_SANITIZER_ALG_FRAMEWORK_SINGLE_PIPE_RACE_ALG_IMPL_H
 #define RACE_SANITIZER_ALG_FRAMEWORK_SINGLE_PIPE_RACE_ALG_IMPL_H
 
+#include <cstddef>
 #include <functional>
 #include "race_alg_base.h"
 
@@ -48,6 +49,7 @@ public:
     // 测试接口
     uint32_t GetRaceCount() const;
 private:
+    bool ShouldCollectMemEvent(const SanEvent &event) const;
     // 事件处理函数，根据不同的事件，处理结果定义为正常处理或阻塞。
     ReturnType ProcessEvent(const SanEvent& event);
     ReturnType ProcessMemEvent(const SanEvent& event);
@@ -62,6 +64,7 @@ private:
     // 对每条流水的serialNo单独排序，用于检测同一流水上的两条指令是否相邻
     // 2维数组，外层是pipe，里层是{最新的serialNo, 累加的pipeSerialNo}
     std::array<std::array<uint64_t, 2>, MAX_PIPE_NUM_FOR_BARRIER> pipeSerialNo_;
+    std::size_t queuedMemEventCount_ = 0U;
 };
 
 }  // namespace Sanitizer

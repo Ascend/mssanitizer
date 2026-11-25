@@ -38,12 +38,17 @@ void SinglePipeRaceAlgImpl::Do(const SanEvent& event)
         event.eventInfo.sanitizerControlInfo.type != SanitizerControlType::KERNEL_FINISH) {
         if (event.pipe > PipeType::PIPE_S && event.pipe < PipeType::SIZE) {
             eventContainer_.Push(event, event.pipe, 0);
+            if (ShouldCollectMemEvent(event)) {
+                // EventContainer splits a MEMCPY_BLOCKS event into a read and a write.
+                queuedMemEventCount_ += event.eventInfo.memInfo.opType == AccessType::MEMCPY_BLOCKS ? 2U : 1U;
+            }
         }
         return;
     }
 
     // 阶段二 模拟PIPE流水执行，进行竞争分析（异步：提交后台，Do 立即返回）
     SubmitStage2([this]() {
+        memChecker_.ReserveEvents(queuedMemEventCount_);
         PipeLine pipeLine(eventContainer_);
         pipeLine.RegisterEventFunc(std::bind(&SinglePipeRaceAlgImpl::ProcessEvent, this, std::placeholders::_1));
         pipeLine.Run();
@@ -68,6 +73,13 @@ uint32_t SinglePipeRaceAlgImpl::GetRaceCount() const
     return memChecker_.GetRaceCount();
 }
 
+inline bool SinglePipeRaceAlgImpl::ShouldCollectMemEvent(const SanEvent &event) const
+{
+    // Ascend 95 hardware handles hazards on PIPE_V.
+    return event.type == EventType::MEM_EVENT && event.pipe != PipeType::PIPE_S &&
+        event.pipe != PipeType::PIPE_S_CAL && (event.pipe != PipeType::PIPE_V || !IsAscend95(deviceType_));
+}
+
 // 在PipeLine的Process()中被调用，处理不同类型event并推入memChecker_事件集，用于最后集中检测
 ReturnType SinglePipeRaceAlgImpl::ProcessEvent(const SanEvent& event)
 {
@@ -75,16 +87,7 @@ ReturnType SinglePipeRaceAlgImpl::ProcessEvent(const SanEvent& event)
         case EventType::SYNC_EVENT:
             return ProcessSyncEvent(event);
         case EventType::MEM_EVENT:
-            if(IsAscend95(this->deviceType_)) {
-                // 硬件已经解决竞争问题，因此PIPE_V跳过处理
-                if (event.pipe == PipeType::PIPE_V) {
-                    return ReturnType::PROCESS_OK;
-                }
-            }
-            if (event.pipe == PipeType::PIPE_S || event.pipe == PipeType::PIPE_S_CAL) {
-                return ReturnType::PROCESS_OK;
-            }
-            return ProcessMemEvent(event);
+            return ShouldCollectMemEvent(event) ? ProcessMemEvent(event) : ReturnType::PROCESS_OK;
         case EventType::BUF_SYNC_EVENT:
             return ProcessBufSyncEvent(event);
         default:

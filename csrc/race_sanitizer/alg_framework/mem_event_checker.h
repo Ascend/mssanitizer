@@ -79,6 +79,8 @@ public:
     // 扫描线算法，事件拆分为开始和结束，按地址排序，再进行检测
     void ScanlineAlgorithm(RaceMemEventsIdx &raceMemEventsIdx, RaceMemEventsIdx &missDcciMemEventsIdx) const;
     void PushEvent(const MemEvent& event);
+    // 预分配事件容量：调用方在回放前已知事件数上限时使用，避免逐条 push_back 反复扩容。
+    void ReserveEvents(std::size_t count) { events_.reserve(count); }
     void Init(KernelType kernelType, DeviceType deviceType, RaceCheckType checkType);
     void Init(uint32_t blockNum);
     void SetVecSubBlockDim(uint8_t vecSubBlockDim) { vecSubBlockDim_ = vecSubBlockDim; }

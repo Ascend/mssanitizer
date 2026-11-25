@@ -80,7 +80,16 @@ struct HsetRecordState {
 
 class RecordParse {
 public:
-    static void Parse(const SanitizerRecord &record, std::vector<SanEvent> &events);
+    struct BufferedParseState {
+        explicit BufferedParseState(const std::vector<SanEvent> &events);
+        void ApplyRecordType(std::vector<SanEvent> &events) const;
+
+        bool hasHardwareSync;
+        size_t stampEnd = 0;
+        RecordType stampType = INVALID_RECORD_TYPE;
+    };
+    static void Parse(const SanitizerRecord &record, std::vector<SanEvent> &events,
+        BufferedParseState *buffered = nullptr);
     static void ResetSyncInPipeInfo();
     // for UT
     static void ResetAll();
@@ -114,7 +123,7 @@ private:
     static void DfsSrcGraph(PipeType targetPipe, std::unordered_set<PipeType> &visited);
     static void ProcessHsetWaitSync(std::vector<SanEvent> &events);
     // 函数功能为：将同步语句中set事件的pipe-s替换为pipe-s-cal，避免pipe-s和其他pipe间竞争检测误报和漏报
-    static void ReplaceSetSyncPipeScalar(std::vector<SanEvent> &events);
+    static void ReplaceSetSyncPipeScalar(std::vector<SanEvent> &events, size_t begin);
 };
 }
 #endif

@@ -80,6 +80,58 @@ TEST(RaceAlgImpl, race_alg_can_detect_race_events_expect_success)
     ASSERT_EQ(alg.IsFinished(), true);
 }
 
+TEST(RaceAlgImpl, contiguous_read_preserves_race_presence_with_and_without_sync)
+{
+    for (bool synchronized : {false, true}) {
+        for (bool merged : {false, true}) {
+            SCOPED_TRACE(::testing::Message() << "synchronized=" << synchronized << " merged=" << merged);
+            RaceAlgImpl alg(KernelType::AICUBE, DeviceType::ASCEND_910B1, 1);
+            SanEvent read;
+            read.loc.blockType = BlockType::AICUBE;
+            read.type = EventType::MEM_EVENT;
+            read.pipe = PipeType::PIPE_MTE1;
+            read.serialNo = 1;
+            read.eventInfo.memInfo = {MemType::L1, AccessType::READ, {~0ULL, ~0ULL}, MaskMode::MASK_NORM,
+                InstrName::NONE, 8, 0x1000, 1, merged ? 64U : 32U, 1, 1, 1, 0};
+            alg.Do(read);
+            if (!merged) {
+                read.eventInfo.memInfo.addr += 32;
+                alg.Do(read);
+            }
+
+            if (synchronized) {
+                SanEvent sync;
+                sync.loc = read.loc;
+                sync.type = EventType::SYNC_EVENT;
+                sync.pipe = read.pipe;
+                sync.eventInfo.syncInfo = {};
+                sync.eventInfo.syncInfo.opType = SyncType::SET_FLAG;
+                sync.eventInfo.syncInfo.srcPipe = read.pipe;
+                sync.eventInfo.syncInfo.dstPipe = PipeType::PIPE_MTE2;
+                sync.eventInfo.syncInfo.eventId = 1;
+                alg.Do(sync);
+                sync.pipe = PipeType::PIPE_MTE2;
+                sync.eventInfo.syncInfo.opType = SyncType::WAIT_FLAG;
+                alg.Do(sync);
+            }
+
+            auto write = read;
+            write.pipe = PipeType::PIPE_MTE2;
+            write.serialNo = 2;
+            write.eventInfo.memInfo.opType = AccessType::WRITE;
+            write.eventInfo.memInfo.addr = 0x1010;
+            write.eventInfo.memInfo.blockSize = 32;
+            alg.Do(write);
+
+            SanEvent finish;
+            finish.type = EventType::SANITIZER_CONTROL_EVENT;
+            finish.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+            alg.Do(finish);
+            EXPECT_EQ(alg.GetRaceCount(), synchronized ? 0U : (merged ? 1U : 2U));
+        }
+    }
+}
+
 TEST(RaceAlgImpl, race_alg_can_detect_cross_core_sync_events_expect_success)
 {
     RaceAlgImpl alg(KernelType::MIX, DeviceType::ASCEND_910B1, 2);

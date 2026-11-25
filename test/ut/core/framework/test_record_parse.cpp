@@ -1741,6 +1741,54 @@ TEST_F(TestRecordParse, parse_load_3d_ordered_reads_and_metadata)
     }
 }
 
+TEST_F(TestRecordParse, load_3d_merges_contiguous_reads_and_keeps_matrix_write)
+{
+    SanitizerRecord record{};
+    record.version = RecordVersion::KERNEL_RECORD;
+    auto &kernel = record.payload.kernelRecord;
+    kernel.recordType = RecordType::LOAD_3D;
+    kernel.blockType = BlockType::AICUBE;
+    kernel.serialNo = 123;
+    auto &load = kernel.payload.load3DRecord;
+    load.src = 0x1000;
+    load.dst = 0x4000;
+    load.srcMemType = MemType::L1;
+    load.dstMemType = MemType::L0A;
+    load.dataType = DataType::DATA_B16;
+    load.fMapW = 8;
+    load.fMapH = 4;
+    load.fMapC = 32;
+    load.filterW = load.filterH = load.filterWStride = load.filterHStride = 1;
+    load.filterWDilation = load.filterHDilation = 1;
+    load.fMapTopPad = 1;
+    load.fMapRightPad = 2;
+    load.fMapLeftPad = 3;
+    load.matrixKStep = load.matrixMStep = 16;
+    load.matrixRptTimes = 1;
+    std::vector<SanEvent> events;
+    RecordParse::Parse(record, events);
+    ASSERT_EQ(events.size(), 2U);
+    const MemOpInfo read = {MemType::L1, AccessType::READ, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+        InstrName::NONE, 8, load.src, 1, 2 * 8 * 4 * 32, 1, 1, 1, 0};
+    const MemOpInfo write = {MemType::L0A, AccessType::WRITE, DEFAULT_VECTOR_MASK, MaskMode::MASK_NORM,
+        InstrName::NONE, 8, load.dst, 1, 512, 1, 1, 1, 512};
+    EXPECT_EQ(events.front().eventInfo.memInfo, read);
+    EXPECT_EQ(events.back().eventInfo.memInfo, write);
+    for (const auto &event : events) {
+        EXPECT_EQ(event.serialNo, kernel.serialNo);
+        EXPECT_EQ(event.pipe, PipeType::PIPE_MTE1);
+    }
+
+    load.filterWStride = 2;
+    events.clear();
+    RecordParse::Parse(record, events);
+    ASSERT_EQ(events.size(), 33U);
+    EXPECT_EQ(events[0].eventInfo.memInfo.addr, load.src + 32U);
+    EXPECT_EQ(events[1].eventInfo.memInfo.addr, load.src + 96U);
+    EXPECT_EQ(events[0].eventInfo.memInfo.blockSize, 32U);
+    EXPECT_EQ(events.back().eventInfo.memInfo, write);
+}
+
 TEST_F(TestRecordParse, parse_load_b2_record)
 {
     std::vector<SanEvent> events;
@@ -3428,6 +3476,81 @@ TEST_F(TestRecordParse, parse_hset_hwait_flag_with_mte1_record_expect_success)
     ASSERT_EQ(events[4].eventInfo.syncInfo.srcPipe, PipeType::PIPE_MTE1);
     ASSERT_EQ(events[4].eventInfo.syncInfo.dstPipe, PipeType::PIPE_FIX);
     ASSERT_EQ(events[4].eventInfo.syncInfo.eventId, 120 + 1);
+}
+
+TEST_F(TestRecordParse, buffered_parse_preserves_hset_matches_and_final_record_types)
+{
+    SanitizerRecord memory{};
+    memory.version = RecordVersion::KERNEL_RECORD;
+    memory.payload.kernelRecord.blockType = BlockType::AICUBE;
+    memory.payload.kernelRecord.recordType = RecordType::LOAD_L1_MX_2D;
+    memory.payload.kernelRecord.serialNo = 1U;
+
+    SanitizerRecord hset{};
+    hset.version = RecordVersion::KERNEL_RECORD;
+    auto &kernel = hset.payload.kernelRecord;
+    kernel.blockType = BlockType::AICUBE;
+    kernel.recordType = RecordType::HSET_FLAG;
+    kernel.serialNo = 2U;
+    auto &sync = kernel.payload.hardSyncRecord;
+    sync.src = PipeType::PIPE_MTE1;
+    sync.dst = PipeType::PIPE_FIX;
+    sync.memory = MemType::L1;
+    sync.eventID = 1U;
+    sync.v = 0U;
+    auto hwait = hset;
+    hwait.payload.kernelRecord.recordType = RecordType::HWAIT_FLAG;
+    hwait.payload.kernelRecord.serialNo = 3U;
+
+    auto parse = [&](bool buffered) {
+        RecordParse::ResetAll();
+        std::vector<SanEvent> events;
+        events.reserve(16);
+        RecordParse::BufferedParseState state(events);
+        for (const auto &record : {memory, hset, hwait}) {
+            RecordParse::Parse(record, events, buffered ? &state : nullptr);
+        }
+        if (buffered) {
+            state.ApplyRecordType(events);
+        }
+        return events;
+    };
+    const auto expected = parse(false);
+    const auto actual = parse(true);
+    ASSERT_EQ(expected.size(), 5U);
+    ASSERT_EQ(actual.size(), expected.size());
+    EXPECT_EQ(actual[2].eventInfo.syncInfo.opType, SyncType::SET_FLAG);
+    EXPECT_EQ(actual[4].eventInfo.syncInfo.opType, SyncType::WAIT_FLAG);
+    EXPECT_EQ(actual.back().recordType, INVALID_RECORD_TYPE);
+    for (size_t i = 0; i < expected.size(); ++i) {
+        EXPECT_EQ(actual[i].type, expected[i].type);
+        EXPECT_EQ(actual[i].pipe, expected[i].pipe);
+        EXPECT_EQ(actual[i].recordType, expected[i].recordType);
+        EXPECT_EQ(actual[i].serialNo, expected[i].serialNo);
+        if (expected[i].type == EventType::SYNC_EVENT) {
+            const auto &a = actual[i].eventInfo.syncInfo;
+            const auto &e = expected[i].eventInfo.syncInfo;
+            EXPECT_EQ(a.opType, e.opType);
+            EXPECT_EQ(a.srcPipe, e.srcPipe);
+            EXPECT_EQ(a.dstPipe, e.dstPipe);
+            EXPECT_EQ(a.eventId, e.eventId);
+            EXPECT_TRUE(a.isGenerated);
+        }
+    }
+
+    // Pending HSET state must still be consulted when a new output buffer contains no H_SYNC event.
+    RecordParse::ResetAll();
+    std::vector<SanEvent> previous;
+    RecordParse::Parse(hset, previous);
+    std::vector<SanEvent> next;
+    RecordParse::BufferedParseState buffered(next);
+    RecordParse::Parse(memory, next, &buffered);
+    buffered.ApplyRecordType(next);
+    EXPECT_FALSE(buffered.hasHardwareSync);
+    ASSERT_EQ(next.size(), 2U);
+    EXPECT_EQ(next.back().type, EventType::SYNC_EVENT);
+    EXPECT_EQ(next.back().eventInfo.syncInfo.opType, SyncType::SET_FLAG);
+    RecordParse::ResetAll();
 }
 
 TEST_F(TestRecordParse, parse_cycle_cross_pipe_event_with_two_sync_expect_get_inner_pipe_event_success)

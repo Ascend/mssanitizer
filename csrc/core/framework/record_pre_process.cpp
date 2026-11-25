@@ -211,9 +211,11 @@ void RecordPreProcess::Process(const SanitizerRecord &record, std::vector<SanEve
         return;
     }
 
-    for (auto const &rec : recordBuffer_) {
-        Parse(rec, events);
+    RecordParse::BufferedParseState buffered(events);
+    for (const auto &rec : recordBuffer_) {
+        RecordParse::Parse(rec, events, &buffered);
     }
+    buffered.ApplyRecordType(events);
     ClearBuffer();
 }
 

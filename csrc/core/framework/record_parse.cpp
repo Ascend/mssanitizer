@@ -16,7 +16,9 @@
 
 
 #include "record_parse.h"
+#include <limits>
 
+#include <algorithm>
 #include <array>
 #include <functional>
 #include <map>
@@ -1900,6 +1902,18 @@ static void ParseRecordLoad3DFMap(const Load3DRecord &load3DRecord, std::vector<
     // 对src做对齐检查
     memInfo.addr = load3DRecord.src;
     AlignChecker::Instance().CheckAlign(event, RecordType::LOAD_3D);
+    if (load3DRecord.srcMemType == MemType::L1 &&
+        load3DRecord.filterW == 1U && load3DRecord.filterH == 1U &&
+        load3DRecord.filterWStride == 1U && load3DRecord.filterHStride == 1U) {
+        const uint64_t blocks = static_cast<uint64_t>(fMapC1) * load3DRecord.fMapW * load3DRecord.fMapH;
+        if (blocks > 1U && blocks <= std::numeric_limits<uint32_t>::max() / loadSize &&
+            load3DRecord.src <= std::numeric_limits<uint64_t>::max() - blocks * loadSize) {
+            // With one filter tap and unit strides, clipping padding leaves the full fmap in linear order.
+            memInfo.blockSize = static_cast<uint32_t>(blocks * loadSize);
+            events.emplace_back(event);
+            return;
+        }
+    }
     // Each feature-map coordinate is {channel block, height, width}.
     std::vector<std::array<int32_t, 3>> fMapPos(0);
     for (uint32_t fMc = 0; fMc < fMapC1; ++fMc) {
@@ -4578,14 +4592,26 @@ void ReplacePipeScalar(SanEvent &event)
     }
 }
 
-void RecordParse::ReplaceSetSyncPipeScalar(std::vector<SanEvent> &events)
+void RecordParse::ReplaceSetSyncPipeScalar(std::vector<SanEvent> &events, size_t begin)
 {
-    for (auto &event : events) {
-        ReplacePipeScalar(event);
+    for (size_t i = begin; i < events.size(); ++i) {
+        ReplacePipeScalar(events[i]);
     }
 }
 
-void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &events)
+RecordParse::BufferedParseState::BufferedParseState(const std::vector<SanEvent> &events)
+    : hasHardwareSync(std::any_of(events.begin(), events.end(),
+        [](const SanEvent &event) { return event.type == EventType::H_SYNC_EVENT; })) {}
+
+void RecordParse::BufferedParseState::ApplyRecordType(std::vector<SanEvent> &events) const
+{
+    for (size_t i = 0; i < stampEnd; ++i) {
+        events[i].recordType = stampType;
+    }
+}
+
+void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &events,
+    BufferedParseState *buffered)
 {
     KernelRecord const& kernelRecord = record.payload.kernelRecord;
     if (kernelRecord.recordType == RecordType::BLOCK_FINISH || kernelRecord.recordType == RecordType::KERNEL_FINISH) {
@@ -4596,18 +4622,29 @@ void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &ev
         return;
     }
 
-    // events 在一次批量flush中会被多条record复用，用增量判断本条record是否产出事件，
-    // 避免参数为0(空)时误处理前序record遗留的陈旧事件，并保证打戳只作用于本条 record 的事件
+    // Record the new suffix before parsing, since a buffered flush reuses the output vector.
     const size_t parseBeginIdx = events.size();
     it->second(kernelRecord, events);
     if (events.size() == parseBeginIdx) {
         return;
     }
-    // 统一为本条 record 生成的事件标注指令类型，供按指令的策略（如告警屏蔽）使用
-    for (auto &event : events) {
-        event.recordType = kernelRecord.recordType;
+    const size_t scalarBegin = buffered == nullptr || buffered->stampEnd == 0U ? 0U : parseBeginIdx;
+    if (buffered != nullptr) {
+        // Only the last productive record's prefix stamp is observable after a flush. Its generated suffix is unstamped.
+        buffered->stampEnd = events.size();
+        buffered->stampType = kernelRecord.recordType;
+        if (!buffered->hasHardwareSync) {
+            buffered->hasHardwareSync = std::any_of(events.begin() + parseBeginIdx, events.end(),
+                [](const SanEvent &event) { return event.type == EventType::H_SYNC_EVENT; });
+        }
+    } else {
+        for (auto &event : events) {
+            event.recordType = kernelRecord.recordType;
+        }
     }
-    ProcessHsetWaitSync(events);
+    if (buffered == nullptr || buffered->hasHardwareSync || !hsetSyncMap_.empty()) {
+        ProcessHsetWaitSync(events);
+    }
     UpdateSyncInPipe(kernelRecord, events);
     // 给本条 record 产出的事件记下环水位线：该事件所属 pipe 上、终点早于本事件的环中最大的起始点
     for (size_t i = parseBeginIdx; i < events.size(); ++i) {
@@ -4616,6 +4653,7 @@ void RecordParse::Parse(const SanitizerRecord &record, std::vector<SanEvent> &ev
             events[i].closedRingStartSerialNo = closedRingStartSerialNo_[pipeIdx];
         }
     }
-    ReplaceSetSyncPipeScalar(events);
+    // After the first productive record, only the appended suffix can need normalization.
+    ReplaceSetSyncPipeScalar(events, scalarBegin);
 }
 }

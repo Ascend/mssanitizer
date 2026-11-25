@@ -17,11 +17,59 @@
 
 #include <gtest/gtest.h>
 
+#include "alg_framework/race_alg_base.h"
+#define private public
 #include "alg_framework/single_pipe_race_alg_impl.h"
+#undef private
 #include "core/framework/record_parse.h"
 
 namespace {
 using namespace Sanitizer;
+
+TEST(SinglePipeRaceAlgImpl, reserve_counts_only_replayed_mem_events_after_copy_split)
+{
+    for (const auto device : {DeviceType::ASCEND_910B1, DeviceType::ASCEND_950DT_950x}) {
+        SCOPED_TRACE(static_cast<int>(device));
+        SinglePipeRaceAlgImpl alg(KernelType::AIVEC, device, 1U);
+        SanEvent barrier{};
+        barrier.type = EventType::SYNC_EVENT;
+        barrier.pipe = PipeType::PIPE_MTE2;
+        barrier.eventInfo.syncInfo.opType = SyncType::PIPE_BARRIER;
+        for (uint64_t serial = 1U; serial <= 256U; ++serial) {
+            barrier.serialNo = serial;
+            alg.Do(barrier);
+        }
+        EXPECT_EQ(alg.queuedMemEventCount_, 0U);
+
+        SanEvent mem{};
+        mem.loc.blockType = BlockType::AIVEC;
+        mem.type = EventType::MEM_EVENT;
+        mem.eventInfo.memInfo = {MemType::UB, AccessType::WRITE, {~0ULL, ~0ULL}, MaskMode::MASK_NORM,
+            InstrName::NONE, 8, 0x100, 1U, 32U, 1U, 1U, 1U, 0U};
+        for (const auto pipe : {PipeType::PIPE_S, PipeType::PIPE_S_CAL, PipeType::PIPE_V}) {
+            mem.pipe = pipe;
+            mem.serialNo++;
+            alg.Do(mem);
+        }
+        const auto vectorMemCount = IsAscend95(device) ? 0U : 1U;
+        EXPECT_EQ(alg.queuedMemEventCount_, vectorMemCount);
+
+        mem.pipe = PipeType::PIPE_MTE2;
+        mem.serialNo = 257U;
+        alg.Do(mem);
+        EXPECT_EQ(alg.queuedMemEventCount_, vectorMemCount + 1U);
+        mem.serialNo = 258U;
+        mem.eventInfo.memInfo.opType = AccessType::MEMCPY_BLOCKS;
+        alg.Do(mem);
+        EXPECT_EQ(alg.queuedMemEventCount_, vectorMemCount + 3U);
+
+        SanEvent finish{};
+        finish.type = EventType::SANITIZER_CONTROL_EVENT;
+        finish.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+        alg.Do(finish);
+        EXPECT_EQ(alg.GetRaceCount(), 2U);
+    }
+}
 
 TEST(SinglePipeRaceAlgImpl, race_alg_can_detect_race_events_expect_success)
 {
