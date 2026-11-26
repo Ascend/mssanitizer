@@ -27,45 +27,14 @@
 #include "core/framework/format_converter.h"
 #include "shadow_memory.h"
 
-namespace {
-constexpr uint8_t VA_BITS_SHIFT = 2;
-constexpr uint8_t STATUS_MASK = 0b11;
-constexpr uint8_t COREID_MASK = ~0b11;
-constexpr uint8_t DEFAULT_CORE_ID = 0b111111;
-constexpr uint8_t GM_DEFAULT_VALUE = static_cast<uint8_t>(Sanitizer::MemStatus::UNDEFINED) |
-                                     (DEFAULT_CORE_ID << VA_BITS_SHIFT);
-constexpr uint8_t CHIPMEM_DEFAULT_VALUE = static_cast<uint8_t>(Sanitizer::MemStatus::UNDEFINED) |
-                                          (DEFAULT_CORE_ID << VA_BITS_SHIFT);
-constexpr uint8_t PRIVATE_DEFAULT_VALUE = static_cast<uint8_t>(Sanitizer::MemStatus::UNDEFINED) |
-                                          (DEFAULT_CORE_ID << VA_BITS_SHIFT);
-}
-
 namespace Sanitizer {
-
-inline uint8_t MakeByte(MemStatus status, uint8_t coreId)
-{
-    return (static_cast<uint8_t>(status) & STATUS_MASK) |
-        ((coreId << VA_BITS_SHIFT) & COREID_MASK);
-}
-
-inline MemStatus GetMemStatus(uint8_t byte)
-{
-    return static_cast<MemStatus>(byte & STATUS_MASK);
-}
-
-inline uint8_t GetCoreId(uint8_t byte)
-{
-    return (byte & COREID_MASK) >> VA_BITS_SHIFT;
-}
-
-inline uint8_t SetMemStatus(uint8_t byte, MemStatus status)
-{
-    return (byte & COREID_MASK) | (static_cast<uint8_t>(status) & STATUS_MASK);
-}
-
-inline uint8_t SetCoreId(uint8_t byte, uint8_t coreId)
-{
-    return (byte & STATUS_MASK) | ((coreId << VA_BITS_SHIFT) & COREID_MASK);
+namespace {
+constexpr uint8_t GM_DEFAULT_VALUE = static_cast<uint8_t>(MemStatus::UNDEFINED) |
+                                     (DEFAULT_CORE_ID << VA_BITS_SHIFT);
+constexpr uint8_t CHIPMEM_DEFAULT_VALUE = static_cast<uint8_t>(MemStatus::UNDEFINED) |
+                                          (DEFAULT_CORE_ID << VA_BITS_SHIFT);
+constexpr uint8_t PRIVATE_DEFAULT_VALUE = static_cast<uint8_t>(MemStatus::UNDEFINED) |
+                                          (DEFAULT_CORE_ID << VA_BITS_SHIFT);
 }
 
 ShadowMemory::ShadowMemory(void) : gm_{MakeUnique<GmPM>(GM_DEFAULT_VALUE)} { }
@@ -104,6 +73,13 @@ void ShadowMemory::ResetChipMemory() noexcept
 void ShadowMemory::ResetPrivateMemory() noexcept
 {
     private_->Reset(PRIVATE_DEFAULT_VALUE);
+}
+
+void ShadowMemory::ReleaseGmOwnership() noexcept
+{
+    if (gm_ != nullptr) {
+        gm_->ReleaseOwnerBits();
+    }
 }
 
 PM* ShadowMemory::GetMemMap(AddressSpace space) const

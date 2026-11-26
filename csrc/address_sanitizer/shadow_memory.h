@@ -24,17 +24,12 @@
 
 #include "heap_block_manager.h"
 #include "pm.h"
+#include "shadow_byte.h"
 #include "mem_error_def.h"
 #include "core/framework/platform_config.h"
 #include "core/framework/record_defs.h"
 
 namespace Sanitizer {
-enum class MemStatus : uint8_t {
-    NOACCESS = 0, // unaddressable
-    UNDEFINED,    // addressable but uninitialized
-    DEFINED,      // addressable and initialized
-    ERROR,        // 多核写GM内存，内存被踩后置为该状态，该状态不参与action操作
-};
 
 // shadowMemory内存操作需要用到的内存记录
 struct MemOpRecordForShadow {
@@ -77,6 +72,8 @@ public:
     bool IsReady() const;
     void ResetChipMemory() noexcept;
     void ResetPrivateMemory() noexcept;
+    // kernel 结束后归还 GM 影子的跨核归属：coreId 复位、ERROR 解冻，初始化状态保持不变
+    void ReleaseGmOwnership() noexcept;
 
     // for SMs n-bytewise-operation
     ErrorMsgList LoadNBytes(MemOpRecordForShadow memOpRecordForShadow, bool initCheck);

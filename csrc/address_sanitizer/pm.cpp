@@ -22,10 +22,10 @@
 
 namespace {
 // 每个影子字节的低 2 位保存状态，其余位保存归属信息。
-constexpr uint8_t STATUS_MASK = 0x03U;
 constexpr uint64_t BYTE_ONES = 0x0101010101010101ULL;
 constexpr uint64_t BYTE_HIGH_BITS = 0x8080808080808080ULL;
-constexpr uint64_t BYTE_STATUS_MASKS = BYTE_ONES * STATUS_MASK;
+// 各字节低 2 位的状态掩码
+constexpr uint64_t BYTE_STATUS_MASKS = BYTE_ONES * Sanitizer::STATUS_MASK;
 
 // 按字节复制到整数对象，支持未对齐地址，避免直接解引用 uint64_t 指针。
 uint64_t ReadShadowWord(const uint8_t *bytes)
@@ -41,6 +41,32 @@ bool HasZeroByte(uint64_t word)
 {
     return ((word - BYTE_ONES) & ~word & BYTE_HIGH_BITS) != 0;
 }
+
+constexpr uint64_t BYTE_COREID_BITS = static_cast<uint64_t>(Sanitizer::COREID_MASK) * BYTE_ONES;
+
+// 判断一个 8 字节影子字是否需要归还归属：存在非默认 coreId，或存在 ERROR 状态。
+bool WordNeedsRelease(uint64_t word)
+{
+    if ((word & BYTE_COREID_BITS) != BYTE_COREID_BITS) {
+        return true;
+    }
+    // 状态位与 0b11 逐字节异或，出现全零字节即说明该字内存在 ERROR。
+    return HasZeroByte((word & BYTE_STATUS_MASKS) ^ BYTE_STATUS_MASKS);
+}
+
+// 仅在被判定需要归还时逐字节改写，避免正常路径产生影子内存写。
+void ReleaseWordBytes(uint8_t *bytes)
+{
+    for (size_t i = 0; i < sizeof(uint64_t); ++i) {
+        bytes[i] = Sanitizer::ReleaseOwnerBitsOfByte(bytes[i]);
+    }
+}
+
+// 单个影子字节是否带有需要归还的跨核归属信息。
+bool ByteNeedsRelease(uint8_t byte) {
+    return Sanitizer::GetCoreId(byte) != Sanitizer::DEFAULT_CORE_ID ||
+        Sanitizer::GetMemStatus(byte) == Sanitizer::MemStatus::ERROR;
+}
 } // namespace
 
 namespace Sanitizer {
@@ -49,6 +75,8 @@ using namespace std;
 
 struct PM::SM {
     uint8_t vabits8[ONE_SM_STAND_FOR_BYTE];
+    // 自上次归还以来是否写过（或继承过）归属信息，用于避免全表扫描
+    bool ownerDirty = false;
     explicit SM(uint8_t bits8) noexcept
     {
         if (memset_s(&vabits8[0], ONE_SM_STAND_FOR_BYTE, bits8, ONE_SM_STAND_FOR_BYTE) != EOK) {
@@ -124,6 +152,7 @@ PM::PM(const uint64_t &byteNum, uint8_t memInitVal) noexcept
     if (byteNum > 0U) {
         smList_.resize(smNum_, nullptr);
         commonBitsList_.resize(smNum_, memInitVal);
+        commonDirtyFlags_.assign(smNum_, 0U);
     }
 }
 
@@ -135,6 +164,9 @@ void PM::Reset(uint8_t memInitVal) noexcept
     }
 
     commonBitsList_.assign(smNum_, memInitVal);
+    commonDirtyFlags_.assign(smNum_, 0U);
+    dirtyCommonBlocks_.clear();
+    dirtySmBlocks_.clear();
 }
 
 PM::~PM()
@@ -179,11 +211,16 @@ void PM::Set(uint64_t addr, uint64_t size, uint8_t bits)
             delete smList_[blockIndex]; // NOLINT(cppcoreguidelines-owning-memory)
             smList_[blockIndex] = nullptr;
             commonBitsList_[blockIndex] = bits;
+            if (ByteNeedsRelease(bits)) {
+                MarkCommonBlockDirty(blockIndex);
+            }
             continue;
         }
 
         if (smList_[blockIndex] == nullptr) {
             smList_[blockIndex] = new SM(commonBitsList_[blockIndex]); // NOLINT(cppcoreguidelines-owning-memory)
+            // 新 SM 继承整块状态，其中可能带有此前写入的归属信息
+            MarkSmBlockDirty(blockIndex);
         }
         PM::SM &sm = *smList_[blockIndex];
         uint64_t addrL = std::max(addr, blockAddrL);
@@ -194,6 +231,9 @@ void PM::Set(uint64_t addr, uint64_t size, uint8_t bits)
         }
         if (memset_s(&sm.vabits8[addrL - blockAddrL], destMaxSm, bits, addrR - addrL)) {
             ++memsetCount;  // 记录memset失败的次数，超过0则统一打印，避免在for循环中输出相同日志内容
+        }
+        if (ByteNeedsRelease(bits)) {
+            MarkSmBlockDirty(blockIndex);
         }
     }
     if (memsetCount > 0) {
@@ -283,6 +323,55 @@ bool PM::RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const
         }
     }
     return false;
+}
+
+void PM::ReleaseOwnerBits() noexcept
+{
+    // 只归还本次真正写过归属信息的块：commonBits 整块状态与已物化 SM 各维护一份脏表。
+    for (uint64_t blockIndex : dirtyCommonBlocks_) {
+        if (blockIndex < commonBitsList_.size()) {
+            commonBitsList_[blockIndex] = ReleaseOwnerBitsOfByte(commonBitsList_[blockIndex]);
+        }
+        if (blockIndex < commonDirtyFlags_.size()) {
+            commonDirtyFlags_[blockIndex] = 0U;
+        }
+    }
+    dirtyCommonBlocks_.clear();
+
+    for (uint64_t blockIndex : dirtySmBlocks_) {
+        // 整块改写会释放 SM，脏表里可能残留已失效的下标
+        if (blockIndex >= smList_.size() || smList_[blockIndex] == nullptr) {
+            continue;
+        }
+        SM &sm = *smList_[blockIndex];
+        if (!sm.ownerDirty) {
+            continue;
+        }
+        for (uint64_t offset = 0; offset < sizeof(sm.vabits8); offset += sizeof(uint64_t)) {
+            const uint64_t word = ReadShadowWord(&sm.vabits8[offset]);
+            if (WordNeedsRelease(word)) {
+                ReleaseWordBytes(&sm.vabits8[offset]);
+            }
+        }
+        sm.ownerDirty = false;
+    }
+    dirtySmBlocks_.clear();
+}
+
+void PM::MarkCommonBlockDirty(uint64_t blockIndex) {
+    if (blockIndex >= commonDirtyFlags_.size() || commonDirtyFlags_[blockIndex] != 0U) {
+        return;
+    }
+    commonDirtyFlags_[blockIndex] = 1U;
+    dirtyCommonBlocks_.push_back(blockIndex);
+}
+
+void PM::MarkSmBlockDirty(uint64_t blockIndex) {
+    if (blockIndex >= smList_.size() || smList_[blockIndex] == nullptr || smList_[blockIndex]->ownerDirty) {
+        return;
+    }
+    smList_[blockIndex]->ownerDirty = true;
+    dirtySmBlocks_.push_back(blockIndex);
 }
 
 inline uint64_t PM::GetBlockIdx(uint64_t addr) const
@@ -400,6 +489,18 @@ bool GmPM::RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const
         }
     }
     return false;
+}
+
+void GmPM::ReleaseOwnerBits() noexcept
+{
+    // 一级 GM 表的统一字节只在构造时按 memInitVal 初始化，写入全部落在二级 PM，
+    // 因此这里无需扫描 commonBitsList_，只递归已物化的二级 PM；二级 PM 内部再按脏表归还，
+    // 避免随累计物化量增长的全量扫描。
+    for (PmPtr pm : pmList_) {
+        if (pm != nullptr) {
+            pm->ReleaseOwnerBits();
+        }
+    }
 }
 
 GmPM::PmPtr GmPM::QueryPM(uint64_t addr) const
