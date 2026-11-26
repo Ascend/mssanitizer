@@ -425,3 +425,55 @@ TEST_F(P2PMappingManager, OtherDeviceCannotBorrowMapping) {
     ASSERT_TRUE(InitDevice(third, 3));
     EXPECT_TRUE(HasIllegalRead(third, 0x1004, 4));
 }
+
+// 测试场景：两个HCCL通信域重叠授权同一精确窗口，先后撤销
+// 测试预期：销毁一个域不影响另一个，全部撤销后恢复非法写告警
+TEST_F(P2PMappingManager, ScopedHcclWindowRevocation) {
+    auto &manager = PeerAccessManager::Instance();
+    P2PMappingRecord first{1, 2, 0x1004, 4, 0x1000, 101};
+    auto second = first;
+    second.scope = 102;
+    ASSERT_TRUE(manager.ApplyMapping(710, first));
+    ASSERT_TRUE(manager.ApplyMapping(710, second));
+    EXPECT_FALSE(HasIllegalWrite(0x1004, 4));
+    EXPECT_TRUE(HasIllegalWrite(0x1007, 2));
+    first.revoke = true;
+    ASSERT_TRUE(manager.ApplyMapping(710, first));
+    EXPECT_FALSE(HasIllegalWrite(0x1004, 4));
+    second.revoke = true;
+    ASSERT_TRUE(manager.ApplyMapping(710, second));
+    EXPECT_TRUE(HasIllegalWrite(0x1004, 4));
+}
+
+// 测试场景：HCCL窗口和同方向设备级授权同时存在，随后销毁通信域
+// 测试预期：设备级授权覆盖窗口外的有效分配，销毁通信域后设备授权继续有效
+TEST_F(P2PMappingManager, ScopedWindowDoesNotLimitDeviceAccess) {
+    auto &manager = PeerAccessManager::Instance();
+    P2PMappingRecord window{1, 2, 0x1000, 4, 0x1000, 101};
+    ASSERT_TRUE(manager.ApplyMapping(710, window));
+    EXPECT_FALSE(HasIllegalRead(access, 0x1000, 4));
+    EXPECT_TRUE(HasIllegalRead(access, 0x1004, 4));
+    ASSERT_TRUE(manager.Apply(710, {1, 2, PeerAccessOp::ENABLE}));
+    EXPECT_FALSE(HasIllegalRead(access, 0x1004, 4));
+    EXPECT_FALSE(HasIllegalWrite(0x1004, 4));
+    EXPECT_TRUE(HasIllegalRead(access, 0x1010, 4));
+    window.revoke = true;
+    ASSERT_TRUE(manager.ApplyMapping(710, window));
+    EXPECT_FALSE(HasIllegalRead(access, 0x1000, 4));
+    EXPECT_FALSE(HasIllegalWrite(0x1004, 4));
+    ASSERT_TRUE(manager.Apply(710, {1, 2, PeerAccessOp::DISABLE}));
+    EXPECT_TRUE(HasIllegalRead(access, 0x1000, 4));
+}
+
+// 测试场景：通信域销毁时owner已经释放，或试图按通信域撤销无归属窗口
+// 测试预期：允许幂等撤销通信域映射，拒绝scope0撤销请求
+TEST_F(P2PMappingManager, ScopedRevokeAfterFreeAndRejectUnscopedRevoke) {
+    auto &manager = PeerAccessManager::Instance();
+    P2PMappingRecord record{1, 2, 0x1004, 4, 0x1000, 101};
+    ASSERT_TRUE(manager.ApplyMapping(710, record));
+    FreeOwner();
+    record.revoke = true;
+    EXPECT_TRUE(manager.ApplyMapping(710, record));
+    record.scope = 0;
+    EXPECT_FALSE(manager.ApplyMapping(710, record));
+}

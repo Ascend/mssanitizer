@@ -356,13 +356,13 @@ TEST(Protocol, ordered_binary_and_normal_packets_at_every_byte_boundary) {
 }
 } // namespace Sanitizer
 
-// 测试场景：P2P映射报文分段接收并复制Packet
-// 测试预期：类型、顺序号、所有方身份及精确区间完整保留
+// 测试场景：带作用域的 P2P 映射和撤销报文经分段接收并复制 Packet
+// 测试预期：顺序号、作用域及撤销标记完整保留，scope 0 的普通映射标记为非撤销
 TEST(Protocol, P2PMappingRoundTripAndCopy) {
     // 与真实接收模型及已有半包测试一致，一条连接使用独立接收线程
     std::thread([] {
         PacketHead head{PacketType::P2P_MAPPING_RECORD, 0, 51};
-        P2PMappingRecord record{1, 2, 0x1008, 8, 0x1000};
+        P2PMappingRecord record{1, 2, 0x1008, 8, 0x1000, 0, false};
         MemCheckProtocol protocol;
         const auto bytes = Serialize(head) + Serialize(record);
         protocol.Feed(bytes.substr(0, bytes.size() - 1));
@@ -377,5 +377,17 @@ TEST(Protocol, P2PMappingRoundTripAndCopy) {
         EXPECT_EQ(packet.GetPayload().p2pMappingRecord.addr, 0x1008);
         EXPECT_EQ(packet.GetPayload().p2pMappingRecord.size, 8);
         EXPECT_EQ(packet.GetPayload().p2pMappingRecord.ownerAddr, 0x1000);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.scope, 0);
+        EXPECT_FALSE(packet.GetPayload().p2pMappingRecord.revoke);
+
+        P2PMappingRecord revokeRecord{1, 2, 0x1008, 8, 0x1000, 73, true};
+        const auto revokeBytes = Serialize(PacketHead{PacketType::P2P_MAPPING_RECORD, 0, 52}) + Serialize(revokeRecord);
+        protocol.Feed(revokeBytes);
+        Packet revokePacket = protocol.GetPacket();
+        Packet revokeCopy(revokePacket);
+        ASSERT_EQ(revokeCopy.GetType(), PacketType::P2P_MAPPING_RECORD);
+        EXPECT_EQ(revokeCopy.GetOrderId(), 52);
+        EXPECT_EQ(revokeCopy.GetPayload().p2pMappingRecord.scope, 73);
+        EXPECT_TRUE(revokeCopy.GetPayload().p2pMappingRecord.revoke);
     }).join();
 }

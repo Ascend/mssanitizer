@@ -354,3 +354,92 @@ TEST(OrderedPacketScheduler, P2PMappingWaitsForAllocationAndProtectsReaders) {
     scheduler.Finish();
     EXPECT_EQ(dispatched, (std::vector<uint64_t>{1, 2, 3, 4, 5, 6}));
 }
+
+// 测试场景：所有方的内存写入尚未完成时，访问方提交带 scope 的 P2P 撤销事件
+// 测试预期：撤销事件等待所有方写入完成后再派发，保持 writer 顺序
+TEST(OrderedPacketScheduler, ScopedP2PRevocationWaitsForOwnerUpdate) {
+    Config config{};
+    Checker owner(config, false);
+    Checker accessor(config, false);
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::vector<uint64_t> dispatched;
+    std::promise<void> ownerUpdateDone;
+    auto ownerUpdateFuture = ownerUpdateDone.get_future().share();
+    OrderedPacketScheduler scheduler(
+        [&](OrderedPacketScheduler::Job &job) {
+            if (job.packet.GetType() == PacketType::DEVICE_SUMMARY) {
+                RuntimeContext::Instance().deviceSummary_ = job.packet.GetPayload().deviceSummary;
+            }
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                dispatched.push_back(job.packet.GetOrderId());
+            }
+            cv.notify_all();
+        },
+        [&](const OrderedPacketScheduler::Job &job) {
+            if (job.packet.GetOrderId() == 2) {
+                return ownerUpdateFuture;
+            }
+            std::promise<void> ready;
+            ready.set_value();
+            return ready.get_future().share();
+        });
+    DeviceInfoSummary ownerSummary{};
+    ownerSummary.deviceId = 2;
+    DeviceInfoSummary accessorSummary{};
+    accessorSummary.deviceId = 1;
+    HostMemRecord allocation{};
+    allocation.type = MemOpType::MALLOC;
+    auto submit = [&](uint64_t id, bool fromOwner, Packet packet) {
+        packet.SetOrderId(id);
+        scheduler.Submit({713, fromOwner ? std::thread::id{} : std::this_thread::get_id(),
+            fromOwner ? &owner : &accessor, std::move(packet), {}});
+    };
+    submit(1, true, Packet(ownerSummary));
+    submit(2, true, Packet(allocation));
+    submit(3, false, Packet(accessorSummary));
+    submit(4, false, Packet(P2PMappingRecord{1, 2, 0x2008, 8, 0x2000, 73, true}));
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        EXPECT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return dispatched.size() >= 3; }));
+        EXPECT_EQ(dispatched, (std::vector<uint64_t>{1, 2, 3}));
+    }
+    ownerUpdateDone.set_value();
+    scheduler.Finish();
+    EXPECT_EQ(dispatched, (std::vector<uint64_t>{1, 2, 3, 4}));
+}
+
+// 测试场景：scope 为 0 的 P2P 映射撤销包到达调度器
+// 测试预期：撤销包判为无效，不进入业务派发
+TEST(OrderedPacketScheduler, RejectsP2PRevocationWithoutScope) {
+    Config config{};
+    Checker checker(config, false);
+    std::vector<uint64_t> dispatched;
+    OrderedPacketScheduler scheduler(
+        [&](OrderedPacketScheduler::Job &job) {
+            if (job.packet.GetType() == PacketType::DEVICE_SUMMARY) {
+                RuntimeContext::Instance().deviceSummary_ = job.packet.GetPayload().deviceSummary;
+            }
+            dispatched.push_back(job.packet.GetOrderId());
+        },
+        [](const OrderedPacketScheduler::Job &) {
+            std::promise<void> ready;
+            ready.set_value();
+            return ready.get_future().share();
+        });
+    DeviceInfoSummary summary{};
+    summary.deviceId = 1;
+    Packet summaryPacket(summary);
+    summaryPacket.SetOrderId(1);
+    scheduler.Submit({714, std::this_thread::get_id(), &checker, std::move(summaryPacket), {}});
+    Packet revokePacket(P2PMappingRecord{1, 2, 0x2008, 8, 0x2000, 0, true});
+    revokePacket.SetOrderId(2);
+    scheduler.Submit({714, std::this_thread::get_id(), &checker, std::move(revokePacket), {}});
+
+    testing::internal::CaptureStderr();
+    scheduler.Finish();
+    const auto errors = testing::internal::GetCapturedStderr();
+    EXPECT_NE(errors.find("invalid P2P mapping record"), std::string::npos);
+    EXPECT_EQ(dispatched, (std::vector<uint64_t>{1}));
+}
