@@ -432,12 +432,11 @@ TEST(OrderedPacketScheduler, RejectsP2PRevocationWithoutScope) {
     summary.deviceId = 1;
     Packet summaryPacket(summary);
     summaryPacket.SetOrderId(1);
+    testing::internal::CaptureStderr();
     scheduler.Submit({714, std::this_thread::get_id(), &checker, std::move(summaryPacket), {}});
     Packet revokePacket(P2PMappingRecord{1, 2, 0x2008, 8, 0x2000, 0, true});
     revokePacket.SetOrderId(2);
     scheduler.Submit({714, std::this_thread::get_id(), &checker, std::move(revokePacket), {}});
-
-    testing::internal::CaptureStderr();
     scheduler.Finish();
     const auto errors = testing::internal::GetCapturedStderr();
     EXPECT_NE(errors.find("invalid P2P mapping record"), std::string::npos);

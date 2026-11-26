@@ -1287,6 +1287,10 @@ void FixPipeWriteToL1OrUB(const MovFpRecord &record, std::vector<SanEvent> &even
         }
         return;
     }
+    // c220 的 dstStride 以 32B 为单位
+    if (!record.isC310) {
+        memInfo.blockSize = 32U;
+    }
     memInfo.repeatStride = record.dstStride;
     memInfo.addr = record.dst;
     ParseFixPipeWriteByMultiMode(record, events, event);
@@ -1366,7 +1370,11 @@ static void ParseRecordFixL0CToL1(const KernelRecord &record, std::vector<SanEve
     event.eventInfo.memInfo.maskMode = MaskMode::MASK_NORM;
     event.eventInfo.memInfo.dataBits = BITS_EACH_BYTE;
 
-    FixPipeReadFromL0CA5(movFpRecord, events, event);
+    if (movFpRecord.isC310) {
+        FixPipeReadFromL0CA5(movFpRecord, events, event);
+    } else {
+        FixPipeReadFromL0C(movFpRecord, events, event);
+    }
     FixPipeWriteToL1OrUB(movFpRecord, events, event, MemType::L1);
 
     // 指令使能enUnitFlag，需要插入set_flag/wait_flag模拟同步行为
