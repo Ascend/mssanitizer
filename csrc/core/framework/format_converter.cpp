@@ -64,6 +64,7 @@ AddressSpace FormatConverter::MemTypeToAddrSpace(MemType memType)
         case MemType::GM: return AddressSpace::GM;
         case MemType::PRIVATE: return AddressSpace::PRIVATE;
         case MemType::FB: return AddressSpace::FB;
+        case MemType::SSBUF: return AddressSpace::SSBUF;
         default: return AddressSpace::UNKNOWN;
     }
 }
@@ -151,6 +152,7 @@ void AlignRecordBySpace(uint16_t& alignSize, AddressSpace space)
         case AddressSpace::BT: // 为避免影响其他与之相关的指令对齐逻辑，先暂设为1，后续再适配，FB同理
         case AddressSpace::FB:
         case AddressSpace::PRIVATE:
+        case AddressSpace::SSBUF:
         case AddressSpace::UNKNOWN:
             alignSize = 1;
             break;

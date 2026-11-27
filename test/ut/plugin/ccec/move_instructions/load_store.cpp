@@ -182,7 +182,9 @@ TEST(MoveInstructions, dump_private_load_store_reserved_region_with_initcheck_ex
 TEST(MoveInstructions, classify_original_scalar_address_boundaries) {
     for (uint64_t base : {0ULL, 0x2000000ULL, 0x100000000ULL}) {
         EXPECT_EQ(ClassifyScalarAddress(base, base), AddressSpace::UNKNOWN);
-        EXPECT_EQ(ClassifyScalarAddress(base + 0x7ffff, base), AddressSpace::UNKNOWN);
+        EXPECT_EQ(ClassifyScalarAddress(base + 0x3ffff, base), AddressSpace::UNKNOWN);
+        EXPECT_EQ(ClassifyScalarAddress(base + 0x40000, base), AddressSpace::SSBUF);
+        EXPECT_EQ(ClassifyScalarAddress(base + 0x7ffff, base), AddressSpace::SSBUF);
         EXPECT_EQ(ClassifyScalarAddress(base + 0x80000, base), AddressSpace::UB);
         EXPECT_EQ(ClassifyScalarAddress(base + 0xfffff, base), AddressSpace::UB);
         EXPECT_EQ(ClassifyScalarAddress(base + 0x100000, base), AddressSpace::PRIVATE);
@@ -192,7 +194,35 @@ TEST(MoveInstructions, classify_original_scalar_address_boundaries) {
     }
 }
 
-TEST(MoveInstructions, static_private_runtime_ub_keeps_ub_offset_for_both_modes) {
+// SSBUF 在 RM 中归一化为窗口内偏移，避免与 UB 共享窗口/host bounds 再次误判。
+TEST(MoveInstructions, remap_ssbuf_address_to_window_offset)
+{
+    uint64_t addr = SSBUF_ADDR_OFFSET;
+    EXPECT_EQ(RemapAddress(addr), AddressSpace::SSBUF);
+    EXPECT_EQ(addr, 0U);
+
+    addr = SSBUF_ADDR_OFFSET + SSBUF_SIZE - 1U;
+    EXPECT_EQ(RemapAddress(addr), AddressSpace::SSBUF);
+    EXPECT_EQ(addr, SSBUF_SIZE - 1U);
+
+    addr = SSBUF_ADDR_OFFSET - 1U;
+    EXPECT_EQ(RemapAddress(addr), AddressSpace::UNKNOWN);
+    EXPECT_EQ(addr, SSBUF_ADDR_OFFSET - 1U);
+}
+
+TEST(MoveInstructions, dump_ssbuf_load_expect_get_correct_record)
+{
+    auto record = SanitizerTest::CreateRandomLoadStoreRecord<AddressSpace::SSBUF>();
+    std::vector<uint8_t> memInfo = Sanitizer::CreateMemInfo();
+
+    __sanitizer_report_load(memInfo.data(), record.location.fileNo, record.location.lineNo, record.location.pc,
+                            AddressSpace::SSBUF, record.addr, record.size);
+    uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+    ASSERT_TRUE(SanitizerTest::CheckRecordEqual(ptr, RecordType::LOAD, record));
+}
+
+TEST(MoveInstructions, static_private_runtime_ub_keeps_ub_offset_for_both_modes)
+{
     for (bool initcheck : {false, true}) {
         for (uint64_t addr : {0x80000ULL, 0xf0000ULL, 0xfffffULL}) {
             auto memInfo = CreateMemInfo();

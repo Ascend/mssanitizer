@@ -19,9 +19,32 @@
 
 #include "address_sanitizer/bounds_check.h"
 #include "address_sanitizer/mem_error_def.h"
+#include "core/framework/platform_config.h"
 #include "core/framework/record_defs.h"
 
 using namespace Sanitizer;
+
+// 测试场景：SSBUF 使用独立窗口，窗口内偏移 0 合法，超过可用大小才越界
+TEST(BoundsCheck, ssbuf_uses_dedicated_window) {
+    // 1C2V 每个 block 可用 3KB；容量与 0x40000 地址窗口大小是不同约束。
+    EXPECT_EQ(SSBUF_SIZE, 3072U);
+    ChipInfo chipInfo{};
+    BoundsCheck bounds;
+    bounds.Init(chipInfo, static_cast<uint32_t>(SSBUF_SIZE));
+    EXPECT_FALSE(bounds.Check(AddressSpace::SSBUF, 0, 144, AccessType::READ).isError);
+    EXPECT_FALSE(bounds.Check(AddressSpace::SSBUF, 3071, 1, AccessType::WRITE).isError);
+    EXPECT_TRUE(bounds.Check(AddressSpace::SSBUF, 3072, 1, AccessType::READ).isError);
+    EXPECT_TRUE(bounds.Check(AddressSpace::SSBUF, 3071, 2, AccessType::READ).isError);
+    EXPECT_TRUE(bounds.Check(AddressSpace::SSBUF, 4096, 4, AccessType::READ).isError);
+}
+
+// 测试场景：非 Ascend950 不注册 SSBUF 容量，不能把 0x40000 窗口放行
+TEST(BoundsCheck, ssbuf_disabled_has_no_valid_window) {
+    ChipInfo chipInfo{};
+    BoundsCheck bounds;
+    bounds.Init(chipInfo);
+    EXPECT_TRUE(bounds.Check(AddressSpace::SSBUF, 0, 1, AccessType::READ).isError);
+}
 
 TEST(BoundsCheck, discrete_bounds_add_range_overflow_uint64_max_expect_return_illegal_write)
 {

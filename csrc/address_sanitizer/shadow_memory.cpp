@@ -123,6 +123,8 @@ PM* ShadowMemory::GetMemMap(AddressSpace space) const
             return ub_.get();
         case AddressSpace::PRIVATE:
             return private_.get();
+        case AddressSpace::SSBUF:
+            return nullptr;
         case AddressSpace::UNKNOWN:
         default:
             SAN_WARN_LOG("Cannot find corresponding map for %s", FormatAddressSpace(space).c_str());
@@ -385,7 +387,11 @@ void ShadowMemory::ValidateRange(AddressSpace space, uint64_t &addr, uint64_t &s
     size = addrR - addr;
 }
 
-bool ShadowMemory::SkipSpace(AddressSpace space) { return space == AddressSpace::UNKNOWN; }
+bool ShadowMemory::SkipSpace(AddressSpace space)
+{
+    // SSBUF 为片上标量共享缓冲，当前仅做地址分类与越界判断，不建模 shadow/初始化/竞争。
+    return space == AddressSpace::UNKNOWN || space == AddressSpace::SSBUF;
+}
 
 ErrorMsg ShadowMemory::MakeBadBytesMsg(MemErrorType error, AddressSpace space,
                                        uint64_t addr, uint64_t nbytes, bool isSimt, uint64_t mainScalarPc,

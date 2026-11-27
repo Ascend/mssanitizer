@@ -55,6 +55,7 @@ enum class MemType : uint8_t {
     PRIVATE,
     FB,         // fixPipe buffer
     UNKNOWN, // 无法归类的内存类型：MPU 保留区落点/分类环境异常（原 INVALID 更名，值不变）
+    SSBUF,   // Ascend950 scalar share buffer（追加在末尾，保持既有枚举值不变）
 };
 
 enum class DeviceType : uint32_t {

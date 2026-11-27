@@ -277,7 +277,7 @@ BoundsCheck::BoundsCheck(bool localMemoryNeedAlloc) : localMemoryNeedAlloc_{loca
     }
 }
 
-void BoundsCheck::Init(ChipInfo const &chipInfo)
+void BoundsCheck::Init(ChipInfo const &chipInfo, uint32_t ssbufSize)
 {
     // 卡切换时除 GM 内存外其他内存都重新初始化
     if (!localMemoryNeedAlloc_) {
@@ -288,6 +288,8 @@ void BoundsCheck::Init(ChipInfo const &chipInfo)
         bounds_[AddressSpace::UB] = MakeUnique<UnionBounds>(0, chipInfo.ubSize);
     }
     bounds_[AddressSpace::PRIVATE] = MakeUnique<UnionBounds>(0, chipInfo.privateSize);
+    // ssbufSize 仅在 Ascend950(dav_3510) 上非 0；其他芯片注册 0 容量，避免 0x40000 窗口被放行。
+    bounds_[AddressSpace::SSBUF] = MakeUnique<UnionBounds>(0, ssbufSize);
 }
 
 ErrorMsg BoundsCheck::Add(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission)

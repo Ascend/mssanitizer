@@ -81,7 +81,7 @@ private:
 class BoundsCheck {
 public:
     explicit BoundsCheck(bool localMemoryNeedAlloc = false);
-    void Init(ChipInfo const &chipInfo);
+    void Init(ChipInfo const &chipInfo, uint32_t ssbufSize = 0U);
     ErrorMsg Add(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission = Bounds::DEFAULT_PERMISSION);
     ErrorMsg Remove(AddressSpace space, uint64_t addr, uint64_t size);
     ErrorMsg SetPermission(AddressSpace space, uint64_t addr, uint64_t size, uint32_t permission);

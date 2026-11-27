@@ -301,8 +301,9 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
     AlignChecker::Instance().SetDeviceType(deviceInfo.device);
     deviceType_ = deviceInfo.device;
     ChipInfo chipInfo = it->second;
-    boundsCheckRuntime_.Init(chipInfo);
-    boundsCheckDfx_.Init(chipInfo);
+    const uint32_t ssbufSize = IsAscend95(deviceInfo.device) ? static_cast<uint32_t>(SSBUF_SIZE) : 0U;
+    boundsCheckRuntime_.Init(chipInfo, ssbufSize);
+    boundsCheckDfx_.Init(chipInfo, ssbufSize);
     return shadowMemory_->Init(deviceInfo.device, chipInfo);
 }
 
