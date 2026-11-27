@@ -1489,7 +1489,9 @@ AICORE_FUNC_HEAD void ParseMovFpQuantBits(uint64_t quantPRE, bool enNDorDN, bool
     }
 }
 
-AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t nSize,
+// MOV_FP 与 FIX_L0C_TO_L1 共用 MovFpRecord
+template <RecordType recordType, MemType dstMemType = MemType::GM>
+AICORE_FUNC_HEAD void RecordMovFpEventT(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t nSize,
                                         uint16_t mSize, uint32_t dstStrideDstD, uint16_t srcStride,
                                         uint8_t unitFlag, uint64_t quantPRE, bool channelSplit,
                                         bool enNZ2ND, bool isDstF32)
@@ -1500,7 +1502,7 @@ AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t 
 
     auto record = MovFpRecord {};
     record.isC310 = false;
-    record.dst = GmAddrSubOffset(memInfo, MemType::GM, dst);
+    record.dst = GmAddrSubOffset(memInfo, dstMemType, dst);
     record.src = src;
     record.nSize = nSize;
     record.mSize = mSize;
@@ -1533,10 +1535,11 @@ AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t 
     record.ndNum = ndParaConfig & 0xFFFF;
     record.srcNdStride = (ndParaConfig >> 16) & 0xFFFF; // in unit of fractal size(1024B)
     record.dstNdStride = (ndParaConfig >> 32) & 0xFFFF; // in unit of element
-    recorder.DumpRecord<RecordType::MOV_FP>(record);
+    recorder.DumpRecord<recordType>(record);
 }
 
-AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+template <RecordType recordType, MemType dstMemType = MemType::GM>
+AICORE_FUNC_HEAD void RecordMovFpEventT(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
                                         uint64_t xm, uint64_t xt, bool isDstF32)
 {
     uint16_t nSize = (xm >> 4) & 0xFFF;
@@ -1548,8 +1551,40 @@ AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t 
     bool channelSplit = (xt >> 42) & 0x1;
     bool enNZ2ND = (xt >> 43) & 0x1;
 
-    RecordMovFpEvent(EXTRA_PARAMS, dst, src, nSize, mSize, dstStrideDstD,
-                     srcStride, unitFlag, quantPRE, channelSplit, enNZ2ND, isDstF32);
+    RecordMovFpEventT<recordType, dstMemType>(EXTRA_PARAMS, dst, src, nSize, mSize, dstStrideDstD,
+                                              srcStride, unitFlag, quantPRE, channelSplit, enNZ2ND, isDstF32);
+}
+
+AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t nSize,
+                                        uint16_t mSize, uint32_t dstStrideDstD, uint16_t srcStride,
+                                        uint8_t unitFlag, uint64_t quantPRE, bool channelSplit,
+                                        bool enNZ2ND, bool isDstF32)
+{
+    RecordMovFpEventT<RecordType::MOV_FP>(EXTRA_PARAMS, dst, src, nSize, mSize, dstStrideDstD,
+                                          srcStride, unitFlag, quantPRE, channelSplit, enNZ2ND, isDstF32);
+}
+
+AICORE_FUNC_HEAD void RecordMovFpEvent(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+                                        uint64_t xm, uint64_t xt, bool isDstF32)
+{
+    RecordMovFpEventT<RecordType::MOV_FP>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
+}
+
+// c220 L0C->L1（区别于 A5 DBI 的 RecordFixL0CToL1Event）
+AICORE_FUNC_HEAD void RecordFixL0CToL1C220Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src, uint16_t nSize,
+                                                uint16_t mSize, uint32_t dstStrideDstD, uint16_t srcStride,
+                                                uint8_t unitFlag, uint64_t quantPRE, bool channelSplit,
+                                                bool enNZ2ND, bool isDstF32)
+{
+    RecordMovFpEventT<RecordType::FIX_L0C_TO_L1, MemType::L1>(EXTRA_PARAMS, dst, src, nSize, mSize,
+                                                              dstStrideDstD, srcStride, unitFlag, quantPRE,
+                                                              channelSplit, enNZ2ND, isDstF32);
+}
+
+AICORE_FUNC_HEAD void RecordFixL0CToL1C220Event(EXTRA_PARAMS_DEC, uint64_t dst, uint64_t src,
+                                                uint64_t xm, uint64_t xt, bool isDstF32)
+{
+    RecordMovFpEventT<RecordType::FIX_L0C_TO_L1, MemType::L1>(EXTRA_PARAMS, dst, src, xm, xt, isDstF32);
 }
 
 template <RecordType recordType>

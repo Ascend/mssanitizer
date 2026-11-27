@@ -210,3 +210,215 @@ SANITIZER_REPORT(copy_matrix_cc_to_gm_b4, __gm__ void *dst, __cc__ int32_t *src,
     RecordMovFpEvent(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src), NSize,
                      MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE, channelSplit, NZ2ND_EN, false);
 }
+
+// FIX_L0C_TO_L1, L0C->L1
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ half *dst, __cc__ float *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ half *dst, __cc__ float *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ float *dst, __cc__ float *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, true);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ float *dst, __cc__ float *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, true);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ __bf16 *dst, __cc__ float *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ __bf16 *dst, __cc__ float *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int8_t *dst, __cc__ float *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int8_t *dst, __cc__ float *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ uint8_t *dst, __cc__ float *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ uint8_t *dst, __cc__ float *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int32_t *dst, __cc__ int32_t *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int32_t *dst, __cc__ int32_t *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ half *dst, __cc__ int32_t *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ half *dst, __cc__ int32_t *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int16_t *dst, __cc__ int32_t *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int16_t *dst, __cc__ int32_t *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int8_t *dst, __cc__ int32_t *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ int8_t *dst, __cc__ int32_t *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ uint8_t *dst, __cc__ int32_t *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf, __cbuf__ uint8_t *dst, __cc__ int32_t *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_b4, __cbuf__ void *dst, __cc__ float *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_b4, __cbuf__ void *dst, __cc__ float *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_b4, __cbuf__ void *dst, __cc__ int32_t *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_b4, __cbuf__ void *dst, __cc__ int32_t *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_s4, __cbuf__ void *dst, __cc__ float *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_s4, __cbuf__ void *dst, __cc__ float *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_s4, __cbuf__ void *dst, __cc__ int32_t *src, uint64_t xm, uint64_t xt)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              xm, xt, false);
+}
+
+SANITIZER_REPORT(copy_matrix_cc_to_cbuf_s4, __cbuf__ void *dst, __cc__ int32_t *src, uint8_t sid,
+                 uint16_t NSize, uint16_t MSize, uint32_t dstStride_dst_D, uint16_t srcStride,
+                 uint8_t UnitFlagMode, uint64_t QuantPRE, uint8_t ReLUPRE, bool channelSplit, bool NZ2ND_EN)
+{
+    RecordFixL0CToL1C220Event(EXTRA_PARAMS, reinterpret_cast<uint64_t>(dst), reinterpret_cast<uint64_t>(src),
+                              NSize, MSize, dstStride_dst_D, srcStride, UnitFlagMode, QuantPRE,
+                              channelSplit, NZ2ND_EN, false);
+}

@@ -155,4 +155,91 @@ TEST(MovFpInstructions, mov_fp_remaining_overloads_expect_record)
     auto *dv = reinterpret_cast<__gm__ void *>(record.dst);
     b4(dv); b4f(dv);
 }
+
+TEST(MovFpInstructions, fix_l0c_to_l1_cbuf_expect_fix_record_on_l1)
+{
+    auto record = CreateRandomMovFpRecord();
+    record.isC310 = false;
+    uint64_t xm;
+    uint64_t xt;
+    ExtractConfigFromMovFpRecord(record, xm, xt);
+    uint8_t sid = 0;
+    uint64_t quantPRE = 0;
+    uint8_t reLUPRE = 0;
+    auto &loc = record.location;
+
+    auto check = [&](uint8_t *memInfo) {
+        uint8_t *ptr = memInfo + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        ASSERT_EQ(*reinterpret_cast<RecordType *>(ptr), RecordType::FIX_L0C_TO_L1);
+        auto const &actual = *reinterpret_cast<MovFpRecord *>(ptr + sizeof(RecordType));
+        EXPECT_FALSE(actual.isC310);
+        EXPECT_EQ(actual.dst, record.dst);
+        EXPECT_EQ(actual.src, record.src);
+        EXPECT_EQ(actual.nSize, record.nSize);
+        EXPECT_EQ(actual.mSize, record.mSize);
+    };
+
+    // 4 参数形式
+    std::vector<uint8_t> memInfoXmXt = CreateMemInfo();
+    __sanitizer_report_copy_matrix_cc_to_cbuf(memInfoXmXt.data(), loc.fileNo, loc.lineNo, loc.pc,
+                                              reinterpret_cast<__cbuf__ half *>(record.dst),
+                                              reinterpret_cast<__cc__ float *>(record.src), xm, xt);
+    check(memInfoXmXt.data());
+
+    // 12 参数形式
+    std::vector<uint8_t> memInfoFull = CreateMemInfo();
+    __sanitizer_report_copy_matrix_cc_to_cbuf(memInfoFull.data(), loc.fileNo, loc.lineNo, loc.pc,
+                                              reinterpret_cast<__cbuf__ half *>(record.dst),
+                                              reinterpret_cast<__cc__ float *>(record.src), sid, record.nSize,
+                                              record.mSize, record.dstStride, record.srcStride,
+                                              record.enUnitFlag, quantPRE, reLUPRE, record.channelSplit,
+                                              record.enNZ2ND);
+    check(memInfoFull.data());
+}
+
+TEST(MovFpInstructions, fix_l0c_to_l1_cbuf_overloads_expect_record)
+{
+    auto record = CreateRandomMovFpRecord();
+    record.isC310 = false;
+    uint64_t xm;
+    uint64_t xt;
+    ExtractConfigFromMovFpRecord(record, xm, xt);
+    uint8_t sid = 0;
+    uint64_t quantPRE = 0;
+    uint8_t reLUPRE = 0;
+    auto &loc = record.location;
+
+    auto call = [&](auto &&fn) {
+        std::vector<uint8_t> memInfo = CreateMemInfo();
+        fn(memInfo.data());
+        uint8_t *ptr = memInfo.data() + sizeof(RecordGlobalHead) + sizeof(RecordBlockHead);
+        ASSERT_EQ(*reinterpret_cast<RecordType *>(ptr), RecordType::FIX_L0C_TO_L1);
+        auto const &actual = *reinterpret_cast<MovFpRecord *>(ptr + sizeof(RecordType));
+        EXPECT_FALSE(actual.isC310);
+        EXPECT_EQ(actual.dst, record.dst);
+        EXPECT_EQ(actual.src, record.src);
+    };
+
+    call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_cbuf(
+        m, loc.fileNo, loc.lineNo, loc.pc, reinterpret_cast<__cbuf__ int32_t *>(record.dst),
+        reinterpret_cast<__cc__ int32_t *>(record.src), xm, xt); });
+    call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_cbuf(
+        m, loc.fileNo, loc.lineNo, loc.pc, reinterpret_cast<__cbuf__ int32_t *>(record.dst),
+        reinterpret_cast<__cc__ int32_t *>(record.src), sid, record.nSize, record.mSize, record.dstStride,
+        record.srcStride, record.enUnitFlag, quantPRE, reLUPRE, record.channelSplit, record.enNZ2ND); });
+    call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_cbuf_b4(
+        m, loc.fileNo, loc.lineNo, loc.pc, reinterpret_cast<__cbuf__ void *>(record.dst),
+        reinterpret_cast<__cc__ float *>(record.src), xm, xt); });
+    call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_cbuf_b4(
+        m, loc.fileNo, loc.lineNo, loc.pc, reinterpret_cast<__cbuf__ void *>(record.dst),
+        reinterpret_cast<__cc__ float *>(record.src), sid, record.nSize, record.mSize, record.dstStride,
+        record.srcStride, record.enUnitFlag, quantPRE, reLUPRE, record.channelSplit, record.enNZ2ND); });
+    call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_cbuf_s4(
+        m, loc.fileNo, loc.lineNo, loc.pc, reinterpret_cast<__cbuf__ void *>(record.dst),
+        reinterpret_cast<__cc__ float *>(record.src), xm, xt); });
+    call([&](uint8_t *m) { __sanitizer_report_copy_matrix_cc_to_cbuf_s4(
+        m, loc.fileNo, loc.lineNo, loc.pc, reinterpret_cast<__cbuf__ void *>(record.dst),
+        reinterpret_cast<__cc__ float *>(record.src), sid, record.nSize, record.mSize, record.dstStride,
+        record.srcStride, record.enUnitFlag, quantPRE, reLUPRE, record.channelSplit, record.enNZ2ND); });
+}
 }
