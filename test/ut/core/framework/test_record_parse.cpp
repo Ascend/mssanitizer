@@ -4636,6 +4636,242 @@ TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_normal_movement_and_expe
     ASSERT_EQ(events[1].eventInfo.memInfo, memOpInfo);
 }
 
+TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_c220_expect_c0_64_and_l1_write)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    record.recordType = RecordType::FIX_L0C_TO_L1;
+    MovFpConfig cfg = {
+        .isC310 = false,
+        .dst = 0x111,
+        .src = 0x0,
+        .dstStride = 80,
+        .srcStride = 64,
+        .nSize = 48,
+        .mSize = 24,
+        .ndNum = 0,
+        .dstNdStride = 0,
+        .srcNdStride = 0,
+        .srcNzC0Stride = 0,
+        .quantPreBits = 32,
+        .enUnitFlag = false,
+        .int8ChannelMerge = false,
+        .int4ChannelMerge = false,
+        .channelSplit = false,
+        .enNZ2ND = false,
+        .enNZ2DN = false,
+        .blockId = 0
+    };
+    SetMovFpRecord(record.payload.movFpRecord, cfg);
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+
+    ASSERT_EQ(events[0].eventInfo.memInfo.memType, MemType::L0C);
+    ASSERT_EQ(events[0].eventInfo.memInfo.opType, AccessType::READ);
+    ASSERT_EQ(events[0].eventInfo.memInfo.blockSize, 64);
+    ASSERT_EQ(events[0].eventInfo.memInfo.blockNum, 24);
+    ASSERT_EQ(events[0].eventInfo.memInfo.repeatTimes, 3);
+
+    ASSERT_EQ(events[1].eventInfo.memInfo.memType, MemType::L1);
+    ASSERT_EQ(events[1].eventInfo.memInfo.opType, AccessType::WRITE);
+    ASSERT_EQ(events[1].eventInfo.memInfo.addr, 0x111);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockSize, 32);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockNum, 48);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatTimes, 3);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatStride, 80);
+}
+
+TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_c220_l1_write_covers_full_tile)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    record.recordType = RecordType::FIX_L0C_TO_L1;
+    MovFpConfig cfg = {
+        .isC310 = false,
+        .dst = 0x800,
+        .src = 0x0,
+        .dstStride = 32,
+        .srcStride = 32,
+        .nSize = 32,
+        .mSize = 32,
+        .ndNum = 0,
+        .dstNdStride = 0,
+        .srcNdStride = 0,
+        .srcNzC0Stride = 0,
+        .quantPreBits = 16,
+        .enUnitFlag = false,
+        .int8ChannelMerge = false,
+        .int4ChannelMerge = false,
+        .channelSplit = false,
+        .enNZ2ND = false,
+        .enNZ2DN = false,
+        .blockId = 0
+    };
+    SetMovFpRecord(record.payload.movFpRecord, cfg);
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+
+    const auto &write = events[1].eventInfo.memInfo;
+    ASSERT_EQ(write.memType, MemType::L1);
+    ASSERT_EQ(write.blockSize, 32);
+    ASSERT_EQ(write.blockNum, 32);
+    ASSERT_EQ(write.repeatTimes, 2);
+    ASSERT_EQ(write.repeatStride, 32);
+}
+
+TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_c220_int8_channel_merge_l1_write)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    record.recordType = RecordType::FIX_L0C_TO_L1;
+    MovFpConfig cfg = {
+        .isC310 = false,
+        .dst = 0x111,
+        .src = 0x0,
+        .dstStride = 32,
+        .srcStride = 32,
+        .nSize = 48,
+        .mSize = 32,
+        .ndNum = 0,
+        .dstNdStride = 0,
+        .srcNdStride = 0,
+        .srcNzC0Stride = 0,
+        .quantPreBits = 8,
+        .enUnitFlag = false,
+        .int8ChannelMerge = true,
+        .int4ChannelMerge = false,
+        .channelSplit = false,
+        .enNZ2ND = false,
+        .enNZ2DN = false,
+        .blockId = 0
+    };
+    SetMovFpRecord(record.payload.movFpRecord, cfg);
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 3);
+
+    ASSERT_EQ(events[0].eventInfo.memInfo.memType, MemType::L0C);
+    ASSERT_EQ(events[0].eventInfo.memInfo.blockSize, 64);
+    ASSERT_EQ(events[0].eventInfo.memInfo.blockNum, 32);
+    ASSERT_EQ(events[0].eventInfo.memInfo.repeatTimes, 3);
+
+    ASSERT_EQ(events[1].eventInfo.memInfo.memType, MemType::L1);
+    ASSERT_EQ(events[1].eventInfo.memInfo.addr, 0x111);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockSize, 32);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockNum, 32);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatTimes, 1);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatStride, 32);
+
+    ASSERT_EQ(events[2].eventInfo.memInfo.memType, MemType::L1);
+    ASSERT_EQ(events[2].eventInfo.memInfo.addr, 0x111 + 1024);
+    ASSERT_EQ(events[2].eventInfo.memInfo.blockSize, 16);
+    ASSERT_EQ(events[2].eventInfo.memInfo.blockNum, 32);
+    ASSERT_EQ(events[2].eventInfo.memInfo.repeatTimes, 1);
+    ASSERT_EQ(events[2].eventInfo.memInfo.repeatStride, 64);
+}
+
+TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_c220_int4_channel_merge_l1_write)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    record.recordType = RecordType::FIX_L0C_TO_L1;
+    MovFpConfig cfg = {
+        .isC310 = false,
+        .dst = 0x222,
+        .src = 0x0,
+        .dstStride = 32,
+        .srcStride = 32,
+        .nSize = 128,
+        .mSize = 32,
+        .ndNum = 0,
+        .dstNdStride = 0,
+        .srcNdStride = 0,
+        .srcNzC0Stride = 0,
+        .quantPreBits = 4,
+        .enUnitFlag = false,
+        .int8ChannelMerge = false,
+        .int4ChannelMerge = true,
+        .channelSplit = false,
+        .enNZ2ND = false,
+        .enNZ2DN = false,
+        .blockId = 0
+    };
+    SetMovFpRecord(record.payload.movFpRecord, cfg);
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+
+    ASSERT_EQ(events[0].eventInfo.memInfo.memType, MemType::L0C);
+    ASSERT_EQ(events[0].eventInfo.memInfo.blockNum, 32);
+    ASSERT_EQ(events[0].eventInfo.memInfo.repeatTimes, 8);
+
+    ASSERT_EQ(events[1].eventInfo.memInfo.memType, MemType::L1);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockSize, 32);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockNum, 32);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatTimes, 2);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatStride, 32);
+}
+
+TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_c220_channel_split_l1_write)
+{
+    std::vector<SanEvent> events;
+    KernelRecord record{};
+    record.recordType = RecordType::FIX_L0C_TO_L1;
+    MovFpConfig cfg = {
+        .isC310 = false,
+        .dst = 0x333,
+        .src = 0x0,
+        .dstStride = 32,
+        .srcStride = 32,
+        .nSize = 32,
+        .mSize = 16,
+        .ndNum = 0,
+        .dstNdStride = 0,
+        .srcNdStride = 0,
+        .srcNzC0Stride = 0,
+        .quantPreBits = 32,
+        .enUnitFlag = false,
+        .int8ChannelMerge = false,
+        .int4ChannelMerge = false,
+        .channelSplit = true,
+        .enNZ2ND = false,
+        .enNZ2DN = false,
+        .blockId = 0
+    };
+    SetMovFpRecord(record.payload.movFpRecord, cfg);
+    SanitizerRecord sanitizerRecord;
+    sanitizerRecord.version = RecordVersion::KERNEL_RECORD;
+    sanitizerRecord.payload.kernelRecord = record;
+
+    RecordParse::Parse(sanitizerRecord, events);
+    ASSERT_EQ(events.size(), 2);
+
+    ASSERT_EQ(events[0].eventInfo.memInfo.memType, MemType::L0C);
+    ASSERT_EQ(events[0].eventInfo.memInfo.blockNum, 16);
+    ASSERT_EQ(events[0].eventInfo.memInfo.repeatTimes, 2);
+
+    ASSERT_EQ(events[1].eventInfo.memInfo.memType, MemType::L1);
+    ASSERT_EQ(events[1].eventInfo.memInfo.addr, 0x333);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockSize, 32);
+    ASSERT_EQ(events[1].eventInfo.memInfo.blockNum, 16);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatTimes, 4);
+    ASSERT_EQ(events[1].eventInfo.memInfo.repeatStride, 32);
+}
+
 TEST_F(TestRecordParse, parse_fix_L0C_to_L1_record_with_int8_channal_merging_and_expect_success)
 {
     std::vector<SanEvent> events;
