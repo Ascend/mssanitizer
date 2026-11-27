@@ -21,15 +21,12 @@
 
 using namespace Sanitizer;
 
-// #808
-SANITIZER_REPORT(get_cmpmask, __ubuf__ void *dst)
-{
-    RecordCmpMask(EXTRA_PARAMS, dst, AccessType::WRITE, 16);
+namespace {
+constexpr uint64_t CMPMASK_SIZE = 16;
 }
 
+// #808
+SANITIZER_REPORT(get_cmpmask, __ubuf__ void *dst) { RecordCmpMask(EXTRA_PARAMS, dst, AccessType::WRITE, CMPMASK_SIZE); }
+
 // #2096
-SANITIZER_REPORT(set_cmpmask, __ubuf__ void *src)
-{
-    // 先保存要读取的 ubuf 地址到 register 中，到 vsel 指令执行时再实际应用
-    RecordRegister(EXTRA_PARAMS, &Register::cmpMaskAddr, reinterpret_cast<uint64_t>(src));
-}
+SANITIZER_REPORT(set_cmpmask, __ubuf__ void *src) { RecordCmpMask(EXTRA_PARAMS, src, AccessType::READ, CMPMASK_SIZE); }

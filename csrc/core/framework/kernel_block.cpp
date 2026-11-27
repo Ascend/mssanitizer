@@ -626,10 +626,6 @@ bool KernelBlock::ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRec
         if (RuntimeContext::Instance().kernelDecodeState_->lastRecordType != RecordType::VGATHER && RuntimeContext::Instance().kernelDecodeState_->lastRecordType != RecordType::ELEMENT) {
             ++RuntimeContext::Instance().serialNo_;
         }
-    } else if (*recordTypePtr == RecordType::VSEL_OP) {
-        if (RuntimeContext::Instance().kernelDecodeState_->lastRecordType != RecordType::CMPMASK_OP) {
-            ++RuntimeContext::Instance().serialNo_;
-        }
     } else if (*recordTypePtr == RecordType::UNARY_OP || *recordTypePtr == RecordType::BINARY_OP ||
         *recordTypePtr == RecordType::DMA_MOV || *recordTypePtr == RecordType::MOV_ALIGN) {
         if (RuntimeContext::Instance().kernelDecodeState_->lastRecordType != RecordType::MSTX_STUB) {

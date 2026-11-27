@@ -38,14 +38,19 @@ TEST(VcmpmaskCalcInstructions, dump_get_cmpmask_type_records_and_parse_expect_su
     ASSERT_EQ(cmpMaskRecord->accessType, AccessType::WRITE);
 }
 
-TEST(VcmpmaskCalcInstructions, dump_set_cmpmask_type_records_and_parse_expect_success)
-{
+TEST(VcmpmaskCalcInstructions, set_cmpmask_records_read_without_vsel) {
     std::vector<uint8_t> memInfo = CreateMemInfo();
-    __gm__  RecordGlobalHead* globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo.data());
     auto record = CreateRandomCmpMaskRecord();
     __sanitizer_report_set_cmpmask(memInfo.data(), record.location.fileNo, record.location.lineNo, record.location.pc,
-        reinterpret_cast<__ubuf__ half *>(record.addr));
+        reinterpret_cast<__ubuf__ void *>(record.addr));
 
-    int64_t regIdx = GetRegisterIdx();
-    ASSERT_EQ(globalHead->registers[regIdx].cmpMaskAddr, record.addr);
+    const auto *recordHead = reinterpret_cast<const RecordBlockHead *>(memInfo.data() + sizeof(RecordGlobalHead));
+    ASSERT_EQ(recordHead->recordCount, 1U);
+    const auto *recordType = reinterpret_cast<const RecordType *>(recordHead + 1);
+    ASSERT_EQ(*recordType, RecordType::CMPMASK_OP);
+    const auto *actual = reinterpret_cast<const CmpMaskRecord *>(recordType + 1);
+    EXPECT_EQ(actual->addr, record.addr);
+    EXPECT_EQ(actual->size, 16U);
+    EXPECT_EQ(actual->accessType, AccessType::READ);
+    EXPECT_EQ(actual->location.pc, record.location.pc);
 }
