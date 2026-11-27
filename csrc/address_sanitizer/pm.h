@@ -21,6 +21,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "shadow_byte.h"
+
 namespace Sanitizer {
 
 // gm建模地址范围0 ~ 0xFFFF FFFF FFFF (48 bits)
@@ -87,6 +89,8 @@ public:
     virtual uint64_t UnifiedSizeAfter(uint64_t baseAddr, uint64_t size, uint64_t addr) const;
     // 快速判断 [addr, addr+size) 内是否存在状态(低2bit)==status 的字节；无则返回 false
     virtual bool RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const;
+    // 归还归属信息：coreId 复位为默认值，ERROR 解冻为 DEFINED；初始化状态保持不变
+    virtual void ReleaseOwnerBits() noexcept;
     // 掩码用于从地址中提取出查表使用的地址
     // 不同芯片的gm建模地址会有差异，因此掩码也会不同
 
@@ -98,6 +102,13 @@ protected:
     uint64_t smNum_;
 
 private:
+    // 记录自上次归还以来写过归属信息的块，归还时只扫描这些块，避免按已物化影子全量扫描
+    void MarkCommonBlockDirty(uint64_t blockIndex);
+    void MarkSmBlockDirty(uint64_t blockIndex);
+    std::vector<uint8_t> commonDirtyFlags_;
+    std::vector<uint64_t> dirtyCommonBlocks_;
+    std::vector<uint64_t> dirtySmBlocks_;
+
     // 获取在smList(三级表)中的索引
     inline uint64_t GetBlockIdx(uint64_t addr) const;
     inline uint64_t GetBlockOffset(uint64_t addr) const;
@@ -118,6 +129,7 @@ public:
     void Set(uint64_t addr, uint64_t size, uint8_t bits) override;
     uint64_t UnifiedSizeAfter(uint64_t baseAddr, uint64_t size, uint64_t addr) const override;
     bool RangeHasStatus(uint64_t addr, uint64_t size, uint8_t status) const override;
+    void ReleaseOwnerBits() noexcept override;
 
 private:
     // 获取PM指针，不存在时返回空

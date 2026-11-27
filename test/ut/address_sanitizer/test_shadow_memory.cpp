@@ -1110,4 +1110,111 @@ TEST(ShadowMemory, range_limits_follow_each_device_and_reinitialization)
     EXPECT_EQ(small.LoadNBytes(read, true).size(), 1U);
 }
 
+class GmShadowOwnershipTest : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        auto it = CHIP_INFO_MAP.find(DeviceType::ASCEND_910_PREMIUM_A);
+        ASSERT_NE(it, CHIP_INFO_MAP.cend());
+        ASSERT_TRUE(sm_.Init(it->first, it->second));
+    }
+
+    ErrorMsgList WriteGm(uint64_t addr, uint64_t size, uint8_t coreId)
+    {
+        MemOpRecordForShadow record(AddressSpace::GM, addr, size, coreId);
+        return sm_.StoreNBytes(record, true, true);
+    }
+
+    ShadowMemory sm_;
+};
+
+TEST_F(GmShadowOwnershipTest, store_gm_from_different_core_in_one_kernel_expect_overlap_error)
+{
+    constexpr uint64_t addr = 0x100000;
+    EXPECT_TRUE(WriteGm(addr, 512, 0).empty());
+    auto errors = WriteGm(addr, 512, 1);
+    ASSERT_EQ(errors.size(), 1U);
+    EXPECT_EQ(errors[0].type, MemErrorType::OUT_OF_BOUNDS);
+    EXPECT_EQ(errors[0].auxData.nBadBytes, 512U);
+}
+
+TEST_F(GmShadowOwnershipTest, release_gm_ownership_expect_next_kernel_write_success)
+{
+    constexpr uint64_t addr = 0x200000;
+    // kernel1：4 个核各写 512B
+    for (uint8_t coreId = 0; coreId < 4; ++coreId) {
+        EXPECT_TRUE(WriteGm(addr + coreId * 512, 512, coreId).empty());
+    }
+    // 不释放时，下一个 kernel 用单核重写整段会被判为跨核踩踏
+    ASSERT_EQ(WriteGm(addr, 2048, 4).size(), 1U);
+
+    sm_.ReleaseGmOwnership();
+
+    // 归还归属后，同样的单核重写不再报错
+    EXPECT_TRUE(WriteGm(addr, 2048, 5).empty());
+}
+
+TEST_F(GmShadowOwnershipTest, release_gm_ownership_unfreezes_overlap_error)
+{
+    constexpr uint64_t addr = 0x300000;
+    EXPECT_TRUE(WriteGm(addr, 1024, 0).empty());
+    ASSERT_EQ(WriteGm(addr, 1024, 1).size(), 1U);
+
+    sm_.ReleaseGmOwnership();
+
+    EXPECT_TRUE(WriteGm(addr, 1024, 2).empty());
+    // ERROR 已解冻为 DEFINED，仍能继续发现 core3 与 core2 的冲突；若保持冻结则会被跳过
+    EXPECT_EQ(WriteGm(addr, 1024, 3).size(), 1U);
+}
+
+TEST_F(GmShadowOwnershipTest, release_gm_ownership_keeps_initialization_status)
+{
+    constexpr uint64_t addr = 0x400000;
+    MemOpRecordForShadow uninitRead(AddressSpace::GM, addr, 1024, 0);
+    ASSERT_EQ(sm_.LoadNBytes(uninitRead, true).size(), 1U);
+
+    EXPECT_TRUE(WriteGm(addr, 512, 1).empty());
+    sm_.ReleaseGmOwnership();
+
+    MemOpRecordForShadow definedRead(AddressSpace::GM, addr, 512, 0);
+    EXPECT_TRUE(sm_.LoadNBytes(definedRead, true).empty());
+    MemOpRecordForShadow undefinedRead(AddressSpace::GM, addr + 512, 512, 0);
+    auto errors = sm_.LoadNBytes(undefinedRead, true);
+    ASSERT_EQ(errors.size(), 1U);
+    EXPECT_EQ(errors[0].type, MemErrorType::UNINITIALIZED_READ);
+    EXPECT_EQ(errors[0].auxData.nBadBytes, 512U);
+}
+
+TEST_F(GmShadowOwnershipTest, release_gm_ownership_covers_whole_block_common_bits)
+{
+    constexpr uint64_t addr = 0x1000000;
+    constexpr uint64_t blockSize = 0x10000; // 一次写满 64KB，走 commonBits 统一状态路径
+    EXPECT_TRUE(WriteGm(addr, blockSize, 1).empty());
+    ASSERT_EQ(WriteGm(addr, blockSize, 2).size(), 1U);
+
+    sm_.ReleaseGmOwnership();
+
+    EXPECT_TRUE(WriteGm(addr, blockSize, 3).empty());
+}
+
+TEST_F(GmShadowOwnershipTest, release_gm_ownership_covers_materialized_sm_inherited_owner) {
+    constexpr uint64_t addr = 0x2000000;
+    constexpr uint64_t blockSize = 0x10000;
+    // 整块写满后归属保存在 commonBits；随后的局部改写会物化 SM 并继承该归属
+    EXPECT_TRUE(WriteGm(addr, blockSize, 1).empty());
+    EXPECT_EQ(WriteGm(addr + 0x100, 0x200, 2).size(), 1U);
+
+    sm_.ReleaseGmOwnership();
+
+    EXPECT_TRUE(WriteGm(addr, blockSize, 3).empty());
+}
+
+TEST_F(GmShadowOwnershipTest, release_gm_ownership_is_idempotent) {
+    constexpr uint64_t addr = 0x2800000;
+    EXPECT_TRUE(WriteGm(addr, 4096, 2).empty());
+    sm_.ReleaseGmOwnership();
+    sm_.ReleaseGmOwnership();
+    EXPECT_TRUE(WriteGm(addr, 4096, 3).empty());
+}
+
 }
