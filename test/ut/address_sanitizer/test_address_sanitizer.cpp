@@ -595,6 +595,152 @@ TEST(AddressSanitizer, same_record_on_different_blocks_expect_get_reduced_errors
     ASSERT_TRUE(msg.find("aiv(0-1)") != std::string::npos);
 }
 
+TEST(AddressSanitizer, gm_store_from_other_block_after_kernel_finish_expect_no_overlap_error) {
+    Config config{};
+    config.memCheck = true;
+    config.outOfBoundCheck = true;
+    auto asan = SanitizerFactory::GetInstance().Create(ToolType::MEMCHECK);
+
+    std::string msg;
+    asan->RegisterNotifyFunc([&msg](LogLv const &, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
+    DeviceInfoSummary deviceInfoSummary{};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    ASSERT_TRUE(asan->SetDeviceInfo(deviceInfoSummary, config));
+    RuntimeContext::Instance().deviceSummary_.device = deviceInfoSummary.device;
+
+    KernelSummary kernelInfo{};
+    kernelInfo.kernelType = KernelType::AIVEC;
+    kernelInfo.blockDim = 2;
+    ASSERT_FALSE(asan->SetKernelInfo(kernelInfo));
+
+    KernelRecord kernelRecord;
+    kernelRecord.recordType = RecordType::STORE;
+    kernelRecord.blockType = BlockType::AIVEC;
+    kernelRecord.payload.loadStoreRecord = {0x100000, 512, {0, 0, 0}, AddressSpace::GM, {}, 0};
+    SanitizerRecord record;
+    record.version = RecordVersion::KERNEL_RECORD;
+    record.payload.kernelRecord = kernelRecord;
+
+    auto processRecord = [&asan, &record]() {
+        ASSERT_TRUE(asan->CheckRecordBeforeProcess(record));
+        std::vector<SanEvent> events;
+        RecordPreProcess::GetInstance().Process(record, events);
+        asan->Do(record, events);
+    };
+
+    processRecord();
+
+    // kernel 结束归还 GM 归属后，下一个 kernel 由另一个 block 复用同一段 GM 不应再被判为踩踏
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
+    processRecord();
+    record.payload.kernelRecord.recordType = RecordType::STORE;
+    record.payload.kernelRecord.payload.loadStoreRecord.location.blockId = 1;
+    processRecord();
+
+    asan->Exit();
+    EXPECT_EQ(msg.find("out of bounds"), std::string::npos) << msg;
+}
+
+TEST(AddressSanitizer, gm_store_after_kernel_switch_without_finish_expect_no_overlap_error) {
+    Config config{};
+    config.memCheck = true;
+    config.outOfBoundCheck = true;
+    auto asan = SanitizerFactory::GetInstance().Create(ToolType::MEMCHECK);
+
+    std::string msg;
+    asan->RegisterNotifyFunc([&msg](LogLv const &, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
+    DeviceInfoSummary deviceInfoSummary{};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    ASSERT_TRUE(asan->SetDeviceInfo(deviceInfoSummary, config));
+    RuntimeContext::Instance().deviceSummary_.device = deviceInfoSummary.device;
+
+    KernelSummary kernelA{};
+    kernelA.kernelType = KernelType::AIVEC;
+    kernelA.blockDim = 2;
+    ASSERT_FALSE(asan->SetKernelInfo(kernelA));
+
+    KernelRecord kernelRecord;
+    kernelRecord.recordType = RecordType::STORE;
+    kernelRecord.blockType = BlockType::AIVEC;
+    kernelRecord.payload.loadStoreRecord = {0x120000, 512, {0, 0, 0}, AddressSpace::GM, {}, 0};
+    SanitizerRecord record;
+    record.version = RecordVersion::KERNEL_RECORD;
+    record.payload.kernelRecord = kernelRecord;
+
+    auto processRecord = [&asan, &record]() {
+        ASSERT_TRUE(asan->CheckRecordBeforeProcess(record));
+        std::vector<SanEvent> events;
+        RecordPreProcess::GetInstance().Process(record, events);
+        asan->Do(record, events);
+    };
+
+    // kernel A：block 0 写 GM
+    processRecord();
+
+    // A 没有 KERNEL_FINISH，框架允许直接切换到 kernel B（Checker::SetKernelInfo 会排空旧记录）
+    KernelSummary kernelB{};
+    kernelB.kernelType = KernelType::AIVEC;
+    kernelB.blockDim = 2;
+    ASSERT_FALSE(asan->SetKernelInfo(kernelB));
+
+    // B 的 block 1 复用同一段 GM，不应继承 A 的归属而被判为跨 kernel 踩踏
+    record.payload.kernelRecord.payload.loadStoreRecord.location.blockId = 1;
+    processRecord();
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
+    processRecord();
+
+    asan->Exit();
+    EXPECT_EQ(msg.find("out of bounds"), std::string::npos) << msg;
+}
+
+TEST(AddressSanitizer, gm_store_from_other_block_in_same_kernel_expect_overlap_error) {
+    Config config{};
+    config.memCheck = true;
+    config.outOfBoundCheck = true;
+    auto asan = SanitizerFactory::GetInstance().Create(ToolType::MEMCHECK);
+
+    std::string msg;
+    asan->RegisterNotifyFunc([&msg](LogLv const &, SanitizerBase::MSG_GEN &&gen) { msg += gen().message; });
+    DeviceInfoSummary deviceInfoSummary{};
+    deviceInfoSummary.device = DeviceType::ASCEND_910B1;
+    ASSERT_TRUE(asan->SetDeviceInfo(deviceInfoSummary, config));
+    RuntimeContext::Instance().deviceSummary_.device = deviceInfoSummary.device;
+
+    KernelSummary kernelInfo{};
+    kernelInfo.kernelType = KernelType::AIVEC;
+    kernelInfo.blockDim = 2;
+    ASSERT_FALSE(asan->SetKernelInfo(kernelInfo));
+
+    KernelRecord kernelRecord;
+    kernelRecord.recordType = RecordType::STORE;
+    kernelRecord.blockType = BlockType::AIVEC;
+    kernelRecord.payload.loadStoreRecord = {0x200000, 512, {0, 0, 0}, AddressSpace::GM, {}, 0};
+    SanitizerRecord record;
+    record.version = RecordVersion::KERNEL_RECORD;
+    record.payload.kernelRecord = kernelRecord;
+
+    auto processRecord = [&asan, &record]() {
+        ASSERT_TRUE(asan->CheckRecordBeforeProcess(record));
+        std::vector<SanEvent> events;
+        RecordPreProcess::GetInstance().Process(record, events);
+        asan->Do(record, events);
+    };
+
+    processRecord();
+
+    // BLOCK_FINISH 不归还归属，同一 kernel 内跨 block 写同一段 GM 仍应上报
+    record.payload.kernelRecord.recordType = RecordType::BLOCK_FINISH;
+    processRecord();
+    record.payload.kernelRecord.recordType = RecordType::STORE;
+    record.payload.kernelRecord.payload.loadStoreRecord.location.blockId = 1;
+    processRecord();
+    record.payload.kernelRecord.recordType = RecordType::KERNEL_FINISH;
+    processRecord();
+
+    asan->Exit();
+    EXPECT_NE(msg.find("out of bounds"), std::string::npos) << msg;
+}
+
 TEST(AddressSanitizer, record_with_aicore_blocks_expect_get_reduced_errors)
 {
     Config config{};

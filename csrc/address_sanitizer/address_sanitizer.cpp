@@ -311,6 +311,12 @@ bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
 {
     replayedRecords_.clear();
     replayedEventCount_ = 0;
+    // 上一 kernel 可能没有 KERNEL_FINISH 就切换到新上下文（Checker::SetKernelInfo 允许），
+    // 与 PRIVATE 一样在切换点清理跨 kernel 状态，避免旧 kernel 的 GM 归属泄漏到新 kernel 的首次写入。
+    if (config_.memCheck && config_.outOfBoundCheck &&
+        shadowMemory_ != nullptr && shadowMemory_->IsReady()) {
+        shadowMemory_->ReleaseGmOwnership();
+    }
     // PRIVATE 在块内流式检测（即使同时回放其它空间），首个 block 到来前清除上次 kernel 的状态。
     if (StreamsPrivateMemory() && shadowMemory_->IsReady()) {
         shadowMemory_->ResetPrivateMemory();
@@ -581,6 +587,12 @@ void AddressSanitizer::ReportAfterKernelFinish() {
     this->ReportErrorMsg();
     AlignChecker::Instance().Notify();
     this->errorBuffer_.Clear();
+    // GM 的跨核归属只在单个 kernel 内有意义：kernel 结束后归还，避免下一个 kernel 复用同一段 GM 时
+    // 把合法的跨核写误判为踩踏（多 stream 真并发写同一段 GM 由 racecheck 负责）。
+    if (config_.memCheck && config_.outOfBoundCheck &&
+        shadowMemory_ != nullptr && shadowMemory_->IsReady()) {
+        shadowMemory_->ReleaseGmOwnership();
+    }
 }
 
 void AddressSanitizer::CheckNonDefaultReg(const SanEvent &event) {
