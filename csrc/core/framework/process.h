@@ -43,7 +43,7 @@ private:
 class Process {
 public:
     using MsgRspFunc = std::function<void(const std::string&)>;
-    using ANALYSIS_FUNC = std::function<void(const std::string&, MsgRspFunc&)>;
+    using ANALYSIS_FUNC = std::function<void(pid_t, const std::string &, MsgRspFunc &)>;
     using ClientId = std::size_t;
     explicit Process(Config const &config) : config_{config}, mainPid_(getpid()) {}
     void Launch(const ExecCmd& cmd);

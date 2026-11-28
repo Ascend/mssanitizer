@@ -239,10 +239,11 @@ std::ostream &operator<<(std::ostream &os, InterfaceType interfaceType)
 std::ostream &operator<<(std::ostream &os, DataType dataType)
 {
     static const std::map<DataType, std::string> DATA_TYPE_MAP = {
-        {DataType::DATA_B4,  "B4"},
-        {DataType::DATA_B8,  "B8"},
+        {DataType::DATA_B4, "B4"},
+        {DataType::DATA_B8, "B8"},
         {DataType::DATA_B16, "B16"},
         {DataType::DATA_B32, "B32"},
+        {DataType::DATA_B64, "B64"},
     };
 
     return FormatEnum(os, DATA_TYPE_MAP, dataType, "DataType");

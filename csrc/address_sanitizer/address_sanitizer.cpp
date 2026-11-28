@@ -17,6 +17,7 @@
 #include "address_sanitizer.h"
 #include "core/framework/initcheck_address_space.h"
 #include "core/framework/config_manager.h"
+#include "core/framework/peer_access_manager.h"
 
 #include <vector>
 #include <map>
@@ -287,14 +288,37 @@ AddressSanitizer::AddressSanitizer()
       msgFunc_{&AddressSanitizer::DefaultMsgFunc},
       config_{}, boundsCheckScope_{BoundsCheckScope::RUNTIME}, historyBoundsCheckScope_{BoundsCheckScope::RUNTIME} { }
 
+AddressSanitizer::~AddressSanitizer() {
+    // manager 不拥有本对象，销毁前先撤销登记。
+    if (pid_ >= 0) {
+        PeerAccessManager::Instance().UnregisterDevice(this);
+    }
+}
+
 // AddressSanitizer的具体实现
 bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config)
 {
+    if (pid_ < 0) {
+        pid_ = RuntimeContext::Instance().pid_;
+    }
+    // 初始化会更新内存范围表，需与其他设备的远端范围查询互斥
+    std::unique_lock<std::recursive_mutex> peerLock;
+    if (pid_ >= 0) {
+        peerLock = std::unique_lock<std::recursive_mutex>(PeerAccessManager::Instance().Mutex());
+        // 同一设备重复上报摘要时保留映射；切换设备时撤销原设备登记
+        if (mappingDeviceId_ != deviceInfo.deviceId) {
+            PeerAccessManager::Instance().UnregisterDevice(this);
+        }
+    }
+    mappingDeviceId_ = deviceInfo.deviceId;
     config_ = config;
     // init shadow memory by chipType
     auto it = CHIP_INFO_MAP.find(deviceInfo.device);
     if (it == CHIP_INFO_MAP.end()) {
         SAN_WARN_LOG("The soc type %u is invalid ", static_cast<uint32_t>(deviceInfo.device));
+        if (pid_ >= 0) {
+            PeerAccessManager::Instance().UnregisterDevice(this);
+        }
         return false;
     }
 
@@ -304,7 +328,23 @@ bool AddressSanitizer::SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config
     const uint32_t ssbufSize = IsAscend95(deviceInfo.device) ? static_cast<uint32_t>(SSBUF_SIZE) : 0U;
     boundsCheckRuntime_.Init(chipInfo, ssbufSize);
     boundsCheckDfx_.Init(chipInfo, ssbufSize);
-    return shadowMemory_->Init(deviceInfo.device, chipInfo);
+    bool ready = shadowMemory_->Init(deviceInfo.device, chipInfo);
+    if (ready && pid_ >= 0 && deviceInfo.deviceId >= 0) {
+        PeerAccessManager::Instance().RegisterDevice(
+            pid_, deviceInfo.deviceId, this, &boundsCheckRuntime_, &boundsCheckDfx_);
+    } else if (pid_ >= 0) {
+        PeerAccessManager::Instance().UnregisterDevice(this);
+    }
+    return ready;
+}
+
+bool AddressSanitizer::CheckExistingGmRange(uint64_t addr, uint64_t size, AccessType accessType) const {
+    const BoundsCheck &bounds = boundsCheckScope_ == BoundsCheckScope::DFX ? boundsCheckDfx_ : boundsCheckRuntime_;
+    return !bounds.Check(AddressSpace::GM, addr, size, accessType).isError;
+}
+
+bool AddressSanitizer::ContainsGmRange(uint64_t addr, uint64_t size) const {
+    return boundsCheckRuntime_.Contains(AddressSpace::GM, addr, size);
 }
 
 bool AddressSanitizer::SetKernelInfo(KernelSummary const &kernelInfo)
@@ -352,19 +392,28 @@ void AddressSanitizer::AlertGMAddrOutOfBoundError(MemOpRecord memoryRecord)
     });
 }
 
-bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record)
-{
+bool AddressSanitizer::CheckRecordBeforeProcess(const SanitizerRecord &record) {
     if (shadowMemory_ == nullptr || !shadowMemory_->IsReady()) {
         SAN_WARN_LOG("Shadow memory has NOT been initialized. Device type is missing or unsupported");
         return false;
     }
 
     if (record.version == RecordVersion::MEMORY_RECORD) {
+        // Host 记录可能修改 GM 范围或切换查询表，需与远端查询互斥
+        std::unique_lock<std::recursive_mutex> peerLock;
+        if (pid_ >= 0) {
+            peerLock = std::unique_lock<std::recursive_mutex>(PeerAccessManager::Instance().Mutex());
+        }
         if (record.payload.memoryRecord.type == MemOpType::GM_ADDR_OUT_OF_BOUND) {
             AlertGMAddrOutOfBoundError(record.payload.memoryRecord);
             return false;
         }
 
+        const auto &memory = record.payload.memoryRecord;
+        if (pid_ >= 0 && (memory.infoSrc == MemInfoSrc::ACL || memory.infoSrc == MemInfoSrc::RT) &&
+            (memory.type == MemOpType::MALLOC || memory.type == MemOpType::FREE)) {
+            PeerAccessManager::Instance().RevokeMappingsOfAllocation(pid_, mappingDeviceId_, memory.dstAddr);
+        }
         this->BeforeScopeSwitch(record.payload.memoryRecord);
         this->DoMemOpRecord(record.payload.memoryRecord, false);
         this->AfterScopeSwitch(record.payload.memoryRecord);
@@ -557,6 +606,11 @@ size_t AddressSanitizer::GetRecordsNum(EventRange events) const
 
 void AddressSanitizer::SetPermission(MemRegionPermissionDesc const &desc)
 {
+    // 仅权限更新需要与远端查询互斥，普通 kernel 访问检查不持有进程级锁
+    std::unique_lock<std::recursive_mutex> peerLock;
+    if (pid_ >= 0) {
+        peerLock = std::unique_lock<std::recursive_mutex>(PeerAccessManager::Instance().Mutex());
+    }
     if (boundsCheckScope_ == BoundsCheckScope::RUNTIME || boundsCheckScope_ == BoundsCheckScope::BYPASS) {
         boundsCheckRuntime_.SetPermission(AddressSpace::GM, desc.addr, desc.size, desc.flags);
     }

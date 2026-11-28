@@ -114,8 +114,8 @@ TEST_F(TestKernelBlock, CreateKernelBlock_NormalCase)
     EXPECT_EQ(kernelBlock->blockIdx_, 0);
     EXPECT_EQ(kernelBlock->recordGlobalHead_.securityVal, RECORD_HEAD_SECURITY_VALUE);
     EXPECT_EQ(kernelBlock->simdRecordHead_.blockInfo.blockType, BlockType::AIVEC);
-    EXPECT_EQ(KernelBlock::totalBlockDim_, 1);
-    EXPECT_EQ(KernelBlock::vecSubBlockDim_, 2);
+    EXPECT_EQ(RuntimeContext::Instance().kernelDecodeState_->totalBlockDim, 1);
+    EXPECT_EQ(RuntimeContext::Instance().kernelDecodeState_->vecSubBlockDim, 2);
 }
 
 // 测试 CreateKernelBlock 非0 blockIdx
@@ -232,7 +232,7 @@ TEST_F(TestKernelBlock, CreateKernelBlock_CubeBlockType)
     ASSERT_NE(kernelBlock, nullptr);
     EXPECT_EQ(kernelBlock->simdRecordHead_.blockInfo.blockType, BlockType::AICUBE);
     // vecSubBlockDim_ 不应该被设置（因为是 CUBE 类型）
-    EXPECT_EQ(KernelBlock::vecSubBlockDim_, 0);
+    EXPECT_EQ(RuntimeContext::Instance().kernelDecodeState_->vecSubBlockDim, 0);
 }
 
 // 测试 GetTotalBlockDim
@@ -322,4 +322,25 @@ TEST_F(TestKernelBlock, ParseSimtEntryRecord_InterleavedSpace_SingleSpaceEvents)
     EXPECT_EQ(gmRecords[0].addr, 0x1000U);
     EXPECT_EQ(gmRecords[1].space, AddressSpace::GM);
     EXPECT_EQ(gmRecords[1].addr, 0x2000U);
+}
+
+// 测试场景：两个连接交错解析，第二个连接开始新核并复位解码状态
+// 测试预期：第一个连接仍保留结束判定所需的总核数及动态记录缓存
+TEST_F(TestKernelBlock, interleaved_connections_keep_decode_state) {
+    auto saved = RuntimeContext::Instance();
+    uint64_t size = 0;
+    auto buffer = CreateValidMemBuffer(size, 0);
+    auto firstBlock = KernelBlock::CreateKernelBlock(buffer.data(), size, 0);
+    ASSERT_NE(firstBlock, nullptr);
+    RuntimeContext first = RuntimeContext::Instance();
+    first.kernelDecodeState_->dynamicMemorys.push_back({1, 2, 3});
+    RuntimeContext::Instance() = RuntimeContext{};
+    KernelBlock::ResetAll();
+    EXPECT_EQ(RuntimeContext::Instance().kernelDecodeState_->totalBlockDim, 0U);
+    RuntimeContext::Instance() = first;
+    EXPECT_EQ(firstBlock->GetTotalBlockDim(), 1U);
+    EXPECT_EQ(RuntimeContext::Instance().kernelDecodeState_->vecSubBlockDim, 2U);
+    ASSERT_EQ(RuntimeContext::Instance().kernelDecodeState_->dynamicMemorys.size(), 1U);
+    EXPECT_EQ(RuntimeContext::Instance().kernelDecodeState_->dynamicMemorys[0][2], 3U);
+    RuntimeContext::Instance() = saved;
 }

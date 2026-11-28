@@ -2154,6 +2154,7 @@ TEST(Checker, private_stream_atomic_gm_transitions_preserve_pure_memcheck_overla
                 SCOPED_TRACE(phase);
                 SubmitRecords(*checker, phases[phase], batch);
                 checker->CaptureMemcheckCompletion().get();
+                EXPECT_TRUE(asan->CheckExistingGmRange(0x1000, 64, AccessType::WRITE));
                 const auto errors = asan->errorBuffer_.GetBuffer();
                 ASSERT_EQ(errors.size(), expectedCounts[phase]);
                 std::vector<std::string> diagnostics;

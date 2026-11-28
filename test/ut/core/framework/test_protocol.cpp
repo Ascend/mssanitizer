@@ -16,6 +16,7 @@
 
 
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "fd_test_util.h"
 #include "protocol.h"
@@ -54,6 +55,51 @@ inline bool operator==(HostMemRecord const &lhs, HostMemRecord const &rhs)
 }  // namespace Sanitizer
 
 using namespace Sanitizer;
+
+TEST(Protocol, peer_access_record_round_trip) {
+    PacketHead head{};
+    head.type = PacketType::PEER_ACCESS_RECORD;
+    PeerAccessRecord record{2, 3, PeerAccessOp::ENABLE};
+    MemCheckProtocol protocol;
+    protocol.Feed(Serialize(head));
+    EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+    protocol.Feed(Serialize(record));
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::PEER_ACCESS_RECORD);
+    EXPECT_EQ(packet.GetPayload().peerAccessRecord.deviceId, 2);
+    EXPECT_EQ(packet.GetPayload().peerAccessRecord.peerDeviceId, 3);
+    EXPECT_EQ(packet.GetPayload().peerAccessRecord.operation, PeerAccessOp::ENABLE);
+}
+
+TEST(Protocol, ordered_packet_survives_partial_header_and_copy) {
+    PacketHead head{PacketType::PEER_ACCESS_RECORD, 0, 42};
+    PeerAccessRecord record{2, 3, PeerAccessOp::ENABLE};
+    std::string bytes = Serialize(head, record);
+    MemCheckProtocol protocol;
+    for (size_t i = 0; i + 1 < bytes.size(); ++i) {
+        protocol.Feed(bytes.substr(i, 1));
+        EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+    }
+    protocol.Feed(bytes.substr(bytes.size() - 1));
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::PEER_ACCESS_RECORD);
+    EXPECT_EQ(packet.GetOrderId(), 42);
+    Packet copied = packet;
+    EXPECT_EQ(copied.GetOrderId(), 42);
+    EXPECT_EQ(copied.GetPayload().peerAccessRecord.peerDeviceId, 3);
+}
+
+TEST(Protocol, kernel_record_binary_keeps_order_after_move) {
+    MemCheckProtocol protocol;
+    const std::string records("abc", 3);
+    protocol.Feed(
+        Serialize(PacketHead{PacketType::KERNEL_RECORD, 0, 71}, static_cast<uint64_t>(records.size())) + records);
+    Packet packet = protocol.GetPacket();
+    ASSERT_EQ(packet.GetType(), PacketType::KERNEL_RECORD);
+    Packet moved = std::move(packet);
+    EXPECT_EQ(moved.GetOrderId(), 71);
+    EXPECT_EQ(std::string(moved.GetPayload().binary.buf, moved.GetPayload().binary.len), records);
+}
 
 TEST(Protocol, get_summary_from_protocol_expect_success_and_equal_to_packet)
 {
@@ -270,4 +316,78 @@ TEST(Protocol, get_kernel_binary_with_oversized_length_expect_invalid_packet)
     protocol.Feed(Serialize(header, oversize));
     Packet packet = protocol.GetPacket();
     ASSERT_EQ(packet.GetType(), PacketType::INVALID);
+}
+
+namespace Sanitizer {
+// 在每个字节边界暂停，确认半包绝不会提交；随后粘连的普通包也应保持原编号。
+TEST(Protocol, ordered_binary_and_normal_packets_at_every_byte_boundary) {
+    // 与实际接收模型一致：一条连接在独立接收线程解析，避免其它异常包测试的线程状态。
+    std::thread([] {
+        const std::string data = "peer-binary";
+        const std::string binary =
+            Serialize(PacketHead{PacketType::KERNEL_BINARY, 0, 17}, static_cast<uint64_t>(data.size())) + data;
+        const PeerAccessRecord relation{0, 1, PeerAccessOp::ENABLE};
+        const std::string normal = Serialize(PacketHead{PacketType::PEER_ACCESS_RECORD, 0, 18}, relation);
+        for (size_t split = 1; split < binary.size(); ++split) {
+            SCOPED_TRACE(split);
+            MemCheckProtocol protocol;
+            protocol.Feed(binary.substr(0, split));
+            EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+            protocol.Feed(binary.substr(split) + normal);
+            auto packet = protocol.GetPacket();
+            ASSERT_EQ(packet.GetType(), PacketType::KERNEL_BINARY);
+            EXPECT_EQ(packet.GetOrderId(), 17);
+            EXPECT_EQ(std::string(packet.GetPayload().binary.buf, packet.GetPayload().binary.len), data);
+            packet = protocol.GetPacket();
+            EXPECT_EQ(packet.GetType(), PacketType::PEER_ACCESS_RECORD);
+            EXPECT_EQ(packet.GetOrderId(), 18);
+            EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+        }
+        MemCheckProtocol protocol;
+        for (size_t i = 0; i < normal.size(); ++i) {
+            protocol.Feed(normal.substr(i, 1));
+            auto packet = protocol.GetPacket();
+            EXPECT_EQ(packet.GetType(), i + 1 == normal.size() ? PacketType::PEER_ACCESS_RECORD : PacketType::INVALID);
+            if (i + 1 == normal.size()) {
+                EXPECT_EQ(packet.GetOrderId(), 18);
+            }
+        }
+    }).join();
+}
+} // namespace Sanitizer
+
+// 测试场景：带作用域的 P2P 映射和撤销报文经分段接收并复制 Packet
+// 测试预期：顺序号、作用域及撤销标记完整保留，scope 0 的普通映射标记为非撤销
+TEST(Protocol, P2PMappingRoundTripAndCopy) {
+    // 与真实接收模型及已有半包测试一致，一条连接使用独立接收线程
+    std::thread([] {
+        PacketHead head{PacketType::P2P_MAPPING_RECORD, 0, 51};
+        P2PMappingRecord record{1, 2, 0x1008, 8, 0x1000, 0, false};
+        MemCheckProtocol protocol;
+        const auto bytes = Serialize(head) + Serialize(record);
+        protocol.Feed(bytes.substr(0, bytes.size() - 1));
+        EXPECT_EQ(protocol.GetPacket().GetType(), PacketType::INVALID);
+        protocol.Feed(bytes.substr(bytes.size() - 1));
+        Packet original = protocol.GetPacket();
+        Packet packet(original);
+        ASSERT_EQ(packet.GetType(), PacketType::P2P_MAPPING_RECORD);
+        EXPECT_EQ(packet.GetOrderId(), 51);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.deviceId, 1);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.ownerDeviceId, 2);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.addr, 0x1008);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.size, 8);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.ownerAddr, 0x1000);
+        EXPECT_EQ(packet.GetPayload().p2pMappingRecord.scope, 0);
+        EXPECT_FALSE(packet.GetPayload().p2pMappingRecord.revoke);
+
+        P2PMappingRecord revokeRecord{1, 2, 0x1008, 8, 0x1000, 73, true};
+        const auto revokeBytes = Serialize(PacketHead{PacketType::P2P_MAPPING_RECORD, 0, 52}) + Serialize(revokeRecord);
+        protocol.Feed(revokeBytes);
+        Packet revokePacket = protocol.GetPacket();
+        Packet revokeCopy(revokePacket);
+        ASSERT_EQ(revokeCopy.GetType(), PacketType::P2P_MAPPING_RECORD);
+        EXPECT_EQ(revokeCopy.GetOrderId(), 52);
+        EXPECT_EQ(revokeCopy.GetPayload().p2pMappingRecord.scope, 73);
+        EXPECT_TRUE(revokeCopy.GetPayload().p2pMappingRecord.revoke);
+    }).join();
 }

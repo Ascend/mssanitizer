@@ -21,6 +21,7 @@
 #include <memory>
 
 #include "record_defs.h"
+#include "runtime_context.h"
 
 namespace Sanitizer {
 
@@ -35,12 +36,7 @@ public:
     uint64_t GetTotalBlockDim() const;
     uint64_t GetRecordNum() const { return simdRecordHead_.recordWriteCount; }
 
-    static void ResetAll()
-    {
-        vecSubBlockDim_ = {};
-        totalBlockDim_ = {};
-        dynamicMemorys_ = {};
-    }
+    static void ResetAll() { *RuntimeContext::Instance().kernelDecodeState_ = KernelDecodeState{}; }
 
 private:
     bool ParseSimdRecord(uint8_t const *record, KernelRecord &kernelRecord);
@@ -56,11 +52,7 @@ private:
     uint8_t const *simtRecords_ {nullptr};
     uint64_t simdOffset_ {};
     uint64_t simtOffset_ {};
-    uint64_t recordIdx_ {};
-    thread_local static uint8_t vecSubBlockDim_;       // mix算子vec核使用的子核数目，只记录在了vec 0核的头部
-    thread_local static uint64_t totalBlockDim_;       // 记录的总blockDim数，只记录在了0核的头部
-    thread_local static std::vector<std::vector<uint8_t>> dynamicMemorys_;       // 动态内存记录缓存数组
-    thread_local static RecordType lastRecordType_; // 记录上一条处理的记录类型
+    uint64_t recordIdx_{};
     uint64_t extendCacheSize_{};                       // 溢出的cacheSize
     uint64_t extendRecordCount_{};                     // 溢出的记录数量
     uint32_t blockIdx_{};

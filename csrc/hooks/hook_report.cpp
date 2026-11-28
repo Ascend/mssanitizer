@@ -19,8 +19,10 @@
 
 #include <cstdlib>
 #include <memory>
+#include <utility>
 #include <sstream>
 #include <algorithm>
+#include <cstring>
 #include <unistd.h>
 
 #include "config.h"
@@ -83,6 +85,24 @@ HookReport &HookReport::Instance(void)
 HookReport::HookReport(void)
     : pcStartAddr{}, client_(nullptr), determined_{false}, memInfoSrc_{MemInfoSrc::RT},
     deviceType_{DeviceType::INVALID} { }
+
+bool HookReport::WriteOrdered(std::string message) {
+    std::lock_guard<std::mutex> lock(sendMutex_);
+    if (client_ == nullptr || sendFailed_ || message.size() < sizeof(PacketHead)) {
+        return false;
+    }
+    PacketHead head{};
+    std::memcpy(&head, message.data(), sizeof(head));
+    head.orderId = nextOrderId_++;
+    std::memcpy(&message[0], &head, sizeof(head));
+    if (client_->Write(message).Fail()) {
+        // 可能已有部分字节写出，不能重用编号或继续发送并声称检测完整
+        sendFailed_ = true;
+        std::cerr << "[mssanitizer] ERROR: HookReport send failed; detection result is incomplete." << std::endl;
+        return false;
+    }
+    return true;
+}
 
 bool HookReport::InitClient(void)
 {
@@ -156,11 +176,11 @@ bool HookReport::ReportDeviceType(DeviceType deviceType)
     PacketHead head {PacketType::DEVICE_SUMMARY};
     auto summary = DeviceInfoSummary {};
     summary.device = deviceType;
-    Result result = client_->Write(Serialize(head, summary));
-    if (result.Fail()) {
+    bool sent = WriteOrdered(Serialize(head, summary));
+    if (!sent) {
         std::cout << "Report device type FAILED" << std::endl;
     }
-    return !result.Fail();
+    return sent;
 }
 
 bool HookReport::ReportKernelInfo()
@@ -173,11 +193,11 @@ bool HookReport::ReportKernelInfo()
     auto summary = KernelSummary {};
     summary.blockDim = blockDim_;
     summary.kernelType = kernelInfo_.kernelType;
-    Result result = client_->Write(Serialize(head, summary));
-    if (result.Fail()) {
+    bool sent = WriteOrdered(Serialize(head, summary));
+    if (!sent) {
         std::cout << "Report kernel info FAILED" << std::endl;
     }
-    return !result.Fail();
+    return sent;
 }
 
 bool HookReport::ReportMalloc(const ReportAddrInfo &addrInfo, int32_t moduleId)
@@ -230,8 +250,7 @@ bool HookReport::ReportMemOp(MemOpRecord const &record)
     sanitizerRecord.version = RecordVersion::MEMORY_RECORD;
     sanitizerRecord.payload.memoryRecord = record;
     sanitizerRecord.payload.memoryRecord.serialNo = serialNo_++;
-    Result result = client_->Write(Serialize(head, sanitizerRecord));
-    return !result.Fail();
+    return WriteOrdered(Serialize(head, sanitizerRecord));
 }
 
 bool HookReport::Report(SanitizerRecord &sanitizerRecord)
@@ -246,8 +265,7 @@ bool HookReport::Report(SanitizerRecord &sanitizerRecord)
         sanitizerRecord.payload.memoryRecord.serialNo = serialNo_++;
     }
     PacketHead head {PacketType::SANITIZER_RECORD};
-    Result result = client_->Write(Serialize(head, sanitizerRecord));
-    return !result.Fail();
+    return WriteOrdered(Serialize(head, sanitizerRecord));
 }
 
 bool HookReport::ReportKernelBinary(std::vector<char> const &binary)
@@ -260,8 +278,7 @@ bool HookReport::ReportKernelBinary(std::vector<char> const &binary)
     PacketHead head {PacketType::KERNEL_BINARY};
     std::string buffer = Serialize<PacketHead, uint64_t>(head, binary.size());
     buffer += std::string(binary.data(), binary.size());
-    Result result = client_->Write(buffer);
-    return !result.Fail();
+    return WriteOrdered(std::move(buffer));
 }
 
 bool HookReport::ReportLogString(std::string const &logString)
@@ -274,8 +291,7 @@ bool HookReport::ReportLogString(std::string const &logString)
     PacketHead head {PacketType::LOG_STRING};
     std::string buffer = Serialize<PacketHead, uint64_t>(head, logString.size());
     buffer += logString;
-    Result result = client_->Write(buffer);
-    return !result.Fail();
+    return WriteOrdered(std::move(buffer));
 }
 
 bool HookReport::ReportMalloc(uint64_t addr, uint64_t size, MemInfoSrc memInfoSrc)

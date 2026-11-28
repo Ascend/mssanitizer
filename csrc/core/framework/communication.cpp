@@ -87,7 +87,7 @@ void CommunicationServer::Listen(ClientId clientId)
             }
         };
         if (msgHandler_ != nullptr && msg.size()) {
-            msgHandler_(msg, msgRspFunc);
+            msgHandler_(socket_->GetClientPid(clientId), msg, msgRspFunc);
         }
     }
 }

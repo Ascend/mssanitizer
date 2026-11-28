@@ -39,6 +39,8 @@ namespace Sanitizer {
 class AddressSanitizer : public SanitizerBase {
 public:
     AddressSanitizer();
+    // 销毁前撤销跨卡查询对本对象的引用。
+    ~AddressSanitizer() override;
     bool SetDeviceInfo(DeviceInfoSummary const &deviceInfo, Config const &config) override;
     bool SetKernelInfo(KernelSummary const &kernelInfo) override;
     void Do(const SanitizerRecord &record, const std::vector<SanEvent> &events) override;
@@ -47,6 +49,10 @@ public:
     bool CheckRecordBeforeProcess(const SanitizerRecord &record) override;
     void RegisterNotifyFunc(const MSG_FUNC &func) override;
     void Exit() override;
+    // 查询本设备当前选用的 GM 内存范围表是否完整允许指定读写访问；调用方负责并发保护
+    bool CheckExistingGmRange(uint64_t addr, uint64_t size, AccessType accessType) const;
+    // 建立共享映射时只检查运行库登记的 GM 范围，访问权限在实际访存时检查
+    bool ContainsGmRange(uint64_t addr, uint64_t size) const;
 
 private:
     // 标记越界检测时使用的上下文类型
@@ -99,6 +105,9 @@ private:
     size_t replayedEventCount_{};
     DeviceType deviceType_ = DeviceType::INVALID;
     uint64_t preSerialNo_{0};
+    // 本检测对象所属连接的被测 Host 进程 PID，用于隔离跨设备查询；-1 表示身份未知
+    int32_t mappingDeviceId_{-1}; // checker所属用户设备号，消费线程不依赖调度线程上下文
+    int32_t pid_{-1};
 };
 }
 

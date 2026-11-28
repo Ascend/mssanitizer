@@ -24,6 +24,57 @@
 
 using namespace Sanitizer;
 
+// 测试场景：相邻分配范围具有不同权限，另有未登记空洞
+// 测试预期：完整覆盖查询忽略权限，仍拒绝空洞、零长度、越界和地址溢出
+TEST(BoundsCheck, ContainsDiscreteRangeIndependentlyOfPermissions) {
+    DiscreteBounds bounds;
+    ASSERT_FALSE(bounds.Add(0x1000, 4, MSTX_MEM_PERMISSIONS_REGION_FLAGS_NONE).isError);
+    ASSERT_FALSE(bounds.Add(0x1004, 4, MSTX_MEM_PERMISSIONS_REGION_FLAGS_READ).isError);
+    ASSERT_FALSE(bounds.Add(0x1010, 4, Bounds::DEFAULT_PERMISSION).isError);
+    EXPECT_TRUE(bounds.Contains(0x1000, 8));
+    EXPECT_TRUE(bounds.Contains(0x1002, 6));
+    EXPECT_FALSE(bounds.Contains(0x1002, 7));
+    EXPECT_FALSE(bounds.Contains(0x1000, 20));
+    EXPECT_FALSE(bounds.Contains(0x1000, 0));
+    EXPECT_FALSE(bounds.Contains(UINT64_MAX, 4));
+    EXPECT_TRUE(bounds.Check(0x1000, 8, AccessType::READ).isError);
+    ASSERT_FALSE(bounds.Remove(0x1000, 8).isError);
+    EXPECT_FALSE(bounds.Contains(0x1000, 8));
+}
+
+// 测试场景：连续内存的完整覆盖与边界查询
+// 测试预期：范围内通过，左右越界、零长度及地址溢出被拒绝
+TEST(BoundsCheck, ContainsUnionRangeRespectsBoundaries) {
+    UnionBounds bounds(0x1000, 16);
+    EXPECT_TRUE(bounds.Contains(0x1000, 16));
+    EXPECT_TRUE(bounds.Contains(0x100f, 1));
+    EXPECT_FALSE(bounds.Contains(0x0fff, 2));
+    EXPECT_FALSE(bounds.Contains(0x100f, 2));
+    EXPECT_FALSE(bounds.Contains(0x1000, 0));
+    EXPECT_FALSE(bounds.Contains(UINT64_MAX, 4));
+}
+
+// 测试场景：按地址空间查询无读写权限的 GM 分配
+// 测试预期：登记范围可查询，未知地址空间及已释放范围查询失败
+TEST(BoundsCheck, ContainsUsesRequestedAddressSpace) {
+    BoundsCheck bounds;
+    ASSERT_FALSE(bounds.Add(AddressSpace::GM, 0x1000, 16, MSTX_MEM_PERMISSIONS_REGION_FLAGS_NONE).isError);
+    EXPECT_TRUE(bounds.Contains(AddressSpace::GM, 0x1000, 16));
+    EXPECT_FALSE(bounds.Contains(static_cast<AddressSpace>(UINT8_MAX), 0x1000, 16));
+    ASSERT_FALSE(bounds.Remove(AddressSpace::GM, 0x1000, 16).isError);
+    EXPECT_FALSE(bounds.Contains(AddressSpace::GM, 0x1000, 16));
+}
+
+TEST(BoundsCheck, remote_fallback_requires_no_local_overlap) {
+    DiscreteBounds bounds;
+    ASSERT_FALSE(bounds.Add(0x1000, 16, MSTX_MEM_PERMISSIONS_REGION_FLAGS_NONE).isError);
+    EXPECT_TRUE(bounds.HasOverlap(0x1000, 8));
+    EXPECT_TRUE(bounds.HasOverlap(0x1008, 16));
+    EXPECT_FALSE(bounds.HasOverlap(0x1010, 8));
+    EXPECT_FALSE(bounds.HasOverlap(UINT64_MAX, 8));
+    EXPECT_TRUE(bounds.Check(0x1000, 8, AccessType::READ).isError);
+}
+
 // 测试场景：SSBUF 使用独立窗口，窗口内偏移 0 合法，超过可用大小才越界
 TEST(BoundsCheck, ssbuf_uses_dedicated_window) {
     // 1C2V 每个 block 可用 3KB；容量与 0x40000 地址窗口大小是不同约束。

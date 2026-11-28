@@ -96,13 +96,10 @@ TEST_P(GetDataBitSizeByTypeTest, get_data_bit_size_by_type_given_data_type_and_e
         ASSERT_EQ(dataBitSize, expectedSize);
     }
 }
-INSTANTIATE_TEST_CASE_P(FormatConverter, GetDataBitSizeByTypeTest, testing::Values(
-    std::make_tuple(DataType::DATA_B4, 4U, true),
-    std::make_tuple(DataType::DATA_B8, 8U, true),
-    std::make_tuple(DataType::DATA_B16, 16U, true),
-    std::make_tuple(DataType::DATA_B32, 32U, true),
-    std::make_tuple(static_cast<DataType>(100), 0U, false)
-));
+INSTANTIATE_TEST_CASE_P(FormatConverter, GetDataBitSizeByTypeTest,
+    testing::Values(std::make_tuple(DataType::DATA_B4, 4U, true), std::make_tuple(DataType::DATA_B8, 8U, true),
+        std::make_tuple(DataType::DATA_B16, 16U, true), std::make_tuple(DataType::DATA_B32, 32U, true),
+        std::make_tuple(DataType::DATA_B64, 64U, true), std::make_tuple(static_cast<DataType>(100), 0U, false)));
 
 class GetDataTypeByDataBitsTest : public testing::TestWithParam<std::tuple<uint8_t, DataType, bool>> {};
 TEST_P(GetDataTypeByDataBitsTest, get_data_type_by_data_bits_given_data_bits_and_expect_correct_data_type)
@@ -115,13 +112,10 @@ TEST_P(GetDataTypeByDataBitsTest, get_data_type_by_data_bits_given_data_bits_and
         ASSERT_EQ(dataType, expectedType);
     }
 }
-INSTANTIATE_TEST_CASE_P(FormatConverter, GetDataTypeByDataBitsTest, testing::Values(
-    std::make_tuple(4, DataType::DATA_B4, true),
-    std::make_tuple(8, DataType::DATA_B8, true),
-    std::make_tuple(16, DataType::DATA_B16, true),
-    std::make_tuple(32, DataType::DATA_B32, true),
-    std::make_tuple(64, DataType::DATA_B4, false)
-));
+INSTANTIATE_TEST_CASE_P(FormatConverter, GetDataTypeByDataBitsTest,
+    testing::Values(std::make_tuple(4, DataType::DATA_B4, true), std::make_tuple(8, DataType::DATA_B8, true),
+        std::make_tuple(16, DataType::DATA_B16, true), std::make_tuple(32, DataType::DATA_B32, true),
+        std::make_tuple(64, DataType::DATA_B64, true), std::make_tuple(7, DataType::DATA_B4, false)));
 
 class GetPadModeScaleValueTest : public testing::TestWithParam<std::tuple<PadMode, uint64_t>> {};
 TEST_P(GetPadModeScaleValueTest, get_pad_mode_scale_value_given_pad_mode_and_expect_correct_scale_value)
@@ -210,6 +204,7 @@ TEST(FormatConverter, get_data_size_by_type_given_data_type_and_expect_correct_s
     ASSERT_EQ(FormatConverter::GetDataSizeByType(DataType::DATA_B8), 1U);
     ASSERT_EQ(FormatConverter::GetDataSizeByType(DataType::DATA_B16), 2U);
     ASSERT_EQ(FormatConverter::GetDataSizeByType(DataType::DATA_B32), 4U);
+    ASSERT_EQ(FormatConverter::GetDataSizeByType(DataType::DATA_B64), 8U);
     ASSERT_EQ(FormatConverter::GetDataSizeByType(DataType::DATA_B4), 1U);
     ASSERT_EQ(FormatConverter::GetDataSizeByType(static_cast<DataType>(100)), 1U);
 }

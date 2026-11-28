@@ -165,6 +165,7 @@ Result DomainSocketServer::Accept(ClientId &id)
         std::lock_guard<std::mutex> guard(cfdsMutex_);
         id = cfds_.size();
         cfds_.push_back(cfd);
+        clientPids_.push_back(cred.pid);
     }
     return result;
 }
@@ -172,6 +173,11 @@ Result DomainSocketServer::Accept(ClientId &id)
 std::size_t DomainSocketServer::GetClientNum() const
 {
     return cfds_.size();
+}
+
+pid_t DomainSocketServer::GetClientPid(ClientId id) {
+    std::lock_guard<std::mutex> guard(cfdsMutex_);
+    return id < clientPids_.size() ? clientPids_[id] : -1;
 }
 
 Result DomainSocketServer::Read(ClientId id, std::string &message, size_t maxBytes, size_t &receivedBytes)

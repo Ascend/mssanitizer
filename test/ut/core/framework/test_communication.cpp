@@ -55,8 +55,8 @@ TEST(CommunicationServerTest, RegisterMsgHandler_expect_callable) {
     std::string socketPath = "/tmp/msop_connect_register_msg.202511121043.12345.sock";
     CommunicationServer server(socketPath);
     bool handlerCalled = false;
-    server.RegisterMsgHandler(
-        [&handlerCalled](std::string msg, CommunicationServer::MsgResponseFunc &rsp) { handlerCalled = true; });
+    server.RegisterMsgHandler([&handlerCalled](CommunicationServer::ClientId, std::string msg,
+                                  CommunicationServer::MsgResponseFunc &rsp) { handlerCalled = true; });
     server.StartListen();
     server.Close();
 }

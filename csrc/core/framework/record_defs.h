@@ -414,6 +414,7 @@ enum class DataType : uint8_t {
     DATA_B8,
     DATA_B16,
     DATA_B32,
+    DATA_B64, // MSTX DataCopyPad 的64位元素，用于按字节计算填充范围
 };
 
 // 由于编译器只支持一个桩函数绑定一个api_id，而检测对于bit位数相同的数据处理逻辑常常一致
@@ -796,6 +797,15 @@ struct HostMemoryInfo {
         return size < other.size;
     }
 };
+
+// 在线 SIMT 检查使用的远端分配快照；deviceId 是分配所属设备
+// 同一设备的多个范围可以合并覆盖一次访存，HCCL精确窗口与设备级授权使用同一套合并规则
+struct PeerMemoryInfo {
+    uint64_t addr;
+    uint64_t size;
+    uint32_t permission;
+    int32_t deviceId;
+};
 struct SimtInfo {
     uint32_t ubDynamicSize{};
 };
@@ -863,15 +873,22 @@ struct RecordBlockHeadImpl {
     uint64_t offset{};                      // 所有记录对应的offset
     uint64_t writeOffset{};                 // 已经写入的记录对应的offset
     BlockInfo blockInfo{};
-    uint32_t hostMemoryNum{};               // 算子host侧memory输入个数
+    uint32_t hostMemoryNum{}; // 算子host侧memory输入个数
 #if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
-    __gm__ HostMemoryInfo *hostMemoryInfoPtr{nullptr};     // 算子host侧memory输入数据，kernel侧为gm地址
+    __gm__ HostMemoryInfo *hostMemoryInfoPtr{nullptr}; // 算子host侧memory输入数据，kernel侧为gm地址
 #else
-    HostMemoryInfo *hostMemoryInfoPtr{nullptr};            // 算子host侧memory输入数据，host侧为堆地址
+    HostMemoryInfo *hostMemoryInfoPtr{nullptr}; // 算子host侧memory输入数据，host侧为堆地址
 #endif
     uint32_t mstxFuseScopeDepth{};          // 融合语义深度
     bool extraWriteSuccess{false};          // extra地址信息是否写入成功
     ParaBaseRegister paraBase;
+    // 新字段追加在既有字段之后，保持本地内存和参数寄存器的原有偏移
+    uint32_t peerMemoryNum{}; // 本次 kernel 获授权的远端分配数
+#if defined(__CCE_IS_AICORE__) && __CCE_IS_AICORE__ == 1
+    __gm__ PeerMemoryInfo *peerMemoryInfoPtr{nullptr};
+#else
+    PeerMemoryInfo *peerMemoryInfoPtr{nullptr};
+#endif
 };
 
 using RecordBlockHead = StructAlignBy<RecordBlockHeadImpl, 64UL>;
@@ -2309,6 +2326,31 @@ struct IPCMemRecord {
         IPCMemoryMapInfo mapInfo;
         IPCMemoryUnmapInfo unmapInfo;
     };
+};
+
+// 跨设备访问授权的变更操作
+enum class PeerAccessOp : uint32_t {
+    ENABLE = 0,
+    DISABLE,
+    RESET
+};
+
+// 进程内跨设备的精确地址区间映射记录
+struct P2PMappingRecord {
+    int32_t deviceId; // 使用共享内存地址的设备，来自显式dstDevId
+    int32_t ownerDeviceId; // 分配共享内存地址的设备
+    uint64_t addr; // 窗口起始地址；与 ownerAddr 同一虚拟地址空间，映射不改变业务地址
+    uint64_t size; // 映射的长度
+    uint64_t ownerAddr; // 原分配起点，释放/重分配时撤销所有关联映射
+    uint64_t scope; // HCCL通信域身份；0表示无通信域归属，不随通信域销毁撤销
+    bool revoke; // true撤销同scope的该条精确映射，不影响其它通信域
+};
+
+// 跨设备访问授权记录，供工具更新访问方到目标设备的有向关系
+struct PeerAccessRecord {
+    int32_t deviceId; // ENABLE/DISABLE 的访问方；RESET 时为重置的设备
+    int32_t peerDeviceId; // ENABLE/DISABLE 的目标设备；RESET 时为 -1
+    PeerAccessOp operation;
 };
 
 // 目前检测需要用到的记录需要兼容三个版本，memoryRecord 对应原始的内存检测记录结构体，
