@@ -17,7 +17,14 @@
 #include <gtest/gtest.h>
 #include "ccec_defs.h"
 #include "ccec/data_process.h"
+#include "core/framework/kernel_block.h"
+#include "core/framework/record_parse.h"
 #include "plugin/ccec/calc_instructions/vsel.cpp"
+#include "plugin/record_sync_instructions.h"
+#include "race_sanitizer/alg_framework/single_pipe_race_alg_impl.h"
+
+extern void __sanitizer_report_get_cmpmask(uint8_t *memInfo, uint64_t fileNo, uint64_t lineNo, int64_t pc, void *dst);
+extern void __sanitizer_report_set_cmpmask(uint8_t *memInfo, uint64_t fileNo, uint64_t lineNo, int64_t pc, void *src);
 
 TEST(VselCalcInstructions, dump_records_and_parse_each_expect_success)
 {
@@ -92,24 +99,106 @@ TEST(VselCalcInstructions, dump_records_with_float_mode1_and_parse_expect_succes
     ASSERT_EQ(actualRecord.dstDataBits, sizeof(float) * BITS_EACH_BYTE);
 }
 
-TEST(VselCalcInstructions, config_overloads_with_all_select_modes_expect_success) {
+TEST(VselCalcInstructions, config_overloads_do_not_record_cmpmask_ub_read) {
     auto record = CreateRandomBinaryOpRecord();
-    uint64_t ubufAddr = 0x1000;
-    auto setup = [&](std::vector<uint8_t> &memInfo) {
-        __gm__ RecordGlobalHead *globalHead = reinterpret_cast<__gm__ RecordGlobalHead *>(memInfo.data());
-        globalHead->registers[GetRegisterIdx()].cmpMaskAddr = ubufAddr;
-    };
-
-    auto callConfig = [&](uint8_t selectMode) {
+    for (uint8_t selectMode : {VSEL_MODE0, VSEL_MODE1, VSEL_MODE2}) {
+        SCOPED_TRACE(selectMode);
         std::vector<uint8_t> memInfo = CreateMemInfo();
-        setup(memInfo);
-        uint64_t config = (static_cast<uint64_t>(selectMode) & 0x3) << VSEL_MODESHIFT;
+        auto *globalHead = reinterpret_cast<RecordGlobalHead *>(memInfo.data());
+        uint64_t config = static_cast<uint64_t>(selectMode) << VSEL_MODESHIFT;
         __sanitizer_report_vsel(memInfo.data(), record.location.fileNo, record.location.lineNo, record.location.pc,
             reinterpret_cast<__ubuf__ half *>(record.dst), reinterpret_cast<__ubuf__ half *>(record.src0),
             reinterpret_cast<__ubuf__ half *>(record.src1), config);
-    };
-
-    callConfig(VSEL_MODE0);
-    callConfig(VSEL_MODE1);
-    callConfig(VSEL_MODE2);
+        const auto *recordHead = reinterpret_cast<const RecordBlockHead *>(globalHead + 1);
+        ASSERT_EQ(recordHead->recordCount, 1U);
+        EXPECT_EQ(*reinterpret_cast<const RecordType *>(recordHead + 1), RecordType::VSEL_OP);
+    }
 }
+
+namespace {
+constexpr uint64_t DESCRIPTOR_ADDR = 0x1000;
+
+class CmpMaskRacecheck : public testing::Test {
+protected:
+    void *const descriptor = reinterpret_cast<void *>(DESCRIPTOR_ADDR);
+    std::vector<uint8_t> memInfo = CreateMemInfo();
+    SinglePipeRaceAlgImpl racecheck{KernelType::AIVEC, DeviceType::ASCEND_910B1, 1U};
+
+    void SetUp() override {
+        ResetParser();
+        auto *globalHead = reinterpret_cast<RecordGlobalHead *>(memInfo.data());
+        globalHead->checkParms.racecheck = true;
+        globalHead->kernelInfo.totalBlockDim = 1U;
+        reinterpret_cast<RecordBlockHead *>(globalHead + 1)->blockInfo.blockType = BlockType::AIVEC;
+    }
+
+    void TearDown() override { ResetParser(); }
+
+    void RunRacecheck(uint64_t expectedRecordCount) {
+        auto block = KernelBlock::CreateKernelBlock(memInfo.data(), memInfo.size(), 0U);
+        ASSERT_NE(block, nullptr);
+        SanitizerRecord record{};
+        record.version = RecordVersion::KERNEL_RECORD;
+        std::vector<SanEvent> events;
+        uint64_t parsedCount = 0;
+        while (block->NextSimd(record.payload.kernelRecord)) {
+            RecordParse::Parse(record, events);
+            ASSERT_FALSE(events.empty());
+            for (const auto &event : events) {
+                racecheck.Do(event);
+            }
+            events.clear();
+            ++parsedCount;
+        }
+        ASSERT_EQ(parsedCount, expectedRecordCount);
+        SanEvent finish{};
+        finish.type = EventType::SANITIZER_CONTROL_EVENT;
+        finish.eventInfo.sanitizerControlInfo.type = SanitizerControlType::KERNEL_FINISH;
+        racecheck.Do(finish);
+        racecheck.WaitFinished();
+    }
+
+private:
+    static void ResetParser() {
+        KernelBlock::ResetAll();
+        RecordParse::ResetAll();
+    }
+};
+
+TEST_F(CmpMaskRacecheck, consecutive_mode2_selects_reuse_descriptor_without_war) {
+    auto *mem = memInfo.data();
+    auto *src0 = reinterpret_cast<float *>(0x2000);
+    auto *src1 = reinterpret_cast<float *>(0x3000);
+    constexpr auto vectorPipe = static_cast<pipe_t>(PipeType::PIPE_V);
+    for (uint64_t select = 0; select < 2U; ++select) {
+        const uint64_t writeLine = 1U + select * 5U;
+        auto *dst = reinterpret_cast<float *>(0x4000 + select * 0x1000);
+        __sanitizer_report_get_cmpmask(mem, 0, writeLine, 0, descriptor);
+        RecordPipeBarrierEvent(mem, 0, writeLine + 1U, 0, vectorPipe);
+        __sanitizer_report_set_cmpmask(mem, 0, writeLine + 2U, 0, descriptor);
+        RecordPipeBarrierEvent(mem, 0, writeLine + 3U, 0, vectorPipe);
+        __sanitizer_report_vsel(mem, 0, writeLine + 4U, 0, dst, src0, src1, 1, 1, 1, 1, 8, 8, 8, VSEL_MODE2);
+    }
+    ASSERT_NO_FATAL_FAILURE(RunRacecheck(10U));
+    EXPECT_EQ(racecheck.GetRaceCount(), 0U);
+}
+
+TEST_F(CmpMaskRacecheck, unsynchronized_descriptor_overwrite_without_vsel_reports_war) {
+    __sanitizer_report_set_cmpmask(memInfo.data(), 0, 1, 0, descriptor);
+    __sanitizer_report_get_cmpmask(memInfo.data(), 0, 2, 0, descriptor);
+    ASSERT_NO_FATAL_FAILURE(RunRacecheck(2U));
+    const auto races = racecheck.GetResult();
+    ASSERT_EQ(races->size(), 1U);
+    const auto &race = races->front();
+    const auto &earlier = race.p1.lineNo < race.p2.lineNo ? race.p1 : race.p2;
+    const auto &later = race.p1.lineNo < race.p2.lineNo ? race.p2 : race.p1;
+    EXPECT_EQ(earlier.lineNo, 1U);
+    EXPECT_EQ(static_cast<AccessType>(earlier.accessType), AccessType::READ);
+    EXPECT_EQ(static_cast<MemType>(earlier.memType), MemType::UB);
+    EXPECT_EQ(earlier.addr, DESCRIPTOR_ADDR);
+    EXPECT_EQ(later.lineNo, 2U);
+    EXPECT_EQ(static_cast<AccessType>(later.accessType), AccessType::WRITE);
+    EXPECT_EQ(static_cast<MemType>(later.memType), MemType::UB);
+    EXPECT_EQ(later.addr, DESCRIPTOR_ADDR);
+}
+} // namespace

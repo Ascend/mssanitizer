@@ -373,7 +373,7 @@ TEST_F(TestKernelBlock, ParseSimdRecord_SerialNoLogic)
     before = RuntimeContext::Instance().serialNo_;
     *reinterpret_cast<RecordType *>(buffer.data()) = RecordType::VSEL_OP;
     ASSERT_TRUE(kernelBlock.ParseSimdRecord(buffer.data(), kr));
-    EXPECT_EQ(RuntimeContext::Instance().serialNo_, before);
+    EXPECT_EQ(kr.serialNo, before + 1);
     before = RuntimeContext::Instance().serialNo_;
     *reinterpret_cast<RecordType *>(buffer.data()) = RecordType::UNARY_OP;
     ASSERT_TRUE(kernelBlock.ParseSimdRecord(buffer.data(), kr));

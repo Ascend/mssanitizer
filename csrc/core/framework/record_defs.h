@@ -701,7 +701,7 @@ struct Register {
     uint64_t vectorMask0 = ~0ULL;
     uint64_t vectorMask1 = ~0ULL;
     uint64_t ndParaConfig;
-    uint64_t cmpMaskAddr = ~0UL;
+    uint64_t reserved; // 不再使用，仅占位以保持结构体布局不变。新增字段可优先使用替换
     MaskMode maskMode;
     VaRegister va0;
     VaRegister va1;
